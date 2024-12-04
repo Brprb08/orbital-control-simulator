@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 8ef9463bd1cc3c64f9adf648c6811a51
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Fonts/Inter-Medium SDF.asset
+  uploadId: 680609

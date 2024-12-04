@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 503161aa846cabf4e90e8b5fdd5df395
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Materials/Skybox Depth Material.mat
+  uploadId: 680609

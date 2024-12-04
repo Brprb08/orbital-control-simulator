@@ -1,0 +1,17 @@
+fileFormatVersion: 2
+guid: 4ce4c0666f071e1478d991d550d73d50
+ShaderImporter:
+  externalObjects: {}
+  defaultTextures: []
+  nonModifiableTextures: []
+  preprocessorOverride: 0
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Shaders/Blockade Skybox Depth.shader
+  uploadId: 680609

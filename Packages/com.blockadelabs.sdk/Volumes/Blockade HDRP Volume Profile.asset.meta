@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: 0b478194c970ff9418e805599ea5b1c6
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 11400000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Volumes/Blockade HDRP Volume Profile.asset
+  uploadId: 680609

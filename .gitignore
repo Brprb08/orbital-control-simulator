@@ -1,0 +1,23 @@
+# Unity folders to exclude
+[Ll]ibrary/
+[Tt]emp/
+[Oo]bj/
+[Bb]uild/
+[Bb]uilds/
+[Ll]ogs/
+
+# Visual Studio / Rider / MonoDevelop
+.vscode/
+*.csproj
+*.sln
+*.userprefs
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Other cache files
+UserSettings/
+
+# Exclude IDE-specific files
+.idea/

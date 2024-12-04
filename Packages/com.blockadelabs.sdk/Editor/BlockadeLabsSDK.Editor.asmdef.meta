@@ -1,0 +1,14 @@
+fileFormatVersion: 2
+guid: f4de92e7edd02394bb08ab65b3c05486
+AssemblyDefinitionImporter:
+  externalObjects: {}
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Editor/BlockadeLabsSDK.Editor.asmdef
+  uploadId: 680609

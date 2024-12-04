@@ -1,0 +1,15 @@
+fileFormatVersion: 2
+guid: a33a9f212df0efa49861b934d17e160f
+NativeFormatImporter:
+  externalObjects: {}
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 274237
+  packageName: Skybox AI Generator by Blockade Labs (Subscription)
+  packageVersion: 2.0.0
+  assetPath: Packages/com.blockadelabs.sdk/Materials/Metallic HDRP.mat
+  uploadId: 680609

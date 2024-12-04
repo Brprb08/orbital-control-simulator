@@ -1,0 +1,16 @@
+fileFormatVersion: 2
+guid: 37e020fa3cd13f94b8d1ba1acbf7d0db
+timeCreated: 1522318129
+licenseType: Store
+NativeFormatImporter:
+  mainObjectFileID: 2100000
+  userData: 
+  assetBundleName: 
+  assetBundleVariant: 
+AssetOrigin:
+  serializedVersion: 1
+  productId: 109689
+  packageName: Space/star Starfield & Nebula Backgrounds
+  packageVersion: 1.0
+  assetPath: Assets/StarfieldMaterials/DemoMaterials/Starfield_Overlay.mat
+  uploadId: 238265
