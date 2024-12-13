@@ -9,11 +9,11 @@ This project is an interactive orbital mechanics simulator where users can contr
 - **Orbit Path Tracing**: Visualize the effects of your transfer burns and trace orbital paths over time.
 - **Error Impact Demonstration**: Show how small errors in maneuvers can have significant effects on long-term orbital paths.
 - **Fuel Consumption Tracking**: Manage and visualize fuel usage for each maneuver.
-- **Potential Future Feature - Attitude Control**: Gain control of the satellite\u2019s orientation to execute precise maneuvers.
+- **Potential Future Feature - Attitude Control**: Gain control of the satellite orientation to execute precise maneuvers.
 
 ## Project Status
 
-This project is currently in its **early development phase**, and many core features are still under construction. The main focus is on getting core orbital mechanics and user controls operational. As features are added, updates will be posted here.
+This project is currently in its **early development phase**, and many core features are still under development. The main focus is on getting core orbital mechanics and user controls operational. As features are added, updates will be posted here.
 
 ## Usage
 
@@ -28,15 +28,5 @@ This project is currently in its **early development phase**, and many core feat
 - Refinement of UI to better visualize trajectory changes and fuel usage.
 - Enhanced physics for realistic gravitational effects and orbital decay.
 - Add attitude control for spacecraft orientation.
-
-## Contributing
-
-Contributions, suggestions, and ideas are welcome! As this project is in early development, feedback on mechanics, UI, and overall design is greatly appreciated.
-
-## Contact
-
-If you'd like to learn more about the project, contribute, or offer feedback, feel free to reach out via GitHub Issues or submit a pull request.
-
----
 
 **Note:** Since this is a **work in progress**, not all features are functional at this stage. Expect updates as development continues.
