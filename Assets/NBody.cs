@@ -1,29 +1,25 @@
 using UnityEngine;
 using System.Collections.Generic;
 using System.Threading.Tasks;
-using TMPro;
 
 [RequireComponent(typeof(LineRenderer))]
 public class NBody : MonoBehaviour
 {
-    public float mass = 5.0e21f; // Example scaled mass
-    public Vector3 velocity = new Vector3(0, 0, 20); // Initial velocity (scaled units/s)
+    public float mass = 5.0e21f;
+    public Vector3 velocity = new Vector3(0, 0, 20);
     public bool isCentralBody = false;
-    public float radius = 637.1f; // Approx Earth radius in scaled units (1 unit = 10 km)
+    public float radius = 637.1f;
 
     private Vector3 force = Vector3.zero;
     private LineRenderer trailRenderer;
     private LineRenderer predictionRenderer;
     private List<Vector3> trajectory = new List<Vector3>();
     public int maxTrajectoryPoints = 100;
-    public int predictionSteps = 50; // Number of steps for trajectory prediction
-    public float predictionDeltaTime = 0.1f; // Delta time for trajectory prediction
-    public int frameCounter = 0;
-    public int updateFrequency = 2000;
+    public int predictionSteps = 50;
+    public float predictionDeltaTime = 0.1f;
     private Vector3[] predictedPositions;
-    private bool predictionDirty = true;
-    private TextMeshProUGUI velocityText;
     private LineRenderer originLineRenderer;
+
     void Awake()
     {
         if (GravityManager.Instance != null)
@@ -34,8 +30,6 @@ public class NBody : MonoBehaviour
         {
             Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
         }
-
-        velocityText = GameObject.Find("VelocityText").GetComponent<TextMeshProUGUI>();
     }
 
     void OnDestroy()
@@ -66,7 +60,6 @@ public class NBody : MonoBehaviour
         originLineObj.transform.parent = this.transform;
         originLineRenderer = originLineObj.AddComponent<LineRenderer>();
 
-        // Configure line renderer for the origin line
         originLineRenderer.positionCount = 2;
         originLineRenderer.startWidth = 0.02f;
         originLineRenderer.endWidth = 0.02f;
@@ -74,11 +67,8 @@ public class NBody : MonoBehaviour
         originLineRenderer.material.color = Color.blue;
         originLineRenderer.useWorldSpace = true;
 
-        // Configure line renderer properties
         ConfigureLineRenderer(predictionRenderer);
         ConfigureMaterial(predictionRenderer);
-        // Optionally add depth bias or glow:
-        // ConfigureMaterialWithDepthBias(predictionRenderer);
 
         predictionRenderer.positionCount = predictionSteps;
 
@@ -97,41 +87,29 @@ public class NBody : MonoBehaviour
 
     void ConfigureLineRenderer(LineRenderer lineRenderer)
     {
-        // Add width curve for consistent thickness
         AnimationCurve widthCurve = new AnimationCurve();
-        widthCurve.AddKey(0.0f, 0.5f); // Start width
-        widthCurve.AddKey(1.0f, 0.5f); // End width
+        widthCurve.AddKey(0.0f, 0.5f);
+        widthCurve.AddKey(1.0f, 0.5f);
         lineRenderer.widthCurve = widthCurve;
-
-        // Ensure the line uses world space coordinates
         lineRenderer.useWorldSpace = true;
-
-        // Add a slight offset for better visibility
         lineRenderer.startWidth = 0.5f;
         lineRenderer.endWidth = 0.5f;
     }
 
     void ConfigureMaterial(LineRenderer lineRenderer)
     {
-        // Create a new material with a shader that supports double-sided rendering
         Material lineMaterial = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply"));
-        lineMaterial.SetColor("_TintColor", Color.green); // Set the color to bright green
+        lineMaterial.SetColor("_TintColor", Color.green);
         lineRenderer.material = lineMaterial;
-
-        // Set line color (if shader supports direct color settings)
         lineRenderer.startColor = Color.green;
         lineRenderer.endColor = Color.green;
-
-        // Optional: Make the line glow (depending on the shader used)
-        // lineMaterial.SetFloat("_Glow", 1.0f);
     }
 
     void FixedUpdate()
     {
         if (isCentralBody)
         {
-            // Spin the Earth on its axis
-            float earthRotationRate = 360f / (24f * 60f * 60f); // degrees per second (approx 0.0041667 deg/s)
+            float earthRotationRate = 360f / (24f * 60f * 60f);
             transform.Rotate(Vector3.up, earthRotationRate * Time.fixedDeltaTime);
         }
         else
@@ -149,28 +127,6 @@ public class NBody : MonoBehaviour
 
         force = Vector3.zero;
         UpdateTrajectory();
-
-        UpdateUI();
-    }
-
-    void UpdateUI()
-    {
-        if (velocityText != null)
-        {
-            float velocityMagnitude = velocity.magnitude; // units/s
-
-            // Convert units/s to m/s
-            float velocityInMetersPerSecond = velocityMagnitude * 10000f; // 1 unit = 10,000 m
-            float velocityInMph = velocityInMetersPerSecond * 2.23694f;
-
-            velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s ({velocityInMph:F2} mph)";
-        }
-
-        // if (altitudeText != null && isCentralBody == false)
-        // {
-        //     float altitude = Vector3.Distance(transform.position, Vector3.zero) - radius; // Distance from "Earth" (assumes Earth is at 0,0,0)
-        //     altitudeText.text = $"Altitude: {altitude:F2} km";
-        // }
     }
 
     public void AddForce(Vector3 additionalForce)
@@ -194,19 +150,15 @@ public class NBody : MonoBehaviour
     {
         while (true)
         {
-
-            // Cache Unity-specific data on the main thread
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
 
-            // Cache updated positions of all bodies on the main thread
             var bodyPositions = new Dictionary<NBody, Vector3>();
             foreach (var body in GravityManager.Instance.Bodies)
             {
                 bodyPositions[body] = body.transform.position;
             }
 
-            // Perform trajectory calculation asynchronously
             Vector3[] calculatedPositions = await Task.Run(() =>
             {
                 Vector3 tempPosition = initialPosition;
@@ -215,7 +167,6 @@ public class NBody : MonoBehaviour
 
                 for (int i = 0; i < predictionSteps; i++)
                 {
-                    // RK4 integration
                     Vector3 k1Vel = tempVelocity;
                     Vector3 k1Acc = ComputeAccelerationFromData(tempPosition, bodyPositions);
 
@@ -240,51 +191,15 @@ public class NBody : MonoBehaviour
             if (predictionRenderer == null)
             {
                 Debug.LogWarning("Prediction Renderer has been destroyed. Exiting UpdatePredictedTrajectoryAsync.");
-                break; // Break the loop if LineRenderer is null
+                break;
             }
 
-            // Update the line renderer on the main thread
             predictionRenderer.positionCount = calculatedPositions.Length;
             predictionRenderer.SetPositions(calculatedPositions);
 
-            await Task.Delay(30); // Wait a short time before recalculating to avoid overloading the CPU
+            await Task.Delay(30);
         }
     }
-
-
-    // void UpdatePredictedTrajectory()
-    // {
-    //     Vector3 tempPosition = transform.position;
-    //     Vector3 tempVelocity = velocity;
-    //     Vector3[] predictedPositions = new Vector3[predictionSteps];
-
-    //     for (int i = 0; i < predictionSteps; i++)
-    //     {
-    //         // Use RK4 integration for the prediction step
-    //         Vector3 k1Vel = tempVelocity;
-    //         Vector3 k1Acc = ComputeAcceleration(tempPosition);
-
-    //         Vector3 k2Vel = tempVelocity + k1Acc * (predictionDeltaTime / 2f);
-    //         Vector3 k2Acc = ComputeAcceleration(tempPosition + k1Vel * (predictionDeltaTime / 2f));
-
-    //         Vector3 k3Vel = tempVelocity + k2Acc * (predictionDeltaTime / 2f);
-    //         Vector3 k3Acc = ComputeAcceleration(tempPosition + k2Vel * (predictionDeltaTime / 2f));
-
-    //         Vector3 k4Vel = tempVelocity + k3Acc * predictionDeltaTime;
-    //         Vector3 k4Acc = ComputeAcceleration(tempPosition + k3Vel * predictionDeltaTime);
-
-    //         // Update velocity and position using RK4
-    //         tempVelocity += (k1Acc + 2f * k2Acc + 2f * k3Acc + k4Acc) * (predictionDeltaTime / 6f);
-    //         tempPosition += (k1Vel + 2f * k2Vel + 2f * k3Vel + k4Vel) * (predictionDeltaTime / 6f);
-
-    //         // Populate predicted positions array
-    //         predictedPositions[i] = tempPosition;
-    //     }
-
-    //     // Update the line renderer to match predicted trajectory
-    //     predictionRenderer.positionCount = predictionSteps;
-    //     predictionRenderer.SetPositions(predictedPositions);
-    // }
 
     Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions)
     {
@@ -295,7 +210,6 @@ public class NBody : MonoBehaviour
             {
                 Vector3 direction = bodyPositions[body] - position;
                 float distanceInUnits = direction.magnitude;
-                // float distanceInUnits = distance * distance; // Convert units to km
                 float distanceSquared = distanceInUnits * distanceInUnits;
                 float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
                 totalForce += direction.normalized * forceMagnitude;
