@@ -9,7 +9,7 @@ public class NBody : MonoBehaviour
     public float mass = 5.0e21f; // Example scaled mass
     public Vector3 velocity = new Vector3(0, 0, 20); // Initial velocity (scaled units/s)
     public bool isCentralBody = false;
-    public float radius = 680f; // Approx Earth radius in scaled units (1 unit = 10 km)
+    public float radius = 637.1f; // Approx Earth radius in scaled units (1 unit = 10 km)
 
     private Vector3 force = Vector3.zero;
     private LineRenderer trailRenderer;
@@ -23,6 +23,7 @@ public class NBody : MonoBehaviour
     private Vector3[] predictedPositions;
     private bool predictionDirty = true;
     private TextMeshProUGUI velocityText;
+    private LineRenderer originLineRenderer;
     void Awake()
     {
         if (GravityManager.Instance != null)
@@ -60,6 +61,18 @@ public class NBody : MonoBehaviour
         GameObject predictionObj = new GameObject($"{gameObject.name}_Prediction");
         predictionObj.transform.parent = this.transform;
         predictionRenderer = predictionObj.AddComponent<LineRenderer>();
+
+        GameObject originLineObj = new GameObject($"{gameObject.name}_OriginLine");
+        originLineObj.transform.parent = this.transform;
+        originLineRenderer = originLineObj.AddComponent<LineRenderer>();
+
+        // Configure line renderer for the origin line
+        originLineRenderer.positionCount = 2;
+        originLineRenderer.startWidth = 0.02f;
+        originLineRenderer.endWidth = 0.02f;
+        originLineRenderer.material = new Material(Shader.Find("Unlit/Color"));
+        originLineRenderer.material.color = Color.blue;
+        originLineRenderer.useWorldSpace = true;
 
         // Configure line renderer properties
         ConfigureLineRenderer(predictionRenderer);
@@ -128,6 +141,12 @@ public class NBody : MonoBehaviour
             transform.position += velocity * Time.fixedDeltaTime;
         }
 
+        if (originLineRenderer != null)
+        {
+            originLineRenderer.SetPosition(0, transform.position);
+            originLineRenderer.SetPosition(1, Vector3.zero);
+        }
+
         force = Vector3.zero;
         UpdateTrajectory();
 
@@ -138,8 +157,13 @@ public class NBody : MonoBehaviour
     {
         if (velocityText != null)
         {
-            float velocityMagnitude = velocity.magnitude;
-            velocityText.text = $"Velocity: {velocityMagnitude:F2} m/s";
+            float velocityMagnitude = velocity.magnitude; // units/s
+
+            // Convert units/s to m/s
+            float velocityInMetersPerSecond = velocityMagnitude * 10000f; // 1 unit = 10,000 m
+            float velocityInMph = velocityInMetersPerSecond * 2.23694f;
+
+            velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s ({velocityInMph:F2} mph)";
         }
 
         // if (altitudeText != null && isCentralBody == false)
@@ -170,6 +194,7 @@ public class NBody : MonoBehaviour
     {
         while (true)
         {
+
             // Cache Unity-specific data on the main thread
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
@@ -211,6 +236,12 @@ public class NBody : MonoBehaviour
 
                 return positions;
             });
+
+            if (predictionRenderer == null)
+            {
+                Debug.LogWarning("Prediction Renderer has been destroyed. Exiting UpdatePredictedTrajectoryAsync.");
+                break; // Break the loop if LineRenderer is null
+            }
 
             // Update the line renderer on the main thread
             predictionRenderer.positionCount = calculatedPositions.Length;
@@ -263,10 +294,10 @@ public class NBody : MonoBehaviour
             if (body != this)
             {
                 Vector3 direction = bodyPositions[body] - position;
-                float distance = direction.magnitude;
-                float distanceInUnits = distance * 10f; // Convert units to km
+                float distanceInUnits = direction.magnitude;
+                // float distanceInUnits = distance * distance; // Convert units to km
                 float distanceSquared = distanceInUnits * distanceInUnits;
-                float forceMagnitude = (6.67430e-11f * mass * body.mass) / distanceSquared;
+                float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
                 totalForce += direction.normalized * forceMagnitude;
             }
         }
