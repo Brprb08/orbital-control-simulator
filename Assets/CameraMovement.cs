@@ -7,6 +7,7 @@ public class CameraMovement : MonoBehaviour
     public float distance = 100f;
     public float height = 30f;
     public TextMeshProUGUI velocityText; // Assign this in the Inspector
+    public TextMeshProUGUI altitudeText; // Assign this in the Inspector
 
     private bool recentlySwitched = false;
     private float switchCooldown = 0.5f;
@@ -14,25 +15,25 @@ public class CameraMovement : MonoBehaviour
 
     void LateUpdate()
     {
+        if (targetBody == null)
+        {
+            // Stop updating the camera position if no target is set
+            return;
+        }
+
         if (recentlySwitched)
         {
             switchTimer -= Time.deltaTime;
             if (switchTimer > 0f)
             {
                 LockOntoTargetExact();
-                UpdateVelocityUI(); // Update UI even when waiting
+                UpdateVelocityAndAltitudeUI(); // Update UI even when waiting
                 return;
             }
             else
             {
                 recentlySwitched = false;
             }
-        }
-
-        if (targetBody == null)
-        {
-            Debug.LogError("CameraMovement: Target NBody is not assigned!");
-            return;
         }
 
         // Simple tracking using velocity direction
@@ -44,11 +45,13 @@ public class CameraMovement : MonoBehaviour
         transform.position = desiredPosition;
         transform.LookAt(targetBody.transform.position);
 
-        UpdateVelocityUI();
+        UpdateVelocityAndAltitudeUI();
     }
 
     private void LockOntoTargetExact()
     {
+        if (targetBody == null) return;
+
         Vector3 velocityDirection = (targetBody.velocity.magnitude > 0.01f)
             ? targetBody.velocity.normalized
             : targetBody.transform.forward;
@@ -64,16 +67,19 @@ public class CameraMovement : MonoBehaviour
         recentlySwitched = true;
         switchTimer = switchCooldown;
 
-        Vector3 velocityDirection = (targetBody.velocity.magnitude > 0.01f)
-            ? targetBody.velocity.normalized
-            : targetBody.transform.forward;
+        if (targetBody != null)
+        {
+            Vector3 velocityDirection = (targetBody.velocity.magnitude > 0.01f)
+                ? targetBody.velocity.normalized
+                : targetBody.transform.forward;
 
-        Vector3 snapPosition = targetBody.transform.position - velocityDirection * distance + Vector3.up * height;
-        transform.position = snapPosition;
-        transform.LookAt(targetBody.transform.position);
+            Vector3 snapPosition = targetBody.transform.position - velocityDirection * distance + Vector3.up * height;
+            transform.position = snapPosition;
+            transform.LookAt(targetBody.transform.position);
+        }
     }
 
-    void UpdateVelocityUI()
+    void UpdateVelocityAndAltitudeUI()
     {
         if (velocityText != null && targetBody != null)
         {
@@ -81,6 +87,13 @@ public class CameraMovement : MonoBehaviour
             float velocityInMetersPerSecond = velocityMagnitude * 10000f;
             float velocityInMph = velocityInMetersPerSecond * 2.23694f;
             velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s ({velocityInMph:F2} mph)";
+        }
+
+        if (altitudeText != null && targetBody != null)
+        {
+            float altitude = targetBody.altitude; // Get altitude from NBody
+            float altitudeInFeet = altitude * 3280.84f; // Convert km to feet
+            altitudeText.text = $"Altitude: {altitude:F2} km ({altitudeInFeet:F0} ft)";
         }
     }
 }

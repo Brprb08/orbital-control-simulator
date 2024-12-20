@@ -217,4 +217,15 @@ public class NBody : MonoBehaviour
         }
         return totalForce / mass;
     }
+
+    public float altitude
+    {
+        get
+        {
+            float distanceFromCenter = transform.position.magnitude; // Distance in units
+            float distanceInKm = distanceFromCenter * 10f; // Convert to km (1 unit = 10 km)
+            float earthRadiusKm = 6378f; // Earth's radius in km
+            return distanceInKm - earthRadiusKm; // Altitude in km
+        }
+    }
 }
