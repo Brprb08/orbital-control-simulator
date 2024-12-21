@@ -1,5 +1,8 @@
 # Orbit Mechanics Simulator
 
+![Screenshot from FreeCam](Assets/Images/screenshotFreeCam.png)
+![Screenshot from TrackCam](Assets/Images/screenshotTrackCam.png)
+
 ## Overview
 This project is an interactive orbital mechanics simulator designed to allow users to visualize and interact with gravitational systems, simulate orbital trajectories, and experiment with creating celestial bodies with custom velocities and radii. It provides a simple interface for exploring the mechanics of gravity, planetary motion, and orbits.
 
