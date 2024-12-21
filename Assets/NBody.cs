@@ -1,9 +1,9 @@
-using UnityEngine;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using UnityEngine; // Imports Unity-specific classes like MonoBehaviour, Vector3, GameObject, and LineRenderer.
+using System.Collections.Generic; // Allows use of generic collections like List<T> and Dictionary<T, U>.
+using System.Threading.Tasks; // Provides async and Task functionality for asynchronous programming.
 
-[RequireComponent(typeof(LineRenderer))]
-public class NBody : MonoBehaviour
+[RequireComponent(typeof(LineRenderer))] // Ensures all components with NBody also have a line render
+public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Update, etc.
 {
     public float mass = 5.0e21f;
     public Vector3 velocity = new Vector3(0, 0, 20);
@@ -13,23 +13,15 @@ public class NBody : MonoBehaviour
     private Vector3 force = Vector3.zero;
     private LineRenderer trailRenderer;
     private LineRenderer predictionRenderer;
-    private List<Vector3> trajectory = new List<Vector3>();
-    public int maxTrajectoryPoints = 100;
-    public int predictionSteps = 50;
-    public float predictionDeltaTime = 0.1f;
+    public List<Vector3> trajectory = new List<Vector3>();
+    public int maxTrajectoryPoints = 0;
+    public int predictionSteps = 10000;
+    public float predictionDeltaTime = 5f;
     private Vector3[] predictedPositions;
     private LineRenderer originLineRenderer;
-
     void Awake()
     {
-        if (GravityManager.Instance != null)
-        {
-            GravityManager.Instance.RegisterBody(this);
-        }
-        else
-        {
-            Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
-        }
+
     }
 
     void OnDestroy()
@@ -42,6 +34,14 @@ public class NBody : MonoBehaviour
 
     async void Start()
     {
+        if (GravityManager.Instance != null)
+        {
+            GravityManager.Instance.RegisterBody(this);
+        }
+        else
+        {
+            Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
+        }
         // Initialize Trail Renderer
         trailRenderer = GetComponent<LineRenderer>();
         trailRenderer.positionCount = maxTrajectoryPoints;
@@ -88,8 +88,8 @@ public class NBody : MonoBehaviour
     void ConfigureLineRenderer(LineRenderer lineRenderer)
     {
         AnimationCurve widthCurve = new AnimationCurve();
-        widthCurve.AddKey(0.0f, 0.5f);
-        widthCurve.AddKey(1.0f, 0.5f);
+        widthCurve.AddKey(0.0f, 0.5f); // Start of the line = 0, setting width to .5
+        widthCurve.AddKey(1.0f, 0.5f); // End of the line = 1, setting width to .5
         lineRenderer.widthCurve = widthCurve;
         lineRenderer.useWorldSpace = true;
         lineRenderer.startWidth = 0.5f;
@@ -126,7 +126,7 @@ public class NBody : MonoBehaviour
         }
 
         force = Vector3.zero;
-        UpdateTrajectory();
+        // UpdateTrajectory();
     }
 
     public void AddForce(Vector3 additionalForce)
@@ -156,7 +156,7 @@ public class NBody : MonoBehaviour
             var bodyPositions = new Dictionary<NBody, Vector3>();
             foreach (var body in GravityManager.Instance.Bodies)
             {
-                bodyPositions[body] = body.transform.position;
+                bodyPositions[body] = body.transform.position; // map.put()
             }
 
             Vector3[] calculatedPositions = await Task.Run(() =>

@@ -68,4 +68,44 @@ public class CameraController : MonoBehaviour
         isFreeCamMode = false;
         Debug.Log("FreeCam disabled. Tracking resumed.");
     }
+
+    public void RefreshBodiesList()
+    {
+        bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
+        Debug.Log($"RefreshBodiesList called. Found {bodies.Count} bodies.");
+
+        if (bodies.Count > 0 && (currentIndex < 0 || currentIndex >= bodies.Count))
+        {
+            currentIndex = 0;
+            Debug.Log($"Resetting currentIndex to 0.");
+        }
+    }
+
+    public bool IsTracking(NBody body)
+    {
+        return cameraMovement != null && cameraMovement.targetBody == body;
+    }
+
+    public void SwitchToNextValidBody(NBody removedBody)
+    {
+        // Refresh the list of bodies
+        RefreshBodiesList();
+
+        // Remove the destroyed body from the list
+        bodies.Remove(removedBody);
+
+        if (bodies.Count > 0)
+        {
+            // Switch to another valid body
+            currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
+            cameraMovement.SetTargetBody(bodies[currentIndex]);
+            Debug.Log($"Camera switched to track: {bodies[currentIndex].name}");
+        }
+        else
+        {
+            // No bodies left, switch to free cam
+            BreakToFreeCam();
+            Debug.Log("No valid bodies to track. Switched to FreeCam.");
+        }
+    }
 }

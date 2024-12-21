@@ -23,6 +23,20 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    void Start()
+    {
+        // Register all pre-existing NBody objects in the scene
+        NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
+        foreach (var body in allBodies)
+        {
+            if (!bodies.Contains(body))
+            {
+                bodies.Add(body);
+                Debug.Log($"Registered pre-existing NBody: {body.gameObject.name}");
+            }
+        }
+    }
+
     public void RegisterBody(NBody body)
     {
         if (!bodies.Contains(body))
@@ -51,10 +65,15 @@ public class GravityManager : MonoBehaviour
                 Vector3 direction = (bodyB.transform.position - bodyA.transform.position);
                 float distanceSquared = direction.sqrMagnitude;
 
-                float minDistanceSquared = minCollisionDistance * minCollisionDistance;
-                if (distanceSquared <= minDistanceSquared)
+                // Check for collision based on minCollisionDistance
+                float combinedRadii = bodyA.radius + bodyB.radius;
+                float combinedRadiiSquared = combinedRadii * combinedRadii;
+
+                if (distanceSquared <= combinedRadiiSquared)
                 {
                     Debug.Log($"Collision detected between {bodyA.name} and {bodyB.name}!");
+
+                    HandleCollision(bodyA, bodyB);
                     continue;
                 }
 
@@ -65,5 +84,32 @@ public class GravityManager : MonoBehaviour
                 bodyB.AddForce(-force);
             }
         }
+    }
+    void HandleCollision(NBody bodyA, NBody bodyB)
+    {
+        // Example: Remove the smaller body in a collision
+        NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
+
+        // Check if the camera is tracking the body being removed
+        CameraController cameraController = GravityManager.Instance.GetComponent<CameraController>();
+        if (cameraController != null && cameraController.IsTracking(bodyToRemove))
+        {
+            // Switch the camera to track another body or free cam
+            cameraController.SwitchToNextValidBody(bodyToRemove);
+        }
+
+        // Remove from GravityManager list
+        DeregisterBody(bodyToRemove);
+
+        // Destroy the GameObject
+        Destroy(bodyToRemove.gameObject);
+
+        // Refresh the camera's bodies list
+        if (cameraController != null)
+        {
+            cameraController.RefreshBodiesList();
+        }
+
+        Debug.Log($"Removed {bodyToRemove.name} due to collision.");
     }
 }

@@ -5,38 +5,30 @@ using UnityEngine.EventSystems;
 public class ObjectPlacementManager : MonoBehaviour
 {
     public Camera mainCamera;
-    public GameObject spherePrefab;
+    public GameObject spherePrefab; // No NBody script attached to this prefab
     public GravityManager gravityManager;
-    public TMP_InputField velocityInput;
+    public TMP_InputField velocityInput; // Expect a format like "x,y,z"
     public TMP_InputField radiusInput;
     public TextMeshProUGUI feedbackText;
     public CameraMovement cameraMovement;
 
-    private GameObject previewObject;
-    private Vector3 initialVelocity = Vector3.zero;
+    private GameObject lastPlacedGameObject = null; // Reference to the raw GameObject
+    private NBody lastPlacedNBody = null; // Reference to the final NBody component
     private bool isInPlacementMode = false;
 
     private void Start()
     {
-        feedbackText.text = "Click 'Start Placement' to place an object.";
-    }
-
-    private void Update()
-    {
-        if (isInPlacementMode && previewObject != null)
-        {
-            MovePreviewObject();
-
-            if (Input.GetMouseButtonDown(0)) // Left-click to place object
-            {
-                PlaceObject();
-            }
-        }
+        feedbackText.text = "Set radius, then 'Place Planet'. After placement, enter velocity and 'Set Velocity'.";
     }
 
     public void StartPlacement()
     {
-        if (previewObject != null) return;
+        // Only allow placement if in FreeCam mode
+        if (!isInPlacementMode)
+        {
+            feedbackText.text = "You must be in FreeCam mode to place planets.";
+            return;
+        }
 
         float radius;
         if (!float.TryParse(radiusInput.text, out radius) || radius <= 0)
@@ -45,93 +37,135 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        previewObject = Instantiate(spherePrefab);
+        // Create the actual planet (no NBody component at this point)
+        lastPlacedGameObject = Instantiate(spherePrefab);
         float validRadius = Mathf.Max(1f, radius);
-        previewObject.transform.localScale = Vector3.one * validRadius * 2f * 0.1f;
-        previewObject.GetComponent<Renderer>().material.color = new Color(1f, 1f, 1f, 0.5f);
+        lastPlacedGameObject.transform.localScale = Vector3.one * validRadius * 2f * 0.1f;
+        lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
-        feedbackText.text = "Move your mouse to position the object. Left-click to place, or right-click to cancel.";
+        // Make it semi-transparent (optional)
+        Renderer r = lastPlacedGameObject.GetComponent<Renderer>();
+        if (r != null)
+        {
+            Color c = r.material.color;
+            c.a = 0.5f; // Semi-transparent
+            r.material.color = c;
+        }
 
-        // Enter FreeCam and disable FreeCam rotation
-        BreakToFreeCam();
+        ClearAndUnfocusInputField(radiusInput);
+
+        feedbackText.text = "Planet placed without gravity.\nEnter velocity (x,y,z) and click 'Set Velocity' to start movement.";
     }
 
     public void CancelPlacement()
     {
-        if (previewObject != null)
+        if (lastPlacedGameObject != null)
         {
-            Destroy(previewObject);
-            previewObject = null;
+            Destroy(lastPlacedGameObject);
+            lastPlacedGameObject = null;
         }
 
         feedbackText.text = "Placement canceled. Returned to tracking mode.";
-
         ExitFreeCam();
     }
 
     public void SetInitialVelocity()
     {
-        float velocity;
-        if (!float.TryParse(velocityInput.text, out velocity) || velocity <= 0)
+        if (lastPlacedGameObject == null)
         {
-            feedbackText.text = "Invalid velocity. Please enter a positive number.";
+            feedbackText.text = "No planet available to set velocity. Place one first.";
             return;
         }
 
-        initialVelocity = new Vector3(velocity / 10000f, 0, 0);
-        feedbackText.text = $"Velocity set to {velocity} m/s.";
-    }
-
-    private void MovePreviewObject()
-    {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        if (Physics.Raycast(ray, out RaycastHit hit))
+        string velocityText = velocityInput.text;
+        if (string.IsNullOrWhiteSpace(velocityText))
         {
-            previewObject.transform.position = hit.point;
+            feedbackText.text = "Please enter a velocity in the format x,y,z";
+            return;
         }
+
+        Vector3 parsedVelocity;
+        if (!TryParseVector3(velocityText, out parsedVelocity))
+        {
+            feedbackText.text = "Invalid velocity format. Use x,y,z with no spaces.";
+            return;
+        }
+
+        // Add the NBody component to the object at runtime
+        lastPlacedNBody = lastPlacedGameObject.AddComponent<NBody>();
+
+        // Configure NBody properties
+        float radius = lastPlacedGameObject.transform.localScale.x * 10f;
+        lastPlacedNBody.radius = radius;
+        lastPlacedNBody.mass = 400000f; // Density-based calculation for mass
+        lastPlacedNBody.velocity = parsedVelocity;
+        NBody nBody = lastPlacedGameObject.GetComponent<NBody>();
+        if (nBody != null)
+        {
+            nBody.predictionSteps = 10000;
+        }
+
+        // Re-enable the LineRenderer after movement starts
+        LineRenderer lr = lastPlacedNBody.GetComponent<LineRenderer>();
+        if (lr != null)
+        {
+            // Initialize trajectory to ensure the line starts at the planet's position
+            lastPlacedNBody.trajectory.Clear(); // Clear old data
+            lastPlacedNBody.trajectory.Add(lastPlacedNBody.transform.position); // Add the current position
+            lr.enabled = true; // Enable LineRenderer
+        }
+
+        // Register NBody with GravityManager
+        gravityManager.RegisterBody(lastPlacedNBody);
+
+        CameraController cameraController = gravityManager.GetComponent<CameraController>();
+        Debug.Log($"CameraController: {cameraController}");
+        if (cameraController != null)
+        {
+            cameraController.RefreshBodiesList();
+        }
+        lastPlacedGameObject = null;
+
+        ClearAndUnfocusInputField(velocityInput);
+
+        feedbackText.text = $"Velocity set to {parsedVelocity}. The planet will now move under gravity!";
     }
 
-    private void PlaceObject()
+    private bool TryParseVector3(string input, out Vector3 result)
     {
-        if (previewObject == null) return;
+        result = Vector3.zero;
+        string[] parts = input.Split(',');
+        if (parts.Length != 3) return false;
 
-        GameObject newObject = Instantiate(spherePrefab);
-        newObject.transform.position = previewObject.transform.position;
-        newObject.transform.localScale = previewObject.transform.localScale;
+        float x, y, z;
+        if (!float.TryParse(parts[0], out x)) return false;
+        if (!float.TryParse(parts[1], out y)) return false;
+        if (!float.TryParse(parts[2], out z)) return false;
 
-        NBody nBody = newObject.AddComponent<NBody>();
-        float radius = newObject.transform.localScale.x * 10f;
-        nBody.radius = radius;
-        nBody.mass = Mathf.Pow(radius, 3) * 1e12f;
-        nBody.velocity = initialVelocity;
+        result = new Vector3(x, y, z);
+        return true;
+    }
 
-        gravityManager.RegisterBody(nBody);
-
-        Destroy(previewObject);
-        previewObject = null;
-        isInPlacementMode = false;
-
-        feedbackText.text = "Object placed!";
-
-        // Exit FreeCam and re-enable FreeCam rotation
-        ExitFreeCam();
+    private void ClearAndUnfocusInputField(TMP_InputField inputField)
+    {
+        inputField.text = ""; // Clear the text
+        EventSystem.current.SetSelectedGameObject(null); // Unfocus the field
     }
 
     public void DeselectUI()
     {
-        EventSystem.current.SetSelectedGameObject(null); // Deselect any UI element
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     public void BreakToFreeCam()
     {
-        Debug.Log("Entering FreeCam mode.");
         isInPlacementMode = true;
 
         DeselectUI();
 
         if (cameraMovement != null)
         {
-            cameraMovement.enabled = false; // Disable planet tracking
+            cameraMovement.enabled = false;
         }
 
         FreeCamera freeCamera = mainCamera.GetComponent<FreeCamera>();
@@ -143,20 +177,17 @@ public class ObjectPlacementManager : MonoBehaviour
 
     public void ExitFreeCam()
     {
-        Debug.Log("Exiting FreeCam mode after placement.");
         isInPlacementMode = false;
 
         FreeCamera freeCamera = mainCamera.GetComponent<FreeCamera>();
         if (freeCamera != null)
         {
-            freeCamera.TogglePlacementMode(false); // Re-enable FreeCam rotation
+            freeCamera.TogglePlacementMode(false);
         }
 
         if (cameraMovement != null)
         {
-            cameraMovement.enabled = true; // Re-enable planet tracking
+            cameraMovement.enabled = true;
         }
     }
-
-
 }
