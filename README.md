@@ -1,32 +1,52 @@
 # Orbit Mechanics Simulator
 
-This project is an interactive orbital mechanics simulator where users can control, plan, and visualize orbital transfers in real time. Currently a **work in progress**, this tool aims to provide an educational and hands-on experience in spaceflight dynamics, orbit transfers, and precision maneuvering.
+## Overview
+This project is an interactive orbital mechanics simulator designed to allow users to visualize and interact with gravitational systems, simulate orbital trajectories, and experiment with creating celestial bodies with custom velocities and radii. It provides a simple interface for exploring the mechanics of gravity, planetary motion, and orbits.
 
-## Features (Planned & In-Progress)
+## Current Features
+- **Central Body Simulation:** Simulates a central body (e.g., Earth) with accurate rotation and gravitational properties.
+- **Planet Placement:** Allows users to create planets with custom radii and positions in a free camera mode.
+- **Velocity Setting:** Enables users to assign an initial velocity to newly placed planets, initiating their motion under the influence of gravity.
+- **Trajectory Prediction:** Real-time rendering of predicted orbital paths for planets using the Runge-Kutta numerical integration method.
+- **Collision Detection:** Detects and handles collisions between celestial bodies, including removal of smaller bodies upon impact.
+- **Camera Modes:**
+  - **Tracking Mode:** Automatically focuses on a selected celestial body, displaying real-time velocity and altitude.
+  - **Free Camera Mode:** Allows free navigation and placement of new bodies in the system.
+- **Time Control:** Adjustable simulation speed via a slider, supporting both slow-motion and time-lapse exploration.
+- **Real-Time Feedback:** Displays velocity and altitude metrics for the selected body, ensuring an interactive learning experience.
 
-- **Free-Roam Transfer Control**: Execute and control orbital transfer burns to navigate between orbits.
-- **Interactive UI Display**: Real-time updates for key metrics such as velocity, altitude, and fuel consumption.
-- **Orbit Path Tracing**: Visualize the effects of your transfer burns and trace orbital paths over time.
-- **Error Impact Demonstration**: Show how small errors in maneuvers can have significant effects on long-term orbital paths.
-- **Fuel Consumption Tracking**: Manage and visualize fuel usage for each maneuver.
-- **Potential Future Feature - Attitude Control**: Gain control of the satellite orientation to execute precise maneuvers.
+## Limitations and Incomplete Features
+- **No Thrust or Attitude Control:** The current implementation lacks the ability to apply thrust or control the orientation of celestial bodies.
+- **Simplistic UI:** The user interface is minimal and lacks advanced feedback systems such as fuel tracking or burn planning.
+- **Static Physics:** No advanced physics features like orbital decay, aerodynamic drag, or relativistic effects.
+- **Collision Effects:** Collisions result in body removal but lack visual or physical effects like explosions or merging.
 
-## Project Status
+## How to Use
+1. **Launch the Simulator:** Run the Unity application to start the simulation.
+2. **Switch Camera Modes:**
+   - Use tracking mode to follow a specific planet or free mode to navigate freely.
+3. **Place New Planets:**
+   - Enter a radius in the input field and click "Place Planet."
+   - Assign velocity in the format `x,y,z` using the "Set Velocity" button.
+4. **Observe Orbits:**
+   - Watch the trajectories and metrics of planets as they interact with the central body.
+   - Adjust the time scale to observe long-term dynamics or collision events.
+5. **Remove or Re-assign Focus:**
+   - Manually cancel placement or switch focus to another celestial body using the camera controls.
 
-This project is currently in its **early development phase**, and many core features are still under development. The main focus is on getting core orbital mechanics and user controls operational. As features are added, updates will be posted here.
+## Planned Updates
+- **Thrust Mechanics:**
+  - Add controls to apply thrust for orbital maneuvers and trajectory adjustments.
+- **Improved UI:**
+  - Create a more intuitive interface for body placement, orbit visualization, and feedback metrics.
+- **Attitude Control:**
+  - Enable rotation of celestial bodies for precise control of orbital dynamics.
+- **Fuel Tracking:**
+  - Introduce fuel consumption as a parameter for sustained maneuvers.
+- **Advanced Collision Effects:**
+  - Incorporate merging or fragmentation of celestial bodies on impact.
+- **Additional Physics:**
+  - Implement features like orbital decay and drag for enhanced realism.
 
-## Usage
-
-1. **Launch the Simulator**: Run the Unity project to enter the simulation.
-2. **Control the Orbit**: Use interactive UI buttons to initiate burns and control orbit transfers.
-3. **View Metrics**: Observe velocity, altitude, and fuel consumption in real time.
-4. **Analyze Your Path**: Watch the impact of small maneuvering errors on your long-term orbit.
-
-## Future Goals
-
-- Full implementation of orbit transfers with customizable burns.
-- Refinement of UI to better visualize trajectory changes and fuel usage.
-- Enhanced physics for realistic gravitational effects and orbital decay.
-- Add attitude control for spacecraft orientation.
-
-**Note:** Since this is a **work in progress**, not all features are functional at this stage. Expect updates as development continues.
+## Status
+The project is in its early stages. Key systems like gravitational dynamics and trajectory prediction are operational, but advanced features like thrust mechanics, drag effects, and fuel tracking are not yet implemented. Updates will focus on usability improvements, feature expansion, and enhanced visualization.
