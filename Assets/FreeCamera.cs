@@ -1,5 +1,4 @@
 using UnityEngine;
-
 public class FreeCamera : MonoBehaviour
 {
     public float speed = 10f; // Movement speed
@@ -18,14 +17,17 @@ public class FreeCamera : MonoBehaviour
         // Movement (scales properly with time)
         float moveX = Input.GetAxis("Horizontal") * speed;
         float moveZ = Input.GetAxis("Vertical") * speed;
-        transform.Translate(moveX, 0, moveZ);
+        transform.Translate(moveX, 0, moveZ, Space.Self);
 
-        // Rotation (adjusted to ignore Time.timeScale)
+        // Rotation (adjusted to rotate in place)
         if (Input.GetMouseButton(1))
         {
             float rotationX = Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
             float rotationY = Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
-            transform.eulerAngles += new Vector3(-rotationY, rotationX, 0);
+
+            // Apply local rotation for in-place movement
+            transform.Rotate(Vector3.up, rotationX, Space.Self);      // Horizontal rotation (yaw)
+            transform.Rotate(Vector3.right, -rotationY, Space.Self);  // Vertical rotation (pitch)
         }
     }
 

@@ -15,6 +15,9 @@ public class ObjectPlacementManager : MonoBehaviour
     private GameObject lastPlacedGameObject = null; // Reference to the raw GameObject
     private NBody lastPlacedNBody = null; // Reference to the final NBody component
     private bool isInPlacementMode = false;
+    public Transform cameraPivotTransform;
+    public Transform cameraTransform; // Main Camera as a child of CameraPivot
+    private Vector3 defaultLocalPosition;
 
     private void Start()
     {
@@ -159,35 +162,43 @@ public class ObjectPlacementManager : MonoBehaviour
 
     public void BreakToFreeCam()
     {
+        Debug.Log("Switching to FreeCam...");
         isInPlacementMode = true;
-
-        DeselectUI();
-
-        if (cameraMovement != null)
-        {
-            cameraMovement.enabled = false;
-        }
-
-        FreeCamera freeCamera = mainCamera.GetComponent<FreeCamera>();
-        if (freeCamera != null)
-        {
-            freeCamera.TogglePlacementMode(true);
-        }
     }
 
     public void ExitFreeCam()
     {
+        Debug.Log("Exiting FreeCam...");
         isInPlacementMode = false;
+    }
 
-        FreeCamera freeCamera = mainCamera.GetComponent<FreeCamera>();
-        if (freeCamera != null)
+    private void ResetCameraPosition()
+    {
+        if (cameraTransform != null)
         {
-            freeCamera.TogglePlacementMode(false);
+            // Reset Main Camera to default local position relative to the pivot
+            Debug.Log($"Resetting Camera to default local position: {defaultLocalPosition}");
+            cameraTransform.localPosition = defaultLocalPosition;
+
+            // Reset Main Camera local rotation
+            cameraTransform.localRotation = Quaternion.identity;
         }
-
-        if (cameraMovement != null)
+        else
         {
-            cameraMovement.enabled = true;
+            Debug.LogError("cameraTransform is null. Ensure it is assigned in the Inspector!");
+        }
+    }
+
+    private void ResetPivotRotation()
+    {
+        if (cameraPivotTransform != null)
+        {
+            Debug.Log("Resetting CameraPivot rotation to identity (pointing at the planet).");
+            cameraPivotTransform.rotation = Quaternion.identity;
+        }
+        else
+        {
+            Debug.LogError("cameraPivotTransform is null. Ensure it is assigned in the Inspector!");
         }
     }
 }

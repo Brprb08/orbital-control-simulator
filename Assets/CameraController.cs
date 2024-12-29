@@ -3,82 +3,187 @@ using System.Collections.Generic;
 
 public class CameraController : MonoBehaviour
 {
-    public CameraMovement cameraMovement; // Assign in Inspector
+    public CameraMovement cameraMovement; // Assigned on CameraPivot
     private List<NBody> bodies;
     private int currentIndex = 0;
 
     private bool isFreeCamMode = false;
 
+    public float sensitivity = 100f;
+
+    public Transform cameraPivotTransform; // CameraPivot GameObject
+    public Transform cameraTransform; // Main Camera as a child of CameraPivot
+    private Vector3 defaultLocalPosition; // Default offset from the pivot
+    private bool isSwitchingToFreeCam = false;
+
+    public bool IsFreeCamMode
+    {
+        get => isFreeCamMode;
+        private set
+        {
+            Debug.Log($"isFreeCamMode changed to {value}. Call stack:\n{System.Environment.StackTrace}");
+            isFreeCamMode = value;
+        }
+    }
+
     void Start()
     {
+        // Save the default local position of the camera relative to the pivot
+        if (cameraTransform != null)
+        {
+            defaultLocalPosition = cameraTransform.localPosition;
+        }
+
+        // Initialize planet tracking
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
-            // Initially set the first body as target
+            currentIndex = 0; // Ensure we start with the first body
             cameraMovement.SetTargetBody(bodies[currentIndex]);
+            ResetCameraPosition(); // Reset camera position to default
+            Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
         }
     }
 
     void Update()
     {
+        // Debug.Log($"Update() called. isFreeCamMode: {isFreeCamMode}");
         if (!isFreeCamMode)
         {
-            // Press Tab to cycle through bodies in tracking mode
-            if (Input.GetKeyDown(KeyCode.Tab))
+            // Track Cam Mode
+            // Switch planets with Tab key
+            if (Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
             {
                 currentIndex = (currentIndex + 1) % bodies.Count;
                 cameraMovement.SetTargetBody(bodies[currentIndex]);
+                ResetCameraPosition(); // Reset the camera position after switching
                 Debug.Log($"Camera now tracking: {bodies[currentIndex].name}");
             }
+
+            // Rotate the camera with Mouse Button 1
+            if (Input.GetMouseButton(1) && cameraPivotTransform != null)
+            {
+                float rotationX = Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
+                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
+
+                // Rotate the pivot horizontally (yaw)
+                cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
+
+                // Rotate the pivot vertically (pitch) with clamping
+                cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
+                Vector3 currentRotation = cameraPivotTransform.eulerAngles;
+                float clampedX = ClampAngle(currentRotation.x, -80f, 80f);
+                cameraPivotTransform.eulerAngles = new Vector3(clampedX, currentRotation.y, 0);
+            }
         }
+        // else
+        // {
+        //     // Free Cam Mode
+        //     // Rotate/move camera with Mouse Button 1
+        //     FreeCamera freeCamera = cameraTransform.GetComponent<FreeCamera>();
+        //     if (freeCamera != null && Input.GetMouseButton(1))
+        //     {
+        //         float rotationX = Input.GetAxis("Mouse X") * freeCamera.sensitivity * Time.unscaledDeltaTime;
+        //         float rotationY = Input.GetAxis("Mouse Y") * freeCamera.sensitivity * Time.unscaledDeltaTime;
+        //         transform.eulerAngles += new Vector3(-rotationY, rotationX, 0);
+        //     }
+        // }
+    }
+
+    private float ClampAngle(float angle, float min, float max)
+    {
+        angle = NormalizeAngle(angle);
+        return Mathf.Clamp(angle, min, max);
+    }
+
+    private float NormalizeAngle(float angle)
+    {
+        while (angle > 180f) angle -= 360f;
+        while (angle < -180f) angle += 360f;
+        return angle;
     }
 
     public void BreakToFreeCam()
     {
+        if (isSwitchingToFreeCam)
+        {
+            Debug.Log("here");
+            return;
+        }
+
+        isSwitchingToFreeCam = true;
         if (cameraMovement != null)
         {
             cameraMovement.SetTargetBody(null); // Stop tracking
-            cameraMovement.enabled = false; // Disable tracking completely
+            cameraMovement.enabled = false; // Disable tracking
         }
 
-        FreeCamera freeCam = cameraMovement.GetComponent<FreeCamera>();
+        FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
         if (freeCam != null)
         {
+            Debug.Log("hello");
             freeCam.TogglePlacementMode(true);
         }
 
         isFreeCamMode = true;
-        Debug.Log("Tracking camera disabled. FreeCam enabled.");
+        Debug.Log(isFreeCamMode);
+        isSwitchingToFreeCam = false;
+        Debug.Log("Tracking disabled. FreeCam enabled.");
+    }
+
+    private void ResetCameraPosition()
+    {
+        if (cameraTransform != null)
+        {
+            // Reset Main Camera to default local position relative to the pivot
+            Debug.Log($"Resetting Camera to default local position: {defaultLocalPosition}");
+            cameraTransform.localPosition = defaultLocalPosition;
+
+            // Reset Main Camera local rotation
+            cameraTransform.localRotation = Quaternion.identity;
+        }
+        else
+        {
+            Debug.LogError("cameraTransform is null. Ensure it is assigned in the Inspector!");
+        }
+    }
+
+    private void ResetPivotRotation()
+    {
+        if (cameraPivotTransform != null)
+        {
+            Debug.Log("Resetting CameraPivot rotation to identity (pointing at the planet).");
+            cameraPivotTransform.rotation = Quaternion.identity;
+        }
+        else
+        {
+            Debug.LogError("cameraPivotTransform is null. Ensure it is assigned in the Inspector!");
+        }
     }
 
     public void ReturnToTracking()
     {
+        if (!isFreeCamMode) return;
+        Debug.Log("Returning to Tracking Mode...");
+
         if (cameraMovement != null)
         {
-            cameraMovement.enabled = true; // Enable tracking
-            cameraMovement.SetTargetBody(bodies[currentIndex]); // Resume tracking the last body
+            cameraMovement.enabled = true; // Re-enable tracking
+            cameraMovement.SetTargetBody(bodies[currentIndex]); // Set the target planet
         }
 
-        FreeCamera freeCam = cameraMovement.GetComponent<FreeCamera>();
+        ResetPivotRotation();  // Reset pivot to face the planet
+        ResetCameraPosition(); // Reset camera position
+
+        // Disable FreeCam
+        FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
         if (freeCam != null)
         {
-            freeCam.TogglePlacementMode(false);
+            freeCam.TogglePlacementMode(false); // Disable FreeCam mode
         }
 
         isFreeCamMode = false;
         Debug.Log("FreeCam disabled. Tracking resumed.");
-    }
-
-    public void RefreshBodiesList()
-    {
-        bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
-        Debug.Log($"RefreshBodiesList called. Found {bodies.Count} bodies.");
-
-        if (bodies.Count > 0 && (currentIndex < 0 || currentIndex >= bodies.Count))
-        {
-            currentIndex = 0;
-            Debug.Log($"Resetting currentIndex to 0.");
-        }
     }
 
     public bool IsTracking(NBody body)
@@ -103,9 +208,22 @@ public class CameraController : MonoBehaviour
         }
         else
         {
-            // No bodies left, switch to free cam
+            // No bodies left, switch to FreeCam
             BreakToFreeCam();
             Debug.Log("No valid bodies to track. Switched to FreeCam.");
         }
     }
+
+    public void RefreshBodiesList()
+    {
+        bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
+        Debug.Log($"RefreshBodiesList called. Found {bodies.Count} bodies.");
+
+        if (bodies.Count > 0 && (currentIndex < 0 || currentIndex >= bodies.Count))
+        {
+            currentIndex = 0;
+            Debug.Log($"Resetting currentIndex to 0.");
+        }
+    }
 }
+
