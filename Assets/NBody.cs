@@ -85,24 +85,44 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
         await UpdatePredictedTrajectoryAsync();
     }
 
-    void ConfigureLineRenderer(LineRenderer lineRenderer)
+    void ConfigureLineRenderer(LineRenderer lineRenderer, Camera mainCamera = null)
     {
+        if (mainCamera == null)
+        {
+            mainCamera = Camera.main; // Fallback to Camera.main if none is provided
+        }
+
         AnimationCurve widthCurve = new AnimationCurve();
-        widthCurve.AddKey(0.0f, 0.5f); // Start of the line = 0, setting width to .5
-        widthCurve.AddKey(1.0f, 0.5f); // End of the line = 1, setting width to .5
+        float minLineWidth = 0.1f;
+        float maxLineWidth = 5.0f;
+        float distanceToCamera = Vector3.Distance(lineRenderer.transform.position, mainCamera.transform.position);
+
+        float dynamicWidth = Mathf.Clamp(distanceToCamera * 0.005f, minLineWidth, maxLineWidth);
+        widthCurve.AddKey(0.0f, dynamicWidth);
+        widthCurve.AddKey(1.0f, dynamicWidth);
         lineRenderer.widthCurve = widthCurve;
+
         lineRenderer.useWorldSpace = true;
-        lineRenderer.startWidth = 0.5f;
-        lineRenderer.endWidth = 0.5f;
+        lineRenderer.startWidth = dynamicWidth;
+        lineRenderer.endWidth = dynamicWidth;
+
+        lineRenderer.numCapVertices = 5;
+        lineRenderer.numCornerVertices = 5;
     }
 
     void ConfigureMaterial(LineRenderer lineRenderer)
     {
-        Material lineMaterial = new Material(Shader.Find("Legacy Shaders/Particles/Alpha Blended Premultiply"));
-        lineMaterial.SetColor("_TintColor", Color.green);
+        // Use a modern Unlit shader for simplicity
+        Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
+        lineMaterial.color = Color.green;
         lineRenderer.material = lineMaterial;
+
         lineRenderer.startColor = Color.green;
         lineRenderer.endColor = Color.green;
+
+        // Optionally add a subtle glow by tweaking color intensity
+        Color glowColor = Color.green * 2.0f; // Brighten the green for glow
+        lineMaterial.SetColor("_EmissionColor", glowColor);
     }
 
     void FixedUpdate()
