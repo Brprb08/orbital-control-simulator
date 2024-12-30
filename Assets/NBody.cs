@@ -1,9 +1,11 @@
-using UnityEngine; // Imports Unity-specific classes like MonoBehaviour, Vector3, GameObject, and LineRenderer.
-using System.Collections.Generic; // Allows use of generic collections like List<T> and Dictionary<T, U>.
-using System.Threading.Tasks; // Provides async and Task functionality for asynchronous programming.
+using UnityEngine;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+// using Unity.Jobs; // Unity Job System for parallelism
+// using Unity.Burst; // Burst Compiler for performance
 
-[RequireComponent(typeof(LineRenderer))] // Ensures all components with NBody also have a line render
-public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Update, etc.
+[RequireComponent(typeof(LineRenderer))]
+public class NBody : MonoBehaviour
 {
     public float mass = 5.0e21f;
     public Vector3 velocity = new Vector3(0, 0, 20);
@@ -19,6 +21,7 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
     public float predictionDeltaTime = 5f;
     private Vector3[] predictedPositions;
     private LineRenderer originLineRenderer;
+
     void Awake()
     {
 
@@ -42,16 +45,11 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
         {
             Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
         }
-        // Initialize Trail Renderer
+
         trailRenderer = GetComponent<LineRenderer>();
         trailRenderer.positionCount = maxTrajectoryPoints;
-        trailRenderer.startWidth = 0.05f;
-        trailRenderer.endWidth = 0.05f;
-        trailRenderer.useWorldSpace = true;
-
         trajectory.Add(transform.position);
 
-        // Initialize Prediction Renderer
         GameObject predictionObj = new GameObject($"{gameObject.name}_Prediction");
         predictionObj.transform.parent = this.transform;
         predictionRenderer = predictionObj.AddComponent<LineRenderer>();
@@ -61,11 +59,6 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
         originLineRenderer = originLineObj.AddComponent<LineRenderer>();
 
         originLineRenderer.positionCount = 2;
-        originLineRenderer.startWidth = 0.02f;
-        originLineRenderer.endWidth = 0.02f;
-        originLineRenderer.material = new Material(Shader.Find("Unlit/Color"));
-        originLineRenderer.material.color = Color.blue;
-        originLineRenderer.useWorldSpace = true;
 
         ConfigureLineRenderer(predictionRenderer);
         ConfigureMaterial(predictionRenderer);
@@ -77,52 +70,24 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
             velocity = Vector3.zero;
             Debug.Log($"{gameObject.name} is the central body and will not move.");
         }
-        else
-        {
-            Debug.Log($"{gameObject.name} starts with velocity: {velocity}");
-        }
 
         await UpdatePredictedTrajectoryAsync();
     }
 
-    void ConfigureLineRenderer(LineRenderer lineRenderer, Camera mainCamera = null)
+    void ConfigureLineRenderer(LineRenderer lineRenderer)
     {
-        if (mainCamera == null)
-        {
-            mainCamera = Camera.main; // Fallback to Camera.main if none is provided
-        }
-
-        AnimationCurve widthCurve = new AnimationCurve();
-        float minLineWidth = 0.1f;
-        float maxLineWidth = 5.0f;
-        float distanceToCamera = Vector3.Distance(lineRenderer.transform.position, mainCamera.transform.position);
-
-        float dynamicWidth = Mathf.Clamp(distanceToCamera * 0.005f, minLineWidth, maxLineWidth);
-        widthCurve.AddKey(0.0f, dynamicWidth);
-        widthCurve.AddKey(1.0f, dynamicWidth);
-        lineRenderer.widthCurve = widthCurve;
-
         lineRenderer.useWorldSpace = true;
-        lineRenderer.startWidth = dynamicWidth;
-        lineRenderer.endWidth = dynamicWidth;
-
         lineRenderer.numCapVertices = 5;
         lineRenderer.numCornerVertices = 5;
     }
 
     void ConfigureMaterial(LineRenderer lineRenderer)
     {
-        // Use a modern Unlit shader for simplicity
         Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
         lineMaterial.color = Color.green;
         lineRenderer.material = lineMaterial;
-
         lineRenderer.startColor = Color.green;
         lineRenderer.endColor = Color.green;
-
-        // Optionally add a subtle glow by tweaking color intensity
-        Color glowColor = Color.green * 2.0f; // Brighten the green for glow
-        lineMaterial.SetColor("_EmissionColor", glowColor);
     }
 
     void FixedUpdate()
@@ -146,24 +111,11 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
         }
 
         force = Vector3.zero;
-        // UpdateTrajectory();
     }
 
     public void AddForce(Vector3 additionalForce)
     {
         force += additionalForce;
-    }
-
-    void UpdateTrajectory()
-    {
-        trajectory.Add(transform.position);
-        if (trajectory.Count > maxTrajectoryPoints)
-        {
-            trajectory.RemoveAt(0);
-        }
-
-        trailRenderer.positionCount = trajectory.Count;
-        trailRenderer.SetPositions(trajectory.ToArray());
     }
 
     async Task UpdatePredictedTrajectoryAsync()
@@ -176,7 +128,7 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
             var bodyPositions = new Dictionary<NBody, Vector3>();
             foreach (var body in GravityManager.Instance.Bodies)
             {
-                bodyPositions[body] = body.transform.position; // map.put()
+                bodyPositions[body] = body.transform.position;
             }
 
             Vector3[] calculatedPositions = await Task.Run(() =>
@@ -187,21 +139,9 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
 
                 for (int i = 0; i < predictionSteps; i++)
                 {
-                    Vector3 k1Vel = tempVelocity;
-                    Vector3 k1Acc = ComputeAccelerationFromData(tempPosition, bodyPositions);
-
-                    Vector3 k2Vel = tempVelocity + k1Acc * (predictionDeltaTime / 2f);
-                    Vector3 k2Acc = ComputeAccelerationFromData(tempPosition + k1Vel * (predictionDeltaTime / 2f), bodyPositions);
-
-                    Vector3 k3Vel = tempVelocity + k2Acc * (predictionDeltaTime / 2f);
-                    Vector3 k3Acc = ComputeAccelerationFromData(tempPosition + k2Vel * (predictionDeltaTime / 2f), bodyPositions);
-
-                    Vector3 k4Vel = tempVelocity + k3Acc * predictionDeltaTime;
-                    Vector3 k4Acc = ComputeAccelerationFromData(tempPosition + k3Vel * predictionDeltaTime, bodyPositions);
-
-                    tempVelocity += (k1Acc + 2f * k2Acc + 2f * k3Acc + k4Acc) * (predictionDeltaTime / 6f);
-                    tempPosition += (k1Vel + 2f * k2Vel + 2f * k3Vel + k4Vel) * (predictionDeltaTime / 6f);
-
+                    Vector3 acceleration = ComputeAccelerationFromData(tempPosition, bodyPositions);
+                    tempVelocity += acceleration * predictionDeltaTime;
+                    tempPosition += tempVelocity * predictionDeltaTime;
                     positions[i] = tempPosition;
                 }
 
@@ -217,7 +157,7 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
             predictionRenderer.positionCount = calculatedPositions.Length;
             predictionRenderer.SetPositions(calculatedPositions);
 
-            await Task.Delay(30);
+            await Task.Delay(500); // Lower frequency for prediction updates
         }
     }
 
@@ -229,8 +169,9 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
             if (body != this)
             {
                 Vector3 direction = bodyPositions[body] - position;
-                float distanceInUnits = direction.magnitude;
-                float distanceSquared = distanceInUnits * distanceInUnits;
+                float distanceSquared = direction.sqrMagnitude;
+                if (distanceSquared < Mathf.Epsilon) continue;
+
                 float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
                 totalForce += direction.normalized * forceMagnitude;
             }
@@ -242,10 +183,10 @@ public class NBody : MonoBehaviour // Monobehavior holds the Awake, Start, Updat
     {
         get
         {
-            float distanceFromCenter = transform.position.magnitude; // Distance in units
-            float distanceInKm = distanceFromCenter * 10f; // Convert to km (1 unit = 10 km)
-            float earthRadiusKm = 6378f; // Earth's radius in km
-            return distanceInKm - earthRadiusKm; // Altitude in km
+            float distanceFromCenter = transform.position.magnitude;
+            float distanceInKm = distanceFromCenter * 10f;
+            float earthRadiusKm = 6378f;
+            return distanceInKm - earthRadiusKm;
         }
     }
 }
