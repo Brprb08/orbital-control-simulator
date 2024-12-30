@@ -1,5 +1,8 @@
 # Orbit Mechanics Simulator
 
+![Orbit Mechanics Simulator](./Assets/Images/updatedScreenshot12-29.png)
+*Current state of the simulation. Work in progress.*
+
 ## Overview
 This project is an interactive orbital mechanics simulator designed to allow users to visualize and interact with gravitational systems, simulate orbital trajectories, and experiment with creating celestial bodies with custom velocities and radii. It provides a simple interface for exploring the mechanics of gravity, planetary motion, and orbits.
 
