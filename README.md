@@ -1,7 +1,7 @@
 # Orbit Mechanics Simulator
 
 ![Orbit Mechanics Simulator](./Assets/Images/updatedScreenshot12-29.png)
-*Current state of the simulation. Work in progress.*
+*Current state of the simulation. This image shows the velocity and altitude of a satellite in an elliptical orbit. There is a timesclale to increase simulation speed. Also there is track cam to follow specific planets, and free cam to move around wherever. There is also a feature to place a satellite/planet as well as set the velocity. This adds the satellite to the sim in real time. More features to come soon. Work in progress.*
 
 ## Overview
 This project is an interactive orbital mechanics simulator designed to allow users to visualize and interact with gravitational systems, simulate orbital trajectories, and experiment with creating celestial bodies with custom velocities and radii. It provides a simple interface for exploring the mechanics of gravity, planetary motion, and orbits.
