@@ -1,6 +1,6 @@
 # Orbit Mechanics Simulator
 
-![Orbit Mechanics Simulator](./Assets/Images/updatedScreenshot12-29.png)
+![Orbit Mechanics Simulator in action](./Assets/Images/SpaceOrbitSim.gif)
 *Current state of the simulation. This image shows the velocity and altitude of a satellite in an elliptical orbit. There is a time scale to increase simulation speed. Also, there is Track Cam to follow specific planets, and Free Cam to move around wherever. There is also a feature to place a satellite/planet as well as set the velocity. This adds the satellite to the sim in real time. More features to come soon. Work in progress.*
 
 ## Overview
