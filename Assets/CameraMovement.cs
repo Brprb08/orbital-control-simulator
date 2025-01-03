@@ -10,6 +10,7 @@ public class CameraMovement : MonoBehaviour
 
     public TextMeshProUGUI velocityText; // Assign in Inspector
     public TextMeshProUGUI altitudeText; // Assign in Inspector
+    public TextMeshProUGUI trackingObjectNameText; // Assign in Inspector
 
     public float baseZoomSpeed = 100f; // Base zoom speed
     public float maxDistance = 1000f; // Maximum distance from the target
@@ -137,6 +138,11 @@ public class CameraMovement : MonoBehaviour
             float altitude = targetBody.altitude; // Get altitude from NBody
             float altitudeInFeet = altitude * 3280.84f; // Convert km to feet
             altitudeText.text = $"Altitude: {altitude:F2} km ({altitudeInFeet:F0} ft)";
+        }
+
+        if (trackingObjectNameText != null)
+        {
+            trackingObjectNameText.text = $"Tracking: {targetBody.name}";
         }
     }
 }

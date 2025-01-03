@@ -105,7 +105,7 @@ public class ObjectPlacementManager : MonoBehaviour
         NBody nBody = lastPlacedGameObject.GetComponent<NBody>();
         if (nBody != null)
         {
-            nBody.predictionSteps = 5000;
+            nBody.predictionSteps = 1000;
         }
 
         // Register NBody with GravityManager

@@ -9,12 +9,12 @@ public class UIManager : MonoBehaviour
 
     [Header("Panels")]
     public GameObject objectPlacementPanel; // "ObjectPlacementPanel" containing Radius/Velocity UI
-
+    public GameObject panel;
     private void Start()
     {
         // Initialize the UI state
         ShowObjectPlacementPanel(false); // Hide the Radius/Velocity panel initially
-
+        ShowPanel(true);
         // Set initial states for the buttons
         SetButtonState(freeCamButton, false); // Default unpressed state for Free Cam
         SetButtonState(trackCamButton, true); // Start Track Cam as pressed (Purple)
@@ -26,6 +26,7 @@ public class UIManager : MonoBehaviour
     public void OnFreeCamPressed()
     {
         ShowObjectPlacementPanel(true); // Show Radius/Velocity panel
+        ShowPanel(false); // Show Velocity and Altitude
         SetButtonState(freeCamButton, true); // Highlight Free Cam
         SetButtonState(trackCamButton, false); // Reset Track Cam
     }
@@ -33,6 +34,7 @@ public class UIManager : MonoBehaviour
     public void OnTrackCamPressed()
     {
         ShowObjectPlacementPanel(false); // Hide Radius/Velocity panel
+        ShowPanel(true); // Show Velocity and Altitude
         SetButtonState(freeCamButton, false); // Reset Free Cam
         SetButtonState(trackCamButton, true); // Highlight Track Cam
     }
@@ -40,6 +42,11 @@ public class UIManager : MonoBehaviour
     private void ShowObjectPlacementPanel(bool show)
     {
         objectPlacementPanel.SetActive(show);
+    }
+
+    private void ShowPanel(bool show)
+    {
+        panel.SetActive(show);
     }
 
     private void SetButtonState(Button button, bool isPressed)

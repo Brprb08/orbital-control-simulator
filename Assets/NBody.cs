@@ -72,8 +72,8 @@ public class NBody : MonoBehaviour
         lineRenderer.useWorldSpace = true;
         lineRenderer.numCapVertices = 1;
         lineRenderer.numCornerVertices = 1;
-        lineRenderer.widthMultiplier = 3f;
-        originLineRenderer.widthMultiplier = 1f;
+        lineRenderer.widthMultiplier = 1f;
+        originLineRenderer.widthMultiplier = .5f;
         lineRenderer.alignment = LineAlignment.View;
     }
 

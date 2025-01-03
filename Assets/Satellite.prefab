@@ -13,7 +13,7 @@ GameObject:
   - component: {fileID: 5300461157122401441}
   - component: {fileID: 5434186974731758904}
   m_Layer: 0
-  m_Name: PlanetPrefab
+  m_Name: Satellite
   m_TagString: Planet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
