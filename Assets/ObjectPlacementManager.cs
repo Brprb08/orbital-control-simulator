@@ -9,6 +9,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public GravityManager gravityManager;
     public TMP_InputField velocityInput; // Expect a format like "x,y,z"
     public TMP_InputField radiusInput;
+    public TMP_InputField objectNameInputField;
     public TextMeshProUGUI feedbackText;
     public CameraMovement cameraMovement;
 
@@ -18,6 +19,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public Transform cameraPivotTransform;
     public Transform cameraTransform; // Main Camera as a child of CameraPivot
     private Vector3 defaultLocalPosition;
+    private int satelliteCount = 0;
 
     private void Start()
     {
@@ -46,6 +48,14 @@ public class ObjectPlacementManager : MonoBehaviour
         lastPlacedGameObject.transform.localScale = Vector3.one * validRadius * 2f * 0.1f;
         lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
+        satelliteCount++; // Increment the counter
+        string customName = objectNameInputField != null ? objectNameInputField.text : "";
+        if (string.IsNullOrWhiteSpace(customName))
+        {
+            customName = $"Satellite {satelliteCount}";
+        }
+        lastPlacedGameObject.name = customName;
+
         // Make it semi-transparent (optional)
         Renderer r = lastPlacedGameObject.GetComponent<Renderer>();
         if (r != null)
@@ -56,6 +66,7 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         ClearAndUnfocusInputField(radiusInput);
+        ClearAndUnfocusInputField(objectNameInputField);
 
         feedbackText.text = "Planet placed without gravity.\nEnter velocity (x,y,z) and click 'Set Velocity' to start movement.";
     }
