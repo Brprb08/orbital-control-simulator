@@ -105,17 +105,7 @@ public class ObjectPlacementManager : MonoBehaviour
         NBody nBody = lastPlacedGameObject.GetComponent<NBody>();
         if (nBody != null)
         {
-            nBody.predictionSteps = 10000;
-        }
-
-        // Re-enable the LineRenderer after movement starts
-        LineRenderer lr = lastPlacedNBody.GetComponent<LineRenderer>();
-        if (lr != null)
-        {
-            // Initialize trajectory to ensure the line starts at the planet's position
-            lastPlacedNBody.trajectory.Clear(); // Clear old data
-            lastPlacedNBody.trajectory.Add(lastPlacedNBody.transform.position); // Add the current position
-            lr.enabled = true; // Enable LineRenderer
+            nBody.predictionSteps = 5000;
         }
 
         // Register NBody with GravityManager

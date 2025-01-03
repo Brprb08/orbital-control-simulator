@@ -13,11 +13,8 @@ public class NBody : MonoBehaviour
     public float radius = 637.1f;
 
     private Vector3 force = Vector3.zero;
-    private LineRenderer trailRenderer;
     private LineRenderer predictionRenderer;
-    public List<Vector3> trajectory = new List<Vector3>();
-    public int maxTrajectoryPoints = 0;
-    public int predictionSteps = 10000;
+    public int predictionSteps = 1000;
     public float predictionDeltaTime = 5f;
     private Vector3[] predictedPositions;
     private LineRenderer originLineRenderer;
@@ -46,10 +43,6 @@ public class NBody : MonoBehaviour
             Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
         }
 
-        trailRenderer = GetComponent<LineRenderer>();
-        trailRenderer.positionCount = maxTrajectoryPoints;
-        trajectory.Add(transform.position);
-
         GameObject predictionObj = new GameObject($"{gameObject.name}_Prediction");
         predictionObj.transform.parent = this.transform;
         predictionRenderer = predictionObj.AddComponent<LineRenderer>();
@@ -77,8 +70,11 @@ public class NBody : MonoBehaviour
     void ConfigureLineRenderer(LineRenderer lineRenderer)
     {
         lineRenderer.useWorldSpace = true;
-        lineRenderer.numCapVertices = 5;
-        lineRenderer.numCornerVertices = 5;
+        lineRenderer.numCapVertices = 1;
+        lineRenderer.numCornerVertices = 1;
+        lineRenderer.widthMultiplier = 3f;
+        originLineRenderer.widthMultiplier = 1f;
+        lineRenderer.alignment = LineAlignment.View;
     }
 
     void ConfigureMaterial(LineRenderer lineRenderer)
@@ -125,12 +121,14 @@ public class NBody : MonoBehaviour
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
 
+            // Cache body positions to avoid frequent access
             var bodyPositions = new Dictionary<NBody, Vector3>();
             foreach (var body in GravityManager.Instance.Bodies)
             {
                 bodyPositions[body] = body.transform.position;
             }
 
+            // Calculate predicted trajectory
             Vector3[] calculatedPositions = await Task.Run(() =>
             {
                 Vector3 tempPosition = initialPosition;
@@ -140,8 +138,14 @@ public class NBody : MonoBehaviour
                 for (int i = 0; i < predictionSteps; i++)
                 {
                     Vector3 acceleration = ComputeAccelerationFromData(tempPosition, bodyPositions);
-                    tempVelocity += acceleration * predictionDeltaTime;
-                    tempPosition += tempVelocity * predictionDeltaTime;
+
+                    // Adjust step size dynamically
+                    float distanceToCenter = tempPosition.magnitude;
+                    float dynamicDeltaTime = (distanceToCenter > 5000f) ? predictionDeltaTime * 10f : predictionDeltaTime;
+
+                    tempVelocity += acceleration * dynamicDeltaTime;
+                    tempPosition += tempVelocity * dynamicDeltaTime;
+
                     positions[i] = tempPosition;
                 }
 
@@ -154,11 +158,31 @@ public class NBody : MonoBehaviour
                 break;
             }
 
-            predictionRenderer.positionCount = calculatedPositions.Length;
-            predictionRenderer.SetPositions(calculatedPositions);
+            // Simplify positions before rendering
+            Vector3[] simplifiedPositions = SimplifyPositions(calculatedPositions, 500); // Limit to 500 points
 
-            await Task.Delay(500); // Lower frequency for prediction updates
+            // Update prediction line with simplified positions
+            predictionRenderer.positionCount = simplifiedPositions.Length;
+            predictionRenderer.SetPositions(simplifiedPositions);
+
+            // Delay for performance (optional)
+            await Task.Delay(Mathf.Max(1, Mathf.RoundToInt(50 / Time.timeScale)));
         }
+    }
+
+    private Vector3[] SimplifyPositions(Vector3[] positions, int targetPointCount)
+    {
+        if (positions.Length <= targetPointCount) return positions; // No simplification needed
+
+        List<Vector3> simplifiedPositions = new List<Vector3>();
+        float step = (float)positions.Length / targetPointCount;
+
+        for (int i = 0; i < targetPointCount; i++)
+        {
+            simplifiedPositions.Add(positions[Mathf.RoundToInt(i * step)]);
+        }
+
+        return simplifiedPositions.ToArray(); // Return the reduced set of points
     }
 
     Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions)

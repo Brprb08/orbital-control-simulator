@@ -10,6 +10,7 @@ public class TimeController : MonoBehaviour
     public TextMeshProUGUI pauseButtonText;
     private bool isPaused = false; // Track if the simulation is paused
     private float previousTimeScale = 1.0f;
+    public NBody[] nBodies;
 
     void Awake()
     {
@@ -48,6 +49,7 @@ public class TimeController : MonoBehaviour
     public void OnTimeScaleChanged(float newTimeScale)
     {
         SetTimeScale(newTimeScale);
+
         if (timeScaleText != null)
         {
             timeScaleText.text = $"Time Scale: {newTimeScale:F1}x";

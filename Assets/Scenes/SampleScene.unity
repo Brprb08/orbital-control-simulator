@@ -2041,9 +2041,8 @@ MonoBehaviour:
   height: 0
   velocityText: {fileID: 1094166147}
   altitudeText: {fileID: 793169699}
-  minDistance: 5
-  maxDistance: 10000
   zoomSpeed: 100
+  maxDistance: 10000
 --- !u!1 &828116620
 GameObject:
   m_ObjectHideFlags: 0
@@ -2544,8 +2543,6 @@ MonoBehaviour:
   velocity: {x: 0, y: 0, z: 0}
   isCentralBody: 1
   radius: 637.1
-  trajectory: []
-  maxTrajectoryPoints: 0
   predictionSteps: 0
   predictionDeltaTime: 0.1
 --- !u!1 &932853250
@@ -2596,6 +2593,7 @@ MonoBehaviour:
   timeScaleText: {fileID: 365525810}
   pauseButton: {fileID: 2112860532}
   pauseButtonText: {fileID: 60513572}
+  nBodies: []
 --- !u!1 &963574322
 GameObject:
   m_ObjectHideFlags: 0
@@ -3247,6 +3245,18 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
+      - m_Target: {fileID: 1586431853}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: OnFreeCamPressed
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1142357710
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -3614,8 +3624,6 @@ MonoBehaviour:
   velocity: {x: 0, y: 0, z: -0.3073}
   isCentralBody: 0
   radius: 0.5
-  trajectory: []
-  maxTrajectoryPoints: 0
   predictionSteps: 10000
   predictionDeltaTime: 5
 --- !u!120 &1387400465
@@ -3823,6 +3831,18 @@ MonoBehaviour:
       - m_Target: {fileID: 1586431852}
         m_TargetAssemblyTypeName: ObjectPlacementManager, Assembly-CSharp
         m_MethodName: ExitFreeCam
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 1586431853}
+        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+        m_MethodName: OnTrackCamPressed
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -4103,9 +4123,7 @@ MonoBehaviour:
   velocity: {x: 0.5423509, y: 0.5423509, z: 0}
   isCentralBody: 0
   radius: 0.5
-  trajectory: []
-  maxTrajectoryPoints: 0
-  predictionSteps: 10000
+  predictionSteps: 1000
   predictionDeltaTime: 5
 --- !u!1 &1461049982
 GameObject:
@@ -4304,6 +4322,7 @@ GameObject:
   - component: {fileID: 1586431850}
   - component: {fileID: 1586431851}
   - component: {fileID: 1586431852}
+  - component: {fileID: 1586431853}
   m_Layer: 0
   m_Name: GravityManager
   m_TagString: Untagged
@@ -4376,6 +4395,21 @@ MonoBehaviour:
   cameraMovement: {fileID: 817157355}
   cameraPivotTransform: {fileID: 817157354}
   cameraTransform: {fileID: 330585546}
+--- !u!114 &1586431853
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1586431846}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f91ffe0992e74414cb6eba95c46e10d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  freeCamButton: {fileID: 1142357709}
+  trackCamButton: {fileID: 1407380277}
+  objectPlacementPanel: {fileID: 61829408}
 --- !u!1 &1692098758
 GameObject:
   m_ObjectHideFlags: 0
@@ -4624,8 +4658,6 @@ MonoBehaviour:
   velocity: {x: 0.1018, y: 0.0091, z: 0}
   isCentralBody: 0
   radius: 86.85
-  trajectory: []
-  maxTrajectoryPoints: 0
   predictionSteps: 10000
   predictionDeltaTime: 5
 --- !u!120 &1713781786
@@ -5333,8 +5365,6 @@ MonoBehaviour:
   velocity: {x: 0, y: 0.629, z: 0}
   isCentralBody: 0
   radius: 0.5
-  trajectory: []
-  maxTrajectoryPoints: 0
   predictionSteps: 10000
   predictionDeltaTime: 5
 --- !u!120 &2136029599
