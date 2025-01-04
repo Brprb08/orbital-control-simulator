@@ -6,6 +6,7 @@ public class ObjectPlacementManager : MonoBehaviour
 {
     public Camera mainCamera;
     public GameObject spherePrefab; // No NBody script attached to this prefab
+    public GameObject nbodyPrefab; // Real NBody prefab (with physics)
     public GravityManager gravityManager;
     public TMP_InputField velocityInput; // Expect a format like "x,y,z"
     public TMP_InputField radiusInput;
@@ -14,12 +15,14 @@ public class ObjectPlacementManager : MonoBehaviour
     public CameraMovement cameraMovement;
 
     private GameObject lastPlacedGameObject = null; // Reference to the raw GameObject
+    private GameObject realNBodyObject = null; // Actual NBody object created later
     private NBody lastPlacedNBody = null; // Reference to the final NBody component
     private bool isInPlacementMode = false;
     public Transform cameraPivotTransform;
     public Transform cameraTransform; // Main Camera as a child of CameraPivot
     private Vector3 defaultLocalPosition;
     private int satelliteCount = 0;
+    public VelocityDragManager velocityDragManager;
 
     private void Start()
     {
@@ -28,6 +31,12 @@ public class ObjectPlacementManager : MonoBehaviour
 
     public void StartPlacement()
     {
+        if (lastPlacedGameObject != null)
+        {
+            feedbackText.text = "You must set the velocity of the current planet before placing another.";
+            return;
+        }
+
         // Only allow placement if in FreeCam mode
         if (!isInPlacementMode)
         {
@@ -35,17 +44,28 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        float radius;
-        if (!float.TryParse(radiusInput.text, out radius) || radius <= 0)
+        string radiusText = radiusInput.text;
+        if (string.IsNullOrWhiteSpace(radiusText))
         {
-            feedbackText.text = "Invalid radius. Please enter a positive number.";
+            feedbackText.text = "Please enter a radius in the format x,y,z.";
             return;
         }
 
+        Vector3 parsedRadius;
+        if (!TryParseVector3(radiusText, out parsedRadius))
+        {
+            feedbackText.text = "Invalid radius format. Use x,y,z with no spaces.";
+            return;
+        }
+
+        // Ensure each component of the radius is positive
+        parsedRadius.x = Mathf.Clamp(parsedRadius.x, 1f, 100f);
+        parsedRadius.y = Mathf.Clamp(parsedRadius.y, 1f, 100f);
+        parsedRadius.z = Mathf.Clamp(parsedRadius.z, 1f, 100f);
+
         // Create the actual planet (no NBody component at this point)
         lastPlacedGameObject = Instantiate(spherePrefab);
-        float validRadius = Mathf.Max(1f, radius);
-        lastPlacedGameObject.transform.localScale = Vector3.one * validRadius * 2f * 0.1f;
+        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 0.2f, parsedRadius.y * 0.2f, parsedRadius.z * 0.2f);
         lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
         satelliteCount++; // Increment the counter
@@ -56,6 +76,8 @@ public class ObjectPlacementManager : MonoBehaviour
         }
         lastPlacedGameObject.name = customName;
 
+        lastPlacedGameObject.tag = "Planet";
+
         // Make it semi-transparent (optional)
         Renderer r = lastPlacedGameObject.GetComponent<Renderer>();
         if (r != null)
@@ -63,6 +85,38 @@ public class ObjectPlacementManager : MonoBehaviour
             Color c = r.material.color;
             c.a = 0.5f; // Semi-transparent
             r.material.color = c;
+        }
+
+        // lastPlacedNBody = lastPlacedGameObject.AddComponent<NBody>();
+        // lastPlacedNBody.radius = lastPlacedGameObject.transform.localScale.x * 10f;
+        // lastPlacedNBody.mass = 0f; // Set to 0 mass until velocity is set
+        lastPlacedNBody = null;
+
+        // GravityManager.Instance.RegisterBody(lastPlacedNBody);
+
+        // ★★★ KEY: Let the VelocityDragManager know which planet to drag
+        if (velocityDragManager != null)
+        {
+            velocityDragManager.ResetDragManager();
+            velocityDragManager.planet = lastPlacedGameObject;
+            feedbackText.text = "Planet placed. You can now left-click and drag in the scene to set velocity!";
+        }
+        else
+        {
+            feedbackText.text = "Planet placed. (No VelocityDragManager assigned)";
+        }
+
+        CameraController camController = gravityManager.GetComponent<CameraController>();
+        if (camController != null)
+        {
+            camController.RefreshBodiesList();  // Refresh the bodies list
+                                                // camController.cameraMovement.SetTargetBody(lastPlacedNBody);  // Track the newly placed planet
+
+            camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
+            if (camController.IsFreeCamMode)
+            {
+                camController.ReturnToTracking();  // Return to tracking mode if in FreeCam
+            }
         }
 
         ClearAndUnfocusInputField(radiusInput);
@@ -83,57 +137,59 @@ public class ObjectPlacementManager : MonoBehaviour
         ExitFreeCam();
     }
 
-    public void SetInitialVelocity()
-    {
-        if (lastPlacedGameObject == null)
-        {
-            feedbackText.text = "No planet available to set velocity. Place one first.";
-            return;
-        }
+    // public void SetInitialVelocity()
+    // {
+    //     if (lastPlacedGameObject == null)
+    //     {
+    //         feedbackText.text = "No planet available to set velocity. Place one first.";
+    //         return;
+    //     }
 
-        string velocityText = velocityInput.text;
-        if (string.IsNullOrWhiteSpace(velocityText))
-        {
-            feedbackText.text = "Please enter a velocity in the format x,y,z";
-            return;
-        }
+    //     string velocityText = velocityInput.text;
+    //     if (string.IsNullOrWhiteSpace(velocityText))
+    //     {
+    //         feedbackText.text = "Please enter a velocity in the format x,y,z";
+    //         return;
+    //     }
 
-        Vector3 parsedVelocity;
-        if (!TryParseVector3(velocityText, out parsedVelocity))
-        {
-            feedbackText.text = "Invalid velocity format. Use x,y,z with no spaces.";
-            return;
-        }
+    //     Vector3 parsedVelocity;
+    //     if (!TryParseVector3(velocityText, out parsedVelocity))
+    //     {
+    //         feedbackText.text = "Invalid velocity format. Use x,y,z with no spaces.";
+    //         return;
+    //     }
 
-        // Add the NBody component to the object at runtime
-        lastPlacedNBody = lastPlacedGameObject.AddComponent<NBody>();
+    //     // Add the NBody component to the object at runtime
+    //     lastPlacedNBody = lastPlacedGameObject.AddComponent<NBody>();
 
-        // Configure NBody properties
-        float radius = lastPlacedGameObject.transform.localScale.x * 10f;
-        lastPlacedNBody.radius = radius;
-        lastPlacedNBody.mass = 400000f; // Density-based calculation for mass
-        lastPlacedNBody.velocity = parsedVelocity;
-        NBody nBody = lastPlacedGameObject.GetComponent<NBody>();
-        if (nBody != null)
-        {
-            nBody.predictionSteps = 1000;
-        }
+    //     // Configure NBody properties
+    //     float radius = lastPlacedGameObject.transform.localScale.x * 10f;
+    //     lastPlacedNBody.radius = radius;
+    //     lastPlacedNBody.mass = 400000f; // Density-based calculation for mass
+    //     lastPlacedNBody.velocity = parsedVelocity;
+    //     NBody nBody = lastPlacedGameObject.GetComponent<NBody>();
+    //     if (nBody != null)
+    //     {
+    //         nBody.predictionSteps = 1000;
+    //     }
 
-        // Register NBody with GravityManager
-        gravityManager.RegisterBody(lastPlacedNBody);
+    //     // Register NBody with GravityManager
+    //     gravityManager.RegisterBody(lastPlacedNBody);
 
-        CameraController cameraController = gravityManager.GetComponent<CameraController>();
-        Debug.Log($"CameraController: {cameraController}");
-        if (cameraController != null)
-        {
-            cameraController.RefreshBodiesList();
-        }
-        lastPlacedGameObject = null;
+    //     CameraController cameraController = gravityManager.GetComponent<CameraController>();
+    //     Debug.Log($"CameraController: {cameraController}");
+    //     if (cameraController != null)
+    //     {
+    //         cameraController.RefreshBodiesList();
+    //     }
+    //     lastPlacedGameObject = null;
 
-        ClearAndUnfocusInputField(velocityInput);
+    //     ClearAndUnfocusInputField(velocityInput);
 
-        feedbackText.text = $"Velocity set to {parsedVelocity}. The planet will now move under gravity!";
-    }
+    //     feedbackText.text = $"Velocity set to {parsedVelocity}. The planet will now move under gravity!";
+    // }
+
+
 
     private bool TryParseVector3(string input, out Vector3 result)
     {
@@ -201,5 +257,10 @@ public class ObjectPlacementManager : MonoBehaviour
         {
             Debug.LogError("cameraPivotTransform is null. Ensure it is assigned in the Inspector!");
         }
+    }
+
+    public void ResetLastPlacedGameObject()
+    {
+        lastPlacedGameObject = null;
     }
 }

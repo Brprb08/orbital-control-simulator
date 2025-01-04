@@ -5,7 +5,7 @@ public class CameraController : MonoBehaviour
 {
     public CameraMovement cameraMovement; // Assigned on CameraPivot
     private List<NBody> bodies;
-    private int currentIndex = 0;
+    public int currentIndex = 0;
 
     private bool isFreeCamMode = false;
 
@@ -15,6 +15,9 @@ public class CameraController : MonoBehaviour
     public Transform cameraTransform; // Main Camera as a child of CameraPivot
     private Vector3 defaultLocalPosition; // Default offset from the pivot
     private bool isSwitchingToFreeCam = false;
+    public List<NBody> Bodies => bodies;  // Public read-only access to the list of bodies
+    private Transform placeholderTarget;  // Placeholder being tracked
+    private bool isTrackingPlaceholder = false;
 
     public bool IsFreeCamMode
     {
@@ -47,7 +50,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        // Debug.Log($"Update() called. isFreeCamMode: {isFreeCamMode}");
+        Debug.Log($"Current Cam FreeCam=true: {isFreeCamMode}");
         if (!isFreeCamMode)
         {
             // Track Cam Mode
@@ -76,18 +79,6 @@ public class CameraController : MonoBehaviour
                 cameraPivotTransform.eulerAngles = new Vector3(clampedX, currentRotation.y, 0);
             }
         }
-        // else
-        // {
-        //     // Free Cam Mode
-        //     // Rotate/move camera with Mouse Button 1
-        //     FreeCamera freeCamera = cameraTransform.GetComponent<FreeCamera>();
-        //     if (freeCamera != null && Input.GetMouseButton(1))
-        //     {
-        //         float rotationX = Input.GetAxis("Mouse X") * freeCamera.sensitivity * Time.unscaledDeltaTime;
-        //         float rotationY = Input.GetAxis("Mouse Y") * freeCamera.sensitivity * Time.unscaledDeltaTime;
-        //         transform.eulerAngles += new Vector3(-rotationY, rotationX, 0);
-        //     }
-        // }
     }
 
     private float ClampAngle(float angle, float min, float max)
@@ -169,7 +160,16 @@ public class CameraController : MonoBehaviour
         if (cameraMovement != null)
         {
             cameraMovement.enabled = true; // Re-enable tracking
-            cameraMovement.SetTargetBody(bodies[currentIndex]); // Set the target planet
+        }
+
+        if (isTrackingPlaceholder && placeholderTarget != null)
+        {
+            // Track the placeholder if it's still active
+            cameraMovement.SetTargetBodyPlaceholder(placeholderTarget);
+        }
+        else if (bodies.Count > 0)
+        {
+            cameraMovement.SetTargetBody(bodies[currentIndex]);  // Track the real NBody
         }
 
         ResetPivotRotation();  // Reset pivot to face the planet
@@ -214,15 +214,39 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    public void SetTargetPlaceholder(Transform placeholder)
+    {
+        if (placeholder == null) return;
+
+        placeholderTarget = placeholder;
+        isTrackingPlaceholder = true;
+
+        // Let CameraMovement handle the placeholder positioning
+        cameraMovement.SetTargetBodyPlaceholder(placeholder);
+
+        Debug.Log($"Switched to tracking placeholder planet: {placeholder.name}");
+    }
+
+    public void SwitchToRealNBody(NBody realNBody)
+    {
+        if (realNBody == null) return;
+
+        isTrackingPlaceholder = false;
+        placeholderTarget = null;  // Clear placeholder tracking
+        if (cameraMovement != null)
+        {
+            cameraMovement.SetTargetBody(realNBody);
+        }
+    }
+
     public void RefreshBodiesList()
     {
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
         Debug.Log($"RefreshBodiesList called. Found {bodies.Count} bodies.");
 
-        if (bodies.Count > 0 && (currentIndex < 0 || currentIndex >= bodies.Count))
+        if (bodies.Count > 0 && currentIndex >= bodies.Count)
         {
-            currentIndex = 0;
-            Debug.Log($"Resetting currentIndex to 0.");
+            currentIndex = bodies.Count - 1;  // Set to the last body (likely the newest one)
         }
     }
 }

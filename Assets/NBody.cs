@@ -18,7 +18,7 @@ public class NBody : MonoBehaviour
     public float predictionDeltaTime = 5f;
     private Vector3[] predictedPositions;
     private LineRenderer originLineRenderer;
-
+    private bool isPredictionLineActive = false;
     void Awake()
     {
 
@@ -54,9 +54,11 @@ public class NBody : MonoBehaviour
         originLineRenderer.positionCount = 2;
 
         ConfigureLineRenderer(predictionRenderer);
-        ConfigureMaterial(predictionRenderer);
+        ConfigureMaterial(true, predictionRenderer, "#2978FF"); // Configure prediction line
+        ConfigureMaterial(false, originLineRenderer, "#FFFFFF"); // Configure origin line
 
-        predictionRenderer.positionCount = predictionSteps;
+        predictionRenderer.positionCount = 0;
+        predictionRenderer.enabled = false;
 
         if (isCentralBody)
         {
@@ -77,17 +79,54 @@ public class NBody : MonoBehaviour
         lineRenderer.alignment = LineAlignment.View;
     }
 
-    void ConfigureMaterial(LineRenderer lineRenderer)
+    void ConfigureMaterial(bool isPredictionLine, LineRenderer lineRenderer, string hexColor)
     {
+        Color colorValue;
         Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
-        lineMaterial.color = Color.green;
-        lineRenderer.material = lineMaterial;
-        lineRenderer.startColor = Color.green;
-        lineRenderer.endColor = Color.green;
+        if (isPredictionLine)
+        {
+            if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
+            {
+                lineMaterial.color = colorValue;
+                lineRenderer.material = lineMaterial;
+                lineRenderer.startColor = colorValue;
+                lineRenderer.endColor = colorValue;
+            }
+            else
+            {
+                Debug.LogWarning("Invalid hex color string!");
+            }
+        }
+        else
+        {
+            if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
+            {
+                lineMaterial.color = colorValue;
+                originLineRenderer.material = lineMaterial;
+                originLineRenderer.startColor = colorValue;
+                originLineRenderer.endColor = colorValue;
+            }
+            else
+            {
+                Debug.LogWarning("Invalid hex color string!");
+            }
+        }
+
     }
 
     void FixedUpdate()
     {
+        if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
+        {
+            Debug.LogError($"[ERROR] {name} has NaN transform.position! velocity={velocity}, force={force}");
+        }
+
+        if (mass <= 1e-6f)
+        {
+            force = Vector3.zero;
+            return;
+        }
+
         if (isCentralBody)
         {
             float earthRotationRate = 360f / (24f * 60f * 60f);
@@ -163,7 +202,11 @@ public class NBody : MonoBehaviour
 
             // Update prediction line with simplified positions
             predictionRenderer.positionCount = simplifiedPositions.Length;
-            predictionRenderer.SetPositions(simplifiedPositions);
+            if (simplifiedPositions.Length > 0)
+            {
+                predictionRenderer.SetPositions(simplifiedPositions);
+                predictionRenderer.enabled = true;
+            }
 
             // Delay for performance (optional)
             await Task.Delay(Mathf.Max(1, Mathf.RoundToInt(50 / Time.timeScale)));
