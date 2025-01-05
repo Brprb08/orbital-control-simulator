@@ -2204,6 +2204,7 @@ MonoBehaviour:
   trackingObjectNameText: {fileID: 1300459248}
   baseZoomSpeed: 10
   maxDistance: 10000
+  targetPlaceholder: {fileID: 0}
 --- !u!1 &828116620
 GameObject:
   m_ObjectHideFlags: 0
@@ -2768,7 +2769,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.5}
+  m_AnchoredPosition: {x: 0, y: -0.5000038}
   m_SizeDelta: {x: -20, y: -13}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &873433028
@@ -3514,6 +3515,7 @@ MonoBehaviour:
   dragPlaneLayer:
     serializedVersion: 2
     m_Bits: 8
+  gravityManager: {fileID: 1586431850}
 --- !u!4 &1119227882
 Transform:
   m_ObjectHideFlags: 0
@@ -3871,7 +3873,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!64 &1284792763
 MeshCollider:
   m_ObjectHideFlags: 0
@@ -3994,10 +3996,10 @@ RectTransform:
   m_Children: []
   m_Father: {fileID: 223772663}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0.44156253, y: 0.8768128}
-  m_AnchorMax: {x: 0.5957711, y: 0.9545172}
-  m_AnchoredPosition: {x: -55, y: 13}
-  m_SizeDelta: {x: -97, y: -34}
+  m_AnchorMin: {x: 0.4556252, y: 0.8768128}
+  m_AnchorMax: {x: 0.5957711, y: 0.9508135}
+  m_AnchoredPosition: {x: -37.5, y: 15}
+  m_SizeDelta: {x: -70, y: -30}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1300459248
 MonoBehaviour:
@@ -4979,7 +4981,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1461049985}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 1119227881}
+        m_TargetAssemblyTypeName: VelocityDragManager, Assembly-CSharp
+        m_MethodName: callApplyVelocity
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1461049985
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -5131,6 +5145,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   cameraMovement: {fileID: 817157355}
+  currentIndex: 0
   sensitivity: 100
   cameraPivotTransform: {fileID: 817157354}
   cameraTransform: {fileID: 330585546}
@@ -5148,6 +5163,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainCamera: {fileID: 330585545}
   spherePrefab: {fileID: 5729769492589239550, guid: 2d5207b547d23e342b03e47df3c3e897, type: 3}
+  nbodyPrefab: {fileID: 0}
   gravityManager: {fileID: 1586431850}
   velocityInput: {fileID: 151038885}
   radiusInput: {fileID: 770696344}
@@ -5940,7 +5956,7 @@ Transform:
   m_GameObject: {fileID: 1744725511}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 91.92313, y: 127.68383, z: 442.94656}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -6142,7 +6158,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.032, y: 0.85359555}
   m_AnchorMax: {x: 0.21952085, y: 0.9748525}
-  m_AnchoredPosition: {x: -82, y: 22.5}
+  m_AnchoredPosition: {x: -81.99963, y: 22.5}
   m_SizeDelta: {x: -184, y: -111}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1873310758

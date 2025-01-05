@@ -50,7 +50,7 @@ public class CameraController : MonoBehaviour
 
     void Update()
     {
-        Debug.Log($"Current Cam FreeCam=true: {isFreeCamMode}");
+        // Debug.Log($"Current Cam FreeCam=true: {isFreeCamMode}");
         if (!isFreeCamMode)
         {
             // Track Cam Mode
