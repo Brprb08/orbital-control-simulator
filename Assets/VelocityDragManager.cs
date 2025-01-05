@@ -8,7 +8,7 @@ public class VelocityDragManager : MonoBehaviour
     [Header("References")]
     public Camera mainCamera;             // Assign your main/free camera
     public LineRenderer dragLineRenderer; // A LineRenderer to visualize the velocity line
-    public TextMeshProUGUI velocityDisplay; // TextMeshPro or Text to show velocity
+    public TMP_InputField velocityDisplayText;
 
     [Header("Planet to Apply Velocity To")]
     public GameObject planet;       // Assign the planet you want to set velocity on
@@ -45,6 +45,13 @@ public class VelocityDragManager : MonoBehaviour
         {
             // This ensures "OnSpeedSliderChanged" is called whenever user moves the slider
             speedSlider.onValueChanged.AddListener(OnSpeedSliderChanged);
+        }
+
+        if (velocityDisplayText != null)
+        {
+            // Add a listener to detect when the user types into the input field
+            velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
+            velocityDisplayText.interactable = false;
         }
     }
 
@@ -123,6 +130,13 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.positionCount = 2;
             dragLineRenderer.SetPosition(0, dragStartPos);
             dragLineRenderer.SetPosition(1, dragStartPos);
+            dragLineRenderer.widthMultiplier = .25f;
+
+            Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
+            lineMaterial.color = Color.red;
+            dragLineRenderer.material = lineMaterial;
+
+            velocityDisplayText.interactable = true;
         }
 
         dragDirection = Vector3.zero;
@@ -155,9 +169,9 @@ public class VelocityDragManager : MonoBehaviour
             dragDirection = rawDirection.normalized;
             currentVelocity = dragDirection * sliderSpeed;
 
-            if (velocityDisplay != null)
+            if (velocityDisplayText != null)
             {
-                velocityDisplay.text = $"Velocity: ({currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2})";
+                velocityDisplayText.text = $"{currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2}";
             }
         }
         else
@@ -225,9 +239,13 @@ public class VelocityDragManager : MonoBehaviour
         currentVelocity = dragDirection * sliderSpeed;
 
         // Update text
-        if (velocityDisplay != null)
+        if (velocityDisplayText != null)
         {
-            velocityDisplay.text = $"Velocity: ({currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2})";
+            velocityDisplayText.onValueChanged.RemoveListener(OnVelocityInputChanged);
+
+            velocityDisplayText.text = $"{currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2}";
+
+            velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
         }
 
         // Optionally update line length (if you want the line to reflect speed)
@@ -363,6 +381,7 @@ public class VelocityDragManager : MonoBehaviour
 
         Debug.Log($"Applied velocity {velocityToApply} to {planet.name} via drag.");
         planet = null;
+        planetNBody = null;
         isVelocitySet = true;
 
         if (dragLineRenderer != null)
@@ -381,6 +400,74 @@ public class VelocityDragManager : MonoBehaviour
         if (uIManager != null)
         {
             uIManager.OnTrackCamPressed();
+        }
+
+        if (velocityDisplayText != null)
+        {
+            velocityDisplayText.text = "";
+            velocityDisplayText.interactable = false;
+        }
+    }
+
+    private void OnVelocityInputChanged(string inputText)
+    {
+        // Try to parse the input as a Vector3 (format: "x,y,z")
+        Vector3 newVelocity;
+        if (TryParseVector3(inputText, out newVelocity))
+        {
+            currentVelocity = newVelocity; // Update the current velocity
+            UpdateLineRenderer();          // Update the line renderer to match new velocity
+        }
+        else
+        {
+            Debug.LogWarning("Invalid velocity format. Please use 'x,y,z'.");
+        }
+    }
+
+    private bool TryParseVector3(string input, out Vector3 result)
+    {
+        result = Vector3.zero;
+        string[] parts = input.Split(',');
+        if (parts.Length != 3) return false;
+
+        float x, y, z;
+        if (!float.TryParse(parts[0], out x)) return false;
+        if (!float.TryParse(parts[1], out y)) return false;
+        if (!float.TryParse(parts[2], out z)) return false;
+
+        result = new Vector3(x, y, z);
+        return true;
+    }
+
+    private void UpdateLineRenderer()
+    {
+        if (dragLineRenderer != null && planet != null)
+        {
+            Vector3 startPos = planet.transform.position;  // Start at planet's center
+            float radius = planet.transform.localScale.x * sphereRadiusMultiplier;  // Sphere collider's radius
+
+            // Calculate the direction of the velocity as a normalized vector
+            Vector3 velocityDirection = currentVelocity.normalized;
+
+            // Create a ray from the planet's center in the direction of the velocity
+            Ray velocityRay = new Ray(startPos, velocityDirection);
+
+            // Get the intersection point with the sphere collider
+            Vector3 intersectionPoint = GetFarSideIntersection(velocityRay, startPos, radius);
+
+            if (intersectionPoint != Vector3.zero)
+            {
+                dragLineRenderer.positionCount = 2;
+                dragLineRenderer.SetPosition(0, startPos);        // Start point
+                dragLineRenderer.SetPosition(1, intersectionPoint);  // End point at the sphere surface
+
+                velocityDisplayText.interactable = true;
+            }
+            else
+            {
+                dragLineRenderer.positionCount = 0;
+                velocityDisplayText.interactable = false; // Disable if no valid velocity
+            }
         }
     }
 

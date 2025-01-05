@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI; // Required for Button and ColorBlock
+using TMPro;
 
 public class UIManager : MonoBehaviour
 {
@@ -10,6 +11,10 @@ public class UIManager : MonoBehaviour
     [Header("Panels")]
     public GameObject objectPlacementPanel; // "ObjectPlacementPanel" containing Radius/Velocity UI
     public GameObject panel;
+
+    [Header("UI")]
+    public TMP_InputField velocityInputField;
+
     private void Start()
     {
         // Initialize the UI state
@@ -29,6 +34,11 @@ public class UIManager : MonoBehaviour
         ShowPanel(false); // Show Velocity and Altitude
         SetButtonState(freeCamButton, true); // Highlight Free Cam
         SetButtonState(trackCamButton, false); // Reset Track Cam
+
+        if (velocityInputField != null)
+        {
+            velocityInputField.interactable = false; // Disable when switching back to tracking
+        }
     }
 
     public void OnTrackCamPressed()
@@ -37,6 +47,11 @@ public class UIManager : MonoBehaviour
         ShowPanel(true); // Show Velocity and Altitude
         SetButtonState(freeCamButton, false); // Reset Free Cam
         SetButtonState(trackCamButton, true); // Highlight Track Cam
+
+        if (velocityInputField != null)
+        {
+            velocityInputField.interactable = false; // Disable when switching back to tracking
+        }
     }
 
     private void ShowObjectPlacementPanel(bool show)
