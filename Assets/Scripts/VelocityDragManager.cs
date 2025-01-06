@@ -58,6 +58,9 @@ public class VelocityDragManager : MonoBehaviour
      */
     public Slider speedSlider;
 
+    [Header("Mass Handling")]
+    public float placeholderMass;
+
     [Header("Gravity Manager Reference")]
     /**
      * Reference to the GravityManager component.
@@ -322,7 +325,7 @@ public class VelocityDragManager : MonoBehaviour
                 return;
             }
 
-            planetNBody.mass = 400000f;
+            planetNBody.mass = placeholderMass > 0f ? placeholderMass : 400000f;
             planetNBody.radius = planet.transform.localScale.x * 10f;
         }
 

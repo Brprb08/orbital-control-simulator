@@ -17,6 +17,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public TMP_InputField velocityInput; // Expects input in the format "x,y,z".
     public TMP_InputField radiusInput;
     public TMP_InputField objectNameInputField;
+    public TMP_InputField massInput;
     public TextMeshProUGUI feedbackText;
     public CameraMovement cameraMovement;
     public VelocityDragManager velocityDragManager;
@@ -71,11 +72,27 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
+        string massText = massInput.text;
+        if (string.IsNullOrWhiteSpace(massText))
+        {
+            feedbackText.text = "Please enter a mass between 1 and 500000 kg.";
+            return;
+        }
+
+        if (!TryParseMass(massText, out float mass))
+        {
+            feedbackText.text = "Invalid mass input. Please enter a number between 1 and 500000.";
+            return;
+        }
+
+        float placeholderMass = mass;
+
         parsedRadius = new Vector3(
             Mathf.Clamp(parsedRadius.x, 1f, 100f),
             Mathf.Clamp(parsedRadius.y, 1f, 100f),
             Mathf.Clamp(parsedRadius.z, 1f, 100f)
         );
+
 
         lastPlacedGameObject = Instantiate(spherePrefab);
         lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 0.2f, parsedRadius.y * 0.2f, parsedRadius.z * 0.2f);
@@ -100,6 +117,7 @@ public class ObjectPlacementManager : MonoBehaviour
         {
             velocityDragManager.ResetDragManager();
             velocityDragManager.planet = lastPlacedGameObject;
+            velocityDragManager.placeholderMass = placeholderMass;
             feedbackText.text = "Planet placed. You can now left-click and drag in the scene to set velocity!";
         }
         else
@@ -120,6 +138,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
         ClearAndUnfocusInputField(radiusInput);
         ClearAndUnfocusInputField(objectNameInputField);
+        ClearAndUnfocusInputField(massInput);
 
         feedbackText.text = "Planet placed without gravity.\nEnter velocity (x,y,z) and click 'Set Velocity' to start movement.";
     }
@@ -154,6 +173,32 @@ public class ObjectPlacementManager : MonoBehaviour
         return float.TryParse(parts[0], out result.x) &&
                float.TryParse(parts[1], out result.y) &&
                float.TryParse(parts[2], out result.z);
+    }
+
+    /**
+    * Tries to parse the given string input as a valid mass value.
+    * The mass must be a numeric value between 1 and 500000 (inclusive).
+    * Non-numeric values, negative numbers, or values outside the allowed range are considered invalid.
+    *
+    * @param input The string representation of the mass to be parsed.
+    * @param mass The output float value of the parsed mass if valid.
+    * @return True if the input is a valid mass within the specified range; false otherwise.
+    */
+    private bool TryParseMass(string input, out float mass)
+    {
+        mass = 0f;
+
+        if (string.IsNullOrWhiteSpace(input))
+            return false;
+
+        if (!float.TryParse(input, out float parsedMass))
+            return false;
+
+        if (parsedMass < 1 || parsedMass > 500000)
+            return false;
+
+        mass = parsedMass;
+        return true;
     }
 
     /**

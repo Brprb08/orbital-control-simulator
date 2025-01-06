@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using UnityEngine.EventSystems;
 
 /**
  * CameraController handles the camera movement, tracking, and free camera mode.
@@ -128,6 +129,8 @@ public class CameraController : MonoBehaviour
 
         isFreeCamMode = true;
         isSwitchingToFreeCam = false;
+
+        EventSystem.current.SetSelectedGameObject(null);
         Debug.Log("Tracking disabled. FreeCam enabled.");
     }
 

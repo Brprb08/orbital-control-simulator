@@ -28,6 +28,11 @@ public class GravityManager : MonoBehaviour
         {
             Destroy(gameObject);
         }
+
+        if (bodies == null)
+        {
+            bodies = new List<NBody>(); // Ensure the list is initialized.
+        }
     }
 
     /**
@@ -75,7 +80,7 @@ public class GravityManager : MonoBehaviour
      * @param bodyA The first NBody involved in the collision.
      * @param bodyB The second NBody involved in the collision.
      */
-    void HandleCollision(NBody bodyA, NBody bodyB)
+    public void HandleCollision(NBody bodyA, NBody bodyB)
     {
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 

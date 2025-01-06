@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Collections;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Unity.Collections;
@@ -35,6 +36,7 @@ public class NBody : MonoBehaviour
     private int coarsePredictionSteps = 200;
     private int refinementFrequency = 5;
     private int frameCounter = 0;
+    private Coroutine predictionCoroutine;
 
     /**
      * Called when the script instance is being loaded.
@@ -54,9 +56,9 @@ public class NBody : MonoBehaviour
      */
     void OnDestroy()
     {
-        if (GravityManager.Instance != null)
+        if (predictionCoroutine != null)
         {
-            GravityManager.Instance.DeregisterBody(this);
+            StopCoroutine(predictionCoroutine);
         }
     }
 
@@ -80,7 +82,7 @@ public class NBody : MonoBehaviour
             Debug.Log($"{gameObject.name} is the central body and will not move.");
         }
 
-        await UpdatePredictedTrajectoryAsync();
+        predictionCoroutine = StartCoroutine(UpdatePredictedTrajectoryCoroutine());
     }
 
     /**
@@ -168,6 +170,22 @@ public class NBody : MonoBehaviour
 
             velocity = newState.velocity;
             transform.position = newState.position;
+
+            // Check for collisions.
+            foreach (var body in GravityManager.Instance.Bodies)
+            {
+                if (body == this) continue;
+
+                float distance = Vector3.Distance(transform.position, body.transform.position);
+                float collisionThreshold = radius + body.radius; // Consider body radii for more accurate collisions.
+
+                if (body.isCentralBody && distance < collisionThreshold)
+                {
+                    Debug.Log($"[COLLISION] {name} collided with central body {body.name}");
+                    GravityManager.Instance.HandleCollision(this, body);
+                    return; // Stop further updates for this frame.
+                }
+            }
         }
 
         if (originLineRenderer != null)
@@ -190,37 +208,41 @@ public class NBody : MonoBehaviour
     /**
      * Asynchronously updates the predicted trajectory for the NBody.
      */
-    async Task UpdatePredictedTrajectoryAsync()
+    IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
         int batchSize = 500;
-        int delayBetweenBatches = 10;
+        float delayBetweenBatches = 0.01f; // Time delay in seconds (coroutine-friendly)
         float loopThresholdDistance = 5f;
         float angleThreshold = 30f;
         int significantStepThreshold = predictionSteps / 4;
         int currentPredictionSteps = predictionSteps;
 
-        while (true)
+        while (true) // Infinite loop until stopped.
         {
+            if (this == null || gameObject == null)
+            {
+                yield break; // Exit the coroutine if the object is destroyed.
+            }
+
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
-            Dictionary<NBody, Vector3> bodyPositions = GravityManager.Instance.Bodies.ToDictionary(body => body, body => body.transform.position);
+            Dictionary<NBody, Vector3> bodyPositions = GravityManager.Instance.Bodies
+                .Where(body => body != null && body.gameObject != null)
+                .ToDictionary(body => body, body => body.transform.position);
 
             Vector3[] positions = new Vector3[predictionSteps];
             bool closedLoopDetected = false;
 
             for (int i = 0; i < predictionSteps;)
             {
-                if (currentPredictionSteps != predictionSteps)
-                {
-                    currentPredictionSteps = predictionSteps;
-                    positions = new Vector3[predictionSteps];
-                    i = 0;
-                    Debug.Log($"Prediction steps updated to {predictionSteps}. Restarting trajectory calculation.");
-                }
-
                 int currentBatchSize = Mathf.Min(batchSize, predictionSteps - i);
                 for (int j = 0; j < currentBatchSize; j++, i++)
                 {
+                    if (this == null || gameObject == null)
+                    {
+                        yield break; // Stop immediately if object is null.
+                    }
+
                     OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
                     initialPosition = newState.position;
                     initialVelocity = newState.velocity;
@@ -243,21 +265,24 @@ public class NBody : MonoBehaviour
                 }
 
                 if (closedLoopDetected)
+                {
                     break;
+                }
 
-                activeRenderer.positionCount = i;
-                activeRenderer.SetPositions(positions.Take(i).ToArray());
-                activeRenderer.enabled = true;
+                if (activeRenderer != null)
+                {
+                    activeRenderer.positionCount = i;
+                    activeRenderer.SetPositions(positions.Take(i).ToArray());
+                    activeRenderer.enabled = true;
+                }
 
-                await Task.Delay(delayBetweenBatches);
+                yield return new WaitForSeconds(delayBetweenBatches); // Wait to avoid freezing the frame.
             }
-
-            Debug.Log(closedLoopDetected ? $"Closed loop detected for {gameObject.name}!" : $"No loop detected for {gameObject.name}.");
 
             Vector3 previousPosition = transform.position;
             while (Vector3.Distance(previousPosition, transform.position) < loopThresholdDistance)
             {
-                await Task.Delay(100);
+                yield return new WaitForSeconds(0.1f); // Small delay for performance.
             }
 
             Debug.Log($"Object moved significantly. Recalculating {gameObject.name}'s orbit.");

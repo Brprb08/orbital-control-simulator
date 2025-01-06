@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 /**
  * FreeCamera provides free movement and rotation control for the camera.
@@ -21,6 +22,12 @@ public class FreeCamera : MonoBehaviour
         {
             // Exit if not in FreeCam mode.
             return;
+        }
+
+        if (EventSystem.current.currentSelectedGameObject != null &&
+            EventSystem.current.currentSelectedGameObject.GetComponent<TMPro.TMP_InputField>() != null)
+        {
+            return; // Don't allow WASD movement or camera control while typing.
         }
 
         // Movement input (WASD or arrow keys).
