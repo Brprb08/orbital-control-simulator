@@ -1,3 +1,7 @@
+/**
+ * GravityManager class handles the registration, deregistration, and management of celestial bodies.
+ * It tracks all NBody objects in the scene and provides access to their states.
+ */
 using UnityEngine;
 using System.Collections.Generic;
 
@@ -10,6 +14,9 @@ public class GravityManager : MonoBehaviour
 
     public List<NBody> Bodies => bodies;
 
+    /**
+     * Initializes the singleton instance of GravityManager.
+     */
     void Awake()
     {
         if (Instance == null)
@@ -23,9 +30,11 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    /**
+     * Registers all pre-existing NBody objects in the scene.
+     */
     void Start()
     {
-        // Register all pre-existing NBody objects in the scene
         NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
         foreach (var body in allBodies)
         {
@@ -37,6 +46,10 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    /**
+     * Registers a new NBody object.
+     * @param body The NBody object to register.
+     */
     public void RegisterBody(NBody body)
     {
         if (!bodies.Contains(body))
@@ -45,6 +58,10 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    /**
+     * Deregisters an NBody object.
+     * @param body The NBody object to deregister.
+     */
     public void DeregisterBody(NBody body)
     {
         if (bodies.Contains(body))
@@ -53,58 +70,24 @@ public class GravityManager : MonoBehaviour
         }
     }
 
-    void FixedUpdate()
-    {
-        for (int i = 0; i < bodies.Count; i++)
-        {
-            for (int j = i + 1; j < bodies.Count; j++)
-            {
-                NBody bodyA = bodies[i];
-                NBody bodyB = bodies[j];
-
-                Vector3 direction = (bodyB.transform.position - bodyA.transform.position);
-                float distanceSquared = direction.sqrMagnitude;
-
-                // Check for collision based on minCollisionDistance
-                float combinedRadii = bodyA.radius + bodyB.radius;
-                float combinedRadiiSquared = combinedRadii * combinedRadii;
-
-                if (distanceSquared <= combinedRadiiSquared)
-                {
-                    Debug.Log($"Collision detected between {bodyA.name} and {bodyB.name}!");
-
-                    HandleCollision(bodyA, bodyB);
-                    continue;
-                }
-
-                float forceMagnitude = PhysicsConstants.G * (bodyA.mass * bodyB.mass) / distanceSquared;
-                Vector3 force = direction.normalized * forceMagnitude;
-
-                bodyA.AddForce(force);
-                bodyB.AddForce(-force);
-            }
-        }
-    }
+    /**
+     * Handles a collision between two NBody objects and removes the smaller body.
+     * @param bodyA The first NBody involved in the collision.
+     * @param bodyB The second NBody involved in the collision.
+     */
     void HandleCollision(NBody bodyA, NBody bodyB)
     {
-        // Example: Remove the smaller body in a collision
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 
-        // Check if the camera is tracking the body being removed
         CameraController cameraController = GravityManager.Instance.GetComponent<CameraController>();
         if (cameraController != null && cameraController.IsTracking(bodyToRemove))
         {
-            // Switch the camera to track another body or free cam
             cameraController.SwitchToNextValidBody(bodyToRemove);
         }
 
-        // Remove from GravityManager list
         DeregisterBody(bodyToRemove);
-
-        // Destroy the GameObject
         Destroy(bodyToRemove.gameObject);
 
-        // Refresh the camera's bodies list
         if (cameraController != null)
         {
             cameraController.RefreshBodiesList();

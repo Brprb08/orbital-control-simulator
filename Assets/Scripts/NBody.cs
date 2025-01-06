@@ -5,31 +5,53 @@ using Unity.Collections;
 using Unity.Jobs;
 using System.Linq;
 
+/**
+ * NBody class represents a celestial body in the gravitational system.
+ * It simulates gravitational interactions, velocity, and trajectory prediction.
+ */
 [RequireComponent(typeof(LineRenderer))]
 public class NBody : MonoBehaviour
 {
+    [Header("Celestial Body Properties")]
     public float mass = 5.0e21f;
     public Vector3 velocity = new Vector3(0, 0, 20);
     public bool isCentralBody = false;
     public float radius = 637.1f;
 
-    private Vector3 force = Vector3.zero;
-    private LineRenderer predictionRenderer;
-    public int predictionSteps = 1000;  // Total prediction points
-    public float predictionDeltaTime = 5f;  // Time between steps in seconds
-    private LineRenderer originLineRenderer;
-    private bool isPredictionLineActive = false;
+    [Header("Trajectory Prediction Settings")]
+    public int predictionSteps = 1000;
+    public float predictionDeltaTime = 5f;
 
-    private int coarsePredictionSteps = 200;  // Coarse steps for faster prediction
-    private int refinementFrequency = 5;  // How often to refine (e.g., every 5 coarse updates)
-    private int frameCounter = 0;  // Track frame intervals
-    private LineRenderer activeRenderer;  // The current displayed line
+    [Header("Line Renderer References")]
+    private LineRenderer predictionRenderer;
+    private LineRenderer originLineRenderer;
+    private LineRenderer activeRenderer;
     private LineRenderer backgroundRenderer;
 
+    private bool isPredictionLineActive = false;
+
+    private Vector3 force = Vector3.zero;
+
+    private int coarsePredictionSteps = 200;
+    private int refinementFrequency = 5;
+    private int frameCounter = 0;
+
+    /**
+     * Called when the script instance is being loaded.
+     * Registers this NBody with the GravityManager.
+     */
     void Awake()
     {
+        if (GravityManager.Instance != null)
+        {
+            GravityManager.Instance.RegisterBody(this);
+        }
     }
 
+    /**
+     * Called when the GameObject is destroyed.
+     * Deregisters this NBody from the GravityManager.
+     */
     void OnDestroy()
     {
         if (GravityManager.Instance != null)
@@ -38,35 +60,19 @@ public class NBody : MonoBehaviour
         }
     }
 
+    /**
+     * Start method initializes line renderers and sets up trajectory predictions.
+     */
     async void Start()
     {
-        if (GravityManager.Instance != null)
-        {
-            GravityManager.Instance.RegisterBody(this);
-        }
-        else
-        {
-            Debug.LogError("GravityManager instance is null. Ensure GravityManager is in the scene.");
-        }
-
-        // GameObject predictionObj = new GameObject($"{gameObject.name}_Prediction");
-        // predictionObj.transform.parent = this.transform;
-        // predictionRenderer = predictionObj.AddComponent<LineRenderer>();
         activeRenderer = CreateLineRenderer($"{gameObject.name}_ActivePrediction");
         backgroundRenderer = CreateLineRenderer($"{gameObject.name}_BackgroundPrediction");
 
         GameObject originLineObj = new GameObject($"{gameObject.name}_OriginLine");
         originLineObj.transform.parent = this.transform;
         originLineRenderer = originLineObj.AddComponent<LineRenderer>();
-
         originLineRenderer.positionCount = 2;
-
-        // ConfigureLineRenderer(predictionRenderer);
-        // ConfigureMaterial(true, predictionRenderer, "#2978FF");
         ConfigureMaterial(false, originLineRenderer, "#FFFFFF");
-
-        // predictionRenderer.positionCount = 0;
-        // predictionRenderer.enabled = false;
 
         if (isCentralBody)
         {
@@ -77,6 +83,9 @@ public class NBody : MonoBehaviour
         await UpdatePredictedTrajectoryAsync();
     }
 
+    /**
+     * Creates a LineRenderer with the specified name.
+     */
     private LineRenderer CreateLineRenderer(string name)
     {
         GameObject obj = new GameObject(name);
@@ -86,6 +95,9 @@ public class NBody : MonoBehaviour
         return lineRenderer;
     }
 
+    /**
+     * Configures a LineRenderer with specific width and color.
+     */
     void ConfigureLineRenderer(LineRenderer lineRenderer, float widthMultiplier, string hexColor)
     {
         lineRenderer.useWorldSpace = true;
@@ -94,11 +106,10 @@ public class NBody : MonoBehaviour
         lineRenderer.widthMultiplier = widthMultiplier;
         lineRenderer.alignment = LineAlignment.View;
 
-        // Apply material and color
         Color colorValue;
         if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
         {
-            Material lineMaterial = new Material(Shader.Find("Sprites/Default"));  // Transparent-friendly shader
+            Material lineMaterial = new Material(Shader.Find("Sprites/Default"));
             lineMaterial.color = colorValue;
             lineRenderer.material = lineMaterial;
             lineRenderer.startColor = colorValue;
@@ -107,6 +118,9 @@ public class NBody : MonoBehaviour
         lineRenderer.enabled = true;
     }
 
+    /**
+     * Configures the material and color for a LineRenderer.
+     */
     void ConfigureMaterial(bool isPredictionLine, LineRenderer lineRenderer, string hexColor)
     {
         Color colorValue;
@@ -120,6 +134,9 @@ public class NBody : MonoBehaviour
         }
     }
 
+    /**
+     * FixedUpdate is called at a consistent interval and updates the NBody's physics state.
+     */
     void FixedUpdate()
     {
         if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
@@ -147,7 +164,6 @@ public class NBody : MonoBehaviour
             }
 
             OrbitalState currentState = new OrbitalState(transform.position, velocity);
-
             OrbitalState newState = RungeKuttaStep(currentState, Time.fixedDeltaTime, bodyPositions);
 
             velocity = newState.velocity;
@@ -160,22 +176,28 @@ public class NBody : MonoBehaviour
             originLineRenderer.SetPosition(1, Vector3.zero);
         }
 
-        force = Vector3.zero;  // Reset force
+        force = Vector3.zero;
     }
 
+    /**
+     * Adds a force vector to this NBody.
+     */
     public void AddForce(Vector3 additionalForce)
     {
         force += additionalForce;
     }
 
+    /**
+     * Asynchronously updates the predicted trajectory for the NBody.
+     */
     async Task UpdatePredictedTrajectoryAsync()
     {
-        int batchSize = 500;  // Number of points calculated per batch
-        int delayBetweenBatches = 10;  // Milliseconds to pause between each batch
-        float loopThresholdDistance = 5f;  // Distance threshold to detect a loop
-        float angleThreshold = 30f;  // Angular threshold for direction comparison
-        int significantStepThreshold = predictionSteps / 4;  // Only check for loops after 25% of the steps
-        int currentPredictionSteps = predictionSteps;  // Track changes in predictionSteps
+        int batchSize = 500;
+        int delayBetweenBatches = 10;
+        float loopThresholdDistance = 5f;
+        float angleThreshold = 30f;
+        int significantStepThreshold = predictionSteps / 4;
+        int currentPredictionSteps = predictionSteps;
 
         while (true)
         {
@@ -188,32 +210,30 @@ public class NBody : MonoBehaviour
 
             for (int i = 0; i < predictionSteps;)
             {
-                // Check if `predictionSteps` changed and reset if necessary
                 if (currentPredictionSteps != predictionSteps)
                 {
                     currentPredictionSteps = predictionSteps;
                     positions = new Vector3[predictionSteps];
-                    i = 0;  // Restart the calculation
+                    i = 0;
                     Debug.Log($"Prediction steps updated to {predictionSteps}. Restarting trajectory calculation.");
                 }
 
-                int currentBatchSize = Mathf.Min(batchSize, predictionSteps - i);  // Prevent overflow
+                int currentBatchSize = Mathf.Min(batchSize, predictionSteps - i);
                 for (int j = 0; j < currentBatchSize; j++, i++)
                 {
                     OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
                     initialPosition = newState.position;
                     initialVelocity = newState.velocity;
 
-                    if (i < positions.Length)  // Safety check to prevent out-of-bounds
+                    if (i < positions.Length)
                     {
                         positions[i] = initialPosition;
                     }
 
-                    // Check for loop closure only after significant steps
                     if (i > significantStepThreshold && Vector3.Distance(initialPosition, positions[0]) < loopThresholdDistance)
                     {
                         float angleDifference = Vector3.Angle(velocity.normalized, initialVelocity.normalized);
-                        if (angleDifference < angleThreshold)  // Directions are nearly aligned
+                        if (angleDifference < angleThreshold)
                         {
                             Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
                             closedLoopDetected = true;
@@ -223,86 +243,59 @@ public class NBody : MonoBehaviour
                 }
 
                 if (closedLoopDetected)
-                    break;  // Exit loop when a closed orbit is detected
+                    break;
 
                 activeRenderer.positionCount = i;
                 activeRenderer.SetPositions(positions.Take(i).ToArray());
                 activeRenderer.enabled = true;
 
-                await Task.Delay(delayBetweenBatches);  // Allow Unity to update other processes
+                await Task.Delay(delayBetweenBatches);
             }
 
             Debug.Log(closedLoopDetected ? $"Closed loop detected for {gameObject.name}!" : $"No loop detected for {gameObject.name}.");
 
-            // Keep the rendered line visible but pause recalculation until the planet moves significantly
             Vector3 previousPosition = transform.position;
             while (Vector3.Distance(previousPosition, transform.position) < loopThresholdDistance)
             {
-                await Task.Delay(100);  // Wait until the planet moves enough to require recalculation
+                await Task.Delay(100);
             }
 
             Debug.Log($"Object moved significantly. Recalculating {gameObject.name}'s orbit.");
         }
     }
 
-    private Vector3[] PredictTrajectory(Vector3 initialPosition, Vector3 initialVelocity, int steps, Dictionary<NBody, Vector3> bodyPositions)
-    {
-        Vector3 tempPosition = initialPosition;
-        Vector3 tempVelocity = initialVelocity;
-        Vector3[] positions = new Vector3[steps];
-
-        for (int i = 0; i < steps; i++)
-        {
-            OrbitalState newState = RungeKuttaStep(new OrbitalState(tempPosition, tempVelocity), predictionDeltaTime, bodyPositions);
-            tempPosition = newState.position;
-            tempVelocity = newState.velocity;
-            positions[i] = tempPosition;
-        }
-
-        return positions;
-    }
-
-    private Vector3[] SimplifyPositions(Vector3[] positions, int targetPointCount)
-    {
-        if (positions.Length <= targetPointCount) return positions;
-
-        List<Vector3> simplifiedPositions = new List<Vector3>();
-        float step = (float)positions.Length / targetPointCount;
-
-        for (int i = 0; i < targetPointCount; i++)
-        {
-            simplifiedPositions.Add(positions[Mathf.RoundToInt(i * step)]);
-        }
-
-        return simplifiedPositions.ToArray();
-    }
-
+    /**
+     * Adjusts the trajectory prediction settings based on time scale.
+     */
     public void AdjustPredictionSettings(float timeScale)
     {
-        if (timeScale <= 1f) // Scenario 1: Real-time 1x (close inspection, detailed orbit)
+        if (timeScale <= 1f)
         {
-            predictionSteps = 3000;  // High resolution for smooth prediction
-            predictionDeltaTime = 0.5f;  // Small time step for detailed lines
+            predictionSteps = 3000;
+            predictionDeltaTime = 0.5f;
         }
-        else if (timeScale <= 10f) // Scenario 2: Medium speeds (moderate zoom-out)
+        else if (timeScale <= 10f)
         {
-            predictionSteps = 1500;  // Fewer steps since more distance is covered
-            predictionDeltaTime = 10f;  // Slightly larger time step
+            predictionSteps = 1500;
+            predictionDeltaTime = 10f;
         }
-        else if (timeScale <= 50f) // Scenario 3: High speeds (farther zoom-out)
+        else if (timeScale <= 50f)
         {
-            predictionSteps = 800;  // Reduced steps, but enough for clear orbit
-            predictionDeltaTime = 50f;  // Larger time slices
+            predictionSteps = 800;
+            predictionDeltaTime = 50f;
         }
-        else if (timeScale <= 100f) // Very high speeds (maximum zoom-out)
+        else if (timeScale <= 100f)
         {
-            predictionSteps = 600;  // Minimal steps to avoid too many calculations
-            predictionDeltaTime = 100f;  // Coarse time slices for large distances
+            predictionSteps = 600;
+            predictionDeltaTime = 100f;
         }
 
         Debug.Log($"Adjusted for {gameObject.name}: predictionSteps = {predictionSteps}, predictionDeltaTime = {predictionDeltaTime}");
     }
 
+    /**
+     * Computes the gravitational acceleration for a given position.
+     */
     Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions)
     {
         Vector3 totalForce = Vector3.zero;
@@ -321,6 +314,9 @@ public class NBody : MonoBehaviour
         return totalForce / mass;
     }
 
+    /**
+     * Returns the altitude above the reference central body.
+     */
     public float altitude
     {
         get
@@ -332,6 +328,9 @@ public class NBody : MonoBehaviour
         }
     }
 
+    /**
+     * OrbitalState struct holds the position and velocity for Runge-Kutta calculations.
+     */
     private struct OrbitalState
     {
         public Vector3 position;
@@ -344,6 +343,9 @@ public class NBody : MonoBehaviour
         }
     }
 
+    /**
+     * Performs a single Runge-Kutta (RK4) step to update position and velocity.
+     */
     private OrbitalState RungeKuttaStep(OrbitalState currentState, float deltaTime, Dictionary<NBody, Vector3> bodyPositions)
     {
         OrbitalState k1 = CalculateDerivatives(currentState, bodyPositions);
@@ -368,6 +370,9 @@ public class NBody : MonoBehaviour
         return new OrbitalState(newPosition, newVelocity);
     }
 
+    /**
+     * Calculates derivatives for the Runge-Kutta integration.
+     */
     private OrbitalState CalculateDerivatives(OrbitalState state, Dictionary<NBody, Vector3> bodyPositions)
     {
         Vector3 acceleration = ComputeAccelerationFromData(state.position, bodyPositions);
