@@ -157,3 +157,39 @@ The central celestial body (e.g., Earth) is programmed to rotate, simulating rea
 ## Status
 
 The project is in its early stages. Key systems like gravitational dynamics and trajectory prediction are operational, but advanced features like thrust mechanics, drag effects, and fuel tracking are not yet implemented. Updates will focus on usability improvements, feature expansion, and enhanced visualization.
+
+## Getting Started
+
+### Prerequisites
+
+- **Unity:** Ensure you have Unity installed (version 2020.3 or later recommended).
+- **Git:** For version control and cloning the repository.
+
+### Installation
+
+1. **Clone the Repository:**
+
+- HTTPS:
+  ```bash
+  git clone https://github.com/Brprb08/space-orbit-simulation.git
+  ```
+- SSH:
+  ```
+  git clone git@github.com:Brprb08/space-orbit-simulation.git
+  ```
+- Github CLI:
+  ```
+  gh repo clone Brprb08/space-orbit-simulation
+  ```
+
+2. **Open in Unity:**
+
+- Launch Unity Hub.
+- Click on `Add` and navigate to the cloned repository folder.
+- Open the project.
+
+2. **Run the Simulation:**
+
+- Open the `SampleScene.unity` file located in the `Assets/Scenes` directory.
+- If no hierarchy or GameObjects are visible, ensure you have opened the correct scene by double-clicking `SampleScene.unity`.
+- Click the `Play` button to start the simulation.
