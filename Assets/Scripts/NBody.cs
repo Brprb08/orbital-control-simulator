@@ -32,14 +32,14 @@ public class NBody : MonoBehaviour
     private LineRenderer originLineRenderer;
 
     [Tooltip("Renderer for the active prediction line.")]
-    private LineRenderer activeRenderer;
+    public LineRenderer activeRenderer;
 
     [Tooltip("Renderer for the background prediction line.")]
     private LineRenderer backgroundRenderer;
 
     private bool isPredictionLineActive = false;
 
-    private Vector3 force = Vector3.zero;
+    public Vector3 force = Vector3.zero;
 
     private int coarsePredictionSteps = 200;
     private int refinementFrequency = 5;

@@ -28,7 +28,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public Button placeObjectButton;
 
     [Header("Placement State")]
-    private GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
+    public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
     private GameObject realNBodyObject;      // Reference to the instantiated NBody GameObject.
     private NBody lastPlacedNBody;           // Reference to the NBody component.
     private bool isInPlacementMode = false;
@@ -299,5 +299,10 @@ public class ObjectPlacementManager : MonoBehaviour
     public void ResetLastPlacedGameObject()
     {
         lastPlacedGameObject = null;
+    }
+
+    public GameObject GetLastPlacedGameObject()
+    {
+        return lastPlacedGameObject;
     }
 }
