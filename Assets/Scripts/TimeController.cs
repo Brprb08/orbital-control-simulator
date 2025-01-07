@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI; // For Slider
 using TMPro;
+using UnityEngine.EventSystems;
 
 /**
  * TimeController class manages the simulation time scale, pause/resume states, and user interface elements.
@@ -47,6 +48,11 @@ public class TimeController : MonoBehaviour
      */
     void Update()
     {
+        if (EventSystem.current.currentSelectedGameObject != null &&
+            EventSystem.current.currentSelectedGameObject.GetComponent<TMPro.TMP_InputField>() != null)
+        {
+            return; // Don't allow WASD movement or camera control while typing.
+        }
         if (Input.GetKeyDown(KeyCode.R))
         {
             SetTimeScale(1.0f);

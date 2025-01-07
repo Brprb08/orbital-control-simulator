@@ -24,9 +24,17 @@ public class NBody : MonoBehaviour
     public float predictionDeltaTime = 5f;
 
     [Header("Line Renderer References")]
+
+    [Tooltip("Renderer for the predicted trajectory.")]
     private LineRenderer predictionRenderer;
+
+    [Tooltip("Renderer for the origin line.")]
     private LineRenderer originLineRenderer;
+
+    [Tooltip("Renderer for the active prediction line.")]
     private LineRenderer activeRenderer;
+
+    [Tooltip("Renderer for the background prediction line.")]
     private LineRenderer backgroundRenderer;
 
     private bool isPredictionLineActive = false;
@@ -37,6 +45,8 @@ public class NBody : MonoBehaviour
     private int refinementFrequency = 5;
     private int frameCounter = 0;
     private Coroutine predictionCoroutine;
+    private static Material lineMaterial;
+    private bool showPredictionLines = true;
 
     /**
      * Called when the script instance is being loaded.
@@ -47,6 +57,19 @@ public class NBody : MonoBehaviour
         if (GravityManager.Instance != null)
         {
             GravityManager.Instance.RegisterBody(this);
+        }
+
+        if (lineMaterial == null)
+        {
+            Shader shader = Shader.Find("Sprites/Default");
+            if (shader == null)
+            {
+                Debug.LogError("Shader 'Sprites/Default' not found. Please ensure it exists in your project.");
+            }
+            else
+            {
+                lineMaterial = new Material(shader);
+            }
         }
     }
 
@@ -76,6 +99,8 @@ public class NBody : MonoBehaviour
         originLineRenderer.positionCount = 2;
         ConfigureMaterial(false, originLineRenderer, "#FFFFFF");
 
+        SetLineVisibility(showPredictionLines, true);
+
         if (isCentralBody)
         {
             velocity = Vector3.zero;
@@ -91,9 +116,9 @@ public class NBody : MonoBehaviour
     private LineRenderer CreateLineRenderer(string name)
     {
         GameObject obj = new GameObject(name);
-        obj.transform.parent = null;
+        obj.transform.parent = this.transform;
         LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
-        ConfigureLineRenderer(lineRenderer, 2f, "#2978FF");
+        ConfigureLineRenderer(lineRenderer, 10f, "#2978FF");
         return lineRenderer;
     }
 
@@ -111,7 +136,6 @@ public class NBody : MonoBehaviour
         Color colorValue;
         if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
         {
-            Material lineMaterial = new Material(Shader.Find("Sprites/Default"));
             lineMaterial.color = colorValue;
             lineRenderer.material = lineMaterial;
             lineRenderer.startColor = colorValue;
@@ -126,7 +150,6 @@ public class NBody : MonoBehaviour
     void ConfigureMaterial(bool isPredictionLine, LineRenderer lineRenderer, string hexColor)
     {
         Color colorValue;
-        Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
         if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
         {
             lineMaterial.color = colorValue;
@@ -179,9 +202,10 @@ public class NBody : MonoBehaviour
                 float distance = Vector3.Distance(transform.position, body.transform.position);
                 float collisionThreshold = radius + body.radius; // Consider body radii for more accurate collisions.
 
+                // Debug.Log("Distance: " + distance + "  Collision Threshold: " + collisionThreshold);
                 if (body.isCentralBody && distance < collisionThreshold)
                 {
-                    Debug.Log($"[COLLISION] {name} collided with central body {body.name}");
+                    Debug.Log($"[COLLISION] {body.name} collided with central body {body.name}");
                     GravityManager.Instance.HandleCollision(this, body);
                     return; // Stop further updates for this frame.
                 }
@@ -222,6 +246,12 @@ public class NBody : MonoBehaviour
             if (this == null || gameObject == null)
             {
                 yield break; // Exit the coroutine if the object is destroyed.
+            }
+
+            if (!showPredictionLines)
+            {
+                yield return new WaitForSeconds(0.1f);
+                continue;  // Don't update positions if lines are hidden
             }
 
             Vector3 initialPosition = transform.position;
@@ -402,5 +432,38 @@ public class NBody : MonoBehaviour
     {
         Vector3 acceleration = ComputeAccelerationFromData(state.position, bodyPositions);
         return new OrbitalState(state.velocity, acceleration);
+    }
+
+    /**
+     * Sets the enabled state of specific LineRenderers associated with this NBody.
+     * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
+     * @param showOrigin Whether to show/hide the origin line.
+     */
+    public void SetLineVisibility(bool showPrediction, bool showOrigin)
+    {
+        showPredictionLines = showPrediction;
+        if (predictionRenderer != null) predictionRenderer.enabled = showPrediction;
+        if (activeRenderer != null) activeRenderer.enabled = showPrediction;
+        if (backgroundRenderer != null) backgroundRenderer.enabled = showPrediction;
+        if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
+    }
+
+    /**
+     * Sets the enabled state of all LineRenderers associated with this NBody.
+     * @param enabled Whether to enable or disable all lines.
+     */
+    public void SetLinesEnabled(bool enabled)
+    {
+        if (predictionRenderer != null)
+            predictionRenderer.enabled = enabled;
+
+        if (activeRenderer != null)
+            activeRenderer.enabled = enabled;
+
+        if (backgroundRenderer != null)
+            backgroundRenderer.enabled = enabled;
+
+        if (originLineRenderer != null)
+            originLineRenderer.enabled = enabled;
     }
 }

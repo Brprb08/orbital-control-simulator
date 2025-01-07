@@ -1,6 +1,7 @@
 using UnityEngine;
 using TMPro;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /**
  * ObjectPlacementManager manages the placement of celestial bodies in the scene.
@@ -21,6 +22,10 @@ public class ObjectPlacementManager : MonoBehaviour
     public TextMeshProUGUI feedbackText;
     public CameraMovement cameraMovement;
     public VelocityDragManager velocityDragManager;
+    public TMP_InputField nameInputField;
+    public TMP_InputField massInputField;
+    public TMP_InputField radiusInputField;
+    public Button placeObjectButton;
 
     [Header("Placement State")]
     private GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
@@ -138,6 +143,17 @@ public class ObjectPlacementManager : MonoBehaviour
         ClearAndUnfocusInputField(radiusInput);
         ClearAndUnfocusInputField(objectNameInputField);
         ClearAndUnfocusInputField(massInput);
+
+        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        {
+            nameInputField.interactable = false;
+
+            massInputField.interactable = false;
+
+            radiusInputField.interactable = false;
+
+            placeObjectButton.interactable = false;
+        }
 
         feedbackText.text =
     "Setting Satellite Velocity:\n\n" +

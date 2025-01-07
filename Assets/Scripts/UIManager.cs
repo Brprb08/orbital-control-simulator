@@ -17,7 +17,14 @@ public class UIManager : MonoBehaviour
     public GameObject panel; // General UI panel for velocity and altitude display.
 
     [Header("UI")]
+    public TMP_InputField nameInputField;
+    public TMP_InputField massInputField;
+    public TMP_InputField radiusInputField;
+    public Button placeObjectButton;
+
     public TMP_InputField velocityInputField; // Input field for entering velocity.
+
+
     public TextMeshProUGUI feedbackText;
 
     /**
@@ -28,6 +35,7 @@ public class UIManager : MonoBehaviour
         feedbackText.text =
     "Welcome to the Orbit Simulator!\n\n" +
     "You’re in Track Cam mode, following the planet’s orbit.\n" +
+    "• Use Tab to switch the object you are tracking.\n" +
     "• Use right mouse button to rotate the camera around.\n" +
     "• Zoom in and out with mousewheel.\n" +
     "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
@@ -63,6 +71,17 @@ public class UIManager : MonoBehaviour
         {
             velocityInputField.interactable = false;
         }
+
+        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        {
+            nameInputField.interactable = true;
+
+            massInputField.interactable = true;
+
+            radiusInputField.interactable = true;
+
+            placeObjectButton.interactable = true;
+        }
     }
 
     /**
@@ -72,6 +91,7 @@ public class UIManager : MonoBehaviour
     {
         feedbackText.text =
         "Track Cam Mode Activated!\n\n" +
+        "• Use Tab to switch the object you are tracking.\n" +
     "• Use right mouse button to the rotate camera around.\n" +
     "• Zoom in and out with mousewheel.\n" +
     "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
@@ -85,6 +105,20 @@ public class UIManager : MonoBehaviour
         if (velocityInputField != null)
         {
             velocityInputField.interactable = false;
+        }
+
+        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        {
+            nameInputField.text = null;
+            nameInputField.interactable = false;
+
+            massInputField.text = null;
+            massInputField.interactable = false;
+
+            radiusInputField.text = null;
+            radiusInputField.interactable = false;
+
+            placeObjectButton.interactable = false;
         }
     }
 

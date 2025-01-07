@@ -61,6 +61,16 @@ public class GravityManager : MonoBehaviour
         {
             bodies.Add(body);
         }
+
+        if (LineVisibilityManager.Instance != null)
+        {
+            LineVisibilityManager.Instance.RegisterNBody(body);
+            Debug.Log($"Registered NBody with LineVisibilityManager: {body.gameObject.name}");
+        }
+        else
+        {
+            Debug.LogError("LineVisibilityManager.Instance is null. Ensure LineVisibilityManager is in the scene.");
+        }
     }
 
     /**
@@ -82,6 +92,7 @@ public class GravityManager : MonoBehaviour
      */
     public void HandleCollision(NBody bodyA, NBody bodyB)
     {
+        Debug.Log("INSIDE");
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 
         CameraController cameraController = GravityManager.Instance.GetComponent<CameraController>();
@@ -91,6 +102,7 @@ public class GravityManager : MonoBehaviour
         }
 
         DeregisterBody(bodyToRemove);
+        Debug.Log(bodyToRemove.gameObject);
         Destroy(bodyToRemove.gameObject);
 
         if (cameraController != null)
