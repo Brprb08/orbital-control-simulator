@@ -131,7 +131,6 @@ public class CameraController : MonoBehaviour
         isSwitchingToFreeCam = false;
 
         EventSystem.current.SetSelectedGameObject(null);
-        Debug.Log("Tracking disabled. FreeCam enabled.");
     }
 
     /**

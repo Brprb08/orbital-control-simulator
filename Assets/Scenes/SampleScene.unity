@@ -2872,7 +2872,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!135 &900191660
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -3799,6 +3799,7 @@ MonoBehaviour:
     m_Bits: 64
   sphereRadiusMultiplier: 10
   speedSlider: {fileID: 42808061}
+  placeholderMass: 0
   gravityManager: {fileID: 1586431850}
 --- !u!4 &1119227882
 Transform:
@@ -5993,6 +5994,7 @@ MonoBehaviour:
   velocityInput: {fileID: 151038885}
   radiusInput: {fileID: 770696344}
   objectNameInputField: {fileID: 861192241}
+  massInput: {fileID: 916841083}
   feedbackText: {fileID: 1138443355}
   cameraMovement: {fileID: 817157355}
   velocityDragManager: {fileID: 1119227881}

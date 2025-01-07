@@ -1,10 +1,10 @@
+using UnityEngine;
+using System.Collections.Generic;
+
 /**
  * GravityManager class handles the registration, deregistration, and management of celestial bodies.
  * It tracks all NBody objects in the scene and provides access to their states.
  */
-using UnityEngine;
-using System.Collections.Generic;
-
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }

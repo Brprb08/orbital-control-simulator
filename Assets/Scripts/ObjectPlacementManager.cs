@@ -39,7 +39,6 @@ public class ObjectPlacementManager : MonoBehaviour
      */
     private void Start()
     {
-        feedbackText.text = "Set radius, then 'Place Planet'. After placement, enter velocity and 'Set Velocity'.";
     }
 
     /**
@@ -118,11 +117,11 @@ public class ObjectPlacementManager : MonoBehaviour
             velocityDragManager.ResetDragManager();
             velocityDragManager.planet = lastPlacedGameObject;
             velocityDragManager.placeholderMass = placeholderMass;
-            feedbackText.text = "Planet placed. You can now left-click and drag in the scene to set velocity!";
+            // feedbackText.text = "Planet placed. You can now left-click and drag in the scene to set velocity!";
         }
         else
         {
-            feedbackText.text = "Planet placed. (No VelocityDragManager assigned)";
+            // feedbackText.text = "Planet placed. (No VelocityDragManager assigned)";
         }
 
         CameraController camController = gravityManager.GetComponent<CameraController>();
@@ -140,7 +139,12 @@ public class ObjectPlacementManager : MonoBehaviour
         ClearAndUnfocusInputField(objectNameInputField);
         ClearAndUnfocusInputField(massInput);
 
-        feedbackText.text = "Planet placed without gravity.\nEnter velocity (x,y,z) and click 'Set Velocity' to start movement.";
+        feedbackText.text =
+    "Setting Satellite Velocity:\n\n" +
+    "• Click the satellite to select it and drag to set a direction.\n" +
+    "• Use the velocity vector tool to set the direction.\n" +
+    "• Adjust velocity using the slider or by typing a value.\n" +
+    "• Click \"Set Velocity\" to begin orbit.";
     }
 
     /**

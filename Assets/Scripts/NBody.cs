@@ -210,7 +210,7 @@ public class NBody : MonoBehaviour
      */
     IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
-        int batchSize = 500;
+        int batchSize = 200;
         float delayBetweenBatches = 0.01f; // Time delay in seconds (coroutine-friendly)
         float loopThresholdDistance = 5f;
         float angleThreshold = 30f;

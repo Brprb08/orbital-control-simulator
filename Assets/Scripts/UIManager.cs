@@ -18,12 +18,21 @@ public class UIManager : MonoBehaviour
 
     [Header("UI")]
     public TMP_InputField velocityInputField; // Input field for entering velocity.
+    public TextMeshProUGUI feedbackText;
 
     /**
      * Initializes the UI elements and sets the default button states.
      */
     private void Start()
     {
+        feedbackText.text =
+    "Welcome to the Orbit Simulator!\n\n" +
+    "You’re in Track Cam mode, following the planet’s orbit.\n" +
+    "• Use right mouse button to rotate the camera around.\n" +
+    "• Zoom in and out with mousewheel.\n" +
+    "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
+    "• Monitor Altitude and Velocity values to observe orbital behaviors.\n" +
+    "• Switch to Free Cam to explore or place satellites.";
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false); // Default state for Free Cam button.
@@ -37,6 +46,14 @@ public class UIManager : MonoBehaviour
      */
     public void OnFreeCamPressed()
     {
+        feedbackText.text =
+    "Free Cam Mode Activated!\n\n" +
+    "• You can freely move to explore or place satellites.\n" +
+    "• Use WASD to move around, and mouse button 2 to rotate camera.\n" +
+    "• To place a satellite:\n" +
+    "     • Naming is optional; defaults to \"Satellite (n)\".\n" +
+    "     • Set the Mass (1-500,000 kg) and Radius Scale.\n" +
+    "     • Click \"Place Satellite\" to spawn it.";
         ShowObjectPlacementPanel(true);
         ShowPanel(false);
         SetButtonState(freeCamButton, true);
@@ -53,6 +70,13 @@ public class UIManager : MonoBehaviour
      */
     public void OnTrackCamPressed()
     {
+        feedbackText.text =
+        "Track Cam Mode Activated!\n\n" +
+    "• Use right mouse button to the rotate camera around.\n" +
+    "• Zoom in and out with mousewheel.\n" +
+    "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
+    "• Monitor Altitude and Velocity values to observe orbital behaviors.\n" +
+    "• Switch to Free Cam to explore or place satellites.";
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);

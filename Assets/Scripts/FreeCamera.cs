@@ -8,7 +8,7 @@ using UnityEngine.EventSystems;
 public class FreeCamera : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float speed = 10f; // Movement speed.
+    public float speed = 100f; // Movement speed.
     public float sensitivity = 100f; // Look sensitivity.
 
     private bool isFreeMode = false; // Indicates if the camera is in free mode.
@@ -31,8 +31,8 @@ public class FreeCamera : MonoBehaviour
         }
 
         // Movement input (WASD or arrow keys).
-        float moveX = Input.GetAxis("Horizontal") * speed * Time.deltaTime;
-        float moveZ = Input.GetAxis("Vertical") * speed * Time.deltaTime;
+        float moveX = Input.GetAxis("Horizontal") * speed;
+        float moveZ = Input.GetAxis("Vertical") * speed;
         transform.Translate(moveX, 0, moveZ, Space.Self);
 
         // Rotation input (hold right mouse button to rotate).

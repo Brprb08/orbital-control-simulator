@@ -24,6 +24,8 @@ public class VelocityDragManager : MonoBehaviour
      * TextMeshPro input field to display the velocity value.
      */
     public TMP_InputField velocityDisplayText;
+    public Slider velocitySpeedSlider;
+    public Button setVelocityButton;
 
     [Header("Planet to Apply Velocity To")]
     /**
@@ -101,6 +103,16 @@ public class VelocityDragManager : MonoBehaviour
             velocityDisplayText.interactable = false;
         }
 
+        if (velocitySpeedSlider != null)
+        {
+            velocitySpeedSlider.interactable = false;
+        }
+
+        if (setVelocityButton != null)
+        {
+            setVelocityButton.interactable = false;
+        }
+
         if (dragSphereObject == null)
         {
             dragSphereObject = new GameObject("DragSphereTemp");
@@ -170,6 +182,8 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.material = lineMaterial;
 
             velocityDisplayText.interactable = true;
+            velocitySpeedSlider.interactable = true;
+            setVelocityButton.interactable = true;
         }
 
         dragDirection = Vector3.zero;
@@ -248,7 +262,10 @@ public class VelocityDragManager : MonoBehaviour
         sliderSpeed = value;
         currentVelocity = dragDirection * sliderSpeed;
 
-        if (velocityDisplayText != null)
+        float x = currentVelocity.x;
+        float y = currentVelocity.y;
+        float z = currentVelocity.z;
+        if (velocityDisplayText != null && x != 0 && y != 0 && z != 0)
         {
             velocityDisplayText.onValueChanged.RemoveListener(OnVelocityInputChanged);
             velocityDisplayText.text = $"{currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2}";
@@ -369,6 +386,10 @@ public class VelocityDragManager : MonoBehaviour
         {
             velocityDisplayText.text = "";
             velocityDisplayText.interactable = false;
+            velocitySpeedSlider.interactable = false;
+            velocitySpeedSlider.value = 0f;
+            setVelocityButton.interactable = false;
+
         }
     }
 
