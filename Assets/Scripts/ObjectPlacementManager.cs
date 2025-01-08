@@ -214,7 +214,7 @@ public class ObjectPlacementManager : MonoBehaviour
         if (!float.TryParse(input, out float parsedMass))
             return false;
 
-        if (parsedMass < 1 || parsedMass > 500000)
+        if (parsedMass < 1 || parsedMass > 5.972e+24)
             return false;
 
         mass = parsedMass;

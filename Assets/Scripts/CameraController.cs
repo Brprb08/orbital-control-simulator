@@ -67,7 +67,7 @@ public class CameraController : MonoBehaviour
             {
                 currentIndex = (currentIndex + 1) % bodies.Count;
                 cameraMovement.SetTargetBody(bodies[currentIndex]);
-                ResetCameraPosition();
+                ReturnToTracking();
                 Debug.Log($"Camera now tracking: {bodies[currentIndex].name}");
             }
 
@@ -171,7 +171,6 @@ public class CameraController : MonoBehaviour
      */
     public void ReturnToTracking()
     {
-        if (!isFreeCamMode) return;
         Debug.Log("Returning to Tracking Mode...");
 
         if (cameraMovement != null)
@@ -179,17 +178,44 @@ public class CameraController : MonoBehaviour
             cameraMovement.enabled = true;
         }
 
+        GameObject centralBody = GameObject.FindWithTag("CentralBody");
+
+        if (centralBody == null)
+        {
+            Debug.LogError("Central body not found. Ensure it has the correct tag.");
+            return;
+        }
+
+        NBody targetBody = null;
+        Vector3 targetPosition;
+
         if (isTrackingPlaceholder && placeholderTarget != null)
         {
             cameraMovement.SetTargetBodyPlaceholder(placeholderTarget);
+            targetPosition = placeholderTarget.position;
+            targetBody = placeholderTarget.GetComponent<NBody>();
         }
         else if (bodies.Count > 0)
         {
             cameraMovement.SetTargetBody(bodies[currentIndex]);
+            targetPosition = bodies[currentIndex].transform.position;
+            targetBody = bodies[currentIndex];
+        }
+        else
+        {
+            Debug.LogWarning("No valid bodies to track.");
+            return;
         }
 
-        ResetPivotRotation();
-        ResetCameraPosition();
+        float distanceMultiplier = 10.0f;  // Adjust for how far back the camera should be
+        float radius = (targetBody != null) ? targetBody.radius : 1f;  // Use the body's radius or a default
+        float desiredDistance = radius * distanceMultiplier;
+
+        Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
+        cameraTransform.position = targetPosition - directionToTarget * desiredDistance;
+
+        // Adjust the camera's orientation
+        PointCameraTowardCentralBody(centralBody.transform, targetPosition);
 
         FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
         if (freeCam != null)
@@ -198,7 +224,48 @@ public class CameraController : MonoBehaviour
         }
 
         isFreeCamMode = false;
-        Debug.Log("FreeCam disabled. Tracking resumed.");
+        Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");
+    }
+
+    private void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
+    {
+        // Vector pointing FROM the tracked object TO the central body (Earth)
+        Vector3 directionToCentralBody = (centralBody.position - targetPosition).normalized;
+
+        // Desired camera forward direction: Opposite of the direction to Earth (i.e., facing the object)
+        Vector3 forwardDirection = -(targetPosition - centralBody.position).normalized;
+
+        // Calculate the base rotation that makes the camera look at the object, with Earth behind
+        Quaternion targetRotation = Quaternion.LookRotation(forwardDirection, Vector3.up);
+
+        // Add a small upward pitch (positive X-axis rotation)
+        float pitchAngle = 10f;  // Adjust for desired tilt (in degrees)
+        Quaternion pitchAdjustment = Quaternion.Euler(pitchAngle, 0f, 0f);
+
+        // Combine the rotations
+        cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
+
+        Debug.Log($"Camera pivot adjusted to align with {centralBody.name} behind target, with upward tilt.");
+    }
+    private int GetClosestBodyIndexToLastPosition()
+    {
+        if (bodies.Count == 0) return -1;
+
+        Vector3 lastPlaceholderPosition = placeholderTarget != null ? placeholderTarget.position : Vector3.zero;
+        float closestDistance = float.MaxValue;
+        int closestIndex = -1;
+
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            float distance = Vector3.Distance(lastPlaceholderPosition, bodies[i].transform.position);
+            if (distance < closestDistance)
+            {
+                closestDistance = distance;
+                closestIndex = i;
+            }
+        }
+
+        return closestIndex;
     }
 
     /**
