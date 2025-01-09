@@ -99,7 +99,7 @@ public class TimeController : MonoBehaviour
             {
                 if (nBody != null)
                 {
-                    nBody.AdjustPredictionSettings(scale);
+                    nBody.AdjustPredictionSettings(scale, false);
                 }
             }
         }

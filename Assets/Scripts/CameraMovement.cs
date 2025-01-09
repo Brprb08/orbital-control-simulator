@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using System.Collections;
 
 /**
  * CameraMovement handles camera positioning and UI updates while tracking celestial bodies.
@@ -10,12 +11,13 @@ public class CameraMovement : MonoBehaviour
     [Header("Tracking Target")]
     public NBody targetBody; // The celestial body to track.
     public Transform targetPlaceholder; // Placeholder object to track when no real NBody is set.
+    public CameraController cameraController;
 
     [Header("Camera Settings")]
     public float distance = 100f; // Default distance from the target.
     public float height = 30f; // Default height from the target.
     public float baseZoomSpeed = 100f; // Base zoom speed for mouse scroll.
-    public float maxDistance = 1000f; // Maximum distance from the target.
+    public float maxDistance = 7000f; // Maximum distance from the target.
 
     [Header("UI References")]
     public TextMeshProUGUI velocityText; // UI element for displaying velocity.
@@ -106,6 +108,17 @@ public class CameraMovement : MonoBehaviour
      */
     public void SetTargetBody(NBody newTarget)
     {
+        Debug.Log($"Setting target body: {newTarget.name}");
+
+        // Hide apogee and perigee lines for all other bodies
+        foreach (var body in GravityManager.Instance.Bodies)
+        {
+            if (body != newTarget)  // Skip the current target
+            {
+                body.SetApogeePerigeeVisibility(false);
+            }
+        }
+
         targetBody = newTarget;
         targetPlaceholder = null;
 
@@ -125,9 +138,11 @@ public class CameraMovement : MonoBehaviour
             // Adjust closer for small objects.
             float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;  // Closer for very small objects.
             float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
-
+            maxDistance = 4000f;
             // Always reset to this default distance on switching.
             distance = defaultDistance;
+
+            targetBody.SetApogeePerigeeVisibility(true);
             Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
         }
     }

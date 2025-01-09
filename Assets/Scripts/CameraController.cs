@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
+using System.Collections;
 
 /**
  * CameraController handles the camera movement, tracking, and free camera mode.
@@ -17,7 +18,7 @@ public class CameraController : MonoBehaviour
     public float sensitivity = 100f; // Mouse sensitivity for camera rotation.
 
     [Header("Tracking State")]
-    private List<NBody> bodies; // List of celestial bodies to track.
+    public List<NBody> bodies; // List of celestial bodies to track.
     public List<NBody> Bodies => bodies; // Public read-only access to the list of bodies.
     public int currentIndex = 0; // Index of the currently tracked body.
     private bool isFreeCamMode = false; // Whether the camera is in free movement mode.
@@ -49,11 +50,18 @@ public class CameraController : MonoBehaviour
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
-            currentIndex = 0;
-            // cameraMovement.SetTargetBody(bodies[currentIndex]);
-            ReturnToTracking();
-            Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
+            StartCoroutine(InitializeCamera());
         }
+    }
+
+    IEnumerator InitializeCamera()
+    {
+        yield return null; // Wait for all NBody.Start() to finish
+
+        // cameraMovement.SetTargetBody(bodies[0]);  // Set the first tracked body
+        ReturnToTracking();  // Ensure camera is correctly tracking
+
+        Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
     }
 
     /**

@@ -36,12 +36,24 @@ public class NBody : MonoBehaviour
 
     [Tooltip("Renderer for the background prediction line.")]
     private LineRenderer backgroundRenderer;
+
+    [Header("Apogee and Perigee Lines")]
+    // Red = Apogee, Green = Perigee
+    private LineRenderer apogeeLineRenderer;
+    private LineRenderer perigeeLineRenderer;
+    private CameraMovement cameraMovement;
+
     public Vector3 force = Vector3.zero;
 
     private Coroutine predictionCoroutine;
     private static Material lineMaterial;
     private bool showPredictionLines = true;
     public float lineDisableDistance = 50f;
+
+    [Header("Thrust Feedback")]
+    public ParticleSystem thrustParticles;
+    float normalDelay = 0.01f;
+    float thrustDelay = 1f;
 
     /**
      * Called when the script instance is being loaded.
@@ -88,6 +100,12 @@ public class NBody : MonoBehaviour
         activeRenderer = CreateLineRenderer($"{gameObject.name}_ActivePrediction");
         backgroundRenderer = CreateLineRenderer($"{gameObject.name}_BackgroundPrediction");
 
+        apogeeLineRenderer = CreateLineRenderer($"{gameObject.name}_ApogeeLine");
+        perigeeLineRenderer = CreateLineRenderer($"{gameObject.name}_PerigeeLine");
+
+        ConfigureLineRenderer(apogeeLineRenderer, 5f, "#FF0000");  // Red for Apogee
+        ConfigureLineRenderer(perigeeLineRenderer, 5f, "#00FF00");
+
         GameObject originLineObj = new GameObject($"{gameObject.name}_OriginLine");
         originLineObj.transform.parent = this.transform;
         originLineRenderer = originLineObj.AddComponent<LineRenderer>();
@@ -95,6 +113,10 @@ public class NBody : MonoBehaviour
         ConfigureMaterial(false, originLineRenderer, "#FFFFFF");
 
         SetLineVisibility(showPredictionLines, true);
+
+        SetApogeePerigeeVisibility(false);
+        // apogeeLineRenderer.enabled = false;
+        // perigeeLineRenderer.enabled = false;
 
         if (isCentralBody)
         {
@@ -222,6 +244,7 @@ public class NBody : MonoBehaviour
     public void AddForce(Vector3 additionalForce)
     {
         force += additionalForce;
+        Debug.DrawLine(transform.position, transform.position + additionalForce * 1e-6f, Color.green, 0.5f);
     }
 
     /**
@@ -234,12 +257,24 @@ public class NBody : MonoBehaviour
         float angleThreshold = 5f;
         int significantStepThreshold = predictionSteps / 4;
         int currentPredictionSteps = predictionSteps;
+        float thrustBufferTime = 0.1f;
+        float thrustingDelayMultiplier = 5f;
 
         while (true) // Infinite loop until stopped.
         {
             if (this == null || gameObject == null)
             {
                 yield break; // Exit the coroutine if the object is destroyed.
+            }
+
+            bool isThrusting = GravityManager.Instance.GetComponent<ThrustController>()?.isForwardThrustActive == true
+                       || GravityManager.Instance.GetComponent<ThrustController>()?.isReverseThrustActive == true;
+            // AdjustPredictionSettings(Time.timeScale, isThrusting);
+            float currentDelay = isThrusting ? normalDelay * thrustingDelayMultiplier : normalDelay;
+
+            if (isThrusting)
+            {
+                yield return new WaitForSeconds(thrustBufferTime);  // Brief delay to allow state to stabilize
             }
 
             if (!showPredictionLines)
@@ -279,6 +314,11 @@ public class NBody : MonoBehaviour
             bool closedLoopDetected = false;
             bool collisionDetected = false;
 
+            float highestAltitude = float.MinValue;
+            float lowestAltitude = float.MaxValue;
+            Vector3 apogeePoint = Vector3.zero;
+            Vector3 perigeePoint = Vector3.zero;
+
             for (int i = 1; i < predictionSteps; i++)
             {
                 if (this == null || gameObject == null)
@@ -289,6 +329,20 @@ public class NBody : MonoBehaviour
                 OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
                 Vector3 nextPosition = newState.position;
                 Vector3 nextVelocity = newState.velocity;
+
+                float altitude = nextPosition.magnitude;
+
+                if (altitude > highestAltitude)
+                {
+                    highestAltitude = altitude;
+                    apogeePoint = nextPosition;
+                }
+
+                if (altitude < lowestAltitude)
+                {
+                    lowestAltitude = altitude;
+                    perigeePoint = nextPosition;
+                }
 
                 // Collision Detection
                 Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
@@ -356,9 +410,28 @@ public class NBody : MonoBehaviour
                 backgroundRenderer.enabled = true;
             }
 
+            if (apogeeLineRenderer != null)
+            {
+                apogeeLineRenderer.positionCount = 2;
+                apogeeLineRenderer.SetPositions(new Vector3[] { apogeePoint, Vector3.zero });
+            }
+
+            if (perigeeLineRenderer != null)
+            {
+                perigeeLineRenderer.positionCount = 2;
+                perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
+            }
+
+            Vector3 previousPoint = positions[0];
+            for (int i = 1; i < positions.Count; i++)
+            {
+                positions[i] = Vector3.Lerp(previousPoint, positions[i], 0.5f);  // Smoothly interpolate between points
+                previousPoint = positions[i];
+            }
+
             // Optionally, you can also handle the origin line here if needed
 
-            yield return new WaitForSeconds(delayBetweenBatches); // Wait to avoid freezing the frame.
+            yield return new WaitForSeconds(currentDelay); // Wait to avoid freezing the frame.
 
             if (closedLoopDetected || collisionDetected)
             {
@@ -371,7 +444,7 @@ public class NBody : MonoBehaviour
     /**
      * Adjusts the trajectory prediction settings based on time scale.
      */
-    public void AdjustPredictionSettings(float timeScale)
+    public void AdjustPredictionSettings(float timeScale, bool isThrusting)
     {
         if (timeScale <= 1f)
         {
@@ -418,7 +491,14 @@ public class NBody : MonoBehaviour
                 totalForce += direction.normalized * forceMagnitude;
             }
         }
-        return totalForce / mass;
+
+        // Incorporate external forces (e.g., thrust) into acceleration
+        Vector3 externalAcceleration = force / mass;
+
+        // Total acceleration is gravitational acceleration plus external acceleration
+        Vector3 totalAcceleration = (totalForce / mass) + externalAcceleration;
+        // Debug.Log($"Total Acceleration: {totalAcceleration}, External Acceleration: {externalAcceleration}");
+        return totalAcceleration;
     }
 
     /**
@@ -473,7 +553,7 @@ public class NBody : MonoBehaviour
 
         Vector3 newPosition = currentState.position + (deltaTime / 6f) * (k1.position + 2f * k2.position + 2f * k3.position + k4.position);
         Vector3 newVelocity = currentState.velocity + (deltaTime / 6f) * (k1.velocity + 2f * k2.velocity + 2f * k3.velocity + k4.velocity);
-
+        // Debug.Log($"New Velocity: {newVelocity}");
         return new OrbitalState(newPosition, newVelocity);
     }
 
@@ -498,6 +578,18 @@ public class NBody : MonoBehaviour
         if (activeRenderer != null) activeRenderer.enabled = showPrediction;
         if (backgroundRenderer != null) backgroundRenderer.enabled = showPrediction;
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
+    }
+
+    public void SetApogeePerigeeVisibility(bool isVisible)
+    {
+        if (apogeeLineRenderer != null)
+        {
+            apogeeLineRenderer.enabled = isVisible;
+        }
+        if (perigeeLineRenderer != null)
+        {
+            perigeeLineRenderer.enabled = isVisible;
+        }
     }
 
     /**
