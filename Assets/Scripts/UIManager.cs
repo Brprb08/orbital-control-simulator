@@ -22,6 +22,7 @@ public class UIManager : MonoBehaviour
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
 
+    public CameraController cameraController;
     public TMP_InputField velocityInputField; // Input field for entering velocity.
 
 

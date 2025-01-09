@@ -32,21 +32,16 @@ public class NBody : MonoBehaviour
     private LineRenderer originLineRenderer;
 
     [Tooltip("Renderer for the active prediction line.")]
-    public LineRenderer activeRenderer;
+    private LineRenderer activeRenderer;
 
     [Tooltip("Renderer for the background prediction line.")]
     private LineRenderer backgroundRenderer;
-
-    private bool isPredictionLineActive = false;
-
     public Vector3 force = Vector3.zero;
 
-    private int coarsePredictionSteps = 200;
-    private int refinementFrequency = 5;
-    private int frameCounter = 0;
     private Coroutine predictionCoroutine;
     private static Material lineMaterial;
     private bool showPredictionLines = true;
+    public float lineDisableDistance = 50f;
 
     /**
      * Called when the script instance is being loaded.
@@ -88,7 +83,7 @@ public class NBody : MonoBehaviour
     /**
      * Start method initializes line renderers and sets up trajectory predictions.
      */
-    async void Start()
+    void Start()
     {
         activeRenderer = CreateLineRenderer($"{gameObject.name}_ActivePrediction");
         backgroundRenderer = CreateLineRenderer($"{gameObject.name}_BackgroundPrediction");
@@ -234,10 +229,9 @@ public class NBody : MonoBehaviour
      */
     IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
-        int batchSize = 200;
         float delayBetweenBatches = 0.01f; // Time delay in seconds (coroutine-friendly)
         float loopThresholdDistance = 5f;
-        float angleThreshold = 30f;
+        float angleThreshold = 5f;
         int significantStepThreshold = predictionSteps / 4;
         int currentPredictionSteps = predictionSteps;
 
@@ -254,68 +248,123 @@ public class NBody : MonoBehaviour
                 continue;  // Don't update positions if lines are hidden
             }
 
+            Camera mainCamera = Camera.main;
+            if (mainCamera != null)
+            {
+                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, transform.position);
+
+                // Disable or enable line renderers based on distance.
+                if (distanceToCamera > lineDisableDistance)
+                {
+                    // Show line renderers when far away.
+                    SetLinesEnabled(showPredictionLines);
+                }
+                else
+                {
+                    SetLinesEnabled(false);
+                    yield return new WaitForSeconds(0.1f);
+                    continue;
+                }
+            }
+
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
             Dictionary<NBody, Vector3> bodyPositions = GravityManager.Instance.Bodies
-                .Where(body => body != null && body.gameObject != null)
+                .Where(body => body != null && body.gameObject != null && body != this)
                 .ToDictionary(body => body, body => body.transform.position);
 
-            Vector3[] positions = new Vector3[predictionSteps];
+            List<Vector3> positions = new List<Vector3>();
+            positions.Add(initialPosition);
+
             bool closedLoopDetected = false;
+            bool collisionDetected = false;
 
-            for (int i = 0; i < predictionSteps;)
+            for (int i = 1; i < predictionSteps; i++)
             {
-                int currentBatchSize = Mathf.Min(batchSize, predictionSteps - i);
-                for (int j = 0; j < currentBatchSize; j++, i++)
+                if (this == null || gameObject == null)
                 {
-                    if (this == null || gameObject == null)
-                    {
-                        yield break; // Stop immediately if object is null.
-                    }
+                    yield break; // Stop immediately if object is null.
+                }
 
-                    OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
-                    initialPosition = newState.position;
-                    initialVelocity = newState.velocity;
+                OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
+                Vector3 nextPosition = newState.position;
+                Vector3 nextVelocity = newState.velocity;
 
-                    if (i < positions.Length)
+                // Collision Detection
+                Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
+                foreach (var hitCollider in hitColliders)
+                {
+                    NBody hitBody = hitCollider.GetComponent<NBody>();
+                    if (hitBody != null && hitBody != this)
                     {
-                        positions[i] = initialPosition;
-                    }
+                        float distance = Vector3.Distance(nextPosition, hitBody.transform.position);
+                        float collisionThreshold = radius + hitBody.radius;
 
-                    if (i > significantStepThreshold && Vector3.Distance(initialPosition, positions[0]) < loopThresholdDistance)
-                    {
-                        float angleDifference = Vector3.Angle(velocity.normalized, initialVelocity.normalized);
-                        if (angleDifference < angleThreshold)
+                        if (distance < collisionThreshold)
                         {
-                            Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
-                            closedLoopDetected = true;
+                            Debug.Log($"[Collision Detected] {gameObject.name} will collide with {hitBody.gameObject.name} at step {i}");
+                            collisionDetected = true;
                             break;
                         }
                     }
                 }
 
-                if (closedLoopDetected)
+                if (collisionDetected)
                 {
+                    // Stop adding further points
                     break;
                 }
 
-                if (activeRenderer != null)
+                // Add the valid next position
+                if (!float.IsNaN(nextPosition.x) && !float.IsInfinity(nextPosition.x))
                 {
-                    activeRenderer.positionCount = i;
-                    activeRenderer.SetPositions(positions.Take(i).ToArray());
-                    activeRenderer.enabled = true;
+                    positions.Add(nextPosition);
+                    initialPosition = nextPosition;
+                    initialVelocity = nextVelocity;
+                }
+                else
+                {
+                    Debug.LogWarning("Invalid trajectory point detected; skipping.");
                 }
 
-                yield return new WaitForSeconds(delayBetweenBatches); // Wait to avoid freezing the frame.
+
+                // Loop Detection
+                if (i > significantStepThreshold && Vector3.Distance(nextPosition, positions[0]) < loopThresholdDistance)
+                {
+                    float angleDifference = Vector3.Angle(velocity.normalized, newState.velocity.normalized);
+                    if (angleDifference < angleThreshold)
+                    {
+                        // Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
+                        closedLoopDetected = true;
+                        break;
+                    }
+                }
             }
 
-            Vector3 previousPosition = transform.position;
-            while (Vector3.Distance(previousPosition, transform.position) < loopThresholdDistance)
+            // Update the LineRenderers with the calculated positions
+            if (activeRenderer != null)
             {
-                yield return new WaitForSeconds(0.1f); // Small delay for performance.
+                activeRenderer.positionCount = positions.Count;
+                activeRenderer.SetPositions(positions.ToArray());
+                activeRenderer.enabled = true;
             }
 
-            Debug.Log($"Object moved significantly. Recalculating {gameObject.name}'s orbit.");
+            if (backgroundRenderer != null)
+            {
+                backgroundRenderer.positionCount = positions.Count;
+                backgroundRenderer.SetPositions(positions.ToArray());
+                backgroundRenderer.enabled = true;
+            }
+
+            // Optionally, you can also handle the origin line here if needed
+
+            yield return new WaitForSeconds(delayBetweenBatches); // Wait to avoid freezing the frame.
+
+            if (closedLoopDetected || collisionDetected)
+            {
+                Debug.Log($"Stopping prediction for {gameObject.name} due to loop or collision.");
+                yield return null; // Optionally wait or handle accordingly
+            }
         }
     }
 
@@ -331,18 +380,18 @@ public class NBody : MonoBehaviour
         }
         else if (timeScale <= 10f)
         {
-            predictionSteps = 1500;
-            predictionDeltaTime = 10f;
+            predictionSteps = 2000;
+            predictionDeltaTime = 5f;
         }
         else if (timeScale <= 50f)
         {
-            predictionSteps = 800;
-            predictionDeltaTime = 50f;
+            predictionSteps = 1500;
+            predictionDeltaTime = 20f;
         }
         else if (timeScale <= 100f)
         {
-            predictionSteps = 600;
-            predictionDeltaTime = 100f;
+            predictionSteps = 1000;
+            predictionDeltaTime = 30f;
         }
 
         Debug.Log($"Adjusted for {gameObject.name}: predictionSteps = {predictionSteps}, predictionDeltaTime = {predictionDeltaTime}");
@@ -354,15 +403,18 @@ public class NBody : MonoBehaviour
     Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions)
     {
         Vector3 totalForce = Vector3.zero;
+        float minDistance = 0.001f;  // Prevent divide-by-zero issues.
+
         foreach (var body in bodyPositions.Keys)
         {
             if (body != this)
             {
                 Vector3 direction = bodyPositions[body] - position;
-                float distanceSquared = direction.sqrMagnitude;
-                if (distanceSquared < Mathf.Epsilon) continue;
+                float distanceSquared = Mathf.Max(direction.sqrMagnitude, minDistance * minDistance);  // Avoid zero distances.
 
                 float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
+                forceMagnitude = Mathf.Min(forceMagnitude, 1e10f);  // Clamp max force.
+
                 totalForce += direction.normalized * forceMagnitude;
             }
         }

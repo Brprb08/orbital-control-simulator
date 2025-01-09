@@ -73,7 +73,6 @@ public class VelocityDragManager : MonoBehaviour
     private bool isVelocitySet = false;
     private Vector3 dragStartPos;
     private Vector3 currentVelocity;
-    private int maxSpeed = 2;
     private Plane dragPlane;
     private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;

@@ -30,7 +30,6 @@ public class ObjectPlacementManager : MonoBehaviour
     [Header("Placement State")]
     public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
     private GameObject realNBodyObject;      // Reference to the instantiated NBody GameObject.
-    private NBody lastPlacedNBody;           // Reference to the NBody component.
     private bool isInPlacementMode = false;
     private int satelliteCount = 0;
 
@@ -114,8 +113,6 @@ public class ObjectPlacementManager : MonoBehaviour
             c.a = 0.5f; // Semi-transparent for indication.
             renderer.material.color = c;
         }
-
-        lastPlacedNBody = null;
 
         if (velocityDragManager != null)
         {
@@ -214,7 +211,7 @@ public class ObjectPlacementManager : MonoBehaviour
         if (!float.TryParse(input, out float parsedMass))
             return false;
 
-        if (parsedMass < 1 || parsedMass > 5.972e+24)
+        if (parsedMass < 1 || parsedMass > 5.972e+50)
             return false;
 
         mass = parsedMass;

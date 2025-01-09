@@ -50,8 +50,8 @@ public class CameraController : MonoBehaviour
         if (bodies.Count > 0 && cameraMovement != null)
         {
             currentIndex = 0;
-            cameraMovement.SetTargetBody(bodies[currentIndex]);
-            ResetCameraPosition();
+            // cameraMovement.SetTargetBody(bodies[currentIndex]);
+            ReturnToTracking();
             Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
         }
     }
@@ -207,8 +207,8 @@ public class CameraController : MonoBehaviour
             return;
         }
 
-        float distanceMultiplier = 10.0f;  // Adjust for how far back the camera should be
-        float radius = (targetBody != null) ? targetBody.radius : 1f;  // Use the body's radius or a default
+        float distanceMultiplier = 100.0f;  // Adjust for how far back the camera should be
+        float radius = (targetBody != null) ? targetBody.radius : 3f;  // Use the body's radius or a default
         float desiredDistance = radius * distanceMultiplier;
 
         Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;

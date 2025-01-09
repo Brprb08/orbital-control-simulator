@@ -3225,7 +3225,6 @@ MonoBehaviour:
   radius: 637.1
   predictionSteps: 0
   predictionDeltaTime: 0.1
-  activeRenderer: {fileID: 0}
   force: {x: 0, y: 0, z: 0}
 --- !u!1 &916841081
 GameObject:
@@ -5170,7 +5169,6 @@ MonoBehaviour:
   radius: 0.6
   predictionSteps: 1000
   predictionDeltaTime: 10
-  activeRenderer: {fileID: 0}
   force: {x: 0, y: 0, z: 0}
 --- !u!120 &1387400465
 LineRenderer:
@@ -5882,7 +5880,6 @@ MonoBehaviour:
   radius: 0.5
   predictionSteps: 1000
   predictionDeltaTime: 10
-  activeRenderer: {fileID: 0}
   force: {x: 0, y: 0, z: 0}
 --- !u!1 &1455678692
 GameObject:
@@ -6458,6 +6455,7 @@ MonoBehaviour:
   massInputField: {fileID: 916841083}
   radiusInputField: {fileID: 770696344}
   placeObjectButton: {fileID: 229281974}
+  cameraController: {fileID: 0}
   velocityInputField: {fileID: 0}
   feedbackText: {fileID: 1138443355}
 --- !u!114 &1586431854
@@ -6885,6 +6883,7 @@ GameObject:
   - component: {fileID: 1713781787}
   - component: {fileID: 1713781786}
   - component: {fileID: 1713781785}
+  - component: {fileID: 1713781791}
   m_Layer: 0
   m_Name: Moon
   m_TagString: Planet
@@ -6910,7 +6909,6 @@ MonoBehaviour:
   radius: 86.85
   predictionSteps: 1000
   predictionDeltaTime: 10
-  activeRenderer: {fileID: 0}
   force: {x: 0, y: 0, z: 0}
 --- !u!120 &1713781786
 LineRenderer:
@@ -7063,7 +7061,7 @@ MeshRenderer:
   m_RenderingLayerMask: 1
   m_RendererPriority: 0
   m_Materials:
-  - {fileID: 2100000, guid: 31321ba15b8f8eb4c954353edc038b1d, type: 2}
+  - {fileID: 2100000, guid: 02e24647c34bccb4e9f0f98fca061775, type: 2}
   m_StaticBatchInfo:
     firstSubMesh: 0
     subMeshCount: 0
@@ -7108,6 +7106,20 @@ Transform:
   m_Children: []
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1713781791
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1713781784}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 24ddf3b1c581eea40a5f433a4540ef77, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  material: {fileID: 2100000, guid: 02e24647c34bccb4e9f0f98fca061775, type: 2}
+  rotationAngle: 45
 --- !u!1 &1744725511
 GameObject:
   m_ObjectHideFlags: 0
@@ -8021,7 +8033,6 @@ MonoBehaviour:
   radius: 0.6
   predictionSteps: 1000
   predictionDeltaTime: 10
-  activeRenderer: {fileID: 0}
   force: {x: 0, y: 0, z: 0}
 --- !u!120 &2136029599
 LineRenderer:

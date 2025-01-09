@@ -8,8 +8,8 @@ using UnityEngine.EventSystems;
 public class FreeCamera : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float speed = 100f; // Movement speed.
-    public float sensitivity = 100f; // Look sensitivity.
+    public float speed = 400f; // Movement speed.
+    public float sensitivity = 120f; // Look sensitivity.
 
     private bool isFreeMode = false; // Indicates if the camera is in free mode.
 

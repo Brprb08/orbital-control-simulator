@@ -35,11 +35,11 @@ public class CameraMovement : MonoBehaviour
 
         if (targetBody != null && mainCamera != null)
         {
-            transform.position = targetBody.transform.position;
-            distance = Mathf.Clamp(distance, minDistance, maxDistance);
-            mainCamera.transform.localPosition = new Vector3(0, height, -distance);
-            mainCamera.transform.localRotation = Quaternion.identity;
-            mainCamera.transform.LookAt(transform.position);
+            // transform.position = targetBody.transform.position;
+            // distance = Mathf.Clamp(distance, minDistance, maxDistance);
+            // mainCamera.transform.localPosition = new Vector3(0, height, -distance);
+            // mainCamera.transform.localRotation = Quaternion.identity;
+            // mainCamera.transform.LookAt(transform.position);
             Debug.Log($"Camera initialized at distance: {distance}, position: {mainCamera.transform.localPosition}");
         }
     }
@@ -76,7 +76,10 @@ public class CameraMovement : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
-            float zoomSpeed = baseZoomSpeed * Mathf.Clamp(distance / minDistance, 0.5f, 20f);
+            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);  // Boost zoom speed for large bodies
+            float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);  // Scale with current distance
+            float zoomSpeed = baseZoomSpeed * sizeMultiplier * distanceFactor * 2f;  // Base speed with extra scaling
+
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
         }
@@ -116,7 +119,15 @@ public class CameraMovement : MonoBehaviour
             }
 
             minDistance = CalculateMinDistance(targetBody.radius);
-            distance = Mathf.Clamp(distance, minDistance, maxDistance);
+            maxDistance = CalculateMaxDistance(targetBody.radius);
+            float midpointDistance = (minDistance + maxDistance) / 2f;
+
+            // Adjust closer for small objects.
+            float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;  // Closer for very small objects.
+            float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
+
+            // Always reset to this default distance on switching.
+            distance = defaultDistance;
             Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
         }
     }
@@ -175,15 +186,36 @@ public class CameraMovement : MonoBehaviour
     {
         if (radius <= 0.5f)
         {
-            return Mathf.Max(0.1f, radius * 10f);
+            return Mathf.Max(0.4f, radius * 10f);
         }
         else if (radius > 0.5f && radius <= 100f)
         {
-            return radius * 2f;
+            return radius * 4f;
         }
         else
         {
             return radius + 400f;
+        }
+    }
+
+    /**
+     * Calculates the maximum distance based on the radius of the object being tracked.
+     */
+    private float CalculateMaxDistance(float radius)
+    {
+        float minimumMaxDistance = 2000f;  // Ensure you can always zoom out at least this far.
+
+        if (radius <= 0.5f)
+        {
+            return Mathf.Max(minimumMaxDistance, radius * 500f);  // Small objects need a large zoom-out factor.
+        }
+        else if (radius > 0.5f && radius <= 100f)
+        {
+            return Mathf.Max(minimumMaxDistance, radius * 100f);  // Medium-sized objects.
+        }
+        else
+        {
+            return Mathf.Max(minimumMaxDistance, radius + 2000f);  // Large planets.
         }
     }
 }
