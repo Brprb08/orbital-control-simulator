@@ -24,6 +24,7 @@ public class TimeController : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+
     /**
      * Initializes the time scale and configures the UI elements.
      */
@@ -90,6 +91,8 @@ public class TimeController : MonoBehaviour
     {
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * scale;
+        // Time.fixedDeltaTime = 0.02f;
+
         Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
 
         GravityManager gravityManager = GravityManager.Instance;

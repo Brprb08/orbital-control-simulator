@@ -5,6 +5,7 @@ using System.Threading.Tasks;
 using Unity.Collections;
 using Unity.Jobs;
 using System.Linq;
+using TMPro;
 
 /**
  * NBody class represents a celestial body in the gravitational system.
@@ -54,6 +55,15 @@ public class NBody : MonoBehaviour
     public ParticleSystem thrustParticles;
     float normalDelay = 0.01f;
     float thrustDelay = 1f;
+    private ThrustController thrustController;
+
+    [Header("UI Elements")]
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
+
+
+    private float previousApogeeDistance = float.MaxValue;
+    private float previousPerigeeDistance = float.MaxValue;
 
     /**
      * Called when the script instance is being loaded.
@@ -122,6 +132,12 @@ public class NBody : MonoBehaviour
         {
             velocity = Vector3.zero;
             Debug.Log($"{gameObject.name} is the central body and will not move.");
+        }
+
+        thrustController = GravityManager.Instance.GetComponent<ThrustController>();
+        if (thrustController == null)
+        {
+            Debug.LogError("NBody: ThrustController not found on GravityManager.");
         }
 
         predictionCoroutine = StartCoroutine(UpdatePredictedTrajectoryCoroutine());
@@ -254,12 +270,18 @@ public class NBody : MonoBehaviour
     {
         float delayBetweenBatches = 0.01f; // Time delay in seconds (coroutine-friendly)
         float loopThresholdDistance = 5f;
-        float angleThreshold = 5f;
+        float dynamicAngleThreshold = Mathf.Max(5f, velocity.magnitude / 100f);
         int significantStepThreshold = predictionSteps / 4;
         int currentPredictionSteps = predictionSteps;
         float thrustBufferTime = 0.1f;
         float thrustingDelayMultiplier = 5f;
+        float uiUpdateInterval = 1f;  // Update text once per second
+        float lastUIUpdateTime = 0f;
+        float lineUpdateInterval = 1f;
+        float lastLineUpdateTime = 0f;
 
+        float highestAltitude = float.MinValue;
+        float lowestAltitude = float.MaxValue;
         while (true) // Infinite loop until stopped.
         {
             if (this == null || gameObject == null)
@@ -267,19 +289,25 @@ public class NBody : MonoBehaviour
                 yield break; // Exit the coroutine if the object is destroyed.
             }
 
-            bool isThrusting = GravityManager.Instance.GetComponent<ThrustController>()?.isForwardThrustActive == true
-                       || GravityManager.Instance.GetComponent<ThrustController>()?.isReverseThrustActive == true;
+            NBody targetBody = thrustController?.cameraController?.cameraMovement?.targetBody;
+
+            bool isThrusting = thrustController?.isForwardThrustActive == true
+                           || thrustController?.isReverseThrustActive == true
+                           || thrustController?.isLeftThrustActive == true
+                           || thrustController?.isRightThrustActive == true;
+
+            bool shouldApplyThrust = isThrusting && (targetBody == this);
             // AdjustPredictionSettings(Time.timeScale, isThrusting);
-            float currentDelay = isThrusting ? normalDelay * thrustingDelayMultiplier : normalDelay;
+            float currentDelay = shouldApplyThrust ? normalDelay * thrustingDelayMultiplier : normalDelay;
 
             if (isThrusting)
             {
-                yield return new WaitForSeconds(thrustBufferTime);  // Brief delay to allow state to stabilize
+                yield return new WaitForSecondsRealtime(thrustBufferTime);  // Brief delay to allow state to stabilize
             }
 
             if (!showPredictionLines)
             {
-                yield return new WaitForSeconds(0.1f);
+                yield return new WaitForSecondsRealtime(0.1f);
                 continue;  // Don't update positions if lines are hidden
             }
 
@@ -297,10 +325,13 @@ public class NBody : MonoBehaviour
                 else
                 {
                     SetLinesEnabled(false);
-                    yield return new WaitForSeconds(0.1f);
+                    yield return new WaitForSecondsRealtime(0.1f);
                     continue;
                 }
             }
+
+            highestAltitude = float.MinValue;
+            lowestAltitude = float.MaxValue;
 
             Vector3 initialPosition = transform.position;
             Vector3 initialVelocity = velocity;
@@ -308,14 +339,23 @@ public class NBody : MonoBehaviour
                 .Where(body => body != null && body.gameObject != null && body != this)
                 .ToDictionary(body => body, body => body.transform.position);
 
+            bool isTrackedBody = (targetBody == this);
+
+            Vector3 currentThrustImpulse = Vector3.zero;
+            float currentThrustDuration = thrustController.GetThrustDuration();
+
+            if (isThrusting && targetBody == this)
+            {
+                currentThrustImpulse = thrustController.GetCurrentThrustImpulse();
+            }
+
             List<Vector3> positions = new List<Vector3>();
             positions.Add(initialPosition);
 
             bool closedLoopDetected = false;
             bool collisionDetected = false;
 
-            float highestAltitude = float.MinValue;
-            float lowestAltitude = float.MaxValue;
+
             Vector3 apogeePoint = Vector3.zero;
             Vector3 perigeePoint = Vector3.zero;
 
@@ -326,7 +366,24 @@ public class NBody : MonoBehaviour
                     yield break; // Stop immediately if object is null.
                 }
 
-                OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions);
+                Vector3 thrustToApply = currentThrustImpulse;
+                if (currentThrustDuration > 0f)
+                {
+                    // Apply thrust only for a certain duration in prediction
+                    // For example, apply thrust for the next 5 seconds
+                    float thrustApplicationTime = 5f;
+                    if (i * predictionDeltaTime > thrustApplicationTime)
+                    {
+                        thrustToApply = Vector3.zero;
+                    }
+                }
+
+                // Convert the highest and lowest altitudes to distances from the central body
+                const float scaleFactor = 10f; // 1 unit = 10 km
+
+                float centralBodyRadius = 637.1f / scaleFactor; // Earth's radius in simulation units (scaled down)
+
+                OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions, thrustToApply);
                 Vector3 nextPosition = newState.position;
                 Vector3 nextVelocity = newState.velocity;
 
@@ -334,15 +391,22 @@ public class NBody : MonoBehaviour
 
                 if (altitude > highestAltitude)
                 {
-                    highestAltitude = altitude;
+                    highestAltitude = Mathf.Max(highestAltitude, altitude);
                     apogeePoint = nextPosition;
                 }
 
                 if (altitude < lowestAltitude)
                 {
-                    lowestAltitude = altitude;
+                    lowestAltitude = Mathf.Min(lowestAltitude, altitude);
                     perigeePoint = nextPosition;
                 }
+
+                // else
+                // {
+                //     // Hide the lines for non-tracked bodies
+                //     if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = false;
+                //     if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = false;
+                // }
 
                 // Collision Detection
                 Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
@@ -386,12 +450,29 @@ public class NBody : MonoBehaviour
                 if (i > significantStepThreshold && Vector3.Distance(nextPosition, positions[0]) < loopThresholdDistance)
                 {
                     float angleDifference = Vector3.Angle(velocity.normalized, newState.velocity.normalized);
-                    if (angleDifference < angleThreshold)
+                    if (angleDifference < dynamicAngleThreshold)
                     {
                         // Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
                         closedLoopDetected = true;
                         break;
                     }
+                }
+            }
+
+            float apogeeDistance = ((highestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
+            float perigeeDistance = ((lowestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
+
+            // Debug.Log($"[Prediction] {gameObject.name} - Apogee Distance: {apogeeDistance} km");
+            // Debug.Log($"[Prediction] {gameObject.name} - Perigee Distance: {perigeeDistance} km");
+
+            // Update UI After Loop
+            if (isTrackedBody)
+            {
+                if (Mathf.Abs(apogeeDistance - previousApogeeDistance) > 1f || Mathf.Abs(perigeeDistance - previousPerigeeDistance) > 1f)
+                {
+                    UpdateApogeePerigeeUI(apogeeDistance, perigeeDistance);
+                    previousApogeeDistance = apogeeDistance;
+                    previousPerigeeDistance = perigeeDistance;
                 }
             }
 
@@ -422,23 +503,59 @@ public class NBody : MonoBehaviour
                 perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
             }
 
-            Vector3 previousPoint = positions[0];
-            for (int i = 1; i < positions.Count; i++)
-            {
-                positions[i] = Vector3.Lerp(previousPoint, positions[i], 0.5f);  // Smoothly interpolate between points
-                previousPoint = positions[i];
-            }
+            // Vector3 previousPoint = positions[0];
+            // for (int i = 1; i < positions.Count; i++)
+            // {
+            //     positions[i] = Vector3.Lerp(previousPoint, positions[i], 0.5f);  // Smoothly interpolate between points
+            //     previousPoint = positions[i];
+            // }
 
             // Optionally, you can also handle the origin line here if needed
 
-            yield return new WaitForSeconds(currentDelay); // Wait to avoid freezing the frame.
+            yield return new WaitForSecondsRealtime(currentDelay); // Wait to avoid freezing the frame.
 
             if (closedLoopDetected || collisionDetected)
             {
-                Debug.Log($"Stopping prediction for {gameObject.name} due to loop or collision.");
+                // Debug.Log($"Stopping prediction for {gameObject.name} due to loop or collision.");
                 yield return null; // Optionally wait or handle accordingly
             }
         }
+    }
+
+    private Vector3 CatmullRomSpline(List<Vector3> points, int index, float alpha)
+    {
+        // Clamp the index values to avoid out-of-bounds access.
+        int p0Index = Mathf.Clamp(index - 1, 0, points.Count - 1);
+        int p1Index = Mathf.Clamp(index, 0, points.Count - 1);
+        int p2Index = Mathf.Clamp(index + 1, 0, points.Count - 1);
+        int p3Index = Mathf.Clamp(index + 2, 0, points.Count - 1);
+
+        Vector3 p0 = points[p0Index];
+        Vector3 p1 = points[p1Index];
+        Vector3 p2 = points[p2Index];
+        Vector3 p3 = points[p3Index];
+
+        // Compute the Catmull-Rom spline using the formula.
+        float t0 = 0.0f;
+        float t1 = GetT(t0, p0, p1, alpha);
+        float t2 = GetT(t1, p1, p2, alpha);
+        float t3 = GetT(t2, p2, p3, alpha);
+
+        float t = Mathf.Lerp(t1, t2, 0.5f); // Interpolation point between t1 and t2.
+        Vector3 a1 = (t1 - t) / (t1 - t0) * p0 + (t - t0) / (t1 - t0) * p1;
+        Vector3 a2 = (t2 - t) / (t2 - t1) * p1 + (t - t1) / (t2 - t1) * p2;
+        Vector3 a3 = (t3 - t) / (t3 - t2) * p2 + (t - t2) / (t3 - t2) * p3;
+
+        Vector3 b1 = (t2 - t) / (t2 - t0) * a1 + (t - t0) / (t2 - t0) * a2;
+        Vector3 b2 = (t3 - t) / (t3 - t1) * a2 + (t - t1) / (t3 - t1) * a3;
+
+        return (t2 - t) / (t2 - t1) * b1 + (t - t1) / (t2 - t1) * b2;
+    }
+
+    private float GetT(float t, Vector3 p0, Vector3 p1, float alpha)
+    {
+        float distance = Vector3.Distance(p0, p1);
+        return t + Mathf.Pow(distance, alpha);
     }
 
     /**
@@ -446,6 +563,7 @@ public class NBody : MonoBehaviour
      */
     public void AdjustPredictionSettings(float timeScale, bool isThrusting)
     {
+        // predictionDeltaTime = Time.fixedDeltaTime;
         if (timeScale <= 1f)
         {
             predictionSteps = 3000;
@@ -458,12 +576,12 @@ public class NBody : MonoBehaviour
         }
         else if (timeScale <= 50f)
         {
-            predictionSteps = 1500;
+            predictionSteps = 2000;
             predictionDeltaTime = 20f;
         }
         else if (timeScale <= 100f)
         {
-            predictionSteps = 1000;
+            predictionSteps = 2000;
             predictionDeltaTime = 30f;
         }
 
@@ -473,7 +591,7 @@ public class NBody : MonoBehaviour
     /**
      * Computes the gravitational acceleration for a given position.
      */
-    Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions)
+    private Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
     {
         Vector3 totalForce = Vector3.zero;
         float minDistance = 0.001f;  // Prevent divide-by-zero issues.
@@ -493,7 +611,7 @@ public class NBody : MonoBehaviour
         }
 
         // Incorporate external forces (e.g., thrust) into acceleration
-        Vector3 externalAcceleration = force / mass;
+        Vector3 externalAcceleration = (force / mass) + (thrustImpulse / mass);
 
         // Total acceleration is gravitational acceleration plus external acceleration
         Vector3 totalAcceleration = (totalForce / mass) + externalAcceleration;
@@ -533,23 +651,23 @@ public class NBody : MonoBehaviour
     /**
      * Performs a single Runge-Kutta (RK4) step to update position and velocity.
      */
-    private OrbitalState RungeKuttaStep(OrbitalState currentState, float deltaTime, Dictionary<NBody, Vector3> bodyPositions)
+    private OrbitalState RungeKuttaStep(OrbitalState currentState, float deltaTime, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
     {
-        OrbitalState k1 = CalculateDerivatives(currentState, bodyPositions);
+        OrbitalState k1 = CalculateDerivatives(currentState, bodyPositions, thrustImpulse);
         OrbitalState k2 = CalculateDerivatives(new OrbitalState(
             currentState.position + k1.position * (deltaTime / 2f),
             currentState.velocity + k1.velocity * (deltaTime / 2f)
-        ), bodyPositions);
+        ), bodyPositions, thrustImpulse);
 
         OrbitalState k3 = CalculateDerivatives(new OrbitalState(
             currentState.position + k2.position * (deltaTime / 2f),
             currentState.velocity + k2.velocity * (deltaTime / 2f)
-        ), bodyPositions);
+        ), bodyPositions, thrustImpulse);
 
         OrbitalState k4 = CalculateDerivatives(new OrbitalState(
             currentState.position + k3.position * deltaTime,
             currentState.velocity + k3.velocity * deltaTime
-        ), bodyPositions);
+        ), bodyPositions, thrustImpulse);
 
         Vector3 newPosition = currentState.position + (deltaTime / 6f) * (k1.position + 2f * k2.position + 2f * k3.position + k4.position);
         Vector3 newVelocity = currentState.velocity + (deltaTime / 6f) * (k1.velocity + 2f * k2.velocity + 2f * k3.velocity + k4.velocity);
@@ -560,9 +678,9 @@ public class NBody : MonoBehaviour
     /**
      * Calculates derivatives for the Runge-Kutta integration.
      */
-    private OrbitalState CalculateDerivatives(OrbitalState state, Dictionary<NBody, Vector3> bodyPositions)
+    private OrbitalState CalculateDerivatives(OrbitalState state, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
     {
-        Vector3 acceleration = ComputeAccelerationFromData(state.position, bodyPositions);
+        Vector3 acceleration = ComputeAccelerationFromData(state.position, bodyPositions, thrustImpulse);
         return new OrbitalState(state.velocity, acceleration);
     }
 
@@ -609,5 +727,18 @@ public class NBody : MonoBehaviour
 
         if (originLineRenderer != null)
             originLineRenderer.enabled = enabled;
+    }
+
+    private void UpdateApogeePerigeeUI(float apogee, float perigee)
+    {
+        if (apogeeText != null)
+        {
+            apogeeText.text = $"Apogee: {apogee / 1000f:F2} km";
+        }
+
+        if (perigeeText != null)
+        {
+            perigeeText.text = $"Perigee: {perigee / 1000f:F2} km";
+        }
     }
 }

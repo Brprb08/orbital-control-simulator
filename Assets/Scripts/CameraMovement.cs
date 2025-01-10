@@ -17,7 +17,7 @@ public class CameraMovement : MonoBehaviour
     public float distance = 100f; // Default distance from the target.
     public float height = 30f; // Default height from the target.
     public float baseZoomSpeed = 100f; // Base zoom speed for mouse scroll.
-    public float maxDistance = 7000f; // Maximum distance from the target.
+    public float maxDistance = 20000f; // Maximum distance from the target.
 
     [Header("UI References")]
     public TextMeshProUGUI velocityText; // UI element for displaying velocity.
@@ -108,8 +108,6 @@ public class CameraMovement : MonoBehaviour
      */
     public void SetTargetBody(NBody newTarget)
     {
-        Debug.Log($"Setting target body: {newTarget.name}");
-
         // Hide apogee and perigee lines for all other bodies
         foreach (var body in GravityManager.Instance.Bodies)
         {

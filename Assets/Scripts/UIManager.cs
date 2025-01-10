@@ -21,6 +21,8 @@ public class UIManager : MonoBehaviour
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
 
     public CameraController cameraController;
     public TMP_InputField velocityInputField; // Input field for entering velocity.
@@ -165,5 +167,21 @@ public class UIManager : MonoBehaviour
 
         button.Select();
         button.OnDeselect(null); // Force the button to refresh its visual state.
+    }
+
+    public void UpdateApogee(float apogee)
+    {
+        if (apogeeText != null)
+        {
+            apogeeText.text = $"Apogee: {apogee / 1000f:F2} km";
+        }
+    }
+
+    public void UpdatePerigee(float perigee)
+    {
+        if (perigeeText != null)
+        {
+            perigeeText.text = $"Perigee: {perigee / 1000f:F2} km";
+        }
     }
 }
