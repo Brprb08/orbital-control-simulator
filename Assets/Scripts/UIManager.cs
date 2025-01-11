@@ -15,6 +15,8 @@ public class UIManager : MonoBehaviour
     [Header("Panels")]
     public GameObject objectPlacementPanel; // UI panel for object placement controls.
     public GameObject panel; // General UI panel for velocity and altitude display.
+    public GameObject thrustButtons;
+    public GameObject apogeePerigeePanel;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -69,6 +71,8 @@ public class UIManager : MonoBehaviour
         ShowPanel(false);
         SetButtonState(freeCamButton, true);
         SetButtonState(trackCamButton, false);
+        ShowThrustButtonsPanel(false);
+        ShowApogeePerigeePanel(false);
 
         if (velocityInputField != null)
         {
@@ -104,6 +108,8 @@ public class UIManager : MonoBehaviour
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
+        ShowThrustButtonsPanel(true);
+        ShowApogeePerigeePanel(true);
 
         if (velocityInputField != null)
         {
@@ -132,6 +138,16 @@ public class UIManager : MonoBehaviour
     private void ShowObjectPlacementPanel(bool show)
     {
         objectPlacementPanel.SetActive(show);
+    }
+
+    private void ShowThrustButtonsPanel(bool show)
+    {
+        thrustButtons.SetActive(show);
+    }
+
+    private void ShowApogeePerigeePanel(bool show)
+    {
+        apogeePerigeePanel.SetActive(show);
     }
 
     /**
