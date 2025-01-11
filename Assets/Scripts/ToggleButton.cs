@@ -105,17 +105,23 @@ public class ToggleButton : MonoBehaviour
     /// </summary>
     public void ToggleState()
     {
-        // Toggle the state
+        // Toggle the button's intended state
         isOn = !isOn;
 
-        // Update the button's color based on the new state
-        UpdateButtonColor();
-
-        // Notify the LineVisibilityManager about the state change
+        // Notify the LineVisibilityManager
         if (manager != null)
         {
-            manager.SetLineVisibility(lineType, isOn);
+            manager.SetLineVisibility(lineType, isOn);  // Apply visibility change
         }
+
+        // Immediately fetch the actual state after applying to avoid desync
+        if (manager != null)
+        {
+            isOn = manager.GetInitialLineState(lineType);  // Re-fetch the current visibility state
+        }
+
+        // Update the button's color
+        UpdateButtonColor();
     }
 
     /// <summary>

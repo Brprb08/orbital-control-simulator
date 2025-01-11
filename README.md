@@ -4,155 +4,136 @@
 ![Orbit Mechanics Simulator in Free Cam](./Assets/Images/01-07Free.png)
 _Current state of the simulation. Top image shows the Track cam with current object you are tracking, as well as velocity and altitude. The second image shows Free Cam where you can move around wherever. Work in progress._
 
-**Orbit Simulator** is an interactive orbital mechanics simulator developed using Unity. It allows users to visualize and interact with gravitational systems, simulate orbital trajectories, and experiment with creating celestial bodies with custom velocities and radii. The simulator provides a user-friendly interface for exploring the mechanics of gravity, planetary motion, and orbital dynamics.
+# Orbit Mechanics Simulator
+
+An educational **orbital mechanics** simulator built in Unity, showcasing real-time gravitational interactions, trajectory predictions, and user-driven planetary placement. This project aims to provide a hands-on experience for space enthusiasts, students, and developers looking to explore the basics of orbital dynamics in a 3D, interactive environment.
+
+---
 
 ## Table of Contents
-
 - [Overview](#overview)
-- [Current Features](#current-features)
+- [Key Features](#key-features)
 - [Orbit Mechanics](#orbit-mechanics)
+  - [Gravitational Interactions](#gravitational-interactions)
+  - [Numerical Integration](#numerical-integration)
+  - [Collision Handling](#collision-handling)
 - [How to Use](#how-to-use)
-- [Limitations and Incomplete Features](#limitations-and-incomplete-features)
+  - [Track Camera Mode](#track-camera-mode)
+  - [Free Camera Mode](#free-camera-mode)
+  - [Time Control](#time-control)
+  - [Placing New Celestial Bodies](#placing-new-celestial-bodies)
+  - [Early Thrust Implementation](#early-thrust-implementation)
 - [Planned Updates](#planned-updates)
+- [Limitations](#limitations)
 - [Getting Started](#getting-started)
+  - [Prerequisites](#prerequisites)
+  - [Installation](#installation)
+  - [Running-the-simulation](#running-the-simulation)
+- [License](#license)
+- [Credits](#credits)
+
+---
 
 ## Overview
+This project provides a **hands-on** approach to understanding orbital motion by allowing real-time manipulation of celestial bodies, time scaling, and initial velocities. It’s an ideal starting point for anyone curious about how gravity and orbital paths work—a useful stepping stone for more advanced space simulation topics.
 
-This project can be used as an educational tool for understanding orbital mechanics and gravitational interactions. By allowing users to place celestial bodies, assign velocities, and observe their interactions, the simulator provides a hands-on experience of how orbits are formed and maintained. If your a space enthusiast, this Orbit Simulatoin offers an engaging way to explore the complexities of orbital motion.
+---
 
-## Current Features
+## Key Features
 
-### 1. Central Body Simulation
+1. **Central Body Rotation**  
+   - A central body (e.g., Earth) remains in place but **rotates**, simulating real-world planetary spin.
 
-- **Central Body (e.g., Earth):** Simulates a central celestial body with accurate rotation and gravitational properties.
-- **Rotation:** The central body rotates to mimic real-world planetary rotation.
+2. **Custom Planet Placement**  
+   - **Free Camera Mode**: Create planets on the fly, specifying their mass and radius.  
+   - **Manual Velocity Assignment**: Use a slider or drag mechanics to set initial velocity vectors for newly placed bodies.
 
-### 2. Planet Placement
+3. **Runge-Kutta Integration**  
+   - Employs **RK4** for numerically stable and accurate orbital trajectory updates.
 
-- **Customizable Planets:** Users can create planets with custom radii, masses, and positions using the Free Camera mode.
-- **Velocity Assignment:** Assign initial velocities to newly placed planets via drag-and-drop or slider controls to initiate their motion under gravity.
-- **Real-Time Addition:** Newly placed planets are integrated into the simulation in real-time.
+4. **Collision Detection & Removal**  
+   - Automatically removes smaller bodies upon collision.  
+   - If the tracked body is removed, the camera switches to the next available target or to Free Camera.
 
-### 3. Trajectory Prediction
+5. **Multiple Camera Modes**  
+   - **Track Camera**: Follows a selected celestial body, with UI for velocity/altitude readouts.  
+   - **Free Camera**: Roam freely to observe the entire scene and place new objects.
 
-- **Runge-Kutta Integration:** Utilizes the Runge-Kutta (RK4) numerical integration method for accurate trajectory prediction.
-- **Visual Trajectories:** Real-time rendering of predicted orbital paths using Line Renderers.
+6. **Time Control**  
+   - **Slider** for simulation speed (e.g., 1× to 100×).  
+   - **Pause/Resume** with a button.  
+   - **Reset** time scale by pressing **R**.
 
-### 4. Collision Detection
+7. **Real-Time Feedback**  
+   - **Velocity** displayed in m/s and mph.  
+   - **Altitude** displayed in km and ft.  
+   - **Apogee & Perigee** lines (and future expansions) visible for the tracked object.
 
-- **Automatic Collision Handling:** Detects collisions between celestial bodies and removes the non-central body upon impact.
-- **Dynamic Tracking:** If the tracked body is removed due to a collision, the camera automatically switches to the next available body or Free Camera mode.
+8. **Interactive Thrust (Prototype)**  
+   - Basic **prograde, retrograde, radial in/out, and lateral** thrust controls for the **tracked** body.  
+   - Force is scaled by the object’s mass, altering orbits in real time.  
+   - Allows users to experiment with orbital maneuvers at a fundamental level (e.g., quick burns to raise/lower altitude).
 
-### 5. Camera Modes
-
-- **Tracking Mode:**
-  - **Focus on Celestial Bodies:** Automatically follows a selected celestial body.
-  - **UI Updates:** Displays real-time velocity and altitude of the tracked body.
-  - **Controls:** Right mouse button to rotate around the target, mouse wheel to zoom in/out, and `Tab` key to switch between multiple tracked bodies.
-- **Free Camera Mode:**
-  - **Free Navigation:** Allows unrestricted movement and rotation within the simulation space.
-  - **Object Placement:** Facilitates the placement of new celestial bodies without restrictions.
-  - **Controls:** WASD or arrow keys for movement, right mouse button to rotate, and mouse wheel to zoom.
-
-### 6. Time Control
-
-- **Adjustable Time Scale:** Users can control the simulation speed using a slider, enabling both real-time and time-lapse observations.
-- **Pause/Resume:** A pause button allows users to halt and resume the simulation at any time.
-- **Reset Time Scale:** Pressing the `R` key resets the time scale to the default value.
-
-### 7. Real-Time Feedback
-
-- **Velocity Display:** Shows the current velocity of the tracked celestial body in meters per second (m/s) and miles per hour (mph).
-- **Altitude Display:** Displays the altitude of the tracked body above the central body in kilometers (km) and feet (ft).
-- **Object Name:** Continuously updates the name of the currently tracked celestial body.
+---
 
 ## Orbit Mechanics
 
 ### Gravitational Interactions
-
-The simulation calculates gravitational forces between celestial bodies using Newton's law of universal gravitation. Each `NBody` object interacts with every other `NBody` in the scene, resulting in realistic orbital paths based on their masses and distances.
+Uses Newton’s law of universal gravitation to compute forces between every pair of bodies. This allows for emergent orbital phenomena whenever a new body is introduced.
 
 ### Numerical Integration
-
-To predict and update the trajectories of celestial bodies, the simulator employs the Runge-Kutta (RK4) numerical integration method. This approach ensures accurate and stable calculations of positions and velocities over time, even in complex gravitational systems.
+Adopts **Runge-Kutta (RK4)** to accurately step positions and velocities through time. This approach keeps orbits stable and reduces numerical errors compared to simpler methods like Euler.
 
 ### Collision Handling
+Bodies are approximated as spheres. When the distance between centers is less than the sum of radii, the smaller mass is removed. If it was being tracked, the camera automatically refocuses or reverts to Free Cam.
 
-When two celestial bodies come into close proximity, the simulation detects a collision based on their radii. The body is automatically removed from the simulation, and if it was being tracked, the camera shifts focus to the next available body or switches to Free Camera mode.
-
-### Trajectory Prediction
-
-Using Line Renderers, the simulator visualizes the predicted paths of celestial bodies. These trajectories are dynamically updated to reflect changes in velocity or the addition of new bodies, providing users with real-time insights into future orbital behaviors.
-
-### Central Body Rotation
-
-The central celestial body (e.g., Earth) is programmed to rotate, simulating real-world planetary rotation. This rotation affects the orientation of the central body and can influence the perceived motion of orbiting bodies.
+---
 
 ## How to Use
 
-1. **Launch the Simulator:**
+### Track Camera Mode
+- **Select a Body**: Press **Tab** to cycle through existing bodies.
+- **Camera Controls**: Right mouse button to rotate around the target; mouse wheel to zoom.
+- **UI**: Displays the tracked body’s velocity (m/s and mph) and altitude (km and ft).
 
-   - Run the Unity application to start the simulation.
+### Free Camera Mode
+- **Navigation**: Use WASD/arrow keys to move; right mouse drag to rotate; mouse wheel to zoom.
+- **Placement**: Allows real-time creation of new planets.
 
-2. **Switch Camera Modes:**
+### Time Control
+- **Slider**: Adjust the simulation speed from real-time up to high-speed time-lapse.
+- **Pause/Resume**: Halt or restart the entire simulation at will.
+- **Reset**: Press **R** to revert speed to the default.
 
-   - **Tracking Mode:** Follow a specific planet by selecting it. Use the right mouse button to rotate the camera around the planet and the mouse wheel to zoom.
-   - **Free Camera Mode:** Switch to free navigation to explore the simulation space or place new celestial bodies.
+### Placing New Celestial Bodies
+1. **Enter Mass & Radius**: In the UI, specify the planet’s properties (1–500,000 kg mass, and any radius scale).
+2. **Place Object**: Click **Place Planet** to instantiate a placeholder.
+3. **Set Velocity**: Drag to form a velocity vector or enter numeric values directly. Click **Set Velocity** to finalize orbit insertion.
 
-3. **Place New Planets:**
+### Early Thrust Implementation
+- Available **only** when a body is tracked (in Track Camera mode).
+- **Prograde/Retrograde**: Increase or decrease orbital velocity along the current velocity vector.
+- **Radial In/Out**: Burn toward or away from the planet’s center vector for orbital radius changes.
+- **Lateral (Left/Right)**: Burn perpendicular to the orbit path, altering inclination or path shape.
+- Thrust is **scaled by the object’s mass**, so heavier bodies require more force for the same effect.
 
-   - **Enter Specifications:**
-     - **Radius:** Input the desired radius for the planet in the format `x,y,z`.
-     - **Mass:** Input the mass of the planet (1 to 500,000 kg).
-     - **Name:** Optionally, assign a custom name to the planet.
-   - **Initiate Placement:**
-     - Click the "Place Planet" button to instantiate the planet in the simulation space.
-   - **Set Velocity:**
-     - Use the velocity drag tool to click and drag on the placed planet, setting its initial velocity vector.
-     - Alternatively, adjust the velocity using the slider and confirm with the "Set Velocity" button.
-
-4. **Observe Orbits:**
-
-   - Watch the trajectories and metrics of planets as they interact with the central body.
-   - Use the Time Control slider to adjust the simulation speed, observing long-term dynamics or collision events.
-
-5. **Manage Focus:**
-   - **Switch Focus:** Use the `Tab` key to cycle through available celestial bodies for tracking.
-   - **Cancel Placement:** If needed, cancel the current placement to remove the placeholder and return to tracking mode.
-
-## Limitations and Incomplete Features
-
-- **Sun-Centered System Expansion:**
-  - Expand the simulation to include a sun as the central body, allowing for more complex and larger-scale gravitational interactions typical of our solar system.
-- **No Thrust or Attitude Control:** The current implementation lacks the ability to apply thrust or control the orientation of celestial bodies.
-- **Simplistic UI:** The user interface is minimal and lacks advanced feedback systems such as fuel tracking or burn planning.
-- **Static Physics:** No advanced physics features like orbital decay, aerodynamic drag, or relativistic effects.
-- **Collision Effects:** Collisions result in body removal but lack visual or physical effects like explosions or merging.
+---
 
 ## Planned Updates
+- **Refined Thrust & Maneuvers**: Full orbital maneuver planning (e.g., circularization, transfer orbits, fuel usage).  
+- **Advanced Collision Effects**: Beyond body removal—explosions, merging, or fragmentation.  
+- **Extended Physics**: Potential orbital decay, aerodynamic drag, or relativistic effects for more realistic simulation.  
+- **Attitude Control**: Orientation changes for satellites, with spin stabilization or reaction wheels.  
+- **Polished UI & Camera Transitions**: Smoother camera modes, contextual menus for object selection.  
+- **Fuel Tracking**: Monitor engine burn times and consumption for mission-like scenarios.
 
-- **Thrust Mechanics:**
+---
 
-  - Introduce controls to apply thrust for orbital maneuvers and trajectory adjustments.
-
-- **Improved UI:**
-
-  - Develop a more intuitive interface for body placement, orbit visualization, and comprehensive feedback metrics.
-
-- **Attitude Control:**
-
-  - Enable rotation and orientation control of celestial bodies for precise orbital dynamics.
-
-- **Fuel Tracking:**
-
-  - Incorporate fuel consumption as a parameter for sustained maneuvers and mission planning.
-
-- **Advanced Collision Effects:**
-
-  - Implement visual and physical effects such as explosions, merging, or fragmentation upon collisions.
-
-- **Additional Physics:**
-  - Enhance realism by adding features like orbital decay, aerodynamic drag, and potentially relativistic effects.
+## Limitations
+- **No Aerodynamic Effects**: Currently, there’s no atmosphere or drag modeling.
+- **No Relativistic Corrections**: Strictly Newtonian physics—relativistic effects are not accounted for.
+- **Simplified Collisions**: Bodies are removed rather than merged; no physical collision response.
+- **Prototype Thrust**: Thrust controls are still basic. More detailed burn planning is not yet implemented.
 
 ## Status
 

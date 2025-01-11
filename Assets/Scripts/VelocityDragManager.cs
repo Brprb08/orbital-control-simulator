@@ -2,7 +2,7 @@ using UnityEngine;
 using TMPro;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
-
+using System.Collections;
 /**
  * VelocityDragManager handles the user interaction for applying velocity to a selected planet.
  * This script allows the user to click and drag to set the velocity vector and apply it to the planet.
@@ -80,6 +80,11 @@ public class VelocityDragManager : MonoBehaviour
     private float sliderSpeed = 0f;
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
+    public TrajectoryRenderer trajectoryRenderer;
+
+    [Header("UI Elements")]
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
 
     /**
      * Initializes the drag manager and sets up components.
@@ -119,6 +124,8 @@ public class VelocityDragManager : MonoBehaviour
             dragSphereCollider.isTrigger = true;
             dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
         }
+
+        StartCoroutine(FindTrajectoryRendererWithDelay());
     }
 
     /**
@@ -211,6 +218,17 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.SetPosition(1, intersectionPoint);
             dragDirection = (intersectionPoint - sphereCenter).normalized;
             currentVelocity = dragDirection * sliderSpeed;
+        }
+    }
+
+    private IEnumerator FindTrajectoryRendererWithDelay()
+    {
+        yield return new WaitForSeconds(0.1f);  // Small delay
+        trajectoryRenderer = Object.FindFirstObjectByType<TrajectoryRenderer>();
+
+        if (trajectoryRenderer == null)
+        {
+            Debug.LogError("TrajectoryRenderer not found after delay!");
         }
     }
 
@@ -347,6 +365,23 @@ public class VelocityDragManager : MonoBehaviour
 
         planetNBody.velocity = velocityToApply;
         gravityManager.RegisterBody(planetNBody);
+        if (GetComponentInChildren<TrajectoryRenderer>() == null)
+        {
+            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
+            trajectoryObj.transform.parent = this.transform;
+            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
+            trajectoryRenderer.apogeeText = this.apogeeText;
+            trajectoryRenderer.perigeeText = this.perigeeText;
+            trajectoryRenderer.predictionSteps = 1000;
+            trajectoryRenderer.predictionDeltaTime = 5f;
+            trajectoryRenderer.lineWidth = 3f;
+            trajectoryRenderer.lineColor = Color.blue;
+            trajectoryRenderer.lineDisableDistance = 50f;
+
+            // Assign this NBody to TrajectoryRenderer
+            trajectoryRenderer.SetTrackedBody(planetNBody);
+        }
+
 
         CameraController cameraController = gravityManager.GetComponent<CameraController>();
         if (cameraController != null)

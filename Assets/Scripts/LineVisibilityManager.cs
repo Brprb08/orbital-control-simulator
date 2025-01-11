@@ -41,6 +41,7 @@ public class LineVisibilityManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
+
     }
 
     /// <summary>
@@ -87,15 +88,21 @@ public class LineVisibilityManager : MonoBehaviour
             // Apply the updated visibility state to all registered NBody instances
             foreach (NBody body in nBodyInstances)
             {
-                // Retrieve current states
-                bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
-                bool currentOriginState = lineVisibilityStates[LineType.Origin];
+                // Get the TrajectoryRenderer attached to this specific NBody
+                TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
+                if (trajectoryRenderer != null)
+                {
+                    bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
+                    bool currentOriginState = lineVisibilityStates[LineType.Origin];
 
-                // Apply both states to ensure independent control
-                body.SetLineVisibility(currentPredictionState, currentOriginState);
+                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState);
+                }
+                else
+                {
+                    Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
+                }
             }
 
-            // Optional: Log the change for debugging purposes
             Debug.Log($"LineVisibilityManager: {lineType} Lines are now {(isVisible ? "Enabled" : "Disabled")}");
         }
         else

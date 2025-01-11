@@ -26,7 +26,7 @@ public class CameraController : MonoBehaviour
     private bool isSwitchingToFreeCam = false; // Prevents multiple switches.
     private Transform placeholderTarget; // Placeholder for tracking temporary objects.
     private bool isTrackingPlaceholder = false; // Tracks whether the camera is following a placeholder.
-
+    public TrajectoryRenderer trajectoryRenderer;
     public bool IsFreeCamMode
     {
         get => isFreeCamMode;
@@ -52,6 +52,8 @@ public class CameraController : MonoBehaviour
         {
             StartCoroutine(InitializeCamera());
         }
+
+        StartCoroutine(FindTrajectoryRendererWithDelay());
     }
 
     IEnumerator InitializeCamera()
@@ -62,6 +64,17 @@ public class CameraController : MonoBehaviour
         ReturnToTracking();  // Ensure camera is correctly tracking
 
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
+    }
+
+    private IEnumerator FindTrajectoryRendererWithDelay()
+    {
+        yield return new WaitForSeconds(0.1f);  // Small delay
+        trajectoryRenderer = Object.FindFirstObjectByType<TrajectoryRenderer>();
+
+        if (trajectoryRenderer == null)
+        {
+            Debug.LogError("TrajectoryRenderer not found after delay!");
+        }
     }
 
     /**
@@ -76,6 +89,7 @@ public class CameraController : MonoBehaviour
                 currentIndex = (currentIndex + 1) % bodies.Count;
                 cameraMovement.SetTargetBody(bodies[currentIndex]);
                 ReturnToTracking();
+                trajectoryRenderer.ResetApogeePerigeeLines();
                 Debug.Log($"Camera now tracking: {bodies[currentIndex].name}");
             }
 

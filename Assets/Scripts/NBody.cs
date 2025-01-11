@@ -63,6 +63,9 @@ public class NBody : MonoBehaviour
     private float previousApogeeDistance = float.MaxValue;
     private float previousPerigeeDistance = float.MaxValue;
 
+    private TrajectoryRenderer trajectoryRenderer;
+
+    public float tolerance = .01f;
     /**
      * Called when the script instance is being loaded.
      * Registers this NBody with the GravityManager.
@@ -94,10 +97,10 @@ public class NBody : MonoBehaviour
      */
     void OnDestroy()
     {
-        if (predictionCoroutine != null)
-        {
-            StopCoroutine(predictionCoroutine);
-        }
+        // if (predictionCoroutine != null)
+        // {
+        //     StopCoroutine(predictionCoroutine);
+        // }
     }
 
     /**
@@ -105,15 +108,15 @@ public class NBody : MonoBehaviour
      */
     void Start()
     {
-        predictionRenderer = CreateLineRenderer($"{gameObject.name}_Prediction");
-        originLineRenderer = CreateLineRenderer($"{gameObject.name}Origin");
-        apogeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_ApogeeLine");
-        perigeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_PerigeeLine");
+        // predictionRenderer = CreateLineRenderer($"{gameObject.name}_Prediction");
+        // originLineRenderer = CreateLineRenderer($"{gameObject.name}Origin");
+        // apogeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_ApogeeLine");
+        // perigeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_PerigeeLine");
 
-        ConfigureLineRenderer(predictionRenderer, 3f, "#2978FF");
-        ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
-        ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00");
-        ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
+        // ConfigureLineRenderer(predictionRenderer, 3f, "#2978FF");
+        // ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
+        // ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00");
+        // ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
 
         SetLineVisibility(showPredictionLines, true);
 
@@ -131,7 +134,24 @@ public class NBody : MonoBehaviour
             Debug.LogError("NBody: ThrustController not found on GravityManager.");
         }
 
-        predictionCoroutine = StartCoroutine(UpdatePredictedTrajectoryCoroutine());
+        if (GetComponentInChildren<TrajectoryRenderer>() == null)
+        {
+            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
+            trajectoryObj.transform.parent = this.transform;
+            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
+            trajectoryRenderer.apogeeText = this.apogeeText;
+            trajectoryRenderer.perigeeText = this.perigeeText;
+            trajectoryRenderer.predictionSteps = 1000;
+            trajectoryRenderer.predictionDeltaTime = 5f;
+            trajectoryRenderer.lineWidth = 3f;
+            trajectoryRenderer.lineColor = Color.blue;
+            trajectoryRenderer.lineDisableDistance = 50f;
+
+            // Assign this NBody to TrajectoryRenderer
+            trajectoryRenderer.SetTrackedBody(this);
+        }
+
+        // predictionCoroutine = StartCoroutine(UpdatePredictedTrajectoryCoroutine());
     }
 
     /**
@@ -207,6 +227,7 @@ public class NBody : MonoBehaviour
                 bodyPositions[body] = body.transform.position;
             }
 
+
             OrbitalState currentState = new OrbitalState(transform.position, velocity);
             OrbitalState newState = RungeKuttaStep(currentState, Time.fixedDeltaTime, bodyPositions);
 
@@ -231,11 +252,11 @@ public class NBody : MonoBehaviour
             }
         }
 
-        if (originLineRenderer != null)
-        {
-            originLineRenderer.SetPosition(0, transform.position);
-            originLineRenderer.SetPosition(1, Vector3.zero);
-        }
+        // if (originLineRenderer != null)
+        // {
+        //     originLineRenderer.SetPosition(0, transform.position);
+        //     originLineRenderer.SetPosition(1, Vector3.zero);
+        // }
 
         force = Vector3.zero;
     }
@@ -250,235 +271,335 @@ public class NBody : MonoBehaviour
     }
 
     /**
-     * Asynchronously updates the predicted trajectory for the NBody.
+     * Calculates the predicted trajectory.
+     * This method is called by the TrajectoryRenderer.
      */
-    IEnumerator UpdatePredictedTrajectoryCoroutine()
+    public List<Vector3> CalculatePredictedTrajectory(int steps, float deltaTime)
     {
-        float loopThresholdDistance = 5f;
-        float dynamicAngleThreshold = Mathf.Max(5f, velocity.magnitude / 100f);
-        int significantStepThreshold = predictionSteps / 4;
-        int currentPredictionSteps = predictionSteps;
-        float thrustBufferTime = 0.1f;
-        float thrustingDelayMultiplier = 5f;
+        List<Vector3> positions = new List<Vector3>();
+        positions.Add(transform.position);
 
-        float highestAltitude = float.MinValue;
-        float lowestAltitude = float.MaxValue;
-        while (true) // Infinite loop until stopped.
+        Vector3 initialPosition = transform.position;
+        Vector3 initialVelocity = velocity;
+
+        Dictionary<NBody, Vector3> bodyPositions = new Dictionary<NBody, Vector3>();
+        foreach (var body in GravityManager.Instance.Bodies)
         {
-            if (this == null || gameObject == null)
+            if (body != this)
             {
-                yield break; // Exit the coroutine if the object is destroyed.
+                bodyPositions[body] = body.transform.position;
+            }
+        }
+
+        bool collisionDetected = false;
+
+        for (int i = 1; i < steps; i++)
+        {
+            OrbitalState newState = RungeKutta2Step(new OrbitalState(initialPosition, initialVelocity), deltaTime, bodyPositions);
+            Vector3 nextPosition = newState.position;
+            Vector3 nextVelocity = newState.velocity;
+
+            if (!float.IsNaN(nextPosition.x) && !float.IsInfinity(nextPosition.x))
+            {
+                positions.Add(nextPosition);
+                initialPosition = nextPosition;
+                initialVelocity = nextVelocity;
+            }
+            else
+            {
+                Debug.LogWarning("Invalid trajectory point detected; skipping.");
+                break;
             }
 
-            NBody targetBody = thrustController?.cameraController?.cameraMovement?.targetBody;
-
-            bool isThrusting = thrustController?.isForwardThrustActive == true
-                           || thrustController?.isReverseThrustActive == true
-                           || thrustController?.isLeftThrustActive == true
-                           || thrustController?.isRightThrustActive == true
-                           || thrustController?.isRadialInThrustActive == true
-                           || thrustController?.isRadialOutThrustActive == true;
-
-            bool shouldApplyThrust = isThrusting && (targetBody == this);
-            // AdjustPredictionSettings(Time.timeScale, isThrusting);
-            float currentDelay = shouldApplyThrust ? normalDelay * thrustingDelayMultiplier : normalDelay;
-
-            if (isThrusting)
+            // Collision Detection
+            Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
+            foreach (var hitCollider in hitColliders)
             {
-                yield return new WaitForSecondsRealtime(thrustBufferTime);  // Brief delay to allow state to stabilize
-            }
-
-            if (!showPredictionLines)
-            {
-                yield return new WaitForSecondsRealtime(0.1f);
-                continue;  // Don't update positions if lines are hidden
-            }
-
-            Camera mainCamera = Camera.main;
-            if (mainCamera != null)
-            {
-                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, transform.position);
-
-                // Disable or enable line renderers based on distance.
-                if (distanceToCamera > lineDisableDistance)
+                NBody hitBody = hitCollider.GetComponent<NBody>();
+                if (hitBody != null && hitBody != this)
                 {
-                    // Show line renderers when far away.
-                    SetLinesEnabled(showPredictionLines);
-                }
-                else
-                {
-                    SetLinesEnabled(false);
-                    yield return new WaitForSecondsRealtime(0.1f);
-                    continue;
-                }
-            }
+                    float distance = Vector3.Distance(nextPosition, hitBody.transform.position);
+                    float collisionThreshold = radius + hitBody.radius;
 
-            highestAltitude = float.MinValue;
-            lowestAltitude = float.MaxValue;
-
-            Vector3 initialPosition = transform.position;
-            Vector3 initialVelocity = velocity;
-            Dictionary<NBody, Vector3> bodyPositions = GravityManager.Instance.Bodies
-                .Where(body => body != null && body.gameObject != null && body != this)
-                .ToDictionary(body => body, body => body.transform.position);
-
-            bool isTrackedBody = (targetBody == this);
-
-            Vector3 currentThrustImpulse = Vector3.zero;
-            float currentThrustDuration = thrustController.GetThrustDuration();
-
-            if (isThrusting && targetBody == this)
-            {
-                currentThrustImpulse = thrustController.GetCurrentThrustImpulse();
-            }
-
-            List<Vector3> positions = new List<Vector3>();
-            positions.Add(initialPosition);
-
-            bool closedLoopDetected = false;
-            bool collisionDetected = false;
-
-
-            Vector3 apogeePoint = Vector3.zero;
-            Vector3 perigeePoint = Vector3.zero;
-
-            for (int i = 1; i < predictionSteps; i++)
-            {
-                if (this == null || gameObject == null)
-                {
-                    yield break; // Stop immediately if object is null.
-                }
-
-                Vector3 thrustToApply = currentThrustImpulse;
-                if (currentThrustDuration > 0f)
-                {
-                    // Apply thrust only for a certain duration in prediction
-                    // For example, apply thrust for the next 5 seconds
-                    float thrustApplicationTime = 5f;
-                    if (i * predictionDeltaTime > thrustApplicationTime)
+                    if (distance < collisionThreshold)
                     {
-                        thrustToApply = Vector3.zero;
-                    }
-                }
-
-                OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions, thrustToApply);
-                Vector3 nextPosition = newState.position;
-                Vector3 nextVelocity = newState.velocity;
-
-                float altitude = nextPosition.magnitude;
-
-                if (altitude > highestAltitude)
-                {
-                    highestAltitude = Mathf.Max(highestAltitude, altitude);
-                    apogeePoint = nextPosition;
-                }
-
-                if (altitude < lowestAltitude)
-                {
-                    lowestAltitude = Mathf.Min(lowestAltitude, altitude);
-                    perigeePoint = nextPosition;
-                }
-
-                // else
-                // {
-                //     // Hide the lines for non-tracked bodies
-                //     if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = false;
-                //     if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = false;
-                // }
-
-                // Collision Detection
-                Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
-                foreach (var hitCollider in hitColliders)
-                {
-                    NBody hitBody = hitCollider.GetComponent<NBody>();
-                    if (hitBody != null && hitBody != this)
-                    {
-                        float distance = Vector3.Distance(nextPosition, hitBody.transform.position);
-                        float collisionThreshold = radius + hitBody.radius;
-
-                        if (distance < collisionThreshold)
-                        {
-                            Debug.Log($"[Collision Detected] {gameObject.name} will collide with {hitBody.gameObject.name} at step {i}");
-                            collisionDetected = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (collisionDetected)
-                {
-                    // Stop adding further points
-                    break;
-                }
-
-                // Add the valid next position
-                if (!float.IsNaN(nextPosition.x) && !float.IsInfinity(nextPosition.x))
-                {
-                    positions.Add(nextPosition);
-                    initialPosition = nextPosition;
-                    initialVelocity = nextVelocity;
-                }
-                else
-                {
-                    Debug.LogWarning("Invalid trajectory point detected; skipping.");
-                }
-
-
-                // Loop Detection
-                if (i > significantStepThreshold && Vector3.Distance(nextPosition, positions[0]) < loopThresholdDistance)
-                {
-                    float angleDifference = Vector3.Angle(velocity.normalized, newState.velocity.normalized);
-                    if (angleDifference < dynamicAngleThreshold)
-                    {
-                        // Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
-                        closedLoopDetected = true;
+                        Debug.Log($"[Collision Detected] {gameObject.name} will collide with {hitBody.gameObject.name} at step {i}");
+                        collisionDetected = true;
                         break;
                     }
                 }
             }
 
-            float apogeeDistance = ((highestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
-            float perigeeDistance = ((lowestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
-
-            // Update UI After Loop
-            if (isTrackedBody)
+            if (collisionDetected)
             {
-                if (Mathf.Abs(apogeeDistance - previousApogeeDistance) > 1f || Mathf.Abs(perigeeDistance - previousPerigeeDistance) > 1f)
-                {
-                    UpdateApogeePerigeeUI(apogeeDistance, perigeeDistance);
-                    previousApogeeDistance = apogeeDistance;
-                    previousPerigeeDistance = perigeeDistance;
-                }
-            }
-
-            // Update the LineRenderers with the calculated positions
-            if (predictionRenderer != null)
-            {
-                predictionRenderer.positionCount = positions.Count;
-                predictionRenderer.SetPositions(positions.ToArray());
-                predictionRenderer.enabled = true;
-            }
-
-            if (apogeeLineRenderer != null)
-            {
-                apogeeLineRenderer.positionCount = 2;
-                apogeeLineRenderer.SetPositions(new Vector3[] { apogeePoint, Vector3.zero });
-            }
-
-            if (perigeeLineRenderer != null)
-            {
-                perigeeLineRenderer.positionCount = 2;
-                perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
-            }
-
-            yield return new WaitForSecondsRealtime(currentDelay); // Wait to avoid freezing the frame.
-
-            if (closedLoopDetected || collisionDetected)
-            {
-                yield return null;
+                // Stop adding further points
+                break;
             }
         }
+
+        return positions;
     }
+
+    /**
+     * Extracts apogee and perigee from the predicted positions.
+     */
+    public void GetApogeePerigee(List<Vector3> positions, out Vector3 apogeePoint, out Vector3 perigeePoint, out float apogeeDistance, out float perigeeDistance)
+    {
+        apogeePoint = Vector3.zero;
+        perigeePoint = Vector3.zero;
+        apogeeDistance = float.MinValue;
+        perigeeDistance = float.MaxValue;
+
+        foreach (var pos in positions)
+        {
+            float altitude = pos.magnitude;
+            if (altitude > apogeeDistance + tolerance)
+            {
+                apogeeDistance = altitude;
+                apogeePoint = pos;
+            }
+            if (altitude < perigeeDistance - tolerance)
+            {
+                perigeeDistance = altitude;
+                perigeePoint = pos;
+            }
+        }
+
+        // Convert to desired units if necessary
+        apogeeDistance = ((apogeeDistance * 10) - 6371f); // Example conversion
+        perigeeDistance = ((perigeeDistance * 10) - 6371f);
+    }
+
+    /**
+     * Asynchronously updates the predicted trajectory for the NBody.
+     */
+    // IEnumerator UpdatePredictedTrajectoryCoroutine()
+    // {
+    //     float loopThresholdDistance = 5f;
+    //     float dynamicAngleThreshold = Mathf.Max(5f, velocity.magnitude / 100f);
+    //     int significantStepThreshold = predictionSteps / 4;
+    //     int currentPredictionSteps = predictionSteps;
+    //     float thrustBufferTime = 0.1f;
+    //     float thrustingDelayMultiplier = 5f;
+
+    //     float highestAltitude = float.MinValue;
+    //     float lowestAltitude = float.MaxValue;
+    //     while (true) // Infinite loop until stopped.
+    //     {
+    //         if (this == null || gameObject == null)
+    //         {
+    //             yield break; // Exit the coroutine if the object is destroyed.
+    //         }
+
+    //         NBody targetBody = thrustController?.cameraController?.cameraMovement?.targetBody;
+
+    //         bool isThrusting = thrustController?.isForwardThrustActive == true
+    //                        || thrustController?.isReverseThrustActive == true
+    //                        || thrustController?.isLeftThrustActive == true
+    //                        || thrustController?.isRightThrustActive == true
+    //                        || thrustController?.isRadialInThrustActive == true
+    //                        || thrustController?.isRadialOutThrustActive == true;
+
+    //         bool shouldApplyThrust = isThrusting && (targetBody == this);
+    //         // AdjustPredictionSettings(Time.timeScale, isThrusting);
+    //         float currentDelay = shouldApplyThrust ? normalDelay * thrustingDelayMultiplier : normalDelay;
+
+    //         if (isThrusting)
+    //         {
+    //             yield return new WaitForSecondsRealtime(thrustBufferTime);  // Brief delay to allow state to stabilize
+    //         }
+
+    //         if (!showPredictionLines)
+    //         {
+    //             yield return new WaitForSecondsRealtime(0.1f);
+    //             continue;  // Don't update positions if lines are hidden
+    //         }
+
+    //         Camera mainCamera = Camera.main;
+    //         if (mainCamera != null)
+    //         {
+    //             float distanceToCamera = Vector3.Distance(mainCamera.transform.position, transform.position);
+
+    //             // Disable or enable line renderers based on distance.
+    //             if (distanceToCamera > lineDisableDistance)
+    //             {
+    //                 // Show line renderers when far away.
+    //                 SetLinesEnabled(showPredictionLines);
+    //             }
+    //             else
+    //             {
+    //                 SetLinesEnabled(false);
+    //                 yield return new WaitForSecondsRealtime(0.1f);
+    //                 continue;
+    //             }
+    //         }
+
+    //         highestAltitude = float.MinValue;
+    //         lowestAltitude = float.MaxValue;
+
+    //         Vector3 initialPosition = transform.position;
+    //         Vector3 initialVelocity = velocity;
+    //         Dictionary<NBody, Vector3> bodyPositions = GravityManager.Instance.Bodies
+    //             .Where(body => body != null && body.gameObject != null && body != this)
+    //             .ToDictionary(body => body, body => body.transform.position);
+
+    //         bool isTrackedBody = (targetBody == this);
+
+    //         Vector3 currentThrustImpulse = Vector3.zero;
+    //         float currentThrustDuration = thrustController.GetThrustDuration();
+
+    //         if (isThrusting && targetBody == this)
+    //         {
+    //             currentThrustImpulse = thrustController.GetCurrentThrustImpulse();
+    //         }
+
+    //         List<Vector3> positions = new List<Vector3>();
+    //         positions.Add(initialPosition);
+
+    //         bool closedLoopDetected = false;
+    //         bool collisionDetected = false;
+
+
+    //         Vector3 apogeePoint = Vector3.zero;
+    //         Vector3 perigeePoint = Vector3.zero;
+
+    //         for (int i = 1; i < predictionSteps; i++)
+    //         {
+    //             if (this == null || gameObject == null)
+    //             {
+    //                 yield break; // Stop immediately if object is null.
+    //             }
+
+    //             Vector3 thrustToApply = currentThrustImpulse;
+    //             if (currentThrustDuration > 0f)
+    //             {
+    //                 // Apply thrust only for a certain duration in prediction
+    //                 // For example, apply thrust for the next 5 seconds
+    //                 float thrustApplicationTime = 5f;
+    //                 if (i * predictionDeltaTime > thrustApplicationTime)
+    //                 {
+    //                     thrustToApply = Vector3.zero;
+    //                 }
+    //             }
+
+    //             OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions, thrustToApply);
+    //             Vector3 nextPosition = newState.position;
+    //             Vector3 nextVelocity = newState.velocity;
+
+    //             float altitude = nextPosition.magnitude;
+
+    //             if (altitude > highestAltitude)
+    //             {
+    //                 highestAltitude = Mathf.Max(highestAltitude, altitude);
+    //                 apogeePoint = nextPosition;
+    //             }
+
+    //             if (altitude < lowestAltitude)
+    //             {
+    //                 lowestAltitude = Mathf.Min(lowestAltitude, altitude);
+    //                 perigeePoint = nextPosition;
+    //             }
+
+    //             // else
+    //             // {
+    //             //     // Hide the lines for non-tracked bodies
+    //             //     if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = false;
+    //             //     if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = false;
+    //             // }
+
+    //             // Collision Detection
+    //             Collider[] hitColliders = Physics.OverlapSphere(nextPosition, radius * 0.1f); // Adjust the radius as needed
+    //             foreach (var hitCollider in hitColliders)
+    //             {
+    //                 NBody hitBody = hitCollider.GetComponent<NBody>();
+    //                 if (hitBody != null && hitBody != this)
+    //                 {
+    //                     float distance = Vector3.Distance(nextPosition, hitBody.transform.position);
+    //                     float collisionThreshold = radius + hitBody.radius;
+
+    //                     if (distance < collisionThreshold)
+    //                     {
+    //                         Debug.Log($"[Collision Detected] {gameObject.name} will collide with {hitBody.gameObject.name} at step {i}");
+    //                         collisionDetected = true;
+    //                         break;
+    //                     }
+    //                 }
+    //             }
+
+    //             if (collisionDetected)
+    //             {
+    //                 // Stop adding further points
+    //                 break;
+    //             }
+
+    //             // Add the valid next position
+    //             if (!float.IsNaN(nextPosition.x) && !float.IsInfinity(nextPosition.x))
+    //             {
+    //                 positions.Add(nextPosition);
+    //                 initialPosition = nextPosition;
+    //                 initialVelocity = nextVelocity;
+    //             }
+    //             else
+    //             {
+    //                 Debug.LogWarning("Invalid trajectory point detected; skipping.");
+    //             }
+
+
+    //             // Loop Detection
+    //             if (i > significantStepThreshold && Vector3.Distance(nextPosition, positions[0]) < loopThresholdDistance)
+    //             {
+    //                 float angleDifference = Vector3.Angle(velocity.normalized, newState.velocity.normalized);
+    //                 if (angleDifference < dynamicAngleThreshold)
+    //                 {
+    //                     // Debug.Log($"Loop detected after {i} steps for {gameObject.name}!");
+    //                     closedLoopDetected = true;
+    //                     break;
+    //                 }
+    //             }
+    //         }
+
+    //     float apogeeDistance = ((highestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
+    //     float perigeeDistance = ((lowestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
+
+    //             // Update UI After Loop
+    //             if (isTrackedBody)
+    //             {
+    //                 if (Mathf.Abs(apogeeDistance - previousApogeeDistance) > 1f || Mathf.Abs(perigeeDistance - previousPerigeeDistance) > 1f)
+    //                 {
+    //                     UpdateApogeePerigeeUI(apogeeDistance, perigeeDistance);
+    //     previousApogeeDistance = apogeeDistance;
+    //                     previousPerigeeDistance = perigeeDistance;
+    //                 }
+    //             }
+
+    //             // Update the LineRenderers with the calculated positions
+    //             if (predictionRenderer != null)
+    // {
+    //     predictionRenderer.positionCount = positions.Count;
+    //     predictionRenderer.SetPositions(positions.ToArray());
+    //     predictionRenderer.enabled = true;
+    // }
+
+    // if (apogeeLineRenderer != null)
+    // {
+    //     apogeeLineRenderer.positionCount = 2;
+    //     apogeeLineRenderer.SetPositions(new Vector3[] { apogeePoint, Vector3.zero });
+    // }
+
+    // if (perigeeLineRenderer != null)
+    // {
+    //     perigeeLineRenderer.positionCount = 2;
+    //     perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
+    // }
+
+    // yield return new WaitForSecondsRealtime(currentDelay); // Wait to avoid freezing the frame.
+
+    // if (closedLoopDetected || collisionDetected)
+    // {
+    //     yield return null;
+    // }
+    //         }
+    //     }
 
     private Vector3 CatmullRomSpline(List<Vector3> points, int index, float alpha)
     {
@@ -586,7 +707,7 @@ public class NBody : MonoBehaviour
         {
             float distanceFromCenter = transform.position.magnitude;
             float distanceInKm = distanceFromCenter * 10f;
-            float earthRadiusKm = 6378f;
+            float earthRadiusKm = 6371f;
             return distanceInKm - earthRadiusKm;
         }
     }
@@ -673,21 +794,19 @@ public class NBody : MonoBehaviour
     {
         showPredictionLines = showPrediction;
         if (predictionRenderer != null) predictionRenderer.enabled = showPrediction;
-        if (activeRenderer != null) activeRenderer.enabled = showPrediction;
-        if (backgroundRenderer != null) backgroundRenderer.enabled = showPrediction;
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
     }
 
     public void SetApogeePerigeeVisibility(bool isVisible)
     {
-        if (apogeeLineRenderer != null)
-        {
-            apogeeLineRenderer.enabled = isVisible;
-        }
-        if (perigeeLineRenderer != null)
-        {
-            perigeeLineRenderer.enabled = isVisible;
-        }
+        // if (apogeeLineRenderer != null)
+        // {
+        //     apogeeLineRenderer.enabled = isVisible;
+        // }
+        // if (perigeeLineRenderer != null)
+        // {
+        //     perigeeLineRenderer.enabled = isVisible;
+        // }
     }
 
     /**
@@ -707,18 +826,5 @@ public class NBody : MonoBehaviour
 
         if (originLineRenderer != null)
             originLineRenderer.enabled = enabled;
-    }
-
-    private void UpdateApogeePerigeeUI(float apogee, float perigee)
-    {
-        if (apogeeText != null)
-        {
-            apogeeText.text = $"Apogee: {apogee / 1000f:F2} km";
-        }
-
-        if (perigeeText != null)
-        {
-            perigeeText.text = $"Perigee: {perigee / 1000f:F2} km";
-        }
     }
 }
