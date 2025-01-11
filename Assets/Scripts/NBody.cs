@@ -54,13 +54,11 @@ public class NBody : MonoBehaviour
     [Header("Thrust Feedback")]
     public ParticleSystem thrustParticles;
     float normalDelay = 0.01f;
-    float thrustDelay = 1f;
     private ThrustController thrustController;
 
     [Header("UI Elements")]
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
-
 
     private float previousApogeeDistance = float.MaxValue;
     private float previousPerigeeDistance = float.MaxValue;
@@ -107,26 +105,19 @@ public class NBody : MonoBehaviour
      */
     void Start()
     {
-        activeRenderer = CreateLineRenderer($"{gameObject.name}_ActivePrediction");
-        backgroundRenderer = CreateLineRenderer($"{gameObject.name}_BackgroundPrediction");
+        predictionRenderer = CreateLineRenderer($"{gameObject.name}_Prediction");
+        originLineRenderer = CreateLineRenderer($"{gameObject.name}Origin");
+        apogeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_ApogeeLine");
+        perigeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_PerigeeLine");
 
-        apogeeLineRenderer = CreateLineRenderer($"{gameObject.name}_ApogeeLine");
-        perigeeLineRenderer = CreateLineRenderer($"{gameObject.name}_PerigeeLine");
-
-        ConfigureLineRenderer(apogeeLineRenderer, 5f, "#FF0000");  // Red for Apogee
-        ConfigureLineRenderer(perigeeLineRenderer, 5f, "#00FF00");
-
-        GameObject originLineObj = new GameObject($"{gameObject.name}_OriginLine");
-        originLineObj.transform.parent = this.transform;
-        originLineRenderer = originLineObj.AddComponent<LineRenderer>();
-        originLineRenderer.positionCount = 2;
-        ConfigureMaterial(false, originLineRenderer, "#FFFFFF");
+        ConfigureLineRenderer(predictionRenderer, 3f, "#2978FF");
+        ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
+        ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00");
+        ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
 
         SetLineVisibility(showPredictionLines, true);
 
         SetApogeePerigeeVisibility(false);
-        // apogeeLineRenderer.enabled = false;
-        // perigeeLineRenderer.enabled = false;
 
         if (isCentralBody)
         {
@@ -151,7 +142,17 @@ public class NBody : MonoBehaviour
         GameObject obj = new GameObject(name);
         obj.transform.parent = this.transform;
         LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
-        ConfigureLineRenderer(lineRenderer, 10f, "#2978FF");
+        return lineRenderer;
+    }
+
+    /**
+     * Creates an apogee and perigee LineRenderer with the specified name.
+     */
+    private LineRenderer CreateApogeePerigeeLineRenderer(string name)
+    {
+        GameObject obj = new GameObject(name);
+        obj.transform.parent = null;
+        LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
         return lineRenderer;
     }
 
@@ -161,8 +162,8 @@ public class NBody : MonoBehaviour
     void ConfigureLineRenderer(LineRenderer lineRenderer, float widthMultiplier, string hexColor)
     {
         lineRenderer.useWorldSpace = true;
-        lineRenderer.numCapVertices = 10;
-        lineRenderer.numCornerVertices = 10;
+        lineRenderer.numCapVertices = 2;
+        lineRenderer.numCornerVertices = 2;
         lineRenderer.widthMultiplier = widthMultiplier;
         lineRenderer.alignment = LineAlignment.View;
 
@@ -175,21 +176,6 @@ public class NBody : MonoBehaviour
             lineRenderer.endColor = colorValue;
         }
         lineRenderer.enabled = true;
-    }
-
-    /**
-     * Configures the material and color for a LineRenderer.
-     */
-    void ConfigureMaterial(bool isPredictionLine, LineRenderer lineRenderer, string hexColor)
-    {
-        Color colorValue;
-        if (ColorUtility.TryParseHtmlString(hexColor, out colorValue))
-        {
-            lineMaterial.color = colorValue;
-            lineRenderer.material = lineMaterial;
-            lineRenderer.startColor = colorValue;
-            lineRenderer.endColor = colorValue;
-        }
     }
 
     /**
@@ -268,17 +254,12 @@ public class NBody : MonoBehaviour
      */
     IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
-        float delayBetweenBatches = 0.01f; // Time delay in seconds (coroutine-friendly)
         float loopThresholdDistance = 5f;
         float dynamicAngleThreshold = Mathf.Max(5f, velocity.magnitude / 100f);
         int significantStepThreshold = predictionSteps / 4;
         int currentPredictionSteps = predictionSteps;
         float thrustBufferTime = 0.1f;
         float thrustingDelayMultiplier = 5f;
-        float uiUpdateInterval = 1f;  // Update text once per second
-        float lastUIUpdateTime = 0f;
-        float lineUpdateInterval = 1f;
-        float lastLineUpdateTime = 0f;
 
         float highestAltitude = float.MinValue;
         float lowestAltitude = float.MaxValue;
@@ -294,7 +275,9 @@ public class NBody : MonoBehaviour
             bool isThrusting = thrustController?.isForwardThrustActive == true
                            || thrustController?.isReverseThrustActive == true
                            || thrustController?.isLeftThrustActive == true
-                           || thrustController?.isRightThrustActive == true;
+                           || thrustController?.isRightThrustActive == true
+                           || thrustController?.isRadialInThrustActive == true
+                           || thrustController?.isRadialOutThrustActive == true;
 
             bool shouldApplyThrust = isThrusting && (targetBody == this);
             // AdjustPredictionSettings(Time.timeScale, isThrusting);
@@ -378,11 +361,6 @@ public class NBody : MonoBehaviour
                     }
                 }
 
-                // Convert the highest and lowest altitudes to distances from the central body
-                const float scaleFactor = 10f; // 1 unit = 10 km
-
-                float centralBodyRadius = 637.1f / scaleFactor; // Earth's radius in simulation units (scaled down)
-
                 OrbitalState newState = RungeKuttaStep(new OrbitalState(initialPosition, initialVelocity), predictionDeltaTime, bodyPositions, thrustToApply);
                 Vector3 nextPosition = newState.position;
                 Vector3 nextVelocity = newState.velocity;
@@ -462,9 +440,6 @@ public class NBody : MonoBehaviour
             float apogeeDistance = ((highestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
             float perigeeDistance = ((lowestAltitude) - 637.1f) * 10000f;  // Convert from Unity units to km.
 
-            // Debug.Log($"[Prediction] {gameObject.name} - Apogee Distance: {apogeeDistance} km");
-            // Debug.Log($"[Prediction] {gameObject.name} - Perigee Distance: {perigeeDistance} km");
-
             // Update UI After Loop
             if (isTrackedBody)
             {
@@ -477,18 +452,11 @@ public class NBody : MonoBehaviour
             }
 
             // Update the LineRenderers with the calculated positions
-            if (activeRenderer != null)
+            if (predictionRenderer != null)
             {
-                activeRenderer.positionCount = positions.Count;
-                activeRenderer.SetPositions(positions.ToArray());
-                activeRenderer.enabled = true;
-            }
-
-            if (backgroundRenderer != null)
-            {
-                backgroundRenderer.positionCount = positions.Count;
-                backgroundRenderer.SetPositions(positions.ToArray());
-                backgroundRenderer.enabled = true;
+                predictionRenderer.positionCount = positions.Count;
+                predictionRenderer.SetPositions(positions.ToArray());
+                predictionRenderer.enabled = true;
             }
 
             if (apogeeLineRenderer != null)
@@ -503,21 +471,11 @@ public class NBody : MonoBehaviour
                 perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
             }
 
-            // Vector3 previousPoint = positions[0];
-            // for (int i = 1; i < positions.Count; i++)
-            // {
-            //     positions[i] = Vector3.Lerp(previousPoint, positions[i], 0.5f);  // Smoothly interpolate between points
-            //     previousPoint = positions[i];
-            // }
-
-            // Optionally, you can also handle the origin line here if needed
-
             yield return new WaitForSecondsRealtime(currentDelay); // Wait to avoid freezing the frame.
 
             if (closedLoopDetected || collisionDetected)
             {
-                // Debug.Log($"Stopping prediction for {gameObject.name} due to loop or collision.");
-                yield return null; // Optionally wait or handle accordingly
+                yield return null;
             }
         }
     }
@@ -566,8 +524,8 @@ public class NBody : MonoBehaviour
         // predictionDeltaTime = Time.fixedDeltaTime;
         if (timeScale <= 1f)
         {
-            predictionSteps = 3000;
-            predictionDeltaTime = 0.5f;
+            predictionSteps = 1000;
+            predictionDeltaTime = 5f;
         }
         else if (timeScale <= 10f)
         {
@@ -604,7 +562,7 @@ public class NBody : MonoBehaviour
                 float distanceSquared = Mathf.Max(direction.sqrMagnitude, minDistance * minDistance);  // Avoid zero distances.
 
                 float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
-                forceMagnitude = Mathf.Min(forceMagnitude, 1e10f);  // Clamp max force.
+                // forceMagnitude = Mathf.Min(forceMagnitude, 1e10f);  // Clamp max force.
 
                 totalForce += direction.normalized * forceMagnitude;
             }
@@ -674,6 +632,28 @@ public class NBody : MonoBehaviour
         // Debug.Log($"New Velocity: {newVelocity}");
         return new OrbitalState(newPosition, newVelocity);
     }
+
+    private OrbitalState RungeKutta2Step(OrbitalState currentState, float deltaTime, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
+    {
+        // Calculate the first derivative (k1)
+        OrbitalState k1 = CalculateDerivatives(currentState, bodyPositions, thrustImpulse);
+
+        // Calculate the midpoint state using k1
+        OrbitalState midState = new OrbitalState(
+            currentState.position + k1.position * (deltaTime / 2f),
+            currentState.velocity + k1.velocity * (deltaTime / 2f)
+        );
+
+        // Calculate the second derivative (k2) using the midpoint
+        OrbitalState k2 = CalculateDerivatives(midState, bodyPositions, thrustImpulse);
+
+        // Update position and velocity using k2
+        Vector3 newPosition = currentState.position + deltaTime * k2.position;
+        Vector3 newVelocity = currentState.velocity + deltaTime * k2.velocity;
+
+        return new OrbitalState(newPosition, newVelocity);
+    }
+
 
     /**
      * Calculates derivatives for the Runge-Kutta integration.

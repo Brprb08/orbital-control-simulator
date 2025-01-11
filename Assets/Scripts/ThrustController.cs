@@ -26,16 +26,11 @@ public class ThrustController : MonoBehaviour
     public bool isRadialInThrustActive = false;
     public bool isRadialOutThrustActive = false;
 
-    private Coroutine thrustCoroutine = null;
-
-    private float currentThrustFactor = 0f;
-
     [Header("References")]
     public CameraController cameraController;
 
     private float thrustFactor = 1f;
     private float thrustDuration = 0f;
-    private float desiredAcceleration = 5f;
 
     void Start()
     {
@@ -70,7 +65,7 @@ public class ThrustController : MonoBehaviour
 
         if (isReverseThrustActive)
         {
-            ApplyThrust(currentTargetBody, -maxReverseThrustMagnitude, -currentTargetBody.velocity.normalized);
+            ApplyThrust(currentTargetBody, maxReverseThrustMagnitude, -currentTargetBody.velocity.normalized);
             anyThrustActive = true;
         }
 
