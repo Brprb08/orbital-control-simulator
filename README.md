@@ -28,9 +28,6 @@ An educational **orbital mechanics** simulator built in Unity, showcasing real-t
 - [Getting Started](#getting-started)
   - [Prerequisites](#prerequisites)
   - [Installation](#installation)
-  - [Running-the-simulation](#running-the-simulation)
-- [License](#license)
-- [Credits](#credits)
 
 ---
 

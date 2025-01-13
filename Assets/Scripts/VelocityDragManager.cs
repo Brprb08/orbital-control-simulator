@@ -333,22 +333,8 @@ public class VelocityDragManager : MonoBehaviour
 
         planetNBody.velocity = velocityToApply;
         gravityManager.RegisterBody(planetNBody);
-        if (GetComponentInChildren<TrajectoryRenderer>() == null)
-        {
-            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
-            trajectoryObj.transform.parent = this.transform;
-            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
-            trajectoryRenderer.apogeeText = this.apogeeText;
-            trajectoryRenderer.perigeeText = this.perigeeText;
-            trajectoryRenderer.predictionSteps = 1000;
-            trajectoryRenderer.predictionDeltaTime = 5f;
-            trajectoryRenderer.lineWidth = 3f;
-            trajectoryRenderer.lineColor = Color.blue;
-            trajectoryRenderer.lineDisableDistance = 50f;
 
-            // Assign this NBody to TrajectoryRenderer
-            trajectoryRenderer.SetTrackedBody(planetNBody);
-        }
+        trajectoryRenderer.SetTrackedBody(planetNBody);
 
 
         CameraController cameraController = gravityManager.GetComponent<CameraController>();

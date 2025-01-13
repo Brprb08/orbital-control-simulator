@@ -28,6 +28,9 @@ public class CameraController : MonoBehaviour
     private bool isTrackingPlaceholder = false;
     public TrajectoryRenderer trajectoryRenderer;
 
+    private float lastTabTime = -1f;
+    private float tabCooldown = 1f;
+
     /**
     * Used by object placement manager to ensure cam is in FreeCam mode when placing.
     **/
@@ -96,13 +99,12 @@ public class CameraController : MonoBehaviour
     {
         if (!isFreeCamMode)
         {
-            if (Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
+            if (Time.time - lastTabTime > tabCooldown && Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
             {
+                lastTabTime = Time.time;
                 currentIndex = (currentIndex + 1) % bodies.Count;
-                cameraMovement.SetTargetBody(bodies[currentIndex]);
+                trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
                 ReturnToTracking();
-                trajectoryRenderer.ResetApogeePerigeeLines();
-                Debug.Log($"Camera now tracking: {bodies[currentIndex].name}");
             }
 
             if (Input.GetMouseButton(1) && cameraPivotTransform != null)

@@ -26,7 +26,7 @@ public class NBody : MonoBehaviour
     public float predictionDeltaTime = 5f;
     private static Material lineMaterial;
     private TrajectoryRenderer trajectoryRenderer;
-    public float tolerance = .001f;
+    public float tolerance = 0f;
 
     [Header("Thrust Feedback")]
     private ThrustController thrustController;
@@ -244,10 +244,10 @@ public class NBody : MonoBehaviour
     {
         OrbitalState k1;
         OrbitalState k2;
-        OrbitalState k3;
-        OrbitalState k4;
         if (isTrajectory)
         {
+            OrbitalState k3;
+            OrbitalState k4;
             k1 = CalculateDerivatives(currentState, bodyPositions, thrustImpulse);
             k2 = CalculateDerivatives(new OrbitalState(
                 currentState.position + k1.position * (deltaTime / 2f),
@@ -367,8 +367,8 @@ public class NBody : MonoBehaviour
         }
 
         // Convert to desired units if necessary
-        apogeeDistance = ((apogeeDistance * 10) - 6371f); // Example conversion
-        perigeeDistance = ((perigeeDistance * 10) - 6371f);
+        apogeeDistance = ((apogeeDistance) - 637.1f) * 10; // Example conversion
+        perigeeDistance = ((perigeeDistance) - 637.1f) * 10;
     }
 
     /**
@@ -390,13 +390,13 @@ public class NBody : MonoBehaviour
         }
         else if (timeScale <= 50f)
         {
-            predictionSteps = 2000;
-            predictionDeltaTime = 20f;
+            predictionSteps = 3000;
+            predictionDeltaTime = 8f;
         }
         else if (timeScale <= 100f)
         {
-            predictionSteps = 2000;
-            predictionDeltaTime = 30f;
+            predictionSteps = 3000;
+            predictionDeltaTime = 10f;
         }
     }
 

@@ -22,11 +22,12 @@ public class ToggleButton : MonoBehaviour
     [Header("Line Type")]
     public LineVisibilityManager.LineType lineType;
 
-    public enum LineType
-    {
-        Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
-        Origin      // Controls originLineRenderer
-    }
+    // public enum LineType
+    // {
+    //     Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
+    //     Origin,      // Controls originLineRenderer
+    //     ApogeePerigee
+    // }
 
     void Awake()
     {

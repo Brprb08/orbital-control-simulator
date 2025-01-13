@@ -47,7 +47,10 @@ public class TrajectoryRenderer : MonoBehaviour
     private Coroutine predictionCoroutine;
 
     private float updateInterval = 2f;
-    private float nextUpdateTime = 0f;
+    private float nextUpdateTime = 1f;
+    public float apogeeDistance = 0f;
+    public float perigeeDistance = 0f;
+    public bool justSwitchedTrack = false;
 
     /**
     * Initializes line renderers and sets up materials
@@ -69,8 +72,8 @@ public class TrajectoryRenderer : MonoBehaviour
 
         predictionLineRenderer = CreateLineRenderer($"{gameObject.name}_Prediction");
         originLineRenderer = CreateLineRenderer($"{gameObject.name}Origin");
-        apogeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_ApogeeLine");
-        perigeeLineRenderer = CreateApogeePerigeeLineRenderer($"{gameObject.name}_PerigeeLine");
+        apogeeLineRenderer = CreateLineRenderer($"{gameObject.name}_ApogeeLine");
+        perigeeLineRenderer = CreateLineRenderer($"{gameObject.name}_PerigeeLine");
 
         ConfigureLineRenderer(predictionLineRenderer, 3f, "#2978FF");
         ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
@@ -95,23 +98,6 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /** 
-    * Updates the origin line position each physics step 
-    **/
-    void FixedUpdate()
-    {
-        if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
-        {
-            if (originLineRenderer != null && trackedBody != null && showOriginLines)
-            {
-                // Ensure the positions are relative to the NBody's position
-                originLineRenderer.SetPosition(0, trackedBody.transform.position);
-                originLineRenderer.SetPosition(1, Vector3.zero);  // Pointing to the scene origin
-                originLineRenderer.enabled = true;
-            }
-        }
-    }
-
-    /** 
     * Stops the prediction coroutine when this object is destroyed 
     **/
     void OnDestroy()
@@ -130,10 +116,10 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         trackedBody = body;
 
-        if (predictionCoroutine != null)
-        {
-            StopCoroutine(predictionCoroutine);
-        }
+        // if (predictionCoroutine != null)
+        // {
+        //     PauseCoroutine(predictionCoroutine);
+        // }
 
         if (trackedBody != null)
         {
@@ -146,6 +132,12 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     public void ResetApogeePerigeeLines()
     {
+        apogeeDistance = float.MinValue;
+        perigeeDistance = float.MaxValue;
+        previousApogeeDistance = 0f;
+        previousPerigeeDistance = 0f;
+        justSwitchedTrack = true;
+
         if (apogeeLineRenderer != null)
         {
             apogeeLineRenderer.positionCount = 0;
@@ -167,18 +159,6 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         GameObject obj = new GameObject(name);
         obj.transform.parent = this.transform;
-        LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
-        return lineRenderer;
-    }
-
-    /**
-    * Creates an apogee and perigee LineRenderer with the specified name.
-    * @param name - Game object name
-    **/
-    private LineRenderer CreateApogeePerigeeLineRenderer(string name)
-    {
-        GameObject obj = new GameObject(name);
-        obj.transform.parent = null;
         LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
         return lineRenderer;
     }
@@ -211,6 +191,8 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     private IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
+        // previousApogeeDistance = 0f;
+        // previousPerigeeDistance = 0f;
         while (trackedBody != null)
         {
             if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
@@ -250,44 +232,54 @@ public class TrajectoryRenderer : MonoBehaviour
                     predictionLineRenderer.positionCount = positions.Count;
                     predictionLineRenderer.SetPositions(positions.ToArray());
 
-                    Vector3 apogeePoint, perigeePoint;
-                    float apogeeDistance, perigeeDistance;
-                    trackedBody.GetApogeePerigee(positions, out apogeePoint, out perigeePoint, out apogeeDistance, out perigeeDistance);
-
-                    if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
-                    {
-                        if (apogeeLineRenderer != null)
-                        {
-                            apogeeLineRenderer.enabled = true;
-                            apogeeLineRenderer.positionCount = 2;
-                            apogeeLineRenderer.SetPositions(new Vector3[] { apogeePoint, Vector3.zero });
-                        }
-
-                        if (perigeeLineRenderer != null)
-                        {
-                            perigeeLineRenderer.enabled = true;
-                            perigeeLineRenderer.positionCount = 2;
-                            perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
-                        }
-
-                        if (apogeeText != null && perigeeText != null)
-                        {
-                            if (Mathf.Abs(apogeeDistance - previousApogeeDistance) > 1f || Mathf.Abs(perigeeDistance - previousPerigeeDistance) > 1f)
-                            {
-                                UpdateApogeePerigeeUI(apogeeDistance, perigeeDistance);
-                                previousApogeeDistance = apogeeDistance;
-                                previousPerigeeDistance = perigeeDistance;
-                            }
-                        }
-                    }
                 }
-
                 else
                 {
                     predictionLineRenderer.enabled = false;
                 }
 
+                if (showApogeePerigeeLines)
+                {
+                    Vector3 apogeePoint, perigeePoint;
+                    trackedBody.GetApogeePerigee(positions, out apogeePoint, out perigeePoint, out apogeeDistance, out perigeeDistance);
+
+                    if (apogeeLineRenderer != null)
+                    {
+                        apogeeLineRenderer.enabled = true;
+                        apogeeLineRenderer.positionCount = 2;
+                        apogeeLineRenderer.SetPositions(new Vector3[] { apogeePoint, Vector3.zero });
+                    }
+
+                    if (perigeeLineRenderer != null)
+                    {
+                        perigeeLineRenderer.enabled = true;
+                        perigeeLineRenderer.positionCount = 2;
+                        perigeeLineRenderer.SetPositions(new Vector3[] { perigeePoint, Vector3.zero });
+                    }
+
+                    if (apogeeText != null && perigeeText != null && showApogeePerigeeLines)
+                    {
+                        if (Mathf.Abs(apogeeDistance - previousApogeeDistance) > 3f || Mathf.Abs(perigeeDistance - previousPerigeeDistance) > 3f)
+                        {
+                            UpdateApogeePerigeeUI(apogeeDistance, perigeeDistance);
+                            previousApogeeDistance = apogeeDistance;
+                            previousPerigeeDistance = perigeeDistance;
+                        }
+                    }
+                }
+
                 nextUpdateTime = Time.time + updateInterval;
+            }
+
+            if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
+            {
+                if (originLineRenderer != null && trackedBody != null && showOriginLines)
+                {
+                    // Ensure the positions are relative to the NBody's position
+                    originLineRenderer.enabled = true;
+                    originLineRenderer.positionCount = 2;
+                    originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
+                }
             }
 
             if (mainCamera != null && trackedBody != null && showPredictionLines)
@@ -314,6 +306,10 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (perigeeText != null)
         {
+            if (perigee < 0)
+            {
+                perigee = 0;
+            }
             perigeeText.text = $"Perigee: {perigee:F2} km";
         }
     }
@@ -336,13 +332,13 @@ public class TrajectoryRenderer : MonoBehaviour
         }
         else if (timeScale <= 50f)
         {
-            predictionSteps = 2000;
-            predictionDeltaTime = 20f;
+            predictionSteps = 3000;
+            predictionDeltaTime = 8f;
         }
         else if (timeScale <= 100f)
         {
-            predictionSteps = 2000;
-            predictionDeltaTime = 30f;
+            predictionSteps = 3000;
+            predictionDeltaTime = 10f;
         }
     }
 
@@ -351,10 +347,11 @@ public class TrajectoryRenderer : MonoBehaviour
     * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
     * @param showOrigin Whether to show/hide the origin line.
     **/
-    public void SetLineVisibility(bool showPrediction, bool showOrigin)
+    public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
         showPredictionLines = showPrediction;
         showOriginLines = showOrigin;
+        showApogeePerigeeLines = showApogeePerigee;
 
         if (!showPrediction && predictionLineRenderer != null)
         {
@@ -371,8 +368,16 @@ public class TrajectoryRenderer : MonoBehaviour
             originLineRenderer.positionCount = 2;
         }
 
+        if (!showApogeePerigee && apogeeLineRenderer != null && perigeeLineRenderer != null)
+        {
+            apogeeLineRenderer.positionCount = 0;
+            perigeeLineRenderer.positionCount = 0;
+        }
+
         if (predictionLineRenderer != null) predictionLineRenderer.enabled = showPrediction;
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
+        if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
+        if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;
     }
 
     /** 

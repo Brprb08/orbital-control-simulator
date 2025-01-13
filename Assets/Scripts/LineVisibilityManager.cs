@@ -15,13 +15,15 @@ public class LineVisibilityManager : MonoBehaviour
     public enum LineType
     {
         Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
-        Origin      // Controls originLineRenderer
+        Origin,      // Controls originLineRenderer
+        ApogeePerigee
     }
 
     private Dictionary<LineType, bool> lineVisibilityStates = new Dictionary<LineType, bool>()
     {
         { LineType.Prediction, true }, // Default to visible
-        { LineType.Origin, true }      // Default to visible
+        { LineType.Origin, true },      // Default to visible
+        { LineType.ApogeePerigee, true }
     };
 
     private List<NBody> nBodyInstances = new List<NBody>();
@@ -93,8 +95,8 @@ public class LineVisibilityManager : MonoBehaviour
                 {
                     bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
                     bool currentOriginState = lineVisibilityStates[LineType.Origin];
-
-                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState);
+                    bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
+                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
                 }
                 else
                 {
@@ -122,7 +124,8 @@ public class LineVisibilityManager : MonoBehaviour
         {
             trajectoryRenderer.SetLineVisibility(
                     showPrediction: lineVisibilityStates[LineType.Prediction],
-                    showOrigin: lineVisibilityStates[LineType.Origin]
+                    showOrigin: lineVisibilityStates[LineType.Origin],
+                    showApogeePerigee: lineVisibilityStates[LineType.ApogeePerigee]
                 );
         }
     }
