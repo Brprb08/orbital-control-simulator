@@ -9,12 +9,12 @@ using TMPro;
 public class UIManager : MonoBehaviour
 {
     [Header("Buttons")]
-    public Button freeCamButton; // Button to switch to free camera mode.
-    public Button trackCamButton; // Button to switch to tracking camera mode.
+    public Button freeCamButton;
+    public Button trackCamButton;
 
     [Header("Panels")]
-    public GameObject objectPlacementPanel; // UI panel for object placement controls.
-    public GameObject panel; // General UI panel for velocity and altitude display.
+    public GameObject objectPlacementPanel;
+    public GameObject panel;
     public GameObject thrustButtons;
     public GameObject apogeePerigeePanel;
 
@@ -27,7 +27,7 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI perigeeText;
 
     public CameraController cameraController;
-    public TMP_InputField velocityInputField; // Input field for entering velocity.
+    public TMP_InputField velocityInputField;
 
 
     public TextMeshProUGUI feedbackText;
@@ -48,10 +48,10 @@ public class UIManager : MonoBehaviour
     "• Switch to Free Cam to explore or place satellites.";
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
-        SetButtonState(freeCamButton, false); // Default state for Free Cam button.
-        SetButtonState(trackCamButton, true); // Default state for Track Cam button.
+        SetButtonState(freeCamButton, false);
+        SetButtonState(trackCamButton, true);
 
-        trackCamButton.Select(); // Pre-select Track Cam as the active button.
+        trackCamButton.Select();
     }
 
     /**

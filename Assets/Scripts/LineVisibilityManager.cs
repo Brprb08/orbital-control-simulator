@@ -8,21 +8,19 @@ using System.Collections.Generic;
 **/
 public class LineVisibilityManager : MonoBehaviour
 {
-    // Singleton instance for easy access
     public static LineVisibilityManager Instance { get; private set; }
 
-    // Enum representing different types of lines that can be toggled
     public enum LineType
     {
-        Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
-        Origin,      // Controls originLineRenderer
+        Prediction,
+        Origin,
         ApogeePerigee
     }
 
     private Dictionary<LineType, bool> lineVisibilityStates = new Dictionary<LineType, bool>()
     {
         { LineType.Prediction, true }, // Default to visible
-        { LineType.Origin, true },      // Default to visible
+        { LineType.Origin, true },
         { LineType.ApogeePerigee, true }
     };
 
@@ -30,12 +28,9 @@ public class LineVisibilityManager : MonoBehaviour
 
     void Awake()
     {
-        // Implement Singleton pattern
         if (Instance == null)
         {
             Instance = this;
-            // Optionally, make this persistent across scenes
-            // DontDestroyOnLoad(gameObject);
         }
         else
         {
@@ -55,7 +50,6 @@ public class LineVisibilityManager : MonoBehaviour
         if (!nBodyInstances.Contains(body))
         {
             nBodyInstances.Add(body);
-            // Apply current visibility states to the newly registered NBody
             ApplyVisibilityToBody(body);
         }
     }
@@ -83,13 +77,10 @@ public class LineVisibilityManager : MonoBehaviour
     {
         if (lineVisibilityStates.ContainsKey(lineType))
         {
-            // Update the visibility state in the dictionary
             lineVisibilityStates[lineType] = isVisible;
 
-            // Apply the updated visibility state to all registered NBody instances
             foreach (NBody body in nBodyInstances)
             {
-                // Get the TrajectoryRenderer attached to this specific NBody
                 TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
                 if (trajectoryRenderer != null)
                 {
@@ -137,7 +128,7 @@ public class LineVisibilityManager : MonoBehaviour
     {
         if (lineVisibilityStates.ContainsKey(lineType))
         {
-            return lineVisibilityStates[lineType];  // Return initial visibility state
+            return lineVisibilityStates[lineType];
         }
         return true;  // Default to visible if not found
     }

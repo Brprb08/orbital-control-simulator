@@ -9,11 +9,11 @@ using UnityEngine.EventSystems;
 **/
 public class TimeController : MonoBehaviour
 {
-    public Slider timeSlider; // Reference to the UI Slider for controlling time scale.
-    public TextMeshProUGUI timeScaleText; // UI text displaying the current time scale.
-    public Button pauseButton; // Button to pause or resume the simulation.
-    public TextMeshProUGUI pauseButtonText; // Text component of the pause button.
-    private bool isPaused = false; // Track if the simulation is paused.
+    public Slider timeSlider;
+    public TextMeshProUGUI timeScaleText;
+    public Button pauseButton;
+    public TextMeshProUGUI pauseButtonText;
+    private bool isPaused = false;
     private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
 
     /**
@@ -91,8 +91,6 @@ public class TimeController : MonoBehaviour
     {
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * scale;
-
-        // Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
 
         GravityManager gravityManager = GravityManager.Instance;
         if (gravityManager != null)

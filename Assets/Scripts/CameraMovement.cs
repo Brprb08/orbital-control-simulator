@@ -25,8 +25,8 @@ public class CameraMovement : MonoBehaviour
     public TextMeshProUGUI trackingObjectNameText; // UI element for displaying the tracked object's name.
 
     private float minDistance = 0.1f; // Minimum distance from the target (adjusted dynamically).
-    private float placeholderRadius = 0f; // Radius of the placeholder object.
-    private Camera mainCamera; // Main camera reference.
+    private float placeholderRadius = 0f;
+    private Camera mainCamera;
 
     /**
     * Initializes the main camera and sets the starting position relative to the target.
@@ -48,7 +48,6 @@ public class CameraMovement : MonoBehaviour
         float radius = usingPlaceholder ? placeholderRadius : targetBody.radius;
         transform.position = usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position;
 
-        // Dynamically adjust the minimum distance based on the radius.
         if (radius <= 0.5f)
         {
             minDistance = Mathf.Max(0.01f, radius * 0.7f);
@@ -64,19 +63,17 @@ public class CameraMovement : MonoBehaviour
 
         distance = Mathf.Clamp(distance, minDistance, maxDistance);
 
-        // Handle scroll-wheel zoom.
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
-            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);  // Boost zoom speed for large bodies
-            float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);  // Scale with current distance
-            float zoomSpeed = baseZoomSpeed * sizeMultiplier * distanceFactor * 2f;  // Base speed with extra scaling
+            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);
+            float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);
+            float zoomSpeed = baseZoomSpeed * sizeMultiplier * distanceFactor * 2f;
 
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
         }
 
-        // Smoothly move the camera behind/above the pivot.
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
         mainCamera.transform.localPosition = Vector3.Lerp(
             mainCamera.transform.localPosition,
@@ -84,7 +81,6 @@ public class CameraMovement : MonoBehaviour
             Time.deltaTime * 10f
         );
 
-        // Make the camera look at the pivot.
         mainCamera.transform.LookAt(transform.position);
 
         if (!usingPlaceholder)
@@ -115,11 +111,10 @@ public class CameraMovement : MonoBehaviour
             maxDistance = CalculateMaxDistance(targetBody.radius);
             float midpointDistance = (minDistance + maxDistance) / 2f;
 
-            // Adjust closer for small objects.
-            float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;  // Closer for very small objects.
+            float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;
             float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
             maxDistance = 4000f;
-            // Always reset to this default distance on switching.
+
             distance = defaultDistance;
 
             Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
@@ -200,19 +195,19 @@ public class CameraMovement : MonoBehaviour
     **/
     private float CalculateMaxDistance(float radius)
     {
-        float minimumMaxDistance = 2000f;  // Ensure you can always zoom out at least this far.
+        float minimumMaxDistance = 2000f;
 
         if (radius <= 0.5f)
         {
-            return Mathf.Max(minimumMaxDistance, radius * 500f);  // Small objects need a large zoom-out factor.
+            return Mathf.Max(minimumMaxDistance, radius * 500f);  // Small objects
         }
         else if (radius > 0.5f && radius <= 100f)
         {
-            return Mathf.Max(minimumMaxDistance, radius * 100f);  // Medium-sized objects.
+            return Mathf.Max(minimumMaxDistance, radius * 100f);  // Medium objects
         }
         else
         {
-            return Mathf.Max(minimumMaxDistance, radius + 2000f);  // Large planets.
+            return Mathf.Max(minimumMaxDistance, radius + 2000f);  // Large onjects
         }
     }
 }

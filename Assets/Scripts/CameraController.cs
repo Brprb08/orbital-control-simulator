@@ -19,7 +19,7 @@ public class CameraController : MonoBehaviour
 
     [Header("Tracking State")]
     public List<NBody> bodies;
-    public List<NBody> Bodies => bodies; // Public read-only access to the list of bodies.
+    public List<NBody> Bodies => bodies;
     public int currentIndex = 0;
     private bool isFreeCamMode = false;
     private Vector3 defaultLocalPosition;
@@ -72,8 +72,7 @@ public class CameraController : MonoBehaviour
     {
         yield return null; // Wait for all NBody.Start() to finish
 
-        // cameraMovement.SetTargetBody(bodies[0]);  // Set the first tracked body
-        ReturnToTracking();  // Ensure camera is correctly tracking
+        ReturnToTracking();
 
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
     }
@@ -83,7 +82,7 @@ public class CameraController : MonoBehaviour
     **/
     private IEnumerator FindTrajectoryRendererWithDelay()
     {
-        yield return new WaitForSeconds(0.1f);  // Small delay
+        yield return new WaitForSeconds(0.1f);
         trajectoryRenderer = Object.FindFirstObjectByType<TrajectoryRenderer>();
 
         if (trajectoryRenderer == null)
@@ -256,7 +255,6 @@ public class CameraController : MonoBehaviour
         Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
         cameraTransform.position = targetPosition - directionToTarget * desiredDistance;
 
-        // Adjust the camera's orientation
         PointCameraTowardCentralBody(centralBody.transform, targetPosition);
 
         FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
@@ -276,23 +274,19 @@ public class CameraController : MonoBehaviour
     **/
     private void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
     {
-        // Vector pointing FROM the tracked object TO the central body (Earth)
+        // Vector pointing from the tracked object to the central body
         Vector3 directionToCentralBody = (centralBody.position - targetPosition).normalized;
 
-        // Desired camera forward direction: Opposite of the direction to Earth (i.e., facing the object)
         Vector3 forwardDirection = -(targetPosition - centralBody.position).normalized;
 
-        // Calculate the base rotation that makes the camera look at the object, with Earth behind
         Quaternion targetRotation = Quaternion.LookRotation(forwardDirection, Vector3.up);
 
-        // Add a small upward pitch (positive X-axis rotation)
-        float pitchAngle = 10f;  // Adjust for desired tilt (in degrees)
+        float pitchAngle = 10f;
         Quaternion pitchAdjustment = Quaternion.Euler(pitchAngle, 0f, 0f);
 
-        // Combine the rotations
         cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
 
-        Debug.Log($"Camera pivot adjusted to align with {centralBody.name} behind target, with upward tilt.");
+        Debug.Log($"Camera pivot adjusted to point at {centralBody.name} behind target, with upward tilt.");
     }
 
     /**

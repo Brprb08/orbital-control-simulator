@@ -90,7 +90,6 @@ public class NBody : MonoBehaviour
             trajectoryRenderer.lineColor = Color.blue;
             trajectoryRenderer.lineDisableDistance = 50f;
 
-            // Assign this NBody to TrajectoryRenderer
             trajectoryRenderer.SetTrackedBody(this);
         }
     }
@@ -136,14 +135,13 @@ public class NBody : MonoBehaviour
                 if (body == this) continue;
 
                 float distance = Vector3.Distance(transform.position, body.transform.position);
-                float collisionThreshold = radius + body.radius; // Consider body radii for more accurate collisions.
+                float collisionThreshold = radius + body.radius;
 
-                // Debug.Log("Distance: " + distance + "  Collision Threshold: " + collisionThreshold);
                 if (body.isCentralBody && distance < collisionThreshold)
                 {
                     Debug.Log($"[COLLISION] {body.name} collided with central body {body.name}");
                     GravityManager.Instance.HandleCollision(this, body);
-                    return; // Stop further updates for this frame.
+                    return;
                 }
             }
         }
@@ -214,7 +212,6 @@ public class NBody : MonoBehaviour
 
             if (collisionDetected)
             {
-                // Stop adding further points
                 break;
             }
         }
@@ -266,23 +263,19 @@ public class NBody : MonoBehaviour
 
             Vector3 newPosition = currentState.position + (deltaTime / 6f) * (k1.position + 2f * k2.position + 2f * k3.position + k4.position);
             Vector3 newVelocity = currentState.velocity + (deltaTime / 6f) * (k1.velocity + 2f * k2.velocity + 2f * k3.velocity + k4.velocity);
-            // Debug.Log($"New Velocity: {newVelocity}");
             return new OrbitalState(newPosition, newVelocity);
         }
         else
         {
             k1 = CalculateDerivatives(currentState, bodyPositions, thrustImpulse);
 
-            // Calculate the midpoint state using k1
             OrbitalState midState = new OrbitalState(
                 currentState.position + k1.position * (deltaTime / 2f),
                 currentState.velocity + k1.velocity * (deltaTime / 2f)
             );
 
-            // Calculate the second derivative (k2) using the midpoint
             k2 = CalculateDerivatives(midState, bodyPositions, thrustImpulse);
 
-            // Update position and velocity using k2
             Vector3 newPosition = currentState.position + deltaTime * k2.position;
             Vector3 newVelocity = currentState.velocity + deltaTime * k2.velocity;
 
@@ -318,21 +311,16 @@ public class NBody : MonoBehaviour
             if (body != this)
             {
                 Vector3 direction = bodyPositions[body] - position;
-                float distanceSquared = Mathf.Max(direction.sqrMagnitude, minDistance * minDistance);  // Avoid zero distances.
-
+                float distanceSquared = Mathf.Max(direction.sqrMagnitude, minDistance * minDistance);
                 float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
-                // forceMagnitude = Mathf.Min(forceMagnitude, 1e10f);  // Clamp max force.
-
                 totalForce += direction.normalized * forceMagnitude;
             }
         }
 
-        // Incorporate external forces (e.g., thrust) into acceleration
         Vector3 externalAcceleration = (force / mass) + (thrustImpulse / mass);
 
-        // Total acceleration is gravitational acceleration plus external acceleration
+        // Total acceleration plus external acceleration
         Vector3 totalAcceleration = (totalForce / mass) + externalAcceleration;
-        // Debug.Log($"Total Acceleration: {totalAcceleration}, External Acceleration: {externalAcceleration}");
         return totalAcceleration;
     }
 
@@ -366,8 +354,7 @@ public class NBody : MonoBehaviour
             }
         }
 
-        // Convert to desired units if necessary
-        apogeeDistance = ((apogeeDistance) - 637.1f) * 10; // Example conversion
+        apogeeDistance = ((apogeeDistance) - 637.1f) * 10;
         perigeeDistance = ((perigeeDistance) - 637.1f) * 10;
     }
 
@@ -377,7 +364,6 @@ public class NBody : MonoBehaviour
     **/
     public void AdjustPredictionSettings(float timeScale)
     {
-        // predictionDeltaTime = Time.fixedDeltaTime;
         if (timeScale <= 1f)
         {
             predictionSteps = 1000;

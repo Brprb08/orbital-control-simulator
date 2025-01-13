@@ -22,13 +22,6 @@ public class ToggleButton : MonoBehaviour
     [Header("Line Type")]
     public LineVisibilityManager.LineType lineType;
 
-    // public enum LineType
-    // {
-    //     Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
-    //     Origin,      // Controls originLineRenderer
-    //     ApogeePerigee
-    // }
-
     void Awake()
     {
         button = GetComponent<Button>();
@@ -76,14 +69,13 @@ public class ToggleButton : MonoBehaviour
 
     void Start()
     {
-        // Get initial visibility state from the LineVisibilityManager
         if (manager != null)
         {
             isOn = manager.GetInitialLineState(lineType);
         }
         else
         {
-            isOn = true;  // Default to "on" state if manager is missing
+            isOn = true;  // Default to on state if manager is missing
         }
 
         UpdateButtonColor();
@@ -95,22 +87,20 @@ public class ToggleButton : MonoBehaviour
     **/
     public void ToggleState()
     {
-        // Toggle the button's intended state
         isOn = !isOn;
 
         // Notify the LineVisibilityManager
         if (manager != null)
         {
-            manager.SetLineVisibility(lineType, isOn);  // Apply visibility change
+            manager.SetLineVisibility(lineType, isOn);
         }
 
         // Immediately fetch the actual state after applying to avoid desync
         if (manager != null)
         {
-            isOn = manager.GetInitialLineState(lineType);  // Re-fetch the current visibility state
+            isOn = manager.GetInitialLineState(lineType);
         }
 
-        // Update the button's color
         UpdateButtonColor();
     }
 

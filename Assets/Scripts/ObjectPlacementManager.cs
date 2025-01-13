@@ -31,7 +31,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
     [Header("Camera Components")]
     public Transform cameraPivotTransform;
-    public Transform cameraTransform;  // Camera as a child of the pivot.
+    public Transform cameraTransform;
     private Vector3 defaultLocalPosition;
 
     /**
@@ -99,7 +99,7 @@ public class ObjectPlacementManager : MonoBehaviour
         if (renderer != null)
         {
             Color c = renderer.material.color;
-            c.a = 0.5f; // Semi-transparent for indication.
+            c.a = 0.5f; // Semi-transparent
             renderer.material.color = c;
         }
 
@@ -108,11 +108,6 @@ public class ObjectPlacementManager : MonoBehaviour
             velocityDragManager.ResetDragManager();
             velocityDragManager.planet = lastPlacedGameObject;
             velocityDragManager.placeholderMass = placeholderMass;
-            // feedbackText.text = "Planet placed. You can now left-click and drag in the scene to set velocity!";
-        }
-        else
-        {
-            // feedbackText.text = "Planet placed. (No VelocityDragManager assigned)";
         }
 
         CameraController camController = gravityManager.GetComponent<CameraController>();

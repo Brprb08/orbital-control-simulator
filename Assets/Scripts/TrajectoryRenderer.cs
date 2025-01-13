@@ -78,7 +78,7 @@ public class TrajectoryRenderer : MonoBehaviour
         ConfigureLineRenderer(predictionLineRenderer, 3f, "#2978FF");
         ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
         ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
-        ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00");
+        ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00"); // Green for Perigee
 
         mainCamera = Camera.main;
         showPredictionLines = true;
@@ -115,11 +115,6 @@ public class TrajectoryRenderer : MonoBehaviour
     public void SetTrackedBody(NBody body)
     {
         trackedBody = body;
-
-        // if (predictionCoroutine != null)
-        // {
-        //     PauseCoroutine(predictionCoroutine);
-        // }
 
         if (trackedBody != null)
         {
@@ -191,8 +186,6 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     private IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
-        // previousApogeeDistance = 0f;
-        // previousPerigeeDistance = 0f;
         while (trackedBody != null)
         {
             if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
@@ -275,7 +268,6 @@ public class TrajectoryRenderer : MonoBehaviour
             {
                 if (originLineRenderer != null && trackedBody != null && showOriginLines)
                 {
-                    // Ensure the positions are relative to the NBody's position
                     originLineRenderer.enabled = true;
                     originLineRenderer.positionCount = 2;
                     originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
@@ -355,7 +347,6 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (!showPrediction && predictionLineRenderer != null)
         {
-            // Clear out the line so we don't flash old data
             predictionLineRenderer.positionCount = 0;
         }
 
@@ -392,14 +383,13 @@ public class TrajectoryRenderer : MonoBehaviour
         }
         else
         {
-            // Create a new material and add it to the pool
             Material newMaterial = new Material(Shader.Find("Sprites/Default"));
             if (ColorUtility.TryParseHtmlString(hexColor, out Color colorValue))
             {
                 newMaterial.color = colorValue;
             }
 
-            materialPool[hexColor] = newMaterial;  // Store in the pool
+            materialPool[hexColor] = newMaterial;
             return newMaterial;
         }
     }
