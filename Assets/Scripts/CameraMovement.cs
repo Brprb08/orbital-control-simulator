@@ -3,9 +3,9 @@ using TMPro;
 using System.Collections;
 
 /**
- * CameraMovement handles camera positioning and UI updates while tracking celestial bodies.
- * Supports switching between real NBody objects and placeholder objects.
- */
+* CameraMovement handles camera positioning and UI updates while tracking celestial bodies.
+* Supports switching between real NBody objects and placeholder objects.
+**/
 public class CameraMovement : MonoBehaviour
 {
     [Header("Tracking Target")]
@@ -29,26 +29,16 @@ public class CameraMovement : MonoBehaviour
     private Camera mainCamera; // Main camera reference.
 
     /**
-     * Initializes the main camera and sets the starting position relative to the target.
-     */
+    * Initializes the main camera and sets the starting position relative to the target.
+    **/
     void Start()
     {
         mainCamera = GetComponentInChildren<Camera>();
-
-        if (targetBody != null && mainCamera != null)
-        {
-            // transform.position = targetBody.transform.position;
-            // distance = Mathf.Clamp(distance, minDistance, maxDistance);
-            // mainCamera.transform.localPosition = new Vector3(0, height, -distance);
-            // mainCamera.transform.localRotation = Quaternion.identity;
-            // mainCamera.transform.LookAt(transform.position);
-            Debug.Log($"Camera initialized at distance: {distance}, position: {mainCamera.transform.localPosition}");
-        }
     }
 
     /**
-     * Updates the camera's position, zoom, and UI each frame.
-     */
+    * Updates the camera's position, zoom, and UI each frame.
+    **/
     void LateUpdate()
     {
         if (targetBody == null && targetPlaceholder == null) return;
@@ -104,19 +94,11 @@ public class CameraMovement : MonoBehaviour
     }
 
     /**
-     * Sets the real celestial body as the camera's target.
-     */
+    * Sets the real celestial body as the camera's target.
+    * @param newTarget - New target for camera to track
+    **/
     public void SetTargetBody(NBody newTarget)
     {
-        // Hide apogee and perigee lines for all other bodies
-        foreach (var body in GravityManager.Instance.Bodies)
-        {
-            if (body != newTarget)  // Skip the current target
-            {
-                body.SetApogeePerigeeVisibility(false);
-            }
-        }
-
         targetBody = newTarget;
         targetPlaceholder = null;
 
@@ -140,14 +122,14 @@ public class CameraMovement : MonoBehaviour
             // Always reset to this default distance on switching.
             distance = defaultDistance;
 
-            targetBody.SetApogeePerigeeVisibility(true);
             Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
         }
     }
 
     /**
-     * Sets a placeholder object as the camera's target.
-     */
+    * Sets a placeholder object as the camera's target.
+    * @param planet - Placeholder for camera to track while object is being placed
+    **/
     public void SetTargetBodyPlaceholder(Transform planet)
     {
         targetBody = null;
@@ -167,8 +149,8 @@ public class CameraMovement : MonoBehaviour
     }
 
     /**
-     * Updates the velocity and altitude display in the UI.
-     */
+    * Updates the velocity and altitude display in the UI.
+    **/
     void UpdateVelocityAndAltitudeUI()
     {
         if (velocityText != null && targetBody != null)
@@ -193,8 +175,9 @@ public class CameraMovement : MonoBehaviour
     }
 
     /**
-     * Calculates the minimum distance based on the radius of the object being tracked.
-     */
+    * Calculates the minimum distance based on the radius of the object being tracked.
+    * @param radius - Radius of object being tracked by camera
+    **/
     private float CalculateMinDistance(float radius)
     {
         if (radius <= 0.5f)
@@ -212,8 +195,9 @@ public class CameraMovement : MonoBehaviour
     }
 
     /**
-     * Calculates the maximum distance based on the radius of the object being tracked.
-     */
+    * Calculates the maximum distance based on the radius of the object being tracked.
+    * @param radius - Radius of object being tracked by camera
+    **/
     private float CalculateMaxDistance(float radius)
     {
         float minimumMaxDistance = 2000f;  // Ensure you can always zoom out at least this far.

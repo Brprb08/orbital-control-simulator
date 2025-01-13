@@ -3,6 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 
+/** 
+* Handles the rendering of trajectory prediction lines for celestial bodies.
+* This includes prediction lines, origin lines, and apogee/perigee indicators.
+* The class also updates the UI elements for apogee and perigee distances
+* and toggles line visibility based on user inputs and simulation state.
+**/
 [RequireComponent(typeof(LineRenderer))]
 public class TrajectoryRenderer : MonoBehaviour
 {
@@ -13,26 +19,23 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Line Renderer Settings")]
     public float lineWidth = 3f;
     public Color lineColor = Color.blue;
+    private LineRenderer predictionLineRenderer;
+    private LineRenderer originLineRenderer;
+    private LineRenderer apogeeLineRenderer;
+    private LineRenderer perigeeLineRenderer;
     public float lineDisableDistance = 50f;
+    private static Material lineMaterial;
+    private static Dictionary<string, Material> materialPool = new Dictionary<string, Material>();
 
     [Header("References")]
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
-
-
-    private LineRenderer predictionLineRenderer;
-    private LineRenderer originLineRenderer;
-    private LineRenderer apogeeLineRenderer;
-    private LineRenderer perigeeLineRenderer;
-
-    private static Material lineMaterial;
-    private NBody trackedBody;
+    public CameraMovement cameraMovement;
     private Camera mainCamera;
+    private NBody trackedBody;
 
-    private Coroutine predictionCoroutine;
-
-    // For UI updates
+    [Header("UI Updates")]
     private float previousApogeeDistance = float.MaxValue;
     private float previousPerigeeDistance = float.MaxValue;
 
@@ -40,15 +43,15 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool showOriginLines;
     private bool showApogeePerigeeLines;
 
-    private static Dictionary<string, Material> materialPool = new Dictionary<string, Material>();
-
-
-    public CameraMovement cameraMovement;
+    [Header("Coroutine")]
+    private Coroutine predictionCoroutine;
 
     private float updateInterval = 2f;
-    // Next time we can recalc
     private float nextUpdateTime = 0f;
 
+    /**
+    * Initializes line renderers and sets up materials
+    **/
     void Awake()
     {
         if (lineMaterial == null)
@@ -74,13 +77,15 @@ public class TrajectoryRenderer : MonoBehaviour
         ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
         ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00");
 
-        // ConfigureLineRenderer();
         mainCamera = Camera.main;
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
     }
 
+    /** 
+    * Sets the cameraMovement reference if null 
+    **/
     void Start()
     {
         if (cameraMovement == null)
@@ -89,6 +94,9 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /** 
+    * Updates the origin line position each physics step 
+    **/
     void FixedUpdate()
     {
         if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
@@ -103,6 +111,9 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /** 
+    * Stops the prediction coroutine when this object is destroyed 
+    **/
     void OnDestroy()
     {
         if (predictionCoroutine != null)
@@ -112,8 +123,9 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /**
-     * Assigns the NBody to be tracked by this TrajectoryRenderer.
-     */
+    * Assigns the NBody to be tracked by this TrajectoryRenderer.
+    * @param body - Nbody the line renders switch to.
+    **/
     public void SetTrackedBody(NBody body)
     {
         trackedBody = body;
@@ -129,24 +141,28 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /** 
+    * Clears the apogee and perigee line positions and disables them 
+    **/
     public void ResetApogeePerigeeLines()
     {
         if (apogeeLineRenderer != null)
         {
-            apogeeLineRenderer.positionCount = 0; // Clear positions
-            apogeeLineRenderer.enabled = false;   // Disable the line
+            apogeeLineRenderer.positionCount = 0;
+            apogeeLineRenderer.enabled = false;
         }
 
         if (perigeeLineRenderer != null)
         {
-            perigeeLineRenderer.positionCount = 0; // Clear positions
-            perigeeLineRenderer.enabled = false;   // Disable the line
+            perigeeLineRenderer.positionCount = 0;
+            perigeeLineRenderer.enabled = false;
         }
     }
 
     /**
-     * Creates a LineRenderer with the specified name.
-     */
+    * Creates a LineRenderer with the specified name.
+    * @param name - Game object name
+    **/
     private LineRenderer CreateLineRenderer(string name)
     {
         GameObject obj = new GameObject(name);
@@ -156,8 +172,9 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /**
-     * Creates an apogee and perigee LineRenderer with the specified name.
-     */
+    * Creates an apogee and perigee LineRenderer with the specified name.
+    * @param name - Game object name
+    **/
     private LineRenderer CreateApogeePerigeeLineRenderer(string name)
     {
         GameObject obj = new GameObject(name);
@@ -166,6 +183,12 @@ public class TrajectoryRenderer : MonoBehaviour
         return lineRenderer;
     }
 
+    /** 
+    * Configures the visual settings for a LineRenderer 
+    * @param lineRender - Line render being configured
+    * @param widthMultiplier - How wide to set the line render
+    * @param hexColor - Color of the line render
+    **/
     void ConfigureLineRenderer(LineRenderer lineRenderer, float widthMultiplier, string hexColor)
     {
         lineRenderer.useWorldSpace = true;
@@ -184,23 +207,8 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /**
-     * Configures the LineRenderer with initial settings.
-     */
-    // private void ConfigureLineRenderer()
-    // {
-    //     lineRenderer.useWorldSpace = true;
-    //     lineRenderer.numCapVertices = 2;
-    //     lineRenderer.numCornerVertices = 2;
-    //     lineRenderer.widthMultiplier = lineWidth;
-    //     lineRenderer.material = lineMaterial;
-    //     lineRenderer.startColor = lineColor;
-    //     lineRenderer.endColor = lineColor;
-    //     lineRenderer.enabled = true;
-    // }
-
-    /**
-     * Coroutine to update the predicted trajectory.
-     */
+    * Coroutine to update the predicted trajectory.
+    **/
     private IEnumerator UpdatePredictedTrajectoryCoroutine()
     {
         while (trackedBody != null)
@@ -235,15 +243,13 @@ public class TrajectoryRenderer : MonoBehaviour
                                            || thrustController?.isRadialOutThrustActive == true;
 
 
-                AdjustPredictionSettings(Time.timeScale, isThrusting);
+                AdjustPredictionSettings(Time.timeScale);
 
                 if (positions != null && positions.Count > 0)
                 {
                     predictionLineRenderer.positionCount = positions.Count;
                     predictionLineRenderer.SetPositions(positions.ToArray());
-                    // lineRenderer.enabled = true;
 
-                    // Optionally, update UI elements for apogee and perigee
                     Vector3 apogeePoint, perigeePoint;
                     float apogeeDistance, perigeeDistance;
                     trackedBody.GetApogeePerigee(positions, out apogeePoint, out perigeePoint, out apogeeDistance, out perigeeDistance);
@@ -284,7 +290,6 @@ public class TrajectoryRenderer : MonoBehaviour
                 nextUpdateTime = Time.time + updateInterval;
             }
 
-            // Handle line visibility based on camera distance
             if (mainCamera != null && trackedBody != null && showPredictionLines)
             {
                 float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
@@ -296,8 +301,10 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /**
-     * Updates the UI elements for apogee and perigee.
-     */
+    * Updates the UI elements for apogee and perigee.
+    * @param apogee - Farthest orbit path distance from planet
+    * @param timeScale - Closest orbit path distance to planet
+    **/
     private void UpdateApogeePerigeeUI(float apogee, float perigee)
     {
         if (apogeeText != null)
@@ -312,11 +319,11 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /**
-     * Adjusts the trajectory prediction settings based on time scale.
-     */
-    public void AdjustPredictionSettings(float timeScale, bool isThrusting)
+    * Adjusts the trajectory prediction settings based on time scale.
+    * @param timeScale - The current time slider value for simulation speed.
+    **/
+    public void AdjustPredictionSettings(float timeScale)
     {
-        // predictionDeltaTime = Time.fixedDeltaTime;
         if (timeScale <= 1f)
         {
             predictionSteps = 1000;
@@ -337,15 +344,13 @@ public class TrajectoryRenderer : MonoBehaviour
             predictionSteps = 2000;
             predictionDeltaTime = 30f;
         }
-
-        // Debug.Log($"Adjusted for {gameObject.name}: predictionSteps = {predictionSteps}, predictionDeltaTime = {predictionDeltaTime}");
     }
 
     /**
-     * Sets the enabled state of specific LineRenderers associated with this NBody.
-     * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
-     * @param showOrigin Whether to show/hide the origin line.
-     */
+    * Sets the enabled state of specific LineRenderers associated with this NBody.
+    * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
+    * @param showOrigin Whether to show/hide the origin line.
+    **/
     public void SetLineVisibility(bool showPrediction, bool showOrigin)
     {
         showPredictionLines = showPrediction;
@@ -370,16 +375,14 @@ public class TrajectoryRenderer : MonoBehaviour
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
     }
 
-    /// <summary>
-    /// Retrieves a material from the pool or creates a new one if it doesn't exist.
-    /// </summary>
-    /// <param name="hexColor">The hex color of the material.</param>
-    /// <returns>A Material with the specified color.</returns>
+    /** 
+    * Retrieves a material from the pool or creates a new one if it doesn't exist 
+    * @param hexColor - The hexColor associated with a material from dictionary.
+    **/
     private Material GetOrCreateMaterial(string hexColor)
     {
         if (materialPool.ContainsKey(hexColor))
         {
-            // Return the existing material
             return materialPool[hexColor];
         }
         else

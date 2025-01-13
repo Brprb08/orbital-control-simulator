@@ -1390,17 +1390,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 288121590}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 294874406}
+  m_Father: {fileID: 397926656}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.24447916, y: 0.23537213}
   m_AnchorMax: {x: 0.43279165, y: 0.28577632}
-  m_AnchoredPosition: {x: -83.50012, y: 0.5}
-  m_SizeDelta: {x: -163, y: -5}
+  m_AnchoredPosition: {x: -377.18365, y: -234.13724}
+  m_SizeDelta: {x: 179.72867, y: 44.396107}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &288121592
 MonoBehaviour:
@@ -1603,9 +1603,8 @@ RectTransform:
   - {fileID: 1138443354}
   - {fileID: 1237531508}
   - {fileID: 1455678693}
-  - {fileID: 1715665084}
-  - {fileID: 288121591}
   - {fileID: 573697105}
+  - {fileID: 397926656}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
@@ -2194,6 +2193,43 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 365525808}
   m_CullTransparentMesh: 1
+--- !u!1 &397926655
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 397926656}
+  m_Layer: 5
+  m_Name: ApogeePerigeePanel
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!224 &397926656
+RectTransform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 397926655}
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children:
+  - {fileID: 1715665084}
+  - {fileID: 288121591}
+  m_Father: {fileID: 294874406}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+  m_AnchorMin: {x: 0.5, y: 0.5}
+  m_AnchorMax: {x: 0.5, y: 0.5}
+  m_AnchoredPosition: {x: 0, y: 0}
+  m_SizeDelta: {x: 100, y: 100}
+  m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &410087039
 GameObject:
   m_ObjectHideFlags: 0
@@ -4790,6 +4826,7 @@ MonoBehaviour:
   thrustParticles: {fileID: 0}
   apogeeText: {fileID: 0}
   perigeeText: {fileID: 0}
+  tolerance: 1
 --- !u!1 &916841081
 GameObject:
   m_ObjectHideFlags: 0
@@ -10475,6 +10512,9 @@ MonoBehaviour:
   speedSlider: {fileID: 42808061}
   placeholderMass: 0
   gravityManager: {fileID: 1586431850}
+  trajectoryRenderer: {fileID: 0}
+  apogeeText: {fileID: 0}
+  perigeeText: {fileID: 0}
 --- !u!4 &1119227882
 Transform:
   m_ObjectHideFlags: 0
@@ -11864,7 +11904,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mass: 500
-  velocity: {x: 0, y: 0, z: -0.3073}
+  velocity: {x: 0, y: 0, z: -0.30741}
   isCentralBody: 0
   radius: 1
   predictionSteps: 1000
@@ -11874,6 +11914,7 @@ MonoBehaviour:
   thrustParticles: {fileID: 0}
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
+  tolerance: 1
 --- !u!120 &1387400465
 LineRenderer:
   serializedVersion: 2
@@ -12726,6 +12767,7 @@ MonoBehaviour:
   thrustParticles: {fileID: 0}
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
+  tolerance: 1
 --- !u!1 &1455678692
 GameObject:
   m_ObjectHideFlags: 0
@@ -13252,6 +13294,7 @@ MonoBehaviour:
   sensitivity: 100
   bodies: []
   currentIndex: 0
+  trajectoryRenderer: {fileID: 0}
 --- !u!114 &1586431852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13298,6 +13341,8 @@ MonoBehaviour:
   trackCamButton: {fileID: 1407380277}
   objectPlacementPanel: {fileID: 61829408}
   panel: {fileID: 223772662}
+  thrustButtons: {fileID: 573697104}
+  apogeePerigeePanel: {fileID: 397926655}
   nameInputField: {fileID: 861192241}
   massInputField: {fileID: 916841083}
   radiusInputField: {fileID: 770696344}
@@ -13792,6 +13837,7 @@ MonoBehaviour:
   thrustParticles: {fileID: 0}
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
+  tolerance: 1
 --- !u!120 &1713781786
 LineRenderer:
   serializedVersion: 2
@@ -14013,17 +14059,17 @@ RectTransform:
   m_PrefabInstance: {fileID: 0}
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1715665083}
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
-  m_Father: {fileID: 294874406}
+  m_Father: {fileID: 397926656}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.24447916, y: 0.30562723}
   m_AnchorMax: {x: 0.43279165, y: 0.3511053}
-  m_AnchoredPosition: {x: -82.49994, y: 2}
-  m_SizeDelta: {x: -162, y: 1}
+  m_AnchoredPosition: {x: -376.1835, y: -166.20108}
+  m_SizeDelta: {x: 180.7287, y: 45.568527}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1715665085
 MonoBehaviour:
@@ -14534,7 +14580,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.032, y: 0.85359555}
   m_AnchorMax: {x: 0.21952085, y: 0.9748525}
-  m_AnchoredPosition: {x: -81.99939, y: 22.500061}
+  m_AnchoredPosition: {x: -81.99951, y: 22.500061}
   m_SizeDelta: {x: -184, y: -111}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1873310758
@@ -15031,7 +15077,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e963154806e5ee74d91cf86ce66fef76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mass: 420000
+  mass: 1000
   velocity: {x: 0, y: 0.629, z: 0}
   isCentralBody: 0
   radius: 0.6
@@ -15042,6 +15088,7 @@ MonoBehaviour:
   thrustParticles: {fileID: 0}
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
+  tolerance: 1
 --- !u!120 &2136029599
 LineRenderer:
   serializedVersion: 2

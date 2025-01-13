@@ -1,46 +1,39 @@
 using UnityEngine;
 using UnityEngine.UI;
 
+/**
+* Sets the color of a button based on if it is pressed held or active
+**/
 public class ToggleButton : MonoBehaviour
 {
-    // Reference to the Button component
+    [Header("References")]
     private Button button;
-
-    // Current state of the button
-    private bool isOn = false;
-
-    // Colors for active and inactive states (using hex codes)
-    [Header("Button Colors")]
-    [Tooltip("Hex color for the active (pressed) state.")]
-    public string activeColorHex = "#150B28";   // Dark blue for active state
-
-    [Tooltip("Hex color for the inactive (unpressed) state.")]
-    public string inactiveColorHex = "#1B2735"; // Purple for inactive state
-
-    // Parsed Color values
-    private Color activeColor;
-    private Color inactiveColor;
-
-    // Reference to the LineVisibilityManager
     private LineVisibilityManager manager;
 
-    // The type of line this button controls
+    [Header("Button Colors")]
+    public string activeColorHex = "#150B28";   // Dark blue for active state
+    public string inactiveColorHex = "#1B2735"; // Purple for inactive state
+
+    [Header("Button States")]
+    private Color activeColor;
+    private Color inactiveColor;
+    private bool isOn = false;
+
+    [Header("Line Type")]
+    public LineVisibilityManager.LineType lineType;
+
     public enum LineType
     {
         Prediction, // Controls predictionRenderer, activeRenderer, backgroundRenderer
         Origin      // Controls originLineRenderer
     }
 
-    [Header("Line Type")]
-    public LineVisibilityManager.LineType lineType;
-
     void Awake()
     {
-        // Get the Button component
         button = GetComponent<Button>();
         if (button != null)
         {
-            button.onClick.AddListener(ToggleState);  // Add listener programmatically
+            button.onClick.AddListener(ToggleState);
         }
 
         if (button == null)
@@ -49,7 +42,6 @@ public class ToggleButton : MonoBehaviour
             return;
         }
 
-        // Parse the hex color strings to Color objects
         if (!ColorUtility.TryParseHtmlString(activeColorHex, out activeColor))
         {
             Debug.LogError($"ToggleButton: Failed to parse activeColorHex '{activeColorHex}'. Using default Color.gray.");
@@ -62,11 +54,9 @@ public class ToggleButton : MonoBehaviour
             inactiveColor = Color.white;
         }
 
-        // Find the LineVisibilityManager instance
         manager = LineVisibilityManager.Instance;
         if (manager == null)
         {
-            // Attempt to find LineVisibilityManager attached to GravityManager
             GameObject gravityManager = GameObject.Find("GravityManager"); // Ensure name matches in the hierarchy
             if (gravityManager != null)
                 manager = gravityManager.GetComponent<LineVisibilityManager>();
@@ -80,7 +70,6 @@ public class ToggleButton : MonoBehaviour
             Debug.LogError("ToggleButton: No LineVisibilityManager instance found in the scene.");
         }
 
-        // Initialize button color based on initial state
         UpdateButtonColor();
     }
 
@@ -89,20 +78,20 @@ public class ToggleButton : MonoBehaviour
         // Get initial visibility state from the LineVisibilityManager
         if (manager != null)
         {
-            isOn = manager.GetInitialLineState(lineType);  // Get initial state
+            isOn = manager.GetInitialLineState(lineType);
         }
         else
         {
             isOn = true;  // Default to "on" state if manager is missing
         }
 
-        UpdateButtonColor();  // Update button visual state to match the initial state
+        UpdateButtonColor();
     }
 
-    /// <summary>
-    /// This method should be linked to the Button's OnClick event via the Unity Inspector.
-    /// It toggles the button's state and updates visibility.
-    /// </summary>
+    /**
+    * This method should be linked to the Button's OnClick event via the Unity Inspector.
+    * It toggles the button's state and updates visibility.
+    **/
     public void ToggleState()
     {
         // Toggle the button's intended state
@@ -124,9 +113,9 @@ public class ToggleButton : MonoBehaviour
         UpdateButtonColor();
     }
 
-    /// <summary>
-    /// Updates the button's color based on its current state.
-    /// </summary>
+    /**
+    * Updates the button's color based on its current state.
+    **/
     void UpdateButtonColor()
     {
         if (button == null)
@@ -150,20 +139,19 @@ public class ToggleButton : MonoBehaviour
         button.OnDeselect(null);
     }
 
-    /// <summary>
-    /// Sets the button's state programmatically.
-    /// </summary>
-    /// <param name="state">Desired state.</param>
+    /**
+    * Sets the button's state programmatically.
+    * @param state - Desired state
+    **/
     public void SetState(bool state)
     {
         isOn = state;
         UpdateButtonColor();
     }
 
-    /// <summary>
-    /// Gets the current state of the button.
-    /// </summary>
-    /// <returns>True if on, false otherwise.</returns>
+    /**
+    * Gets the current state of the button.
+    **/
     public bool GetState()
     {
         return isOn;

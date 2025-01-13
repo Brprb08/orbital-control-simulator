@@ -2,9 +2,9 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /**
- * GravityManager class handles the registration, deregistration, and management of celestial bodies.
- * It tracks all NBody objects in the scene and provides access to their states.
- */
+* GravityManager class handles the registration, deregistration, and management of celestial bodies.
+* It tracks all NBody objects in the scene and provides access to their states.
+**/
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
@@ -15,8 +15,8 @@ public class GravityManager : MonoBehaviour
     public List<NBody> Bodies => bodies;
 
     /**
-     * Initializes the singleton instance of GravityManager.
-     */
+    * Initializes the singleton instance of GravityManager.
+    **/
     void Awake()
     {
         if (Instance == null)
@@ -36,8 +36,8 @@ public class GravityManager : MonoBehaviour
     }
 
     /**
-     * Registers all pre-existing NBody objects in the scene.
-     */
+    * Registers all pre-existing NBody objects in the scene.
+    **/
     void Start()
     {
         NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
@@ -52,9 +52,9 @@ public class GravityManager : MonoBehaviour
     }
 
     /**
-     * Registers a new NBody object.
-     * @param body The NBody object to register.
-     */
+    * Registers a new NBody object.
+    * @param body - The NBody object to register.
+    **/
     public void RegisterBody(NBody body)
     {
         if (!bodies.Contains(body))
@@ -74,9 +74,9 @@ public class GravityManager : MonoBehaviour
     }
 
     /**
-     * Deregisters an NBody object.
-     * @param body The NBody object to deregister.
-     */
+    * Deregisters an NBody object.
+    * @param body - The NBody object to deregister.
+    **/
     public void DeregisterBody(NBody body)
     {
         if (bodies.Contains(body))
@@ -86,13 +86,12 @@ public class GravityManager : MonoBehaviour
     }
 
     /**
-     * Handles a collision between two NBody objects and removes the smaller body.
-     * @param bodyA The first NBody involved in the collision.
-     * @param bodyB The second NBody involved in the collision.
-     */
+    * Handles a collision between two NBody objects and removes the smaller body.
+    * @param bodyA - The first NBody involved in the collision.
+    * @param bodyB - The second NBody involved in the collision.
+    **/
     public void HandleCollision(NBody bodyA, NBody bodyB)
     {
-        Debug.Log("INSIDE");
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 
         CameraController cameraController = GravityManager.Instance.GetComponent<CameraController>();

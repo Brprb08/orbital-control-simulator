@@ -2,9 +2,9 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 
 /**
- * FreeCamera provides free movement and rotation control for the camera.
- * Allows toggling between free camera mode and locked tracking modes.
- */
+* FreeCamera provides free movement and rotation control for the camera.
+* Allows toggling between free camera mode and locked tracking modes.
+**/
 public class FreeCamera : MonoBehaviour
 {
     [Header("Movement Settings")]
@@ -14,13 +14,12 @@ public class FreeCamera : MonoBehaviour
     private bool isFreeMode = false; // Indicates if the camera is in free mode.
 
     /**
-     * Handles free camera movement and rotation based on user input.
-     */
+    * Handles free camera movement and rotation based on user input.
+    **/
     void Update()
     {
         if (!isFreeMode)
         {
-            // Exit if not in FreeCam mode.
             return;
         }
 
@@ -41,16 +40,15 @@ public class FreeCamera : MonoBehaviour
             float rotationX = Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
             float rotationY = Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
 
-            // Apply rotations.
             transform.Rotate(Vector3.up, rotationX, Space.Self); // Horizontal (yaw).
             transform.Rotate(Vector3.right, -rotationY, Space.Self); // Vertical (pitch).
         }
     }
 
     /**
-     * Toggles free camera mode on or off.
-     * @param enable True to enable FreeCam mode, false to disable.
-     */
+    * Toggles free camera mode on or off.
+    * @param enable - True to enable FreeCam mode, false to disable.
+    **/
     public void TogglePlacementMode(bool enable)
     {
         isFreeMode = enable;

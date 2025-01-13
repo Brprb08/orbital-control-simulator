@@ -4,23 +4,20 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 /**
- * ObjectPlacementManager manages the placement of celestial bodies in the scene.
- * This script handles user input for specifying the radius, name, and position of planets,
- * as well as transitioning between placement and tracking modes.
- */
+* ObjectPlacementManager manages the placement of celestial bodies in the scene.
+* This script handles user input for specifying the radius, name, and position of planets,
+* as well as transitioning between placement and tracking modes.
+**/
 public class ObjectPlacementManager : MonoBehaviour
 {
     [Header("References")]
     public Camera mainCamera;
     public GameObject spherePrefab; // Placeholder GameObject without NBody script.
-    public GameObject nbodyPrefab;  // Real NBody prefab (with physics).
     public GravityManager gravityManager;
-    public TMP_InputField velocityInput; // Expects input in the format "x,y,z".
     public TMP_InputField radiusInput;
     public TMP_InputField objectNameInputField;
     public TMP_InputField massInput;
     public TextMeshProUGUI feedbackText;
-    public CameraMovement cameraMovement;
     public VelocityDragManager velocityDragManager;
     public TMP_InputField nameInputField;
     public TMP_InputField massInputField;
@@ -29,7 +26,6 @@ public class ObjectPlacementManager : MonoBehaviour
 
     [Header("Placement State")]
     public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
-    private GameObject realNBodyObject;      // Reference to the instantiated NBody GameObject.
     private bool isInPlacementMode = false;
     private int satelliteCount = 0;
 
@@ -39,15 +35,8 @@ public class ObjectPlacementManager : MonoBehaviour
     private Vector3 defaultLocalPosition;
 
     /**
-     * Initializes the feedback text with instructions.
-     */
-    private void Start()
-    {
-    }
-
-    /**
-     * Starts the placement process for a new celestial body.
-     */
+    * Starts the placement process for a new celestial body.
+    **/
     public void StartPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -161,8 +150,8 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Cancels the current placement and removes the placeholder object.
-     */
+    * Cancels the current placement and removes the placeholder object.
+    **/
     public void CancelPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -176,11 +165,11 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Tries to parse a string as a Vector3.
-     * @param input The input string in "x,y,z" format.
-     * @param result The resulting Vector3.
-     * @return True if parsing succeeds; false otherwise.
-     */
+    * Tries to parse a string as a Vector3.
+    * @param input - The input string in "x,y,z" format.
+    * @param result - The resulting Vector3.
+    * @return - True if parsing succeeds; false otherwise.
+    **/
     private bool TryParseVector3(string input, out Vector3 result)
     {
         result = Vector3.zero;
@@ -196,11 +185,10 @@ public class ObjectPlacementManager : MonoBehaviour
     * Tries to parse the given string input as a valid mass value.
     * The mass must be a numeric value between 1 and 500000 (inclusive).
     * Non-numeric values, negative numbers, or values outside the allowed range are considered invalid.
-    *
-    * @param input The string representation of the mass to be parsed.
-    * @param mass The output float value of the parsed mass if valid.
-    * @return True if the input is a valid mass within the specified range; false otherwise.
-    */
+    * @param input - The string representation of the mass to be parsed.
+    * @param mass - The output float value of the parsed mass if valid.
+    * @return - True if the input is a valid mass within the specified range; false otherwise.
+    **/
     private bool TryParseMass(string input, out float mass)
     {
         mass = 0f;
@@ -219,9 +207,9 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Clears and unfocuses a TMP_InputField.
-     * @param inputField The input field to clear.
-     */
+    * Clears and unfocuses a TMP_InputField.
+    * @param inputField - The input field to clear.
+    **/
     private void ClearAndUnfocusInputField(TMP_InputField inputField)
     {
         if (inputField != null)
@@ -232,16 +220,16 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Deselects the current UI element to prevent accidental input.
-     */
+    * Deselects the current UI element to prevent accidental input.
+    **/
     public void DeselectUI()
     {
         EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**
-     * Enables FreeCam mode for object placement.
-     */
+    * Enables FreeCam mode for object placement.
+    **/
     public void BreakToFreeCam()
     {
         Debug.Log("Switching to FreeCam...");
@@ -249,8 +237,8 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Disables FreeCam mode and returns to tracking.
-     */
+    * Disables FreeCam mode and returns to tracking.
+    **/
     public void ExitFreeCam()
     {
         Debug.Log("Exiting FreeCam...");
@@ -258,8 +246,8 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Resets the camera position to its default relative to the pivot.
-     */
+    * Resets the camera position to its default relative to the pivot.
+    **/
     private void ResetCameraPosition()
     {
         if (cameraTransform != null)
@@ -275,8 +263,8 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Resets the pivot rotation to its default state.
-     */
+    * Resets the pivot rotation to its default state.
+    **/
     private void ResetPivotRotation()
     {
         if (cameraPivotTransform != null)
@@ -291,13 +279,16 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-     * Resets the reference to the last placed GameObject.
-     */
+    * Resets the reference to the last placed GameObject.
+    **/
     public void ResetLastPlacedGameObject()
     {
         lastPlacedGameObject = null;
     }
 
+    /**
+    * Gets the reference to the last placed GameObject.
+    **/
     public GameObject GetLastPlacedGameObject()
     {
         return lastPlacedGameObject;

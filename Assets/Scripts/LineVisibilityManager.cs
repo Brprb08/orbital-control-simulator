@@ -2,9 +2,10 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /**
- * LineVisibilityManager handles the toggling of specific LineRenderers across all NBody instances.
- * It works in conjunction with ToggleButton scripts attached to UI Buttons.
- */
+* Manages the visibility of specific line renderers (e.g., prediction and origin lines)
+* for all NBody instances in the scene. Works with `ToggleButton` scripts to control UI-based
+* visibility toggles.
+**/
 public class LineVisibilityManager : MonoBehaviour
 {
     // Singleton instance for easy access
@@ -17,14 +18,12 @@ public class LineVisibilityManager : MonoBehaviour
         Origin      // Controls originLineRenderer
     }
 
-    // Dictionary to track the current visibility state of each LineType
     private Dictionary<LineType, bool> lineVisibilityStates = new Dictionary<LineType, bool>()
     {
         { LineType.Prediction, true }, // Default to visible
         { LineType.Origin, true }      // Default to visible
     };
 
-    // List to keep track of all registered NBody instances
     private List<NBody> nBodyInstances = new List<NBody>();
 
     void Awake()
@@ -44,11 +43,11 @@ public class LineVisibilityManager : MonoBehaviour
 
     }
 
-    /// <summary>
-    /// Registers an NBody instance with the manager.
-    /// Call this method from NBody.Awake()
-    /// </summary>
-    /// <param name="body">The NBody instance to register.</param>
+    /**
+    * Registers an NBody instance with the manager.
+    * Call this method from NBody.Awake()
+    * @param body - The NBody instance to register
+    **/
     public void RegisterNBody(NBody body)
     {
         if (!nBodyInstances.Contains(body))
@@ -59,11 +58,11 @@ public class LineVisibilityManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Deregisters an NBody instance from the manager.
-    /// Call this method from NBody.OnDestroy()
-    /// </summary>
-    /// <param name="body">The NBody instance to deregister.</param>
+    /**
+    * Deregisters an NBody instance from the manager.
+    * Call this method from NBody.OnDestroy()
+    * @param body - The NBody instance to deregister
+    **/
     public void DeregisterNBody(NBody body)
     {
         if (nBodyInstances.Contains(body))
@@ -72,12 +71,12 @@ public class LineVisibilityManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sets the visibility of a specific LineType across all registered NBody instances.
-    /// Called by ToggleButton scripts when a button is pressed or released.
-    /// </summary>
-    /// <param name="lineType">The type of line to toggle.</param>
-    /// <param name="isVisible">True to show the lines, False to hide.</param>
+    /**
+    * Sets the visibility of a specific LineType across all registered NBody instances.
+    * Called by ToggleButton scripts when a button is pressed or released.
+    * @param lineType - The type of line to toggle
+    * @param isVisible - True to show the lines, False to hide
+    **/
     public void SetLineVisibility(LineType lineType, bool isVisible)
     {
         if (lineVisibilityStates.ContainsKey(lineType))
@@ -111,19 +110,26 @@ public class LineVisibilityManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Applies the current visibility states to a specific NBody instance.
-    /// Used when a new NBody registers.
-    /// </summary>
-    /// <param name="body">The NBody instance to apply visibility to.</param>
+    /**
+    * Applies the current visibility states to a specific NBody instance.
+    * Used when a new NBody registers.
+    * @param body - The NBody instance to apply visibility to
+    **/
     private void ApplyVisibilityToBody(NBody body)
     {
-        body.SetLineVisibility(
-            showPrediction: lineVisibilityStates[LineType.Prediction],
-            showOrigin: lineVisibilityStates[LineType.Origin]
-        );
+        TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
+        if (trajectoryRenderer != null)
+        {
+            trajectoryRenderer.SetLineVisibility(
+                    showPrediction: lineVisibilityStates[LineType.Prediction],
+                    showOrigin: lineVisibilityStates[LineType.Origin]
+                );
+        }
     }
 
+    /**
+    * Used by Togglebutton for presetting the button states
+    **/
     public bool GetInitialLineState(LineType lineType)
     {
         if (lineVisibilityStates.ContainsKey(lineType))

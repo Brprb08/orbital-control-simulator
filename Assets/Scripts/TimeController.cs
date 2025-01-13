@@ -4,9 +4,9 @@ using TMPro;
 using UnityEngine.EventSystems;
 
 /**
- * TimeController class manages the simulation time scale, pause/resume states, and user interface elements.
- * It allows the user to control the time flow using a slider and pause button.
- */
+* TimeController class manages the simulation time scale, pause/resume states, and user interface elements.
+* It allows the user to control the time flow using a slider and pause button.
+**/
 public class TimeController : MonoBehaviour
 {
     public Slider timeSlider; // Reference to the UI Slider for controlling time scale.
@@ -17,8 +17,8 @@ public class TimeController : MonoBehaviour
     private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
 
     /**
-     * Ensures this object persists between scene reloads.
-     */
+    * Ensures this object persists between scene reloads.
+    **/
     void Awake()
     {
         DontDestroyOnLoad(gameObject);
@@ -26,8 +26,8 @@ public class TimeController : MonoBehaviour
 
 
     /**
-     * Initializes the time scale and configures the UI elements.
-     */
+    * Initializes the time scale and configures the UI elements.
+    **/
     void Start()
     {
         Time.timeScale = 1.0f;
@@ -45,8 +45,8 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Checks for user input to reset the time scale.
-     */
+    * Checks for user input to reset the time scale.
+    **/
     void Update()
     {
         if (EventSystem.current.currentSelectedGameObject != null &&
@@ -70,9 +70,9 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Handles changes to the time scale from the slider.
-     * @param newTimeScale The new time scale value from the slider.
-     */
+    * Handles changes to the time scale from the slider.
+    * @param newTimeScale - The new time scale value from the slider.
+    **/
     public void OnTimeScaleChanged(float newTimeScale)
     {
         SetTimeScale(newTimeScale);
@@ -84,16 +84,15 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Sets the time scale and updates the physics time step.
-     * @param scale The new time scale value.
-     */
+    * Sets the time scale and updates the physics time step.
+    * @param scale - The new time scale value.
+    **/
     private void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * scale;
-        // Time.fixedDeltaTime = 0.02f;
 
-        Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
+        // Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
 
         GravityManager gravityManager = GravityManager.Instance;
         if (gravityManager != null)
@@ -102,7 +101,7 @@ public class TimeController : MonoBehaviour
             {
                 if (nBody != null)
                 {
-                    nBody.AdjustPredictionSettings(scale, false);
+                    nBody.AdjustPredictionSettings(scale);
                 }
             }
         }
@@ -113,8 +112,8 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Toggles the simulation between paused and resumed states.
-     */
+    * Toggles the simulation between paused and resumed states.
+    **/
     public void TogglePause()
     {
         if (isPaused)
@@ -129,8 +128,8 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Pauses the simulation and saves the current time scale.
-     */
+    * Pauses the simulation and saves the current time scale.
+    **/
     private void Pause()
     {
         previousTimeScale = Time.timeScale;
@@ -140,8 +139,8 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Resumes the simulation and restores the previous time scale.
-     */
+    * Resumes the simulation and restores the previous time scale.
+    **/
     private void Resume()
     {
         Time.timeScale = previousTimeScale;
@@ -151,8 +150,8 @@ public class TimeController : MonoBehaviour
     }
 
     /**
-     * Updates the pause button text to reflect the current state.
-     */
+    * Updates the pause button text to reflect the current state.
+    **/
     private void UpdatePauseButtonText()
     {
         if (pauseButtonText != null)

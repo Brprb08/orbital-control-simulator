@@ -1,11 +1,11 @@
 using UnityEngine;
-using UnityEngine.UI; // Required for Button and ColorBlock
+using UnityEngine.UI;
 using TMPro;
 
 /**
- * UIManager class manages the user interface for switching between free camera and tracking camera modes.
- * It controls the visibility of UI panels and highlights the active button.
- */
+* UIManager class manages the user interface for switching between free camera and tracking camera modes.
+* It controls the visibility of UI panels and highlights the active button.
+**/
 public class UIManager : MonoBehaviour
 {
     [Header("Buttons")]
@@ -33,8 +33,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI feedbackText;
 
     /**
-     * Initializes the UI elements and sets the default button states.
-     */
+    * Initializes the UI elements and sets the default button states.
+    **/
     private void Start()
     {
         feedbackText.text =
@@ -55,8 +55,8 @@ public class UIManager : MonoBehaviour
     }
 
     /**
-     * Handles the Free Cam button press event.
-     */
+    * Handles the Free Cam button press event.
+    **/
     public void OnFreeCamPressed()
     {
         feedbackText.text =
@@ -92,8 +92,8 @@ public class UIManager : MonoBehaviour
     }
 
     /**
-     * Handles the Track Cam button press event.
-     */
+    * Handles the Track Cam button press event.
+    **/
     public void OnTrackCamPressed()
     {
         feedbackText.text =
@@ -132,38 +132,46 @@ public class UIManager : MonoBehaviour
     }
 
     /**
-     * Toggles the visibility of the object placement panel.
-     * @param show True to show the panel, false to hide it.
-     */
+    * Toggles the visibility of the object placement panel.
+    * @param show - True to show the panel, false to hide it.
+    **/
     private void ShowObjectPlacementPanel(bool show)
     {
         objectPlacementPanel.SetActive(show);
     }
 
+    /**
+    * Toggles the visibility of the object placement panel.
+    * @param show - True to show the panel, false to hide it.
+    **/
     private void ShowThrustButtonsPanel(bool show)
     {
         thrustButtons.SetActive(show);
     }
 
+    /**
+    * Toggles the visibility of the apogee and perigee panel.
+    * @param show - True to show the panel, false to hide it.
+    **/
     private void ShowApogeePerigeePanel(bool show)
     {
         apogeePerigeePanel.SetActive(show);
     }
 
     /**
-     * Toggles the visibility of the general UI panel.
-     * @param show True to show the panel, false to hide it.
-     */
+    * Toggles the visibility of the general UI panel.
+    * @param show - True to show the panel, false to hide it.
+    **/
     private void ShowPanel(bool show)
     {
         panel.SetActive(show);
     }
 
     /**
-     * Updates the visual state of a button.
-     * @param button The button to update.
-     * @param isPressed True if the button is active/pressed, false otherwise.
-     */
+    * Updates the visual state of a button.
+    * @param button - The button to update.
+    * @param isPressed - True if the button is active/pressed, false otherwise.
+    **/
     private void SetButtonState(Button button, bool isPressed)
     {
         ColorBlock colors = button.colors;
@@ -183,21 +191,5 @@ public class UIManager : MonoBehaviour
 
         button.Select();
         button.OnDeselect(null); // Force the button to refresh its visual state.
-    }
-
-    public void UpdateApogee(float apogee)
-    {
-        if (apogeeText != null)
-        {
-            apogeeText.text = $"Apogee: {apogee / 1000f:F2} km";
-        }
-    }
-
-    public void UpdatePerigee(float perigee)
-    {
-        if (perigeeText != null)
-        {
-            perigeeText.text = $"Perigee: {perigee / 1000f:F2} km";
-        }
     }
 }

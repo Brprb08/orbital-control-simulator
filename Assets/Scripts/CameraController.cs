@@ -4,29 +4,33 @@ using UnityEngine.EventSystems;
 using System.Collections;
 
 /**
- * CameraController handles the camera movement, tracking, and free camera mode.
- * This script manages the transition between tracking celestial bodies and free movement.
- */
+* Handles camera movement, tracking of celestial bodies, and free camera mode.
+* This script supports switching between tracking celestial bodies and free movement.
+* It also manages trajectory visualization and placeholder tracking for temporary objects.
+**/
 public class CameraController : MonoBehaviour
 {
     [Header("References")]
-    public CameraMovement cameraMovement; // Controls camera movement.
-    public Transform cameraPivotTransform; // The pivot point for camera rotation.
-    public Transform cameraTransform; // Main camera, a child of the pivot.
-
+    public CameraMovement cameraMovement;
+    public Transform cameraPivotTransform;
+    public Transform cameraTransform;
     [Header("Settings")]
-    public float sensitivity = 100f; // Mouse sensitivity for camera rotation.
+    public float sensitivity = 100f;
 
     [Header("Tracking State")]
-    public List<NBody> bodies; // List of celestial bodies to track.
+    public List<NBody> bodies;
     public List<NBody> Bodies => bodies; // Public read-only access to the list of bodies.
-    public int currentIndex = 0; // Index of the currently tracked body.
-    private bool isFreeCamMode = false; // Whether the camera is in free movement mode.
-    private Vector3 defaultLocalPosition; // Default camera position relative to the pivot.
-    private bool isSwitchingToFreeCam = false; // Prevents multiple switches.
-    private Transform placeholderTarget; // Placeholder for tracking temporary objects.
-    private bool isTrackingPlaceholder = false; // Tracks whether the camera is following a placeholder.
+    public int currentIndex = 0;
+    private bool isFreeCamMode = false;
+    private Vector3 defaultLocalPosition;
+    private bool isSwitchingToFreeCam = false;
+    private Transform placeholderTarget;
+    private bool isTrackingPlaceholder = false;
     public TrajectoryRenderer trajectoryRenderer;
+
+    /**
+    * Used by object placement manager to ensure cam is in FreeCam mode when placing.
+    **/
     public bool IsFreeCamMode
     {
         get => isFreeCamMode;
@@ -38,8 +42,9 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Initializes the camera's default position and starts tracking the first celestial body.
-     */
+    * Initializes the camera's default position and starts tracking the first celestial body.
+    * Also initializes the trajectory renderer after a short delay.
+    **/
     void Start()
     {
         if (cameraTransform != null)
@@ -56,6 +61,10 @@ public class CameraController : MonoBehaviour
         StartCoroutine(FindTrajectoryRendererWithDelay());
     }
 
+
+    /**
+    * Coroutine to initialize the camera after all NBody.Start() methods have executed.
+    **/
     IEnumerator InitializeCamera()
     {
         yield return null; // Wait for all NBody.Start() to finish
@@ -66,6 +75,9 @@ public class CameraController : MonoBehaviour
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
     }
 
+    /**
+    * Coroutine to find the trajectory renderer with a small delay.
+    **/
     private IEnumerator FindTrajectoryRendererWithDelay()
     {
         yield return new WaitForSeconds(0.1f);  // Small delay
@@ -78,8 +90,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Handles camera controls and switching between tracking and free camera mode.
-     */
+    * Handles input for camera controls and switching between tracking and free camera mode.
+    **/
     void Update()
     {
         if (!isFreeCamMode)
@@ -108,8 +120,12 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Clamps an angle between a minimum and maximum value.
-     */
+    * Clamps an angle between a minimum and maximum value.
+    * @param angle The angle to clamp.
+    * @param min The minimum value.
+    * @param max The maximum value.
+    * @return The clamped angle.
+    **/
     private float ClampAngle(float angle, float min, float max)
     {
         angle = NormalizeAngle(angle);
@@ -117,8 +133,10 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Normalizes an angle to be within -180 to 180 degrees.
-     */
+    * Normalizes an angle to be within -180 to 180 degrees.
+    * @param angle The angle to normalize.
+    * @return The normalized angle.
+    **/
     private float NormalizeAngle(float angle)
     {
         while (angle > 180f) angle -= 360f;
@@ -127,8 +145,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Switches the camera to free movement mode.
-     */
+    * Switches the camera to free movement mode, disabling tracking.
+    **/
     public void BreakToFreeCam()
     {
         if (isSwitchingToFreeCam)
@@ -156,8 +174,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Resets the camera position to its default relative to the pivot.
-     */
+    * Resets the camera's local position and rotation relative to the pivot.
+    **/
     private void ResetCameraPosition()
     {
         if (cameraTransform != null)
@@ -173,8 +191,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Resets the pivot's rotation to point at the tracked body.
-     */
+    * Resets the pivot's rotation to the default orientation.
+    **/
     private void ResetPivotRotation()
     {
         if (cameraPivotTransform != null)
@@ -189,8 +207,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Returns the camera to tracking mode after free movement.
-     */
+    * Returns the camera to tracking mode, focusing on a celestial body or placeholder.
+    **/
     public void ReturnToTracking()
     {
         Debug.Log("Returning to Tracking Mode...");
@@ -249,6 +267,11 @@ public class CameraController : MonoBehaviour
         Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");
     }
 
+    /**
+    * Points camera at tracked NBody object with Central body as the center background.
+    * @param centralBody - CentralBody of the sim
+    * @param targetPosition - Current object camera is tracking
+    **/
     private void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
     {
         // Vector pointing FROM the tracked object TO the central body (Earth)
@@ -269,38 +292,20 @@ public class CameraController : MonoBehaviour
 
         Debug.Log($"Camera pivot adjusted to align with {centralBody.name} behind target, with upward tilt.");
     }
-    private int GetClosestBodyIndexToLastPosition()
-    {
-        if (bodies.Count == 0) return -1;
-
-        Vector3 lastPlaceholderPosition = placeholderTarget != null ? placeholderTarget.position : Vector3.zero;
-        float closestDistance = float.MaxValue;
-        int closestIndex = -1;
-
-        for (int i = 0; i < bodies.Count; i++)
-        {
-            float distance = Vector3.Distance(lastPlaceholderPosition, bodies[i].transform.position);
-            if (distance < closestDistance)
-            {
-                closestDistance = distance;
-                closestIndex = i;
-            }
-        }
-
-        return closestIndex;
-    }
 
     /**
-     * Checks if the camera is currently tracking a specific body.
-     */
+    * Checks if the camera is currently tracking a specific body.
+    * @param body - Current NBody we are tracking
+    **/
     public bool IsTracking(NBody body)
     {
         return cameraMovement != null && cameraMovement.targetBody == body;
     }
 
     /**
-     * Switches the camera to another valid body if the current one is removed.
-     */
+    * Switches the camera to another valid body if the current one is removed.
+    * @param removedBody - Body that has been removed (Collision)
+    **/
     public void SwitchToNextValidBody(NBody removedBody)
     {
         RefreshBodiesList();
@@ -320,8 +325,9 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Sets the camera to track a placeholder object.
-     */
+    * Sets the camera to track a placeholder object.
+    * @param radius - Placeholder object to track temporarily
+    **/
     public void SetTargetPlaceholder(Transform placeholder)
     {
         if (placeholder == null) return;
@@ -334,8 +340,9 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Switches the camera to track a real NBody object.
-     */
+    * Switches the camera to track a real NBody object.
+    * @param realNBody - Real object being added to sim to track
+    **/
     public void SwitchToRealNBody(NBody realNBody)
     {
         if (realNBody == null) return;
@@ -349,8 +356,8 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-     * Refreshes the list of celestial bodies being tracked.
-     */
+    * Refreshes the list of celestial bodies being tracked.
+    **/
     public void RefreshBodiesList()
     {
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
