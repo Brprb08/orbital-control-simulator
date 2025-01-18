@@ -36,9 +36,12 @@ public class ThrustController : MonoBehaviour
 
     [Header("References")]
     public CameraController cameraController;
+    public TrajectoryRenderer trajectoryRenderer;
 
     private float thrustFactor = 1f;
     private float thrustDuration = 0f;
+
+    public bool IsThrusting { get; private set; } = false;
 
     void Start()
     {
@@ -101,6 +104,8 @@ public class ThrustController : MonoBehaviour
             anyThrustActive = true;
         }
 
+        IsThrusting = anyThrustActive;
+
         // Update thrust duration
         if (anyThrustActive)
         {
@@ -141,6 +146,9 @@ public class ThrustController : MonoBehaviour
 
         // Apply the scaled force
         targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
     }
 
     /**
@@ -179,16 +187,129 @@ public class ThrustController : MonoBehaviour
     }
 
     // UI Button Handlers
-    public void StartForwardThrust() { isForwardThrustActive = true; if (forwardThrustParticles) forwardThrustParticles.Play(); }
-    public void StopForwardThrust() { isForwardThrustActive = false; if (forwardThrustParticles) forwardThrustParticles.Stop(); }
-    public void StartReverseThrust() { isReverseThrustActive = true; if (reverseThrustParticles) reverseThrustParticles.Play(); }
-    public void StopReverseThrust() { isReverseThrustActive = false; if (reverseThrustParticles) reverseThrustParticles.Stop(); }
-    public void StartLeftThrust() { isLeftThrustActive = true; if (leftThrustParticles) leftThrustParticles.Play(); }
-    public void StopLeftThrust() { isLeftThrustActive = false; if (leftThrustParticles) leftThrustParticles.Stop(); }
-    public void StartRightThrust() { isRightThrustActive = true; if (rightThrustParticles) rightThrustParticles.Play(); }
-    public void StopRightThrust() { isRightThrustActive = false; if (rightThrustParticles) rightThrustParticles.Stop(); }
-    public void StartRadialInThrust() { isRadialInThrustActive = true; if (radialInThrustParticles) radialInThrustParticles.Play(); }
-    public void StopRadialInThrust() { isRadialInThrustActive = false; if (radialInThrustParticles) radialInThrustParticles.Stop(); }
-    public void StartRadialOutThrust() { isRadialOutThrustActive = true; if (radialOutThrustParticles) radialOutThrustParticles.Play(); }
-    public void StopRadialOutThrust() { isRadialOutThrustActive = false; if (radialOutThrustParticles) radialOutThrustParticles.Stop(); }
+    public void StartForwardThrust()
+    {
+        isForwardThrustActive = true;
+        if (forwardThrustParticles)
+        {
+            forwardThrustParticles.Play();
+        }
+    }
+
+    public void StopForwardThrust()
+    {
+        isForwardThrustActive = false;
+        if (forwardThrustParticles)
+        {
+            forwardThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    public void StartReverseThrust()
+    {
+        isReverseThrustActive = true;
+        if (reverseThrustParticles)
+        {
+            reverseThrustParticles.Play();
+        }
+    }
+
+    public void StopReverseThrust()
+    {
+        isReverseThrustActive = false;
+        if (reverseThrustParticles)
+        {
+            reverseThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    public void StartLeftThrust()
+    {
+        isLeftThrustActive = true;
+        if (leftThrustParticles)
+        {
+            leftThrustParticles.Play();
+        }
+    }
+
+    public void StopLeftThrust()
+    {
+        isLeftThrustActive = false;
+        if (leftThrustParticles)
+        {
+            leftThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    public void StartRightThrust()
+    {
+        isRightThrustActive = true;
+        if (rightThrustParticles)
+        {
+            rightThrustParticles.Play();
+        }
+    }
+
+    public void StopRightThrust()
+    {
+        isRightThrustActive = false;
+        if (rightThrustParticles)
+        {
+            rightThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    public void StartRadialInThrust()
+    {
+        isRadialInThrustActive = true;
+        if (radialInThrustParticles)
+        {
+            radialInThrustParticles.Play();
+        }
+    }
+
+    public void StopRadialInThrust()
+    {
+        isRadialInThrustActive = false;
+        if (radialInThrustParticles)
+        {
+            radialInThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    public void StartRadialOutThrust()
+    {
+        isRadialOutThrustActive = true;
+        if (radialOutThrustParticles)
+        {
+            radialOutThrustParticles.Play();
+        }
+    }
+
+    public void StopRadialOutThrust()
+    {
+        isRadialOutThrustActive = false;
+        if (radialOutThrustParticles)
+        {
+            radialOutThrustParticles.Stop();
+        }
+
+        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer.orbitIsDirty = true;
+    }
 }

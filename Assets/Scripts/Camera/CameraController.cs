@@ -103,6 +103,7 @@ public class CameraController : MonoBehaviour
                 lastTabTime = Time.time;
                 currentIndex = (currentIndex + 1) % bodies.Count;
                 trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
+                trajectoryRenderer.orbitIsDirty = true;
                 ReturnToTracking();
             }
 

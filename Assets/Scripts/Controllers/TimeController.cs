@@ -13,6 +13,7 @@ public class TimeController : MonoBehaviour
     public TextMeshProUGUI timeScaleText;
     public Button pauseButton;
     public TextMeshProUGUI pauseButtonText;
+    public UIManager uIManager;
     private bool isPaused = false;
     private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
 
@@ -39,6 +40,15 @@ public class TimeController : MonoBehaviour
             timeSlider.maxValue = 100f;
             timeSlider.value = Time.timeScale;
             timeSlider.onValueChanged.AddListener(OnTimeScaleChanged);
+        }
+
+        if (uIManager == null)
+        {
+            uIManager = GravityManager.Instance.GetComponent<UIManager>();
+            if (uIManager == null)
+            {
+                Debug.LogError("TimeController: UIManager reference not set and not found on GravityManager.");
+            }
         }
 
         Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
@@ -130,8 +140,10 @@ public class TimeController : MonoBehaviour
     **/
     private void Pause()
     {
+        timeSlider.interactable = false;
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
+        uIManager.ShowSelectPanels(false, false, false, false);
         isPaused = true;
         Debug.Log("Simulation Paused");
     }
@@ -141,6 +153,7 @@ public class TimeController : MonoBehaviour
     **/
     private void Resume()
     {
+        timeSlider.interactable = true;
         Time.timeScale = previousTimeScale;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
         isPaused = false;

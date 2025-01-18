@@ -75,11 +75,22 @@ public class CameraMovement : MonoBehaviour
         }
 
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
-        mainCamera.transform.localPosition = Vector3.Lerp(
+        if (Time.deltaTime == 0f)
+        {
+            mainCamera.transform.localPosition = Vector3.Lerp(
             mainCamera.transform.localPosition,
             targetLocalPos,
-            Time.deltaTime * 10f
+            2f * 10f
         );
+        }
+        else
+        {
+            mainCamera.transform.localPosition = Vector3.Lerp(
+                mainCamera.transform.localPosition,
+                targetLocalPos,
+                Time.deltaTime * 10f
+            );
+        }
 
         mainCamera.transform.LookAt(transform.position);
 
@@ -160,7 +171,7 @@ public class CameraMovement : MonoBehaviour
         {
             float altitude = targetBody.altitude;
             float altitudeInFeet = altitude * 3280.84f;
-            altitudeText.text = $"Altitude: {altitude:F2} km ({altitudeInFeet:F0} ft)";
+            altitudeText.text = $"Altitude: {altitude * 10:F2} km ({altitudeInFeet:F0} ft)";
         }
 
         if (trackingObjectNameText != null && targetBody != null)

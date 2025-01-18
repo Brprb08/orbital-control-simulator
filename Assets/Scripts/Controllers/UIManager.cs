@@ -133,6 +133,21 @@ public class UIManager : MonoBehaviour
 
     /**
     * Toggles the visibility of the object placement panel.
+    * @param showObjectPlacementPanel - Displays the object placement panel on canvas
+    * @param ShowThrustButtonsPanel - Displays the Thrust buttons panel on canvas
+    * @param showApogeePerigeePanel - Displays the Apogee Perigee panel on canvas
+    * @param showPanel - Displays the Velocity/Altitude panel on canvas
+    **/
+    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showApogeePerigeePanel, bool showPanel)
+    {
+        ShowObjectPlacementPanel(showObjectPlacementPanel);
+        ShowThrustButtonsPanel(showThrustButtonsPanel);
+        ShowApogeePerigeePanel(showApogeePerigeePanel);
+        ShowPanel(showPanel);
+    }
+
+    /**
+    * Toggles the visibility of the object placement panel.
     * @param show - True to show the panel, false to hide it.
     **/
     private void ShowObjectPlacementPanel(bool show)
