@@ -206,6 +206,7 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartReverseThrust()
@@ -227,6 +228,7 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartLeftThrust()
@@ -248,6 +250,7 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRightThrust()
@@ -269,6 +272,7 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialInThrust()
@@ -290,6 +294,7 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialOutThrust()
@@ -311,5 +316,6 @@ public class ThrustController : MonoBehaviour
 
         trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 }

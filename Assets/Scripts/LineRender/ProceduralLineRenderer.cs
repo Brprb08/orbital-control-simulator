@@ -1,4 +1,5 @@
 using UnityEngine;
+using System;
 
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralLineRenderer : MonoBehaviour
@@ -14,7 +15,6 @@ public class ProceduralLineRenderer : MonoBehaviour
         lineMesh = new Mesh { name = "LineMesh" };
         meshFilter.mesh = lineMesh;
 
-        // Ensure there's a MeshRenderer with a material
         var mr = GetComponent<MeshRenderer>();
         if (!mr.sharedMaterial)
         {
@@ -29,28 +29,27 @@ public class ProceduralLineRenderer : MonoBehaviour
             lineMesh.Clear();
             return;
         }
-        for (int i = 0; i < points.Length; i++)
+
+        int maxPoints = Math.Min(points.Length, 30000);
+        for (int i = 0; i < maxPoints; i++)
         {
-            points[i] = transform.InverseTransformPoint(points[i]); // Convert to local space
+            points[i] = transform.InverseTransformPoint(points[i]);
         }
-        Vector3[] vertices = new Vector3[points.Length];
-        int[] indices = new int[(points.Length - 1) * 2];
 
+        Vector3[] vertices = new Vector3[maxPoints];
+        int[] indices = new int[(maxPoints - 1) * 2];
 
-
-        // Use points directly
-        for (int i = 0; i < points.Length; i++)
+        for (int i = 0; i < maxPoints; i++)
         {
-            vertices[i] = points[i]; // Use the exact point
+            vertices[i] = points[i];
         }
 
         // Line strip (connect each point)
-        for (int i = 0; i < points.Length - 1; i++)
+        for (int i = 0; i < maxPoints - 1; i++)
         {
             indices[i * 2] = i;
             indices[i * 2 + 1] = i + 1;
         }
-
         lineMesh.Clear();
         lineMesh.vertices = vertices;
         lineMesh.SetIndices(indices, MeshTopology.Lines, 0);

@@ -51,7 +51,7 @@ public class ToggleButton : MonoBehaviour
         manager = LineVisibilityManager.Instance;
         if (manager == null)
         {
-            GameObject gravityManager = GameObject.Find("GravityManager"); // Ensure name matches in the hierarchy
+            GameObject gravityManager = GameObject.Find("Controller"); // Ensure name matches in the hierarchy
             if (gravityManager != null)
                 manager = gravityManager.GetComponent<LineVisibilityManager>();
 

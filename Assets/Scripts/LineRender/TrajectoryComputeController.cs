@@ -2,7 +2,7 @@ using UnityEngine;
 
 public class TrajectoryComputeController : MonoBehaviour
 {
-    public ComputeShader trajectoryComputeShader; // Assign in Inspector
+    public ComputeShader trajectoryComputeShader;
 
     // Buffers for a single dispatch
     private ComputeBuffer initialPositionBuffer;
@@ -11,11 +11,12 @@ public class TrajectoryComputeController : MonoBehaviour
     private ComputeBuffer bodyPositionsBuffer;
     private ComputeBuffer bodyMassesBuffer;
     private ComputeBuffer outputTrajectoryBuffer;
+    private ComputeBuffer debugBuffer;
 
-    /// <summary>
-    /// Calculates a trajectory via the GPU-based Runge-Kutta.
-    /// Returns an array of positions for the orbit path.
-    /// </summary>
+    /**
+    * Calculates a trajectory via the GPU-based Runge-Kutta.
+    * Returns an array of positions for the orbit path.
+    **/
     public Vector3[] CalculateTrajectoryGPU(
         Vector3 startPos,
         Vector3 startVel,
@@ -26,7 +27,6 @@ public class TrajectoryComputeController : MonoBehaviour
         int steps
     )
     {
-        Debug.LogError(startPos);
         // 1) Create arrays for the output
         Vector3[] outputPositions = new Vector3[steps];
 
@@ -48,7 +48,7 @@ public class TrajectoryComputeController : MonoBehaviour
         bodyMassesBuffer.SetData(otherBodyMasses);
 
         // 4) Find kernel & bind buffers
-        int kernelIndex = trajectoryComputeShader.FindKernel("CSMain");
+        int kernelIndex = trajectoryComputeShader.FindKernel("RungeKutta");
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialPosition", initialPositionBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialVelocity", initialVelocityBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "mass", massBuffer);
@@ -62,14 +62,10 @@ public class TrajectoryComputeController : MonoBehaviour
         trajectoryComputeShader.SetFloat("gravitationalConstant", PhysicsConstants.G);
         trajectoryComputeShader.SetInt("numOtherBodies", otherBodyPositions.Length);
 
-        // 6) Dispatch with (1,1,1)
         trajectoryComputeShader.Dispatch(kernelIndex, 1, 1, 1);
 
-        // 7) Retrieve data
         outputTrajectoryBuffer.GetData(outputPositions);
 
-        Debug.LogError(outputPositions[0]);
-        // 8) Release
         initialPositionBuffer.Release();
         initialVelocityBuffer.Release();
         massBuffer.Release();

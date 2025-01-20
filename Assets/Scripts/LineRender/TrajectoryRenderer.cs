@@ -70,6 +70,9 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private float nonThrustRecomputeInterval = 120f;
 
+    private bool update = false;
+
+
 
     /**
     * Initializes line renderers and sets up materials
@@ -207,137 +210,14 @@ public class TrajectoryRenderer : MonoBehaviour
         lineRenderer.enabled = true;
     }
 
-    /**
-    * Coroutine to update the predicted trajectory.
-    **/
-    // private IEnumerator UpdatePredictedTrajectoryCoroutine()
-    // {
-    //     while (trackedBody != null)
-    //     {
-    //         if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
-    //         {
-    //             predictionLineRenderer.enabled = false;
-    //             originLineRenderer.enabled = false;
-    //             apogeeLineRenderer.enabled = false;
-    //             perigeeLineRenderer.enabled = false;
-    //             yield return new WaitForSeconds(0.5f);
-    //             continue;
-    //         }
-
-    //         if (!trackedBody.enabled)
-    //         {
-    //             yield return new WaitForSeconds(0.5f);
-    //             continue;
-    //         }
-
-    //         if (Time.time >= nextUpdateTime)
-    //         {
-
-    //             List<Vector3> positions = new List<Vector3>();
-    //             // Calculate the predicted trajectory
-    //             // List<Vector3> positions = trackedBody.CalculatePredictedTrajectory(predictionSteps, predictionDeltaTime);
-
-    //             if (!orbitChunks.ContainsKey(lastChunkIndex))
-    //             {
-    //                 // Calculate a new trajectory chunk if not cached
-    //                 List<Vector3> chunkPositions = trackedBody.CalculatePredictedTrajectory(chunkSize, predictionDeltaTime);
-    //                 orbitChunks[lastChunkIndex] = chunkPositions;
-    //                 positions.AddRange(chunkPositions);
-    //             }
-    //             else
-    //             {
-    //                 // Use the cached chunk
-    //                 positions.AddRange(orbitChunks[lastChunkIndex]);
-    //             }
-
-    //             lastChunkIndex++;
-
-    //             if (lastChunkIndex * chunkSize >= predictionSteps)
-    //             {
-    //                 lastChunkIndex = 0; // Restart from the beginning
-    //                 orbitChunks.Clear(); // Optionally clear cache for periodic orbits
-    //             }
-
-
-
-    //             if (positions.Count > 0)
-    //             {
-    //                 predictionLineRenderer.positionCount = positions.Count;
-    //                 predictionLineRenderer.SetPositions(positions.ToArray());
-
-    //             }
-    //             else
-    //             {
-    //                 predictionLineRenderer.enabled = false;
-    //             }
-
-    //             AdjustPredictionSettings(Time.timeScale);
-
-    //             nextUpdateTime = Time.time + updateInterval;
-    //         }
-
-    //         if (showApogeePerigeeLines && trackedBody != null && Time.time >= apogeePerigeeUpdateTime)
-    //         {
-    //             // Get world-space positions for apogee and perigee
-    //             trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
-
-    //             // Update apogee line
-    //             if (apogeeLineRenderer != null)
-    //             {
-    //                 apogeeLineRenderer.enabled = true;
-    //                 apogeeLineRenderer.positionCount = 2;
-    //                 apogeeLineRenderer.SetPositions(new Vector3[] { apogeePosition, Vector3.zero });
-    //             }
-
-    //             // Update perigee line
-    //             if (perigeeLineRenderer != null)
-    //             {
-    //                 perigeeLineRenderer.enabled = true;
-    //                 perigeeLineRenderer.positionCount = 2;
-    //                 perigeeLineRenderer.SetPositions(new Vector3[] { perigeePosition, Vector3.zero });
-    //             }
-
-    //             // Optionally update the UI
-    //             if (apogeeText != null && perigeeText != null)
-    //             {
-
-    //                 float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-    //                 float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-
-    //                 UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
-    //             }
-
-    //             apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
-    //         }
-
-    //         if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
-    //         {
-    //             if (originLineRenderer != null && trackedBody != null && showOriginLines)
-    //             {
-    //                 originLineRenderer.enabled = true;
-    //                 originLineRenderer.positionCount = 2;
-    //                 originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
-    //             }
-    //         }
-
-    //         if (mainCamera != null && trackedBody != null && showPredictionLines)
-    //         {
-    //             float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-    //             predictionLineRenderer.enabled = distanceToCamera > lineDisableDistance;
-    //         }
-
-    //         yield return new WaitForSeconds(0.1f);
-    //     }
-    // }
-
     public IEnumerator RecomputeTrajectory()
     {
         Vector3 lastPosition = trackedBody.transform.position;
-        float positionChangeThreshold = 0f;  // Minimum positional change (in units) to trigger recompute
+        float positionChangeThreshold = 0f;
         while (true)
         {
             if (trackedBody == null)
-                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForSeconds(0.1f);
 
             if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
             {
@@ -345,32 +225,29 @@ public class TrajectoryRenderer : MonoBehaviour
                 originLineRenderer.enabled = false;
                 apogeeLineRenderer.enabled = false;
                 perigeeLineRenderer.enabled = false;
-                yield return new WaitForSeconds(0.5f);
+                yield return new WaitForSeconds(0.1f);
                 continue;
             }
 
             float eccentricity, semiMajorAxis, orbitalPeriod = 0f;
+
             trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
             bool isElliptical = eccentricity < 1f;
 
             bool isThrusting = thrustController != null && thrustController.IsThrusting;
-            Debug.LogError(isThrusting);
 
-            if (isThrusting || orbitIsDirty)
+            if (update || isThrusting || orbitIsDirty || (isElliptical && predictionSteps == 5000 && !isThrusting))
             {
-
-
                 if (isElliptical)
                 {
-                    // Compute orbital period using Kepler's Third Law
                     float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
                     orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 3) / gravitationalParameter);
 
                     // Adjust prediction steps to cover the full orbital loop
                     predictionSteps = Mathf.Clamp(
-        Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
-        1, // Minimum number of steps to ensure at least one step
-        30000 // Maximum number of steps
+                        Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
+                        1,
+                        30000
     );
                 }
                 else
@@ -383,88 +260,64 @@ public class TrajectoryRenderer : MonoBehaviour
                 {
                     predictionSteps = 5000;
                 }
-                // Vector3 currentPosition = trackedBody.transform.position;
-                // float positionChange = (currentPosition - lastPosition).magnitude;
 
-                // Recompute if the position changed significantly or after a periodic interval
-                // if (positionChange > positionChangeThreshold || (isThrusting) || Time.time >= nextUpdateTime)
-                // {
-                // 1) Clear old line data
                 predictionLineRenderer.positionCount = 0;
 
-                // 2) Calculate entire orbit in a single call
                 List<Vector3> newTrajectoryPoints = trackedBody.CalculatePredictedTrajectoryGPU(predictionSteps, predictionDeltaTime);
+
                 proceduralLine.UpdateLine(newTrajectoryPoints.ToArray());
 
-                // 3) Apply them to the line renderer
-                // if (newTrajectoryPoints.Count > 0)
-                // {
-                //     predictionLineRenderer.positionCount = newTrajectoryPoints.Count;
-                //     predictionLineRenderer.SetPositions(newTrajectoryPoints.ToArray());
-                //     predictionLineRenderer.enabled = true;
-                // }
-                // else
-                // {
-                //     predictionLineRenderer.enabled = false;
-                // }
-
-                // lastPosition = currentPosition;  // Update position
-                // nextUpdateTime = Time.time + updateInterval;
-                // }
-
-                if (showApogeePerigeeLines && trackedBody != null && Time.time >= apogeePerigeeUpdateTime)
-                {
-                    // Get world-space positions for apogee and perigee
-                    trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
-
-                    // Update apogee line
-                    if (apogeeLineRenderer != null)
-                    {
-                        apogeeLineRenderer.enabled = true;
-                        apogeeLineRenderer.positionCount = 2;
-                        apogeeLineRenderer.SetPositions(new Vector3[] { apogeePosition, Vector3.zero });
-                    }
-
-                    // Update perigee line
-                    if (perigeeLineRenderer != null)
-                    {
-                        perigeeLineRenderer.enabled = true;
-                        perigeeLineRenderer.positionCount = 2;
-                        perigeeLineRenderer.SetPositions(new Vector3[] { perigeePosition, Vector3.zero });
-                    }
-
-                    // Optionally update the UI
-                    if (apogeeText != null && perigeeText != null)
-                    {
-
-                        float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-                        float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-
-                        UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
-                    }
-
-                    apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
-                }
-
-                if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
-                {
-                    if (originLineRenderer != null && trackedBody != null && showOriginLines)
-                    {
-                        originLineRenderer.enabled = true;
-                        originLineRenderer.positionCount = 2;
-                        originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
-                    }
-                }
-
-                if (mainCamera != null && trackedBody != null && showPredictionLines)
-                {
-                    float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-                    predictionLineRenderer.enabled = distanceToCamera > lineDisableDistance;
-                }
-
-                // positionChangeThreshold = 1000f;
                 orbitIsDirty = false;
+            }
 
+            if (update) update = false;
+
+            if (showApogeePerigeeLines && trackedBody != null && Time.time >= apogeePerigeeUpdateTime)
+            {
+                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
+
+                if (apogeeLineRenderer != null)
+                {
+                    apogeeLineRenderer.enabled = true;
+                    apogeeLineRenderer.positionCount = 2;
+                    apogeeLineRenderer.SetPositions(new Vector3[] { apogeePosition, Vector3.zero });
+                }
+
+                if (perigeeLineRenderer != null)
+                {
+                    perigeeLineRenderer.enabled = true;
+                    perigeeLineRenderer.positionCount = 2;
+                    perigeeLineRenderer.SetPositions(new Vector3[] { perigeePosition, Vector3.zero });
+                }
+
+                if (apogeeText != null && perigeeText != null)
+                {
+
+                    float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                    float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+
+                    UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
+                }
+
+                apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
+            }
+
+
+
+            if (mainCamera != null && trackedBody != null && showPredictionLines)
+            {
+                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
+                predictionLineRenderer.enabled = distanceToCamera > lineDisableDistance;
+            }
+
+            if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
+            {
+                if (originLineRenderer != null && trackedBody != null && showOriginLines)
+                {
+                    originLineRenderer.enabled = true;
+                    originLineRenderer.positionCount = 2;
+                    originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
+                }
             }
 
             if (isThrusting)
@@ -503,45 +356,19 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     public void AdjustPredictionSettings(float timeScale)
     {
-        // if (timeScale <= 1f)
-        // {
-        //     predictionSteps = 1000;
-        //     predictionDeltaTime = .5f;
-        // }
-        // else if (timeScale <= 10f)
-        // {
-        //     predictionSteps = 2000;
-        //     predictionDeltaTime = 1f;
-        // }
-        // else if (timeScale <= 50f)
-        // {
-        //     predictionSteps = 3000;
-        //     predictionDeltaTime = 2f;
-        // }
-        // else if (timeScale <= 100f)
-        // {
-        //     predictionSteps = 3000;
-        //     predictionDeltaTime = 5f;
-        // }
-
-        float distance = transform.position.magnitude; // distance from (0,0,0)
-        // float speed = velocity.magnitude;
+        float distance = transform.position.magnitude;
         float speed = 300f;
 
 
-        // Try a "baseDeltaTime" and then adapt it:
         float baseDeltaTime = 0.5f;
         float minDeltaTime = 0.5f;
         float maxDeltaTime = 10f;
 
-        // Example: bigger deltaTime at big distance, smaller at high speed
         float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
         adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
 
-        // Assign your new adaptive deltaTime
         predictionDeltaTime = adjustedDelta;
 
-        // Keep or tweak the step count as needed:
         predictionSteps = 5000;
     }
 
@@ -553,12 +380,13 @@ public class TrajectoryRenderer : MonoBehaviour
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
         showPredictionLines = showPrediction;
+        Debug.LogError(showPredictionLines);
         showOriginLines = showOrigin;
         showApogeePerigeeLines = showApogeePerigee;
 
-        if (!showPrediction && predictionLineRenderer != null)
+        if (!showPrediction && proceduralLine != null)
         {
-            predictionLineRenderer.positionCount = 0;
+            proceduralLine.UpdateLine(new Vector3[0]);
         }
 
         if (!showOrigin && originLineRenderer != null)
@@ -576,7 +404,10 @@ public class TrajectoryRenderer : MonoBehaviour
             perigeeLineRenderer.positionCount = 0;
         }
 
-        if (predictionLineRenderer != null) predictionLineRenderer.enabled = showPrediction;
+        if (proceduralLine != null)
+        {
+            update = true;
+        }
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
         if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
         if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;

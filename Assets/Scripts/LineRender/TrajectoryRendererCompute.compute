@@ -23,7 +23,15 @@ float3 ComputeAcceleration(float3 position, float thisMass)
     for (uint i = 0; i < numOtherBodies; i++)
     {
         float3 dir = bodyPositions[i] - position;
-        float distSq = max(dot(dir, dir), 0.001f);
+        float distSq = dot(dir, dir);
+        
+        // Avoid dividing by zero or extremely small
+//         float minDistSq = 1e-3;  // tweak as necessary
+//         if (distSq < minDistSq) distSq = minDistSq;
+
+//         float maxDistSq = 1e16; // Example large clamp; pick a suitable max
+// if (distSq > maxDistSq) distSq = maxDistSq;
+
         float forceMag = gravitationalConstant * (thisMass * bodyMasses[i]) / distSq;
         totalForce += normalize(dir) * forceMag;
     }

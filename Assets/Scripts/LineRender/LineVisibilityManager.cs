@@ -84,6 +84,7 @@ public class LineVisibilityManager : MonoBehaviour
                 TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
                 if (trajectoryRenderer != null)
                 {
+                    Debug.LogError("HELLO");
                     bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
                     bool currentOriginState = lineVisibilityStates[LineType.Origin];
                     bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];

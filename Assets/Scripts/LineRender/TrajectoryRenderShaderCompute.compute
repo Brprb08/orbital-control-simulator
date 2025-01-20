@@ -1,46 +1,46 @@
-StructuredBuffer<float3> initialPosition;  // single position for the body
-StructuredBuffer<float3> initialVelocity;  // single velocity
-StructuredBuffer<float>   mass;            // the mass of this body
+StructuredBuffer<float3> initialPosition;  
+StructuredBuffer<float3> initialVelocity;  
+StructuredBuffer<float>   mass;            
 
 // For gravitational bodies (like central body, etc.)
-StructuredBuffer<float3> bodyPositions;  // array of positions for other bodies
-StructuredBuffer<float>  bodyMasses;     // array of masses for other bodies
-uint numOtherBodies;                     // how many bodies are in bodyPositions
+StructuredBuffer<float3> bodyPositions;  
+StructuredBuffer<float>  bodyMasses;     
+uint numOtherBodies;                     
 
-// The output trajectory. We'll store 'steps' positions
 RWStructuredBuffer<float3> outTrajectory;
 
-// Uniforms
 float deltaTime;
 uint steps;
 float gravitationalConstant;
 
 float3 ComputeAcceleration(float3 position, float thisMass)
 {
-    float3 totalForce = float3(0,0,0);
+    float3 totalForce = float3(0, 0, 0);
 
-    // Sum the gravitational force from each other body
+    float minDistSq = .1;
+    float maxDistSq = 1e12;
+    float maxForce = 2e16;   
+
     for (uint i = 0; i < numOtherBodies; i++)
     {
         float3 dir = bodyPositions[i] - position;
-        float distSq = max(dot(dir, dir), 0.001f);
-        float forceMag = gravitationalConstant * (thisMass * bodyMasses[i]) / distSq;
+
+        float distSq = dot(dir, dir);
+
+        distSq = clamp(distSq, minDistSq, maxDistSq);
+
+        float forceMag = (gravitationalConstant * (thisMass * bodyMasses[i])) / distSq;
+        forceMag = min(forceMag, maxForce);
         totalForce += normalize(dir) * forceMag;
     }
-
-    // Convert total force to acceleration
+    
     return totalForce / thisMass;
 }
 
-// Each #kernel tells which function to compile; you can have many kernels
-#pragma kernel CSMain
+#pragma kernel RungeKutta
 
-// Create a RenderTexture with enableRandomWrite flag and set it
-// with cs.SetTexture
-
-
-[numthreads(8,8,1)]
-void CSMain (uint3 id : SV_DispatchThreadID)
+[numthreads(1, 1, 1)]
+void RungeKutta(uint3 id : SV_DispatchThreadID)
 {
     float3 pos = initialPosition[0];
     float3 vel = initialVelocity[0];
@@ -48,10 +48,8 @@ void CSMain (uint3 id : SV_DispatchThreadID)
 
     for (uint i = 0; i < steps; i++)
     {
-        // Write this iteration's position to outTrajectory
         outTrajectory[i] = pos;
 
-        // =========== Runge-Kutta 4 integration =========== //
         float3 k1_pos = vel;
         float3 k1_vel = ComputeAcceleration(pos, thisMass);
 
@@ -64,7 +62,7 @@ void CSMain (uint3 id : SV_DispatchThreadID)
         float3 k4_pos = vel + (k3_vel * deltaTime);
         float3 k4_vel = ComputeAcceleration(pos + (k3_pos * deltaTime), thisMass);
 
-        pos += (deltaTime / 6.0) * (k1_pos + 2.0*k2_pos + 2.0*k3_pos + k4_pos);
-        vel += (deltaTime / 6.0) * (k1_vel + 2.0*k2_vel + 2.0*k3_vel + k4_vel);
+        pos += (deltaTime / 6.0) * (k1_pos + 2.0 * k2_pos + 2.0 * k3_pos + k4_pos);
+        vel += (deltaTime / 6.0) * (k1_vel + 2.0 * k2_vel + 2.0 * k3_vel + k4_vel);
     }
 }
