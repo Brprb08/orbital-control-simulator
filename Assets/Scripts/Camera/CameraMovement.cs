@@ -19,7 +19,7 @@ public class CameraMovement : MonoBehaviour
     public float distance = 100f; // Default distance from the target.
     public float height = 30f; // Default height from the target.
     public float baseZoomSpeed = 100f; // Base zoom speed for mouse scroll.
-    public float maxDistance = 20000f; // Maximum distance from the target.
+    public float maxDistance = 50000f; // Maximum distance from the target.
 
     [Header("UI References")]
     public TextMeshProUGUI velocityText; // UI element for displaying velocity.
@@ -130,7 +130,7 @@ public class CameraMovement : MonoBehaviour
 
             float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;
             float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
-            maxDistance = 4000f;
+            maxDistance = 10000f;
 
             distance = defaultDistance;
 

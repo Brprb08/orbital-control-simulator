@@ -8,7 +8,7 @@ float3 ComputeAcceleration(float3 position, float thisMass)
 {
     float3 totalForce = float3(0, 0, 0);
 
-    float minDistSq = .1;
+    float minDistSq = .0001;
     float maxDistSq = 1e12;
     float maxForce = 2e16;   
 

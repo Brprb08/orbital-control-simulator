@@ -22,12 +22,7 @@ public class ThrustController : MonoBehaviour
     public float thrustRampUpTime = 2f;
 
     [Header("Visual Feedback")]
-    public ParticleSystem forwardThrustParticles;
-    public ParticleSystem reverseThrustParticles;
-    public ParticleSystem leftThrustParticles;
-    public ParticleSystem rightThrustParticles;
-    public ParticleSystem radialInThrustParticles;
-    public ParticleSystem radialOutThrustParticles;
+    public ParticleSystem thrustParticles;
 
     public bool isForwardThrustActive = false;
     public bool isReverseThrustActive = false;
@@ -41,7 +36,8 @@ public class ThrustController : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
 
     private float thrustFactor = 1f;
-    // private float thrustDuration = 0f;
+
+    private bool thrustStopped = false;
 
     public bool IsThrusting
     {
@@ -77,6 +73,19 @@ public class ThrustController : MonoBehaviour
                 Debug.LogError("ThrustController: CameraController reference not set and not found on GravityManager.");
             }
         }
+
+        if (thrustParticles == null)
+        {
+            thrustParticles = GameObject.Find("Particle System").GetComponent<ParticleSystem>();
+
+            if (thrustParticles == null)
+            {
+                Debug.LogError("ThrustController: No Particle System found in the scene!");
+            }
+        }
+
+        thrustParticles.Stop();
+        thrustParticles.Clear();
     }
 
     void FixedUpdate()
@@ -90,34 +99,43 @@ public class ThrustController : MonoBehaviour
         Vector3 rightThrust = Vector3.Cross(planetUp, currentTargetBody.velocity.normalized);
         Vector3 leftThrust = -rightThrust;
 
+        bool isThrusting = false;
+
         if (isForwardThrustActive)
         {
             ApplyThrust(currentTargetBody, maxForwardThrustMagnitude, currentTargetBody.velocity.normalized);
+            isThrusting = true;
         }
-
-        if (isReverseThrustActive)
+        else if (isReverseThrustActive)
         {
             ApplyThrust(currentTargetBody, maxReverseThrustMagnitude, -currentTargetBody.velocity.normalized);
+            isThrusting = true;
         }
-
-        if (isRightThrustActive)
+        else if (isRightThrustActive)
         {
             ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, rightThrust);
+            isThrusting = true;
         }
-
-        if (isLeftThrustActive)
+        else if (isLeftThrustActive)
         {
             ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, leftThrust);
+            isThrusting = true;
         }
-
-        if (isRadialInThrustActive)
+        else if (isRadialInThrustActive)
         {
             ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, -planetUp);
+            isThrusting = true;
         }
-
-        if (isRadialOutThrustActive)
+        else if (isRadialOutThrustActive)
         {
             ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, planetUp);
+            isThrusting = true;
+        }
+
+        if (!isThrusting)
+        {
+            thrustParticles.Stop();
+            thrustStopped = true;
         }
     }
 
@@ -141,8 +159,34 @@ public class ThrustController : MonoBehaviour
 
         targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
 
+        UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
+
         trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
+    }
+
+    private void UpdateThrustParticleSystem(NBody targetBody, Vector3 thrustDirection)
+    {
+        if (thrustParticles == null)
+        {
+            Debug.LogError("ThrustController: thrustParticles is null! Ensure the particle system is assigned.");
+            return;
+        }
+        if (!thrustParticles) return;
+
+        // Set the position of the particle system to the target body's position
+        thrustParticles.transform.position = targetBody.transform.position;
+
+        // Rotate the particle system to align with the opposite of the thrust direction
+        thrustParticles.transform.rotation = Quaternion.LookRotation(-thrustDirection, targetBody.transform.up);
+
+        // Start the particle system if it's not already playing
+        if (!thrustParticles.isPlaying || thrustStopped)
+        {
+            thrustParticles.Clear();
+            thrustParticles.Play();
+            thrustStopped = false;
+        }
     }
 
     /**
@@ -181,111 +225,16 @@ public class ThrustController : MonoBehaviour
     }
 
     // UI Button Handlers
-    public void StartForwardThrust()
-    {
-        isForwardThrustActive = true;
-        if (forwardThrustParticles)
-        {
-            forwardThrustParticles.Play();
-        }
-    }
-
-    public void StopForwardThrust()
-    {
-        isForwardThrustActive = false;
-        if (forwardThrustParticles)
-        {
-            forwardThrustParticles.Stop();
-        }
-    }
-
-    public void StartReverseThrust()
-    {
-        isReverseThrustActive = true;
-        if (reverseThrustParticles)
-        {
-            reverseThrustParticles.Play();
-        }
-    }
-
-    public void StopReverseThrust()
-    {
-        isReverseThrustActive = false;
-        if (reverseThrustParticles)
-        {
-            reverseThrustParticles.Stop();
-        }
-    }
-
-    public void StartLeftThrust()
-    {
-        isLeftThrustActive = true;
-        if (leftThrustParticles)
-        {
-            leftThrustParticles.Play();
-        }
-    }
-
-    public void StopLeftThrust()
-    {
-        isLeftThrustActive = false;
-        if (leftThrustParticles)
-        {
-            leftThrustParticles.Stop();
-        }
-    }
-
-    public void StartRightThrust()
-    {
-        isRightThrustActive = true;
-        if (rightThrustParticles)
-        {
-            rightThrustParticles.Play();
-        }
-    }
-
-    public void StopRightThrust()
-    {
-        isRightThrustActive = false;
-        if (rightThrustParticles)
-        {
-            rightThrustParticles.Stop();
-        }
-    }
-
-    public void StartRadialInThrust()
-    {
-        isRadialInThrustActive = true;
-        if (radialInThrustParticles)
-        {
-            radialInThrustParticles.Play();
-        }
-    }
-
-    public void StopRadialInThrust()
-    {
-        isRadialInThrustActive = false;
-        if (radialInThrustParticles)
-        {
-            radialInThrustParticles.Stop();
-        }
-    }
-
-    public void StartRadialOutThrust()
-    {
-        isRadialOutThrustActive = true;
-        if (radialOutThrustParticles)
-        {
-            radialOutThrustParticles.Play();
-        }
-    }
-
-    public void StopRadialOutThrust()
-    {
-        isRadialOutThrustActive = false;
-        if (radialOutThrustParticles)
-        {
-            radialOutThrustParticles.Stop();
-        }
-    }
+    public void StartForwardThrust() => isForwardThrustActive = true;
+    public void StopForwardThrust() => isForwardThrustActive = false;
+    public void StartReverseThrust() => isReverseThrustActive = true;
+    public void StopReverseThrust() => isReverseThrustActive = false;
+    public void StartLeftThrust() => isLeftThrustActive = true;
+    public void StopLeftThrust() => isLeftThrustActive = false;
+    public void StartRightThrust() => isRightThrustActive = true;
+    public void StopRightThrust() => isRightThrustActive = false;
+    public void StartRadialInThrust() => isRadialInThrustActive = true;
+    public void StopRadialInThrust() => isRadialInThrustActive = false;
+    public void StartRadialOutThrust() => isRadialOutThrustActive = true;
+    public void StopRadialOutThrust() => isRadialOutThrustActive = false;
 }
