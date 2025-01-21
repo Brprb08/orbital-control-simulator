@@ -2,7 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 
 /**
-* Manages the visibility of specific line renderers (e.g., prediction and origin lines)
+* Manages the visibility of specific line renderers (e.g., prediction, origin, and apogee/perigee lines)
 * for all NBody instances in the scene. Works with `ToggleButton` scripts to control UI-based
 * visibility toggles.
 **/
@@ -84,7 +84,6 @@ public class LineVisibilityManager : MonoBehaviour
                 TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
                 if (trajectoryRenderer != null)
                 {
-                    Debug.LogError("HELLO");
                     bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
                     bool currentOriginState = lineVisibilityStates[LineType.Origin];
                     bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];

@@ -1,6 +1,11 @@
 using UnityEngine;
 using System;
 
+/**
+* A component for rendering lines procedurally using a `Mesh`. 
+* This class allows for dynamically updating a line based on an array of points 
+* and supports customization of line width.
+**/
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralLineRenderer : MonoBehaviour
 {
@@ -9,6 +14,9 @@ public class ProceduralLineRenderer : MonoBehaviour
 
     public float lineWidth = 0.1f;
 
+    /**
+    * Initializes the `Mesh` and assigns it to the `MeshFilter` component.
+    **/
     void Awake()
     {
         meshFilter = GetComponent<MeshFilter>();
@@ -22,9 +30,15 @@ public class ProceduralLineRenderer : MonoBehaviour
         }
     }
 
+    /**
+    * Updates the line based on an array of points. Each point defines a vertex
+    * in the line, and the method connects them sequentially.
+    *
+    * @param points An array of points that define the line. Must contain at least 2 points.
+    *               If fewer points are provided, the line will be cleared.
+    **/
     public void UpdateLine(Vector3[] points)
     {
-        Debug.LogError("HERE");
         if (points == null || points.Length < 2)
         {
             lineMesh.Clear();
@@ -56,6 +70,10 @@ public class ProceduralLineRenderer : MonoBehaviour
         lineMesh.SetIndices(indices, MeshTopology.Lines, 0);
     }
 
+    /**
+    * Clears the line by resetting the underlying `Mesh`.
+    * This removes all previously rendered line data.
+    **/
     public void Clear()
     {
         lineMesh.Clear();

@@ -2,8 +2,15 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System;
 
+/**
+* This class handles the computation of orbital trajectories using a compute shader. 
+* It allows for GPU-accelerated calculations of body trajectories based on initial
+* conditions, masses, and other bodies' positions and masses. 
+* Results can be asynchronously retrieved using callbacks.
+**/
 public class TrajectoryComputeController : MonoBehaviour
 {
+    [Header("Compute Shader/Buffers")]
     public ComputeShader trajectoryComputeShader;
 
     private ComputeBuffer initialPositionBuffer;
@@ -13,11 +20,22 @@ public class TrajectoryComputeController : MonoBehaviour
     private ComputeBuffer bodyMassesBuffer;
     private ComputeBuffer outputTrajectoryBuffer;
 
-    // LOD factor example:
-    // e.g. if steps=30000, LOD=12 => outputCount=2500
+    [Header("LOD")]
     private int lodFactor = 1;
     private int outputCount = 0;
 
+    /**
+    * Calculates the trajectory of a body using a GPU compute shader, asynchronously.
+    * @param startPos The initial position of the body.
+    * @param startVel The initial velocity of the body.
+    * @param bodyMass The mass of the body.
+    * @param otherBodyPositions Array of positions of other influencing bodies.
+    * @param otherBodyMasses Array of masses of other influencing bodies.
+    * @param dt The time step for the simulation.
+    * @param steps The total number of simulation steps.
+    * @param onComplete Callback function invoked when the trajectory calculation is complete. 
+    *                   Provides the trajectory as an array of Vector3.
+    **/
     public void CalculateTrajectoryGPU_Async(
         Vector3 startPos,
         Vector3 startVel,
@@ -29,16 +47,11 @@ public class TrajectoryComputeController : MonoBehaviour
         Action<Vector3[]> onComplete   // callback once data is ready
     )
     {
-        // 0) Decide your LOD factor. For instance:
-        //    - we want at most ~2500 points
-        //    - so LOD factor = steps / 2500
-        int maxPoints = 2500;  // or your own threshold
+        int maxPoints = 2500;
         lodFactor = Mathf.Max(1, steps / maxPoints);
-
-        // The actual number of positions we'll store
         outputCount = (int)Mathf.Ceil((float)steps / lodFactor);
 
-        // 1) Create GPU buffers
+        // Create GPU buffers
         initialPositionBuffer = new ComputeBuffer(1, sizeof(float) * 3);
         initialVelocityBuffer = new ComputeBuffer(1, sizeof(float) * 3);
         massBuffer = new ComputeBuffer(1, sizeof(float));
@@ -46,10 +59,10 @@ public class TrajectoryComputeController : MonoBehaviour
         bodyPositionsBuffer = new ComputeBuffer(otherBodyPositions.Length, sizeof(float) * 3);
         bodyMassesBuffer = new ComputeBuffer(otherBodyMasses.Length, sizeof(float));
 
-        // Our final output buffer is only outputCount in size, not steps
+        // Final output buffer is only outputCount in size, not steps
         outputTrajectoryBuffer = new ComputeBuffer(outputCount, sizeof(float) * 3);
 
-        // 2) Set data on the buffers
+        // Set data on the buffers
         initialPositionBuffer.SetData(new Vector3[] { startPos });
         initialVelocityBuffer.SetData(new Vector3[] { startVel });
         massBuffer.SetData(new float[] { bodyMass });
@@ -57,7 +70,7 @@ public class TrajectoryComputeController : MonoBehaviour
         bodyPositionsBuffer.SetData(otherBodyPositions);
         bodyMassesBuffer.SetData(otherBodyMasses);
 
-        // 3) Find kernel & bind buffers
+        // Find kernel & bind buffers
         int kernelIndex = trajectoryComputeShader.FindKernel("RungeKutta");
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialPosition", initialPositionBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialVelocity", initialVelocityBuffer);
@@ -66,7 +79,7 @@ public class TrajectoryComputeController : MonoBehaviour
         trajectoryComputeShader.SetBuffer(kernelIndex, "bodyMasses", bodyMassesBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "outTrajectory", outputTrajectoryBuffer);
 
-        // 4) Pass uniforms
+        // Pass uniforms
         trajectoryComputeShader.SetFloat("deltaTime", dt);
         trajectoryComputeShader.SetInt("steps", steps);
         trajectoryComputeShader.SetFloat("gravitationalConstant", PhysicsConstants.G);
@@ -76,11 +89,10 @@ public class TrajectoryComputeController : MonoBehaviour
         trajectoryComputeShader.SetInt("lodFactor", lodFactor);
         trajectoryComputeShader.SetInt("outputCount", outputCount);
 
-        // 5) Dispatch. If you only want 1 thread, do (1,1,1). 
-        //    If you have numthreads(8,8,1) in the shader, you can do (1,1,1) here too.
+        // Dispatch. numthreads(8,8,1) in the shader, you can do (1,1,1) here too.
         trajectoryComputeShader.Dispatch(kernelIndex, 1, 1, 1);
 
-        // 6) Use AsyncGPUReadback to avoid blocking the CPU
+        // Use AsyncGPUReadback to avoid blocking the CPU
         AsyncGPUReadback.Request(
             outputTrajectoryBuffer,
             (AsyncGPUReadbackRequest request) =>
@@ -90,6 +102,12 @@ public class TrajectoryComputeController : MonoBehaviour
         );
     }
 
+    /**
+    * Handles the completion of an asynchronous GPU readback request.
+    *
+    * @param request The readback request from the GPU.
+    * @param onComplete Callback function to handle the resulting trajectory data.
+    **/
     private void OnAsyncReadbackComplete(AsyncGPUReadbackRequest request, Action<Vector3[]> onComplete)
     {
         if (request.hasError)
@@ -99,17 +117,17 @@ public class TrajectoryComputeController : MonoBehaviour
         }
         else
         {
-            // Convert the data into an array
             Vector3[] result = request.GetData<Vector3>().ToArray();
 
-            // Cleanup buffers
             Cleanup();
 
-            // Invoke user callback
             onComplete?.Invoke(result);
         }
     }
 
+    /**
+    * Cleans up and releases any GPU buffers that were allocated.
+    **/
     private void Cleanup()
     {
         if (initialPositionBuffer != null) initialPositionBuffer.Release();

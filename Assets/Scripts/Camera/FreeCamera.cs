@@ -11,7 +11,7 @@ public class FreeCamera : MonoBehaviour
     public float speed = 400f; // Movement speed.
     public float sensitivity = 120f; // Look sensitivity.
 
-    private bool isFreeMode = false; // Indicates if the camera is in free mode.
+    private bool isFreeMode = false;
 
     /**
     * Handles free camera movement and rotation based on user input.

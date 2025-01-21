@@ -1,19 +1,7 @@
-StructuredBuffer<float3> initialPosition;  
-StructuredBuffer<float3> initialVelocity;  
-StructuredBuffer<float>   mass;            
-
-// For gravitational bodies (like central body, etc.)
 StructuredBuffer<float3> bodyPositions;  
-StructuredBuffer<float>  bodyMasses;     
-uint numOtherBodies;                   
+StructuredBuffer<float>  bodyMasses;  
 
-uint lodFactor;       // For downsampling the steps
-uint outputCount;
-
-RWStructuredBuffer<float3> outTrajectory;
-
-float deltaTime;
-uint steps;
+uint numOtherBodies; 
 float gravitationalConstant;
 
 float3 ComputeAcceleration(float3 position, float thisMass)
@@ -41,6 +29,17 @@ float3 ComputeAcceleration(float3 position, float thisMass)
 }
 
 #pragma kernel RungeKutta
+
+StructuredBuffer<float3> initialPosition;  
+StructuredBuffer<float3> initialVelocity;  
+StructuredBuffer<float>  mass;            
+
+uint lodFactor;  
+
+RWStructuredBuffer<float3> outTrajectory;
+
+float deltaTime;
+uint steps;
 
 [numthreads(8, 8, 1)]
 void RungeKutta(uint3 id : SV_DispatchThreadID)

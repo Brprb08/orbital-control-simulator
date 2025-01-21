@@ -15,6 +15,9 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Trajectory Prediction Settings")]
     public int predictionSteps = 5000;
     public float predictionDeltaTime = 5f;
+    public bool orbitIsDirty = true;
+    private bool isThrusting = false;
+    private bool update = false;
 
     [Header("Line Renderer Settings")]
     public float lineWidth = 3f;
@@ -31,49 +34,35 @@ public class TrajectoryRenderer : MonoBehaviour
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
+    [SerializeField]
     public CameraMovement cameraMovement;
     private Camera mainCamera;
     private NBody trackedBody;
     public ProceduralLineRenderer proceduralLine;
+    private UIManager uIManager;
 
-    [Header("UI Updates")]
-    private float previousApogeeDistance = float.MaxValue;
-    private float previousPerigeeDistance = float.MaxValue;
-
+    [Header("Line Display Flags")]
     private bool showPredictionLines;
     private bool showOriginLines;
     private bool showApogeePerigeeLines;
 
     [Header("Coroutine")]
     private Coroutine predictionCoroutine;
-
-    private float updateInterval = 2f;
     private float updateIntervalApogeePerigee = 10f;
-    private float nextUpdateTime = 1f;
     private float apogeePerigeeUpdateTime = 1f;
+
     public float apogeeDistance = 0f;
     public float perigeeDistance = 0f;
     public bool justSwitchedTrack = false;
 
-
-    private Dictionary<int, List<Vector3>> orbitChunks = new Dictionary<int, List<Vector3>>();
-    private List<Vector3> accumulatedPositions = new List<Vector3>();
-    private int lastChunkIndex = 0; // Track which chunk we are displaying
-    private const int chunkSize = 100;
+    // private Dictionary<int, List<Vector3>> orbitChunks = new Dictionary<int, List<Vector3>>();
+    // private List<Vector3> accumulatedPositions = new List<Vector3>();
+    // private const int chunkSize = 100;
 
     [Header("Optimizations")]
-    public bool useLOD = true;             // Toggle LOD on/off
-    public float lodDistanceThreshold = 5000f;  // Example threshold for LOD
-    // public float nonThrustRecomputeInterval = 2f; // Wait 2 seconds if not thrusting
-    public float maxRecomputeInterval = 5f;      // Cap how long to wait
-    public bool orbitIsDirty = true;     // Thrusting => orbit dirty
-    private bool isThrusting = false;
-
-    private float nonThrustRecomputeInterval = 120f;
-
-    private bool update = false;
-
-
+    public bool useLOD = true;
+    public float lodDistanceThreshold = 5000f;
+    public float maxRecomputeInterval = 5f;
 
     /**
     * Initializes line renderers and sets up materials
@@ -107,24 +96,18 @@ public class TrajectoryRenderer : MonoBehaviour
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
+
+        cameraMovement = CameraMovement.Instance;
+        thrustController = ThrustController.Instance;
+        uIManager = UIManager.Instance;
     }
 
-    /** 
-    * Sets the cameraMovement reference if null 
-    **/
     void Start()
     {
-        if (cameraMovement == null)
+        if (proceduralLine == null)
         {
-            cameraMovement = FindAnyObjectByType<CameraMovement>();
+            proceduralLine = FindFirstObjectByType<ProceduralLineRenderer>();
         }
-
-        if (thrustController == null)
-        {
-            thrustController = FindObjectOfType<ThrustController>();
-        }
-
-        proceduralLine = FindObjectOfType<ProceduralLineRenderer>();
     }
 
     void Update()
@@ -157,30 +140,6 @@ public class TrajectoryRenderer : MonoBehaviour
         if (trackedBody != null)
         {
             predictionCoroutine = StartCoroutine(RecomputeTrajectory());
-        }
-    }
-
-    /** 
-    * Clears the apogee and perigee line positions and disables them 
-    **/
-    public void ResetApogeePerigeeLines()
-    {
-        apogeeDistance = float.MinValue;
-        perigeeDistance = float.MaxValue;
-        previousApogeeDistance = 0f;
-        previousPerigeeDistance = 0f;
-        justSwitchedTrack = true;
-
-        if (apogeeLineRenderer != null)
-        {
-            apogeeLineRenderer.positionCount = 0;
-            apogeeLineRenderer.enabled = false;
-        }
-
-        if (perigeeLineRenderer != null)
-        {
-            perigeeLineRenderer.positionCount = 0;
-            perigeeLineRenderer.enabled = false;
         }
     }
 
@@ -219,14 +178,12 @@ public class TrajectoryRenderer : MonoBehaviour
         lineRenderer.enabled = true;
     }
 
-
     /** 
     * Recomputes the prediction, origin, and apogee/perigee line renders using the GPU
     **/
     public IEnumerator RecomputeTrajectory()
     {
         Vector3 lastPosition = trackedBody.transform.position;
-        float positionChangeThreshold = 0f;
         while (true)
         {
             if (trackedBody == null)
@@ -247,12 +204,8 @@ public class TrajectoryRenderer : MonoBehaviour
             trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
             bool isElliptical = eccentricity < 1f;
 
-            // bool isThrusting = thrustController != null && thrustController.IsThrusting;
-
-            if (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting))
+            if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
-
-                Debug.LogError($"Update: {update}, IsThrusting: {isThrusting}, OrbitIsDirty: {orbitIsDirty}, IsEllipticalSpecialCondition: {(isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)}");
                 if (isElliptical)
                 {
                     float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
@@ -278,39 +231,11 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 predictionLineRenderer.positionCount = 0;
 
-                bool done = false;
-                List<Vector3> newTrajectoryPoints = null;
-
                 trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
                 {
-                    // Do something with the result, like update your trajectory line.
                     proceduralLine.UpdateLine(resultList.ToArray());
                 });
 
-                // 2) Wait until the GPU readback is done
-                // while (!done)
-                // {
-                //     // Optionally, you can break if the user changed body again
-                //     // or if too much time passes, etc.
-                //     yield return null;
-                // }
-
-                // Now we have newTrajectoryPoints
-                // if (newTrajectoryPoints != null && newTrajectoryPoints.Count > 0)
-                // {
-                //     // 3) Apply an additional LOD if you want
-                //     int stepSize = Mathf.Max(1, predictionSteps / 1500);
-                //     List<Vector3> lodTrajectory = new List<Vector3>();
-                //     for (int i = 0; i < newTrajectoryPoints.Count; i += stepSize)
-                //     {
-                //         lodTrajectory.Add(newTrajectoryPoints[i]);
-                //     }
-
-                //     // 4) Update your line
-                //     proceduralLine.UpdateLine(lodTrajectory.ToArray());
-                // }
-
-                // We’ve done the orbit update
                 orbitIsDirty = false;
                 if (update) update = false;
             }
@@ -395,8 +320,6 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         float distance = transform.position.magnitude;
         float speed = 300f;
-
-
         float baseDeltaTime = 0.5f;
         float minDeltaTime = 0.5f;
         float maxDeltaTime = 3f;
@@ -412,11 +335,11 @@ public class TrajectoryRenderer : MonoBehaviour
     * Sets the enabled state of specific LineRenderers associated with this NBody.
     * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
     * @param showOrigin Whether to show/hide the origin line.
+    * @param showApogeePerigee Whether to show/hide the apogee/perigee lines and panel.
     **/
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
         showPredictionLines = showPrediction;
-        Debug.LogError(showPredictionLines);
         showOriginLines = showOrigin;
         showApogeePerigeeLines = showApogeePerigee;
 
@@ -429,21 +352,27 @@ public class TrajectoryRenderer : MonoBehaviour
         {
             originLineRenderer.positionCount = 0;
         }
-        else
+
+        if (apogeeLineRenderer != null && perigeeLineRenderer != null)
         {
-            originLineRenderer.positionCount = 2;
+            if (!showApogeePerigee)
+            {
+                apogeeLineRenderer.positionCount = 0;
+                perigeeLineRenderer.positionCount = 0;
+            }
+
+            if (uIManager != null)
+            {
+                uIManager.ShowApogeePerigeePanel(showApogeePerigeeLines);
+            }
         }
 
-        if (!showApogeePerigee && apogeeLineRenderer != null && perigeeLineRenderer != null)
-        {
-            apogeeLineRenderer.positionCount = 0;
-            perigeeLineRenderer.positionCount = 0;
-        }
-
+        // Re-run RecomputeTrajectory to show lines when reset
         if (proceduralLine != null)
         {
             update = true;
         }
+
         if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
         if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
         if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;

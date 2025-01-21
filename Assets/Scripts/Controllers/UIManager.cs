@@ -8,6 +8,8 @@ using TMPro;
 **/
 public class UIManager : MonoBehaviour
 {
+    public static UIManager Instance { get; private set; }
+
     [Header("Buttons")]
     public Button freeCamButton;
     public Button trackCamButton;
@@ -31,6 +33,20 @@ public class UIManager : MonoBehaviour
 
 
     public TextMeshProUGUI feedbackText;
+
+    /**
+    * Setup the singleton for accessing UIManager
+    **/
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
     /**
     * Initializes the UI elements and sets the default button states.
@@ -168,7 +184,7 @@ public class UIManager : MonoBehaviour
     * Toggles the visibility of the apogee and perigee panel.
     * @param show - True to show the panel, false to hide it.
     **/
-    private void ShowApogeePerigeePanel(bool show)
+    public void ShowApogeePerigeePanel(bool show)
     {
         apogeePerigeePanel.SetActive(show);
     }

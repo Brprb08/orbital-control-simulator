@@ -67,6 +67,9 @@ public class ToggleButton : MonoBehaviour
         UpdateButtonColor();
     }
 
+    /**
+    * Sets up LineVisibilityManager to set line states
+    **/
     void Start()
     {
         if (manager != null)

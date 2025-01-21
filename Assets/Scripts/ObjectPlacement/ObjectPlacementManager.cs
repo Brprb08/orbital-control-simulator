@@ -10,6 +10,8 @@ using UnityEngine.UI;
 **/
 public class ObjectPlacementManager : MonoBehaviour
 {
+    public static ObjectPlacementManager Instance { get; private set; }
+
     [Header("References")]
     public Camera mainCamera;
     public GameObject spherePrefab; // Placeholder GameObject without NBody script.
@@ -33,6 +35,17 @@ public class ObjectPlacementManager : MonoBehaviour
     public Transform cameraPivotTransform;
     public Transform cameraTransform;
     private Vector3 defaultLocalPosition;
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
     /**
     * Starts the placement process for a new celestial body.

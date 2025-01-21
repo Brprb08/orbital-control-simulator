@@ -1,5 +1,5 @@
 using UnityEngine;
-using UnityEngine.UI; // For Slider
+using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
 

@@ -12,6 +12,8 @@ using System.Collections;
 **/
 public class ThrustController : MonoBehaviour
 {
+    public static ThrustController Instance { get; private set; }
+
     [Header("Thrust Settings")]
     public float maxForwardThrustMagnitude = 10f;
     public float maxReverseThrustMagnitude = 10f;
@@ -39,7 +41,7 @@ public class ThrustController : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
 
     private float thrustFactor = 1f;
-    private float thrustDuration = 0f;
+    // private float thrustDuration = 0f;
 
     public bool IsThrusting
     {
@@ -52,6 +54,17 @@ public class ThrustController : MonoBehaviour
                 || isRadialInThrustActive
                 || isRadialOutThrustActive;
         }
+    }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
     }
 
     void Start()
@@ -77,62 +90,35 @@ public class ThrustController : MonoBehaviour
         Vector3 rightThrust = Vector3.Cross(planetUp, currentTargetBody.velocity.normalized);
         Vector3 leftThrust = -rightThrust;
 
-        bool anyThrustActive = false;
-
         if (isForwardThrustActive)
         {
             ApplyThrust(currentTargetBody, maxForwardThrustMagnitude, currentTargetBody.velocity.normalized);
-            anyThrustActive = true;
         }
 
         if (isReverseThrustActive)
         {
             ApplyThrust(currentTargetBody, maxReverseThrustMagnitude, -currentTargetBody.velocity.normalized);
-            anyThrustActive = true;
         }
 
         if (isRightThrustActive)
         {
             ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, rightThrust);
-            anyThrustActive = true;
         }
 
         if (isLeftThrustActive)
         {
             ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, leftThrust);
-            anyThrustActive = true;
         }
 
         if (isRadialInThrustActive)
         {
             ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, -planetUp);
-            anyThrustActive = true;
         }
 
         if (isRadialOutThrustActive)
         {
             ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, planetUp);
-            anyThrustActive = true;
         }
-
-        // Update thrust duration
-        if (anyThrustActive)
-        {
-            thrustDuration += Time.fixedDeltaTime;
-        }
-        else
-        {
-            thrustDuration = 0f;
-        }
-    }
-
-    /**
-    * Returns the total duration (in seconds) for any thrust that has been applied.
-    * @return - The duration of active thrust.
-    **/
-    public float GetThrustDuration()
-    {
-        return thrustDuration;
     }
 
     /**
@@ -149,14 +135,13 @@ public class ThrustController : MonoBehaviour
         Vector3 adjustedThrustDirection = thrustDirection.normalized;
 
         // Calculate the actual acceleration, scaled to account for 1 unit = 10 km
-        float scaledMagnitude = magnitude / 10f;  // Divide by 10,000 to match simulation scale
+        float scaledMagnitude = magnitude / 10f;
 
         Debug.Log($"Applying Scaled Force: {scaledMagnitude} N in direction: {adjustedThrustDirection}, Mass: {targetBody.mass}");
 
-        // Apply the scaled force
         targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
     }
 
@@ -212,10 +197,6 @@ public class ThrustController : MonoBehaviour
         {
             forwardThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartReverseThrust()
@@ -234,10 +215,6 @@ public class ThrustController : MonoBehaviour
         {
             reverseThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartLeftThrust()
@@ -256,10 +233,6 @@ public class ThrustController : MonoBehaviour
         {
             leftThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRightThrust()
@@ -278,10 +251,6 @@ public class ThrustController : MonoBehaviour
         {
             rightThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialInThrust()
@@ -300,10 +269,6 @@ public class ThrustController : MonoBehaviour
         {
             radialInThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialOutThrust()
@@ -322,9 +287,5 @@ public class ThrustController : MonoBehaviour
         {
             radialOutThrustParticles.Stop();
         }
-
-        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        // trajectoryRenderer.orbitIsDirty = true;
-        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 }

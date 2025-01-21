@@ -10,6 +10,7 @@ using System.Collections;
 **/
 public class CameraController : MonoBehaviour
 {
+
     [Header("References")]
     public CameraMovement cameraMovement;
     public Transform cameraPivotTransform;

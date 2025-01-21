@@ -10,7 +10,7 @@ public class GravityManager : MonoBehaviour
     public static GravityManager Instance { get; private set; }
     private List<NBody> bodies = new List<NBody>();
 
-    public float minCollisionDistance = 0.5f; // In scaled units (1 unit = 10 km)
+    public float minCollisionDistance = 0.5f;
 
     public List<NBody> Bodies => bodies;
 

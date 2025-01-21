@@ -8,6 +8,8 @@ using System.Collections;
 **/
 public class CameraMovement : MonoBehaviour
 {
+    public static CameraMovement Instance { get; private set; }
+
     [Header("Tracking Target")]
     public NBody targetBody; // The celestial body to track.
     public Transform targetPlaceholder; // Placeholder object to track when no real NBody is set.
@@ -27,6 +29,20 @@ public class CameraMovement : MonoBehaviour
     private float minDistance = 0.1f; // Minimum distance from the target (adjusted dynamically).
     private float placeholderRadius = 0f;
     private Camera mainCamera;
+
+    /**
+    * Setup the singleton for accessing UIManager
+    **/
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
+        DontDestroyOnLoad(gameObject);
+    }
 
     /**
     * Initializes the main camera and sets the starting position relative to the target.
@@ -75,22 +91,6 @@ public class CameraMovement : MonoBehaviour
         }
 
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
-        // if (Time.deltaTime == 0f)
-        // {
-        //     mainCamera.transform.localPosition = Vector3.Lerp(
-        //     mainCamera.transform.localPosition,
-        //     targetLocalPos,
-        //     2f * 10f
-        // );
-        // }
-        // else
-        // {
-        //     mainCamera.transform.localPosition = Vector3.Lerp(
-        //         mainCamera.transform.localPosition,
-        //         targetLocalPos,
-        //         Time.deltaTime * 10f
-        //     );
-        // }
 
         mainCamera.transform.localPosition = Vector3.Lerp(
             mainCamera.transform.localPosition,

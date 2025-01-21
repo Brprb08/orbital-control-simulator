@@ -18,33 +18,34 @@ public class VelocityDragManager : MonoBehaviour
     public Button setVelocityButton;
     public GravityManager gravityManager;
     public TrajectoryRenderer trajectoryRenderer;
+    private ObjectPlacementManager objectPlacementManager;
+    private UIManager uIManager;
+    private GameObject dragSphereObject;
+
+    [Header("UI Elements")]
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
+    public Slider speedSlider;
 
     [Header("Planet to Apply Velocity To")]
     public GameObject planet;
-
     public float sphereRadiusMultiplier = 10f;
-
-    [Header("UI Components")]
-    public Slider speedSlider;
 
     [Header("Mass Handling")]
     public float placeholderMass;
 
-
+    [Header("Dragging Elements")]
     private bool isDragging = false;
     private bool isVelocitySet = false;
     private Vector3 dragStartPos;
     private Vector3 currentVelocity;
-    private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;
     private Vector3 dragDirection = Vector3.zero;
     private float sliderSpeed = 0f;
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
 
-    [Header("UI Elements")]
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
+
 
     /**
     * Initializes the drag manager and sets up components.
@@ -84,6 +85,9 @@ public class VelocityDragManager : MonoBehaviour
             dragSphereCollider.isTrigger = true;
             dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
         }
+
+        objectPlacementManager = ObjectPlacementManager.Instance;
+        uIManager = UIManager.Instance;
 
         StartCoroutine(FindTrajectoryRendererWithDelay());
     }
@@ -358,17 +362,8 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.positionCount = 0;
         }
 
-        ObjectPlacementManager objectPlacementManager = gravityManager.GetComponent<ObjectPlacementManager>();
-        if (objectPlacementManager != null)
-        {
-            objectPlacementManager.ResetLastPlacedGameObject();
-        }
-
-        UIManager uIManager = gravityManager.GetComponent<UIManager>();
-        if (uIManager != null)
-        {
-            uIManager.OnTrackCamPressed();
-        }
+        objectPlacementManager.ResetLastPlacedGameObject();
+        uIManager.OnTrackCamPressed();
 
         if (velocityDisplayText != null)
         {

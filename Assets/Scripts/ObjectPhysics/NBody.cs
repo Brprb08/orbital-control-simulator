@@ -37,6 +37,9 @@ public class NBody : MonoBehaviour
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
 
+    [Header("References")]
+    private TrajectoryComputeController tcc;
+
     /**
     * Called when the script instance is being loaded.
     * Registers this NBody with the GravityManager.
@@ -91,6 +94,12 @@ public class NBody : MonoBehaviour
             trajectoryRenderer.lineDisableDistance = 50f;
 
             trajectoryRenderer.SetTrackedBody(this);
+        }
+
+        tcc = FindFirstObjectByType<TrajectoryComputeController>();
+        if (!tcc)
+        {
+            Debug.LogError("No TrajectoryComputeController found in scene!");
         }
     }
 
@@ -148,6 +157,12 @@ public class NBody : MonoBehaviour
         force = Vector3.zero;
     }
 
+    /**
+    * Calculates the predicted trajectory of an orbit by passing calculation to the GPU
+    * @param steps - Number of prediction line render points to render
+    * @param deltaTime - Time step for simulation
+    * @param onComplete - Async call from GPU to let know that calculations are complete
+    **/
     public void CalculatePredictedTrajectoryGPU_Async(
         int steps,
         float deltaTime,
@@ -158,16 +173,13 @@ public class NBody : MonoBehaviour
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
         float[] otherMasses = otherBodies.Select(b => b.mass).ToArray();
 
-        var tcc = FindObjectOfType<TrajectoryComputeController>();
-        if (!tcc)
+        if (tcc == null)
         {
-            Debug.LogError("No TrajectoryComputeController found in scene!");
-            onComplete?.Invoke(new List<Vector3>());  // Return empty list if there's an error
+            Debug.LogError("TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
+            onComplete?.Invoke(null); // Return null to signal failure
             return;
         }
 
-        // The TrajectoryComputeController below has CalculateTrajectoryGPU_Async(...) 
-        // which uses AsyncGPUReadback. We'll pass in our callback:
         tcc.CalculateTrajectoryGPU_Async(
             startPos: transform.position,
             startVel: velocity,
@@ -191,38 +203,6 @@ public class NBody : MonoBehaviour
             }
         );
     }
-
-    /**
-    * Calculates the prediction line of an orbit with Runge-kutta 4 using the GPU
-    * @param steps - Number of prediction steps to calculate
-    * @param deltaTime - Timestep for the sim so Runge-kutta knows how far forward to look
-    **/
-    // public List<Vector3> CalculatePredictedTrajectoryGPU(int steps, float deltaTime)
-    // {
-    //     var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
-    //     Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
-    //     float[] otherMasses = otherBodies.Select(b => b.mass).ToArray();
-
-    //     var tcc = FindObjectOfType<TrajectoryComputeController>();
-    //     if (!tcc)
-    //     {
-    //         Debug.LogError("No TrajectoryComputeController found in scene!");
-    //         return new List<Vector3>();
-    //     }
-
-    // Vector3[] gpuPositions = tcc.CalculateTrajectoryGPU_Async(
-    //     startPos: transform.position,
-    //     startVel: velocity,
-    //     bodyMass: mass,
-    //     otherBodyPositions: otherPositions,
-    //     otherBodyMasses: otherMasses,
-    //     dt: deltaTime,
-    //     steps: steps
-    // );
-
-    //     return new List<Vector3>(gpuPositions);
-    // }
-
 
     /**
     * Adds a force vector to this NBody.
@@ -310,8 +290,10 @@ public class NBody : MonoBehaviour
         return totalAcceleration;
     }
 
-
-
+    /**
+    * Computes and returns the Semi Major Axis and Eccentricity of an orbit
+    * @param centralBodyMass - Mass of central body (Earth)
+    **/
     public void ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, float centralBodyMass)
     {
         float mu = PhysicsConstants.G * centralBodyMass;
@@ -359,6 +341,10 @@ public class NBody : MonoBehaviour
         eccentricity = Mathf.Max(eccentricity, 1e-8f);
     }
 
+    /**
+    * Returns the apogee and perigee Vector3 positions
+    * @param centralBodyMass - Mass of central body (Earth)
+    **/
     public void GetOrbitalApogeePerigee(float centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition)
     {
         ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, centralBodyMass);
@@ -406,53 +392,19 @@ public class NBody : MonoBehaviour
     }
 
     /**
-    * Extracts apogee and perigee from the predicted positions.
-    * @param positions - Line render positions of orbit path
-    * @return apogeePoint - The line render position farthest from central body
-    * @return perigeePoint - The line render position closest to central body
-    * @return apogeeDistance - The farthest distance in km from the central body
-    * @return perigeeDistance - The closest distance in km from the central body
-    **/
-    // public void GetApogeePerigee(List<Vector3> positions, out Vector3 apogeePoint, out Vector3 perigeePoint, out float apogeeDistance, out float perigeeDistance)
-    // {
-    //     apogeePoint = Vector3.zero;
-    //     perigeePoint = Vector3.zero;
-    //     apogeeDistance = float.MinValue;
-    //     perigeeDistance = float.MaxValue;
-
-    //     foreach (var pos in positions)
-    //     {
-    //         float altitude = pos.magnitude;
-    //         if (altitude > apogeeDistance + tolerance)
-    //         {
-    //             apogeeDistance = altitude;
-    //             apogeePoint = pos;
-    //         }
-    //         if (altitude < perigeeDistance - tolerance)
-    //         {
-    //             perigeeDistance = altitude;
-    //             perigeePoint = pos;
-    //         }
-    //     }
-
-    //     apogeeDistance = ((apogeeDistance) - 637.1f) * 10;
-    //     perigeeDistance = ((perigeeDistance) - 637.1f) * 10;
-    // }
-
-    /**
     * Adjusts the trajectory prediction settings based on time scale.
     * @param timeScale - Current time scale of the simulation
     **/
     public void AdjustPredictionSettings(float timeScale)
     {
         float distance = transform.position.magnitude;
-        float speed = velocity.magnitude;
+        float speed = 300f;
 
-        float baseDeltaTime = 1f;
+        float baseDeltaTime = 0.5f;
         float minDeltaTime = 0.5f;
-        float maxDeltaTime = 5f;
+        float maxDeltaTime = 3f;
 
-        float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + (speed / 2f) / 10f);
+        float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
         adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
 
         predictionDeltaTime = adjustedDelta;
