@@ -100,10 +100,10 @@ public class CameraMovement : MonoBehaviour
 
         mainCamera.transform.LookAt(transform.position);
 
-        // if (!usingPlaceholder)
-        // {
-        //     UpdateVelocityAndAltitudeUI();
-        // }
+        if (!usingPlaceholder)
+        {
+            UpdateVelocityAndAltitudeUI();
+        }
     }
 
     /**
