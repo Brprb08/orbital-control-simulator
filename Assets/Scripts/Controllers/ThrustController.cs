@@ -41,7 +41,18 @@ public class ThrustController : MonoBehaviour
     private float thrustFactor = 1f;
     private float thrustDuration = 0f;
 
-    public bool IsThrusting { get; private set; } = false;
+    public bool IsThrusting
+    {
+        get
+        {
+            return isForwardThrustActive
+                || isReverseThrustActive
+                || isLeftThrustActive
+                || isRightThrustActive
+                || isRadialInThrustActive
+                || isRadialOutThrustActive;
+        }
+    }
 
     void Start()
     {
@@ -103,8 +114,6 @@ public class ThrustController : MonoBehaviour
             ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, planetUp);
             anyThrustActive = true;
         }
-
-        IsThrusting = anyThrustActive;
 
         // Update thrust duration
         if (anyThrustActive)
@@ -204,9 +213,9 @@ public class ThrustController : MonoBehaviour
             forwardThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartReverseThrust()
@@ -226,9 +235,9 @@ public class ThrustController : MonoBehaviour
             reverseThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartLeftThrust()
@@ -248,9 +257,9 @@ public class ThrustController : MonoBehaviour
             leftThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRightThrust()
@@ -270,9 +279,9 @@ public class ThrustController : MonoBehaviour
             rightThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialInThrust()
@@ -292,9 +301,9 @@ public class ThrustController : MonoBehaviour
             radialInThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 
     public void StartRadialOutThrust()
@@ -314,8 +323,8 @@ public class ThrustController : MonoBehaviour
             radialOutThrustParticles.Stop();
         }
 
-        trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
-        trajectoryRenderer.orbitIsDirty = true;
-        trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
+        // trajectoryRenderer = FindObjectOfType<TrajectoryRenderer>();
+        // trajectoryRenderer.orbitIsDirty = true;
+        // trajectoryRenderer.StartCoroutine(trajectoryRenderer.RecomputeTrajectory());
     }
 }

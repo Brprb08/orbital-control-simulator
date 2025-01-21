@@ -24,6 +24,7 @@ public class ProceduralLineRenderer : MonoBehaviour
 
     public void UpdateLine(Vector3[] points)
     {
+        Debug.LogError("HERE");
         if (points == null || points.Length < 2)
         {
             lineMesh.Clear();

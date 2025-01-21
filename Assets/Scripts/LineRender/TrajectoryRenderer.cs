@@ -67,6 +67,7 @@ public class TrajectoryRenderer : MonoBehaviour
     // public float nonThrustRecomputeInterval = 2f; // Wait 2 seconds if not thrusting
     public float maxRecomputeInterval = 5f;      // Cap how long to wait
     public bool orbitIsDirty = true;     // Thrusting => orbit dirty
+    private bool isThrusting = false;
 
     private float nonThrustRecomputeInterval = 120f;
 
@@ -124,6 +125,14 @@ public class TrajectoryRenderer : MonoBehaviour
         }
 
         proceduralLine = FindObjectOfType<ProceduralLineRenderer>();
+    }
+
+    void Update()
+    {
+        if (thrustController != null)
+        {
+            isThrusting = thrustController.IsThrusting;
+        }
     }
 
     /** 
@@ -210,6 +219,10 @@ public class TrajectoryRenderer : MonoBehaviour
         lineRenderer.enabled = true;
     }
 
+
+    /** 
+    * Recomputes the prediction, origin, and apogee/perigee line renders using the GPU
+    **/
     public IEnumerator RecomputeTrajectory()
     {
         Vector3 lastPosition = trackedBody.transform.position;
@@ -234,10 +247,12 @@ public class TrajectoryRenderer : MonoBehaviour
             trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
             bool isElliptical = eccentricity < 1f;
 
-            bool isThrusting = thrustController != null && thrustController.IsThrusting;
+            // bool isThrusting = thrustController != null && thrustController.IsThrusting;
 
-            if (update || isThrusting || orbitIsDirty || (isElliptical && predictionSteps == 5000 && !isThrusting))
+            if (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting))
             {
+
+                Debug.LogError($"Update: {update}, IsThrusting: {isThrusting}, OrbitIsDirty: {orbitIsDirty}, IsEllipticalSpecialCondition: {(isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)}");
                 if (isElliptical)
                 {
                     float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
@@ -248,7 +263,7 @@ public class TrajectoryRenderer : MonoBehaviour
                         Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
                         1,
                         30000
-    );
+                    );
                 }
                 else
                 {
@@ -258,71 +273,93 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 if (isThrusting)
                 {
-                    predictionSteps = 5000;
+                    predictionSteps = 3000;
                 }
 
                 predictionLineRenderer.positionCount = 0;
 
-                List<Vector3> newTrajectoryPoints = trackedBody.CalculatePredictedTrajectoryGPU(predictionSteps, predictionDeltaTime);
+                bool done = false;
+                List<Vector3> newTrajectoryPoints = null;
 
-                proceduralLine.UpdateLine(newTrajectoryPoints.ToArray());
+                trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
+                {
+                    // Do something with the result, like update your trajectory line.
+                    proceduralLine.UpdateLine(resultList.ToArray());
+                });
 
+                // 2) Wait until the GPU readback is done
+                // while (!done)
+                // {
+                //     // Optionally, you can break if the user changed body again
+                //     // or if too much time passes, etc.
+                //     yield return null;
+                // }
+
+                // Now we have newTrajectoryPoints
+                // if (newTrajectoryPoints != null && newTrajectoryPoints.Count > 0)
+                // {
+                //     // 3) Apply an additional LOD if you want
+                //     int stepSize = Mathf.Max(1, predictionSteps / 1500);
+                //     List<Vector3> lodTrajectory = new List<Vector3>();
+                //     for (int i = 0; i < newTrajectoryPoints.Count; i += stepSize)
+                //     {
+                //         lodTrajectory.Add(newTrajectoryPoints[i]);
+                //     }
+
+                //     // 4) Update your line
+                //     proceduralLine.UpdateLine(lodTrajectory.ToArray());
+                // }
+
+                // We’ve done the orbit update
                 orbitIsDirty = false;
+                if (update) update = false;
             }
 
-            if (update) update = false;
-
-            if (showApogeePerigeeLines && trackedBody != null && Time.time >= apogeePerigeeUpdateTime)
+            if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime)
             {
                 trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
 
-                if (apogeeLineRenderer != null)
+                if (apogeeLineRenderer != null && perigeeLineRenderer != null)
                 {
                     apogeeLineRenderer.enabled = true;
                     apogeeLineRenderer.positionCount = 2;
                     apogeeLineRenderer.SetPositions(new Vector3[] { apogeePosition, Vector3.zero });
-                }
 
-                if (perigeeLineRenderer != null)
-                {
                     perigeeLineRenderer.enabled = true;
                     perigeeLineRenderer.positionCount = 2;
                     perigeeLineRenderer.SetPositions(new Vector3[] { perigeePosition, Vector3.zero });
+
+                    if (apogeeText != null && perigeeText != null)
+                    {
+                        float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                        float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+
+                        UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
+                    }
                 }
-
-                if (apogeeText != null && perigeeText != null)
-                {
-
-                    float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-                    float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-
-                    UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
-                }
-
                 apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
             }
 
-
-
-            if (mainCamera != null && trackedBody != null && showPredictionLines)
+            if (showPredictionLines)
             {
                 float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
                 predictionLineRenderer.enabled = distanceToCamera > lineDisableDistance;
             }
 
-            if (cameraMovement != null && cameraMovement.targetBody == trackedBody)
+            if (originLineRenderer != null && showOriginLines)
             {
-                if (originLineRenderer != null && trackedBody != null && showOriginLines)
-                {
-                    originLineRenderer.enabled = true;
-                    originLineRenderer.positionCount = 2;
-                    originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
-                }
+                originLineRenderer.enabled = true;
+                originLineRenderer.positionCount = 2;
+                originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
             }
 
             if (isThrusting)
             {
-                yield return new WaitForSeconds(.5f);
+                if (Time.timeScale >= 50)
+                {
+                    yield return new WaitForSeconds(3f);
+                }
+                yield return new WaitForSeconds(1f);
             }
             yield return new WaitForSeconds(.1f);
         }
@@ -362,13 +399,12 @@ public class TrajectoryRenderer : MonoBehaviour
 
         float baseDeltaTime = 0.5f;
         float minDeltaTime = 0.5f;
-        float maxDeltaTime = 10f;
+        float maxDeltaTime = 3f;
 
         float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
         adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
 
         predictionDeltaTime = adjustedDelta;
-
         predictionSteps = 5000;
     }
 

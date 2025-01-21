@@ -75,29 +75,35 @@ public class CameraMovement : MonoBehaviour
         }
 
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
-        if (Time.deltaTime == 0f)
-        {
-            mainCamera.transform.localPosition = Vector3.Lerp(
+        // if (Time.deltaTime == 0f)
+        // {
+        //     mainCamera.transform.localPosition = Vector3.Lerp(
+        //     mainCamera.transform.localPosition,
+        //     targetLocalPos,
+        //     2f * 10f
+        // );
+        // }
+        // else
+        // {
+        //     mainCamera.transform.localPosition = Vector3.Lerp(
+        //         mainCamera.transform.localPosition,
+        //         targetLocalPos,
+        //         Time.deltaTime * 10f
+        //     );
+        // }
+
+        mainCamera.transform.localPosition = Vector3.Lerp(
             mainCamera.transform.localPosition,
             targetLocalPos,
-            2f * 10f
+            Time.deltaTime * 10f
         );
-        }
-        else
-        {
-            mainCamera.transform.localPosition = Vector3.Lerp(
-                mainCamera.transform.localPosition,
-                targetLocalPos,
-                Time.deltaTime * 10f
-            );
-        }
 
         mainCamera.transform.LookAt(transform.position);
 
-        if (!usingPlaceholder)
-        {
-            UpdateVelocityAndAltitudeUI();
-        }
+        // if (!usingPlaceholder)
+        // {
+        //     UpdateVelocityAndAltitudeUI();
+        // }
     }
 
     /**

@@ -6,6 +6,7 @@ using Unity.Collections;
 using Unity.Jobs;
 using System.Linq;
 using TMPro;
+using System;
 
 /**
 * NBody class represents a celestial body in the gravitational system.
@@ -147,13 +148,11 @@ public class NBody : MonoBehaviour
         force = Vector3.zero;
     }
 
-
-    /**
-    * Calculates the prediction line of an orbit with Runge-kutta 4 using the GPU
-    * @param steps - Number of prediction steps to calculate
-    * @param deltaTime - Timestep for the sim so Runge-kutta knows how far forward to look
-    **/
-    public List<Vector3> CalculatePredictedTrajectoryGPU(int steps, float deltaTime)
+    public void CalculatePredictedTrajectoryGPU_Async(
+        int steps,
+        float deltaTime,
+        Action<List<Vector3>> onComplete
+    )
     {
         var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
@@ -163,21 +162,66 @@ public class NBody : MonoBehaviour
         if (!tcc)
         {
             Debug.LogError("No TrajectoryComputeController found in scene!");
-            return new List<Vector3>();
+            onComplete?.Invoke(new List<Vector3>());  // Return empty list if there's an error
+            return;
         }
 
-        Vector3[] gpuPositions = tcc.CalculateTrajectoryGPU(
+        // The TrajectoryComputeController below has CalculateTrajectoryGPU_Async(...) 
+        // which uses AsyncGPUReadback. We'll pass in our callback:
+        tcc.CalculateTrajectoryGPU_Async(
             startPos: transform.position,
             startVel: velocity,
             bodyMass: mass,
             otherBodyPositions: otherPositions,
             otherBodyMasses: otherMasses,
             dt: deltaTime,
-            steps: steps
+            steps: steps,
+            onComplete: (positionsArray) =>
+            {
+                // Called when GPU readback is complete
+                if (positionsArray == null)
+                {
+                    // Means there was an error in readback
+                    onComplete?.Invoke(new List<Vector3>());
+                }
+                else
+                {
+                    onComplete?.Invoke(new List<Vector3>(positionsArray));
+                }
+            }
         );
-
-        return new List<Vector3>(gpuPositions);
     }
+
+    /**
+    * Calculates the prediction line of an orbit with Runge-kutta 4 using the GPU
+    * @param steps - Number of prediction steps to calculate
+    * @param deltaTime - Timestep for the sim so Runge-kutta knows how far forward to look
+    **/
+    // public List<Vector3> CalculatePredictedTrajectoryGPU(int steps, float deltaTime)
+    // {
+    //     var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
+    //     Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
+    //     float[] otherMasses = otherBodies.Select(b => b.mass).ToArray();
+
+    //     var tcc = FindObjectOfType<TrajectoryComputeController>();
+    //     if (!tcc)
+    //     {
+    //         Debug.LogError("No TrajectoryComputeController found in scene!");
+    //         return new List<Vector3>();
+    //     }
+
+    // Vector3[] gpuPositions = tcc.CalculateTrajectoryGPU_Async(
+    //     startPos: transform.position,
+    //     startVel: velocity,
+    //     bodyMass: mass,
+    //     otherBodyPositions: otherPositions,
+    //     otherBodyMasses: otherMasses,
+    //     dt: deltaTime,
+    //     steps: steps
+    // );
+
+    //     return new List<Vector3>(gpuPositions);
+    // }
 
 
     /**
@@ -369,31 +413,31 @@ public class NBody : MonoBehaviour
     * @return apogeeDistance - The farthest distance in km from the central body
     * @return perigeeDistance - The closest distance in km from the central body
     **/
-    public void GetApogeePerigee(List<Vector3> positions, out Vector3 apogeePoint, out Vector3 perigeePoint, out float apogeeDistance, out float perigeeDistance)
-    {
-        apogeePoint = Vector3.zero;
-        perigeePoint = Vector3.zero;
-        apogeeDistance = float.MinValue;
-        perigeeDistance = float.MaxValue;
+    // public void GetApogeePerigee(List<Vector3> positions, out Vector3 apogeePoint, out Vector3 perigeePoint, out float apogeeDistance, out float perigeeDistance)
+    // {
+    //     apogeePoint = Vector3.zero;
+    //     perigeePoint = Vector3.zero;
+    //     apogeeDistance = float.MinValue;
+    //     perigeeDistance = float.MaxValue;
 
-        foreach (var pos in positions)
-        {
-            float altitude = pos.magnitude;
-            if (altitude > apogeeDistance + tolerance)
-            {
-                apogeeDistance = altitude;
-                apogeePoint = pos;
-            }
-            if (altitude < perigeeDistance - tolerance)
-            {
-                perigeeDistance = altitude;
-                perigeePoint = pos;
-            }
-        }
+    //     foreach (var pos in positions)
+    //     {
+    //         float altitude = pos.magnitude;
+    //         if (altitude > apogeeDistance + tolerance)
+    //         {
+    //             apogeeDistance = altitude;
+    //             apogeePoint = pos;
+    //         }
+    //         if (altitude < perigeeDistance - tolerance)
+    //         {
+    //             perigeeDistance = altitude;
+    //             perigeePoint = pos;
+    //         }
+    //     }
 
-        apogeeDistance = ((apogeeDistance) - 637.1f) * 10;
-        perigeeDistance = ((perigeeDistance) - 637.1f) * 10;
-    }
+    //     apogeeDistance = ((apogeeDistance) - 637.1f) * 10;
+    //     perigeeDistance = ((perigeeDistance) - 637.1f) * 10;
+    // }
 
     /**
     * Adjusts the trajectory prediction settings based on time scale.
@@ -404,9 +448,9 @@ public class NBody : MonoBehaviour
         float distance = transform.position.magnitude;
         float speed = velocity.magnitude;
 
-        float baseDeltaTime = 0.5f;
-        float minDeltaTime = 0.1f;
-        float maxDeltaTime = 10f;
+        float baseDeltaTime = 1f;
+        float minDeltaTime = 0.5f;
+        float maxDeltaTime = 5f;
 
         float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + (speed / 2f) / 10f);
         adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);

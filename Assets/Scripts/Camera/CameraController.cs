@@ -116,7 +116,7 @@ public class CameraController : MonoBehaviour
 
                 Vector3 currentRotation = cameraPivotTransform.eulerAngles;
                 float clampedX = ClampAngle(currentRotation.x, -80f, 80f);
-                cameraPivotTransform.eulerAngles = new Vector3(clampedX, currentRotation.y, 0);
+                cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
             }
         }
     }

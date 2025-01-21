@@ -655,7 +655,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Retrograde Thrust
+  m_text: "Retrograde Burn \u2193"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -1235,7 +1235,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -379.6199, y: -410.08026}
+  m_AnchoredPosition: {x: -689, y: -285}
   m_SizeDelta: {x: 230, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &238508528
@@ -1399,7 +1399,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.24447916, y: 0.23537213}
   m_AnchorMax: {x: 0.43279165, y: 0.28577632}
-  m_AnchoredPosition: {x: -377.18365, y: -234.13724}
+  m_AnchoredPosition: {x: -40, y: -458}
   m_SizeDelta: {x: 179.72867, y: 44.396107}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &288121592
@@ -1977,7 +1977,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Prograde Thrust
+  m_text: "Prograde Burn \u2191"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2443,7 +2443,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Left Lateral Thrust
+  m_text: "Left Burn \u2190"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -2559,7 +2559,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.372, y: 0}
   m_AnchorMax: {x: 0.5034375, y: 0.10414832}
-  m_AnchoredPosition: {x: -124.04549, y: -416.19864}
+  m_AnchoredPosition: {x: -513, y: -325}
   m_SizeDelta: {x: 217.3556, y: 60.197723}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &520438629
@@ -2746,7 +2746,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Radial In Thrust
+  m_text: "Radial In Burn        \u2192 () \u2190"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -3171,7 +3171,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.112541676, y: 0.040662423}
   m_AnchorMax: {x: 0.23356251, y: 0.10414832}
-  m_AnchoredPosition: {x: -595.43134, y: -420.4987}
+  m_AnchoredPosition: {x: -366, y: -439.1}
   m_SizeDelta: {x: 217.3935, y: 63.197723}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &593260704
@@ -3338,7 +3338,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.372, y: 0.12900001}
   m_AnchorMax: {x: 0.49300003, y: 0.19600001}
-  m_AnchoredPosition: {x: -122.94557, y: -329.6321}
+  m_AnchoredPosition: {x: -512.3, y: -164.7}
   m_SizeDelta: {x: 218.3556, y: 63.64052}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &703380411
@@ -3955,7 +3955,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5, y: 0.5}
   m_AnchorMax: {x: 0.5, y: 0.5}
-  m_AnchoredPosition: {x: -628.72, y: -365.78027}
+  m_AnchoredPosition: {x: -647, y: -482}
   m_SizeDelta: {x: 230, y: 70}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &782436458
@@ -10350,7 +10350,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Radial Out button
+  m_text: "Radial Out Burn      \u2190 () \u2192"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -11019,7 +11019,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.5034375, y: 0.08718227}
   m_AnchorMax: {x: 0.62133324, y: 0.15122248}
-  m_AnchoredPosition: {x: 113.59132, y: -372.15125}
+  m_AnchoredPosition: {x: -354, y: -245.3}
   m_SizeDelta: {x: 217.7023, y: 62.740814}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1191139590
@@ -12206,7 +12206,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: Right Lateral Thrust
+  m_text: "Right Burn \u2192"
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
   m_sharedMaterial: {fileID: 2180264, guid: 8f586378b4e144a9851e7b34d9b748ee, type: 2}
@@ -13213,7 +13213,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0, y: 0}
   m_AnchorMax: {x: 1, y: 1}
-  m_AnchoredPosition: {x: 0, y: -0.4999962}
+  m_AnchoredPosition: {x: 0, y: -0.5000038}
   m_SizeDelta: {x: -20, y: -13}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1528377092
@@ -14425,7 +14425,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.24447916, y: 0.30562723}
   m_AnchorMax: {x: 0.43279165, y: 0.3511053}
-  m_AnchoredPosition: {x: -376.1835, y: -166.20108}
+  m_AnchoredPosition: {x: -39, y: -383}
   m_SizeDelta: {x: 180.7287, y: 45.568527}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1715665085
@@ -14937,7 +14937,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.032, y: 0.85359555}
   m_AnchorMax: {x: 0.21952085, y: 0.9748525}
-  m_AnchoredPosition: {x: -81.99951, y: 22.500061}
+  m_AnchoredPosition: {x: -81.99927, y: 22.500061}
   m_SizeDelta: {x: -184, y: -111}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1873310758
