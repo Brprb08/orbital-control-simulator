@@ -8,7 +8,7 @@ This file contains a detailed breakdown of the physics and methods used in the O
 
 ## Table of Contents
 - [Numerical Integration: RK4 in Detail](#numerical-integration-rk4-in-detail)
-  - [What Does RK4 Do?](#what-does-rk4-do)
+  - [What Does RK4 Do?](#1.-what-does-rk4-do)
   - [How RK4 is Implemented Here](#how-rk4-is-implemented-here)
     - [Step 1: Initial Derivatives (k1)](#step-1-initial-derivatives-k1)
     - [Step 2 & 3: Intermediate Steps (k2 and k3)](#step-2--3-intermediate-steps-k2-and-k3)
