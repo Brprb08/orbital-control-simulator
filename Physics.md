@@ -8,24 +8,13 @@ This file contains a detailed breakdown of the physics and methods used in the O
 
 ## Table of Contents
 - [Numerical Integration: RK4 in Detail](#numerical-integration-rk4-in-detail)
-  - [What Does RK4 Do?](#1.-what-does-rk4-do)
+  - [What Does RK4 Do?](#what-does-rk4-do)
   - [How RK4 is Implemented Here](#how-rk4-is-implemented-here)
-    - [Step 1: Initial Derivatives (k1)](#step-1-initial-derivatives-k1)
-    - [Step 2 & 3: Intermediate Steps (k2 and k3)](#step-2--3-intermediate-steps-k2-and-k3)
-    - [Step 4: Final Derivatives (k4)](#step-4-final-derivatives-k4)
-    - [Step 5: Weighted Average](#step-5-weighted-average)
 - [CalculateDerivatives](#calculatederivatives)
   - [Steps](#steps)
-    - [Compute Gravitational Acceleration](#compute-gravitational-acceleration)
-    - [Combine Thrust Impulse](#combine-thrust-impulse)
-    - [Return Derivatives](#return-derivatives)
 - [ComputeAccelerationFromData](#computeaccelerationfromdata)
   - [Purpose](#purpose)
   - [Steps](#steps-1)
-    - [Gravitational Force Calculation](#gravitational-force-calculation)
-    - [Avoid Singularities](#avoid-singularities)
-    - [Add External Forces](#add-external-forces)
-    - [Return Total Acceleration](#return-total-acceleration)
 - [Example: Pulling It All Together](#example-pulling-it-all-together)
 - [Why This Approach?](#why-this-approach)
 - [Orbital Dynamics](#orbital-dynamics)
@@ -39,13 +28,13 @@ The **Runge-Kutta 4th Order Method (RK4)** is used to update the position and ve
 
 ---
 
-### 1. What Does RK4 Do?
+### 1. What Does RK4 Do? {#what-does-rk4-do}
 
 RK4 predicts the future state of an object (its position and velocity) by calculating intermediate steps (called "slopes") at different points within the time step (`deltaTime`). These slopes represent derivatives of the position and velocity, and they are used to compute a weighted average for the final result. This ensures the accuracy of the simulation.
 
 ---
 
-### 2. How RK4 is Implemented Here
+### 2. How RK4 is Implemented Here {#how-rk4-is-implemented-here}
 
 In this simulation, RK4 works by repeatedly calling the method `CalculateDerivatives`. This method takes the current state of the object (position and velocity), calculates the acceleration due to gravity and thrust, and then returns the derivatives needed for the RK4 algorithm.
 
@@ -65,7 +54,7 @@ The RK4 process is broken down into the following steps:
 
 ---
 
-### 3. `CalculateDerivatives`
+### 3. `CalculateDerivatives` {#calculatederivatives}
 
 This is where things start to come together. `CalculateDerivatives` figures out how fast the object is moving (velocity) and how much its speed will change (acceleration). It combines forces from gravity, thrust, and any external factors to return a snapshot of the object’s state.. Here’s how it works:
 
@@ -81,7 +70,7 @@ This is where things start to come together. `CalculateDerivatives` figures out 
 
 ---
 
-### 4. `ComputeAccelerationFromData`
+### 4. `ComputeAccelerationFromData` {#computeaccelerationfromdata}
 
 This method does the gritty physics math. It loops through every celestial body in the system, calculates the pull from each one, and adds it all up. It also makes sure things stay realistic, like preventing infinite forces when objects get too close.
 
@@ -114,7 +103,7 @@ To calculate the total acceleration on an object due to:
 
 ---
 
-### 5. Example: Pulling It All Together
+### 5. Example: Pulling It All Together {#example-pulling-it-all-together}
 
 At each time step, the RK4 process combines everything:
 
