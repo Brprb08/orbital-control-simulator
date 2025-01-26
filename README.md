@@ -75,6 +75,8 @@ This project provides a **hands-on** approach to understanding orbital motion by
 
 ## Orbit Mechanics
 
+This project uses real physics principals and numerical methods to model orbital mechanics [Physics.md](./Physics.md)
+
 ### Gravitational Interactions
 Uses Newton’s law of universal gravitation to compute forces between every pair of bodies. This allows for emergent orbital phenomena whenever a new body is introduced.
 

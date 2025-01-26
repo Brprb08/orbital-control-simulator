@@ -73,6 +73,10 @@ public class CameraController : MonoBehaviour
     {
         yield return null; // Wait for all NBody.Start() to finish
 
+        if (LineVisibilityManager.Instance != null)
+        {
+            LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
+        }
         ReturnToTracking();
 
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
@@ -104,7 +108,14 @@ public class CameraController : MonoBehaviour
                 lastTabTime = Time.time;
                 currentIndex = (currentIndex + 1) % bodies.Count;
                 trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
+                if (LineVisibilityManager.Instance != null)
+                {
+                    Debug.LogError("Hello");
+                    LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
+                }
+
                 trajectoryRenderer.orbitIsDirty = true;
+
                 ReturnToTracking();
             }
 

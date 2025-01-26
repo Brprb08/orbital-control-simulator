@@ -9,6 +9,7 @@ using System.Collections.Generic;
 public class LineVisibilityManager : MonoBehaviour
 {
     public static LineVisibilityManager Instance { get; private set; }
+    private NBody trackedBody;
 
     public enum LineType
     {
@@ -79,19 +80,27 @@ public class LineVisibilityManager : MonoBehaviour
         {
             lineVisibilityStates[lineType] = isVisible;
 
+            // NBody body = nBodyInstances.Find(b => b == trackedBody);
             foreach (NBody body in nBodyInstances)
             {
-                TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
-                if (trajectoryRenderer != null)
+                Debug.LogError("SetLineVisibility:LVM:Body: " + body + " --- TrackedBODY: " + trackedBody);
+                if (body == trackedBody)
                 {
-                    bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
-                    bool currentOriginState = lineVisibilityStates[LineType.Origin];
-                    bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
-                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
-                }
-                else
-                {
-                    Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
+                    TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
+                    if (trajectoryRenderer != null)
+                    {
+                        Debug.LogError("CHANGING LINE VISIBILITY STATES");
+                        bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
+                        bool currentOriginState = lineVisibilityStates[LineType.Origin];
+                        bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
+                        Debug.LogError("Current Prediction state: " + currentPredictionState);
+                        trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
+                    }
+                    else
+                    {
+                        Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
+                    }
+
                 }
             }
 
@@ -113,6 +122,7 @@ public class LineVisibilityManager : MonoBehaviour
         TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
         if (trajectoryRenderer != null)
         {
+            Debug.LogError("APPLY VISIBILITY SETTING LINE VISIBILITY");
             trajectoryRenderer.SetLineVisibility(
                     showPrediction: lineVisibilityStates[LineType.Prediction],
                     showOrigin: lineVisibilityStates[LineType.Origin],
@@ -131,5 +141,15 @@ public class LineVisibilityManager : MonoBehaviour
             return lineVisibilityStates[lineType];
         }
         return true;  // Default to visible if not found
+    }
+
+    /**
+    * Assigns the NBody to be tracked by this TrajectoryRenderer.
+    * @param body - Nbody the line renders switch to.
+    **/
+    public void SetTrackedBody(NBody body)
+    {
+        Debug.LogError(body);
+        trackedBody = body;
     }
 }

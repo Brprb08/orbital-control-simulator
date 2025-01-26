@@ -93,6 +93,7 @@ public class TrajectoryRenderer : MonoBehaviour
         ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00"); // Green for Perigee
 
         mainCamera = Camera.main;
+        Debug.LogError("*)(*)(*)(*)(*)*()(*)");
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
@@ -203,9 +204,10 @@ public class TrajectoryRenderer : MonoBehaviour
 
             trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
             bool isElliptical = eccentricity < 1f;
-
+            Debug.LogError("Show Prediction prior: " + showPredictionLines + " --- Orbit is Dirty: " + orbitIsDirty);
             if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
+                Debug.LogError("INSIDE PREDICTION LINE RENDER");
                 if (isElliptical)
                 {
                     float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
@@ -265,11 +267,14 @@ public class TrajectoryRenderer : MonoBehaviour
                 apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
             }
 
-            if (showPredictionLines)
-            {
-                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-                predictionLineRenderer.enabled = distanceToCamera > lineDisableDistance;
-            }
+            // if (showPredictionLines)
+            // {
+            //     float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
+            //     bool show = distanceToCamera > lineDisableDistance;
+            //     showPredictionLines = show;
+            //     showOriginLines = show;
+            //     showApogeePerigeeLines = show;
+            // }
 
             if (originLineRenderer != null && showOriginLines)
             {
@@ -288,6 +293,7 @@ public class TrajectoryRenderer : MonoBehaviour
             }
             yield return new WaitForSeconds(.1f);
         }
+
     }
 
     /**
@@ -339,6 +345,7 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
+        Debug.LogError("######## SetLineVisibility:TR:SHOW PRED: " + showPrediction + " #######");
         showPredictionLines = showPrediction;
         showOriginLines = showOrigin;
         showApogeePerigeeLines = showApogeePerigee;
@@ -367,15 +374,21 @@ public class TrajectoryRenderer : MonoBehaviour
             }
         }
 
+        Debug.LogError(showPredictionLines);
         // Re-run RecomputeTrajectory to show lines when reset
-        if (proceduralLine != null)
+        if (showPredictionLines)
         {
-            update = true;
+            Debug.LogError("CHANGING ORBIT-IS-DIRTY TO TRUE");
+            orbitIsDirty = true;
         }
-
-        if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
-        if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
-        if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;
+        else
+        {
+            Debug.LogError("CHANGING ORBIT-IS-DIRTY TO FALSE");
+            orbitIsDirty = false;
+        }
+        // if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
+        // if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
+        // if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;
     }
 
     /** 
