@@ -40,10 +40,7 @@ The RK4 process is broken down into the following steps:
 
 ### 3. `CalculateDerivatives`
 
-The method `CalculateDerivatives` is central to the RK4 implementation. Here’s how it works:
-
-#### Purpose:
-This method computes the velocity and acceleration (i.e., the "derivatives") for a given state of the object. It uses the current position, velocity, and any applied thrust.
+This is where things start to come together. `CalculateDerivatives` figures out how fast the object is moving (velocity) and how much its speed will change (acceleration). It combines forces from gravity, thrust, and any external factors to return a snapshot of the object’s state.. Here’s how it works:
 
 #### Steps:
 1. **Compute Gravitational Acceleration**  
@@ -59,7 +56,7 @@ This method computes the velocity and acceleration (i.e., the "derivatives") for
 
 ### 4. `ComputeAccelerationFromData`
 
-This method handles the detailed calculation of gravitational forces and acceleration for an object. It ensures that all interactions between bodies are accounted for. Here’s how it works:
+This method does the gritty physics math. It loops through every celestial body in the system, calculates the pull from each one, and adds it all up. It also makes sure things stay realistic, like preventing infinite forces when objects get too close.
 
 #### Purpose:
 To calculate the total acceleration on an object due to:

@@ -6,7 +6,7 @@ _Current state of the simulation. Top image shows the Track cam with current obj
 
 # Orbit Mechanics Simulator
 
-An educational **orbital mechanics** simulator built in Unity, showcasing real-time gravitational interactions, trajectory predictions, and user-driven planetary placement. This project aims to provide a hands-on experience for space enthusiasts, students, and developers looking to explore the basics of orbital dynamics in a 3D, interactive environment.
+An educational **orbital mechanics** simulator built in Unity, showcasing real-time gravitational interactions, trajectory predictions, and user-driven placement. This project is built for anyone who’s fascinated by space. It gives you the tools to interact with orbital physics in real-time, manipulate celestial bodies, tweak initial velocities, and scale time to watch how gravity affects all objects.
 
 ---
 
@@ -32,7 +32,8 @@ An educational **orbital mechanics** simulator built in Unity, showcasing real-t
 ---
 
 ## Overview
-This project provides a **hands-on** approach to understanding orbital motion by allowing real-time manipulation of celestial bodies, time scaling, and initial velocities. It’s an ideal starting point for anyone curious about how gravity and orbital paths work—a useful stepping stone for more advanced space simulation topics.
+
+This project provides a **hands-on** approach to understanding orbital motion by allowing real-time manipulation of celestial bodies, time scaling, and initial velocities. It’s an ideal starting point for anyone curious about how gravity and orbital paths work, a useful stepping stone for more advanced space simulation topics.
 
 ---
 
@@ -75,16 +76,8 @@ This project provides a **hands-on** approach to understanding orbital motion by
 
 ## Orbit Mechanics
 
+### Physics Breakdown
 This project uses real physics principals and numerical methods to model orbital mechanics [Physics.md](./Physics.md)
-
-### Gravitational Interactions
-Uses Newton’s law of universal gravitation to compute forces between every pair of bodies. This allows for emergent orbital phenomena whenever a new body is introduced.
-
-### Numerical Integration
-Adopts **Runge-Kutta (RK4)** to accurately step positions and velocities through time. This approach keeps orbits stable and reduces numerical errors compared to simpler methods like Euler.
-
-### Collision Handling
-Bodies are approximated as spheres. When the distance between centers is less than the sum of radii, the smaller mass is removed. If it was being tracked, the camera automatically refocuses or reverts to Free Cam.
 
 ---
 
@@ -118,13 +111,13 @@ Bodies are approximated as spheres. When the distance between centers is less th
 
 ---
 
-## Planned Updates
-- **Refined Thrust & Maneuvers**: Full orbital maneuver planning (e.g., circularization, transfer orbits, fuel usage).  
-- **Advanced Collision Effects**: Beyond body removal—explosions, merging, or fragmentation.  
-- **Extended Physics**: Potential orbital decay, aerodynamic drag, or relativistic effects for more realistic simulation.  
-- **Attitude Control**: Orientation changes for satellites, with spin stabilization or reaction wheels.  
-- **Polished UI & Camera Transitions**: Smoother camera modes, contextual menus for object selection.  
-- **Fuel Tracking**: Monitor engine burn times and consumption for mission-like scenarios.
+## Planned Features
+
+- **Refined Thrust & Maneuvers**: Planning realistic orbital maneuvers (e.g., circularization, Hohmann transfers) with fuel usage baked in.
+- **Advanced Collision Effects**: Right now, collisions just remove smaller bodies, but I want to add realistic effects like explosions or merging.
+- **Extended Physics**: Stuff like orbital decay or atmospheric drag to make long-term orbits more realistic.
+- **Polished Visuals**: The graphics are rough right now, but I’m working on smoother camera transitions, cleaner UI, and better models.
+- **Fuel Tracking**: Add real engine burn times and consumption to make mission planning more challenging (and rewarding).
 
 ---
 
@@ -136,7 +129,7 @@ Bodies are approximated as spheres. When the distance between centers is less th
 
 ## Status
 
-The project is in its early stages. Key systems like gravitational dynamics and trajectory prediction are operational, but advanced features like thrust mechanics, drag effects, and fuel tracking are not yet implemented. Updates will focus on usability improvements, feature expansion, and enhanced visualization.
+Visuals are still a work in progress, but the core physics engine is up and running. Updates will focus on polishing usability and expanding features like orbital maneuvers and collision realism.
 
 ## Getting Started
 
