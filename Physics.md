@@ -1,4 +1,4 @@
-[⬅ Back to README](../README.md)
+[⬅ Back to README](https://github.com/Brprb08/space-orbit-simulation#readme)
 
 # Physics Documentation
 
@@ -148,4 +148,4 @@ Directions include:
 - Radial (toward or away from the central body).
 - Lateral (perpendicular to the orbital plane).
 
-[⬅ Back to README](../README.md)
+[⬅ Back to README](https://github.com/Brprb08/space-orbit-simulation#readme)
