@@ -6,6 +6,33 @@ This file contains a detailed breakdown of the physics and methods used in the O
 
 ---
 
+## Table of Contents
+- [Numerical Integration: RK4 in Detail](#numerical-integration-rk4-in-detail)
+  - [What Does RK4 Do?](#what-does-rk4-do)
+  - [How RK4 is Implemented Here](#how-rk4-is-implemented-here)
+    - [Step 1: Initial Derivatives (k1)](#step-1-initial-derivatives-k1)
+    - [Step 2 & 3: Intermediate Steps (k2 and k3)](#step-2--3-intermediate-steps-k2-and-k3)
+    - [Step 4: Final Derivatives (k4)](#step-4-final-derivatives-k4)
+    - [Step 5: Weighted Average](#step-5-weighted-average)
+- [CalculateDerivatives](#calculatederivatives)
+  - [Steps](#steps)
+    - [Compute Gravitational Acceleration](#compute-gravitational-acceleration)
+    - [Combine Thrust Impulse](#combine-thrust-impulse)
+    - [Return Derivatives](#return-derivatives)
+- [ComputeAccelerationFromData](#computeaccelerationfromdata)
+  - [Purpose](#purpose)
+  - [Steps](#steps-1)
+    - [Gravitational Force Calculation](#gravitational-force-calculation)
+    - [Avoid Singularities](#avoid-singularities)
+    - [Add External Forces](#add-external-forces)
+    - [Return Total Acceleration](#return-total-acceleration)
+- [Example: Pulling It All Together](#example-pulling-it-all-together)
+- [Why This Approach?](#why-this-approach)
+- [Orbital Dynamics](#orbital-dynamics)
+- [Thrust Mechanics (Prototype)](#thrust-mechanics-prototype)
+
+---
+
 ## Numerical Integration: RK4 in Detail
 
 The **Runge-Kutta 4th Order Method (RK4)** is used to update the position and velocity of celestial bodies in the simulation. Here’s how it works in the context of this project:
