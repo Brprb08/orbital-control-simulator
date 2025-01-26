@@ -28,13 +28,13 @@ The **Runge-Kutta 4th Order Method (RK4)** is used to update the position and ve
 
 ---
 
-### 1. What Does RK4 Do? {#what-does-rk4-do}
+### What Does RK4 Do?
 
 RK4 predicts the future state of an object (its position and velocity) by calculating intermediate steps (called "slopes") at different points within the time step (`deltaTime`). These slopes represent derivatives of the position and velocity, and they are used to compute a weighted average for the final result. This ensures the accuracy of the simulation.
 
 ---
 
-### 2. How RK4 is Implemented Here {#how-rk4-is-implemented-here}
+### How RK4 is Implemented Here
 
 In this simulation, RK4 works by repeatedly calling the method `CalculateDerivatives`. This method takes the current state of the object (position and velocity), calculates the acceleration due to gravity and thrust, and then returns the derivatives needed for the RK4 algorithm.
 
@@ -54,7 +54,7 @@ The RK4 process is broken down into the following steps:
 
 ---
 
-### 3. `CalculateDerivatives` {#calculatederivatives}
+### `CalculateDerivatives`
 
 This is where things start to come together. `CalculateDerivatives` figures out how fast the object is moving (velocity) and how much its speed will change (acceleration). It combines forces from gravity, thrust, and any external factors to return a snapshot of the object’s state.. Here’s how it works:
 
@@ -70,7 +70,7 @@ This is where things start to come together. `CalculateDerivatives` figures out 
 
 ---
 
-### 4. `ComputeAccelerationFromData` {#computeaccelerationfromdata}
+### `ComputeAccelerationFromData`
 
 This method does the gritty physics math. It loops through every celestial body in the system, calculates the pull from each one, and adds it all up. It also makes sure things stay realistic, like preventing infinite forces when objects get too close.
 
@@ -103,7 +103,7 @@ To calculate the total acceleration on an object due to:
 
 ---
 
-### 5. Example: Pulling It All Together {#example-pulling-it-all-together}
+### Example: Pulling It All Together
 
 At each time step, the RK4 process combines everything:
 
