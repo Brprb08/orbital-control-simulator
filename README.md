@@ -10,65 +10,65 @@ An educational **orbital mechanics** simulator built in Unity, showcasing real-t
 
 ---
 
+## Project Motivation and Goals
+
+I’ve always been into space and wanted to build something that wasn’t just visually cool but actually simulated real orbital mechanics. I started with the basics—getting orbits to behave realistically—but as I kept working, it evolved into something much bigger. Now it has GPU-based trajectory rendering, real-time thrust mechanics, and RK4 integration for accurate physics.
+
+Now, the goal is to refine it, improve the UI, and expand features like collision handling and orbital maneuvers. It’s both a passion project and a technical showcase, proving I can take complex systems and make them work. Long-term, I’d love for this to help me break into space-related simulation or aerospace work.
+
+---
+
+## Key Features                                                                                                                                                                                                                                 1. **Central Body Rotation**                                                                                               
+   - A central body (e.g., Earth) remains in place but **rotates**, simulating real-world planetary spin.  
+
+2. **Custom Planet Placement**
+   - **Free Camera Mode**: Create planets on the fly, specifying their mass and radius.                                    
+   - **Manual Velocity Assignment**: Use a slider or drag mechanics to set initial velocity vectors for newly placed bodies
+
+3. **Runge-Kutta Integration**
+   - Employs **RK4** for numerically stable and accurate orbital trajectory updates.
+
+4. **Collision Detection & Removal**
+   - Automatically removes smaller bodies upon collision.
+   - If the tracked body is removed, the camera switches to the next available target or to Free Camera.
+
+5. **Multiple Camera Modes**
+   - **Track Camera**: Follows a selected celestial body, with UI for velocity/altitude readouts.
+   - **Free Camera**: Roam freely to observe the entire scene and place new objects.
+
+6. **Time Control**
+   - **Slider** for simulation speed (e.g., 1× to 100×).
+   - **Pause/Resume** with a button.
+   - **Reset** time scale by pressing **R**.
+
+7. **Real-Time Feedback**
+   - **Velocity** displayed in m/s and mph.
+   - **Altitude** displayed in km and ft.
+   - **Apogee & Perigee** lines (and future expansions) visible for the tracked object.
+
+8. **Interactive Thrust (Prototype)**
+   - Basic **prograde, retrograde, radial in/out, and lateral** thrust controls for the **tracked** body.
+   - Force is scaled by the object’s mass, altering orbits in real time.
+   - Allows users to experiment with orbital maneuvers at a fundamental level (e.g., quick burns to raise/lower altitude)
+
+---
+
 ## Table of Contents
 - [Overview](#overview)
+- [Project Motivation and Goals](#project-motivation-and-goals)
 - [Key Features](#key-features)
 - [Orbit Mechanics](#orbit-mechanics)
-  - [Physics Breakdown](#physics-breakdown)
 - [How to Use](#how-to-use)
-  - [Track Camera Mode](#track-camera-mode)
-  - [Free Camera Mode](#free-camera-mode)
-  - [Time Control](#time-control)
-  - [Placing New Celestial Bodies](#placing-new-celestial-bodies)
-  - [Early Thrust Implementation](#early-thrust-implementation)
+- [Physics Breakdown](#physics-breakdown)
 - [Planned Updates](#planned-updates)
 - [Limitations](#limitations)
 - [Getting Started](#getting-started)
-  - [Prerequisites](#prerequisites)
-  - [Installation](#installation)
 
 ---
 
 ## Overview
 
 This project provides a **hands-on** approach to understanding orbital motion by allowing real-time manipulation of celestial bodies, time scaling, and initial velocities. It’s an ideal starting point for anyone curious about how gravity and orbital paths work, a useful stepping stone for more advanced space simulation topics.
-
----
-
-## Key Features
-
-1. **Central Body Rotation**  
-   - A central body (e.g., Earth) remains in place but **rotates**, simulating real-world planetary spin.
-
-2. **Custom Planet Placement**  
-   - **Free Camera Mode**: Create planets on the fly, specifying their mass and radius.  
-   - **Manual Velocity Assignment**: Use a slider or drag mechanics to set initial velocity vectors for newly placed bodies.
-
-3. **Runge-Kutta Integration**  
-   - Employs **RK4** for numerically stable and accurate orbital trajectory updates.
-
-4. **Collision Detection & Removal**  
-   - Automatically removes smaller bodies upon collision.  
-   - If the tracked body is removed, the camera switches to the next available target or to Free Camera.
-
-5. **Multiple Camera Modes**  
-   - **Track Camera**: Follows a selected celestial body, with UI for velocity/altitude readouts.  
-   - **Free Camera**: Roam freely to observe the entire scene and place new objects.
-
-6. **Time Control**  
-   - **Slider** for simulation speed (e.g., 1× to 100×).  
-   - **Pause/Resume** with a button.  
-   - **Reset** time scale by pressing **R**.
-
-7. **Real-Time Feedback**  
-   - **Velocity** displayed in m/s and mph.  
-   - **Altitude** displayed in km and ft.  
-   - **Apogee & Perigee** lines (and future expansions) visible for the tracked object.
-
-8. **Interactive Thrust (Prototype)**  
-   - Basic **prograde, retrograde, radial in/out, and lateral** thrust controls for the **tracked** body.  
-   - Force is scaled by the object’s mass, altering orbits in real time.  
-   - Allows users to experiment with orbital maneuvers at a fundamental level (e.g., quick burns to raise/lower altitude).
 
 ---
 
