@@ -66,12 +66,6 @@ Now, the goal is to refine it, improve the UI, and expand features like collisio
 
 ---
 
-## Overview
-
-This project provides a **hands-on** approach to understanding orbital motion by allowing real-time manipulation of celestial bodies, time scaling, and initial velocities. It’s an ideal starting point for anyone curious about how gravity and orbital paths work, a useful stepping stone for more advanced space simulation topics.
-
----
-
 ## Orbit Mechanics
 
 ### Physics Breakdown
