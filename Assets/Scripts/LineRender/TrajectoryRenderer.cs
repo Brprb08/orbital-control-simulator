@@ -19,17 +19,6 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool isThrusting = false;
     private bool update = false;
 
-    [Header("Line Renderer Settings")]
-    public float lineWidth = 3f;
-    public Color lineColor = Color.blue;
-    private LineRenderer predictionLineRenderer;
-    private LineRenderer originLineRenderer;
-    private LineRenderer apogeeLineRenderer;
-    private LineRenderer perigeeLineRenderer;
-    public float lineDisableDistance = 50f;
-    private static Material lineMaterial;
-    private static Dictionary<string, Material> materialPool = new Dictionary<string, Material>();
-
     [Header("References")]
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
@@ -38,7 +27,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public CameraMovement cameraMovement;
     private Camera mainCamera;
     private NBody trackedBody;
-    public ProceduralLineRenderer proceduralLine;
+
     private UIManager uIManager;
 
     [Header("Line Display Flags")]
@@ -55,59 +44,42 @@ public class TrajectoryRenderer : MonoBehaviour
     public float perigeeDistance = 0f;
     public bool justSwitchedTrack = false;
 
-    // private Dictionary<int, List<Vector3>> orbitChunks = new Dictionary<int, List<Vector3>>();
-    // private List<Vector3> accumulatedPositions = new List<Vector3>();
-    // private const int chunkSize = 100;
-
     [Header("Optimizations")]
     public bool useLOD = true;
     public float lodDistanceThreshold = 5000f;
     public float maxRecomputeInterval = 5f;
+
+    [Header("Procedural Lines")]
+    public ProceduralLineRenderer predictionProceduralLine;
+    public ProceduralLineRenderer originProceduralLine;
+    public ProceduralLineRenderer apogeeProceduralLine;
+    public ProceduralLineRenderer perigeeProceduralLine;
+
+    [Header("Line Colors")]
+    public string predictionLineColor = "#2978FF"; // Blue
+    public string originLineColor = "#FFFFFF";     // White
+    public string apogeeLineColor = "#FF0000";     // Red
+    public string perigeeLineColor = "#00FF00";    // Green
+    private float lineDisableDistance = 50f;
 
     /**
     * Initializes line renderers and sets up materials
     **/
     void Awake()
     {
-        if (lineMaterial == null)
-        {
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-            {
-                Debug.LogError("Shader 'Sprites/Default' not found. Please ensure it exists in your project.");
-            }
-            else
-            {
-                lineMaterial = new Material(shader);
-            }
-        }
-
-        predictionLineRenderer = CreateLineRenderer($"{gameObject.name}_Prediction");
-        originLineRenderer = CreateLineRenderer($"{gameObject.name}Origin");
-        apogeeLineRenderer = CreateLineRenderer($"{gameObject.name}_ApogeeLine");
-        perigeeLineRenderer = CreateLineRenderer($"{gameObject.name}_PerigeeLine");
-
-        ConfigureLineRenderer(predictionLineRenderer, 3f, "#2978FF");
-        ConfigureLineRenderer(originLineRenderer, 1f, "#FFFFFF");
-        ConfigureLineRenderer(apogeeLineRenderer, 3f, "#FF0000");  // Red for Apogee
-        ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00"); // Green for Perigee
-
         mainCamera = Camera.main;
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
 
+        predictionProceduralLine = CreateProceduralLineRenderer("PredictionLine", predictionLineColor);
+        originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
+        apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
+        perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
+
         cameraMovement = CameraMovement.Instance;
         thrustController = ThrustController.Instance;
         uIManager = UIManager.Instance;
-    }
-
-    void Start()
-    {
-        if (proceduralLine == null)
-        {
-            proceduralLine = FindFirstObjectByType<ProceduralLineRenderer>();
-        }
     }
 
     void Update()
@@ -129,6 +101,23 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    private ProceduralLineRenderer CreateProceduralLineRenderer(string name, string hexColor)
+    {
+        // Create a new GameObject
+        GameObject lineObject = new GameObject(name);
+
+        // Add ProceduralLineRenderer component
+        ProceduralLineRenderer lineRenderer = lineObject.AddComponent<ProceduralLineRenderer>();
+
+        // Set line color
+        lineRenderer.SetLineColor(hexColor);
+
+        // Optionally set other defaults like width
+        lineRenderer.SetLineWidth(0.1f);
+
+        return lineRenderer;
+    }
+
     /**
     * Assigns the NBody to be tracked by this TrajectoryRenderer.
     * @param body - Nbody the line renders switch to.
@@ -141,41 +130,6 @@ public class TrajectoryRenderer : MonoBehaviour
         {
             predictionCoroutine = StartCoroutine(RecomputeTrajectory());
         }
-    }
-
-    /**
-    * Creates a LineRenderer with the specified name.
-    * @param name - Game object name
-    **/
-    private LineRenderer CreateLineRenderer(string name)
-    {
-        GameObject obj = new GameObject(name);
-        obj.transform.parent = this.transform;
-        LineRenderer lineRenderer = obj.AddComponent<LineRenderer>();
-        return lineRenderer;
-    }
-
-    /** 
-    * Configures the visual settings for a LineRenderer 
-    * @param lineRender - Line render being configured
-    * @param widthMultiplier - How wide to set the line render
-    * @param hexColor - Color of the line render
-    **/
-    void ConfigureLineRenderer(LineRenderer lineRenderer, float widthMultiplier, string hexColor)
-    {
-        lineRenderer.useWorldSpace = true;
-        lineRenderer.numCapVertices = 2;
-        lineRenderer.numCornerVertices = 2;
-        lineRenderer.widthMultiplier = widthMultiplier;
-        lineRenderer.alignment = LineAlignment.View;
-
-        Material material = GetOrCreateMaterial(hexColor);
-        lineRenderer.material = material;
-
-        lineRenderer.startColor = material.color;
-        lineRenderer.endColor = material.color;
-
-        lineRenderer.enabled = true;
     }
 
     /** 
@@ -191,10 +145,10 @@ public class TrajectoryRenderer : MonoBehaviour
 
             if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
             {
-                predictionLineRenderer.enabled = false;
-                originLineRenderer.enabled = false;
-                apogeeLineRenderer.enabled = false;
-                perigeeLineRenderer.enabled = false;
+                predictionProceduralLine.Clear();
+                originProceduralLine.Clear();
+                apogeeProceduralLine.Clear();
+                perigeeProceduralLine.Clear();
                 yield return new WaitForSeconds(0.1f);
                 continue;
             }
@@ -228,8 +182,6 @@ public class TrajectoryRenderer : MonoBehaviour
                     predictionSteps = 3000;
                 }
 
-                predictionLineRenderer.positionCount = 0;
-
                 trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
                 {
                     var fullTrajectory = resultList.ToArray();
@@ -238,7 +190,7 @@ public class TrajectoryRenderer : MonoBehaviour
                     var clippedPoints = ClipTrajectory(fullTrajectory);
 
                     // Finally, update your line
-                    proceduralLine.UpdateLine(clippedPoints);
+                    predictionProceduralLine.UpdateLine(clippedPoints);
                 });
 
                 orbitIsDirty = false;
@@ -249,15 +201,10 @@ public class TrajectoryRenderer : MonoBehaviour
             {
                 trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
 
-                if (apogeeLineRenderer != null && perigeeLineRenderer != null)
+                if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
-                    apogeeLineRenderer.enabled = true;
-                    apogeeLineRenderer.positionCount = 2;
-                    apogeeLineRenderer.SetPositions(new Vector3[] { apogeePosition, Vector3.zero });
-
-                    perigeeLineRenderer.enabled = true;
-                    perigeeLineRenderer.positionCount = 2;
-                    perigeeLineRenderer.SetPositions(new Vector3[] { perigeePosition, Vector3.zero });
+                    apogeeProceduralLine.UpdateLine(new Vector3[] { apogeePosition, Vector3.zero });
+                    perigeeProceduralLine.UpdateLine(new Vector3[] { perigeePosition, Vector3.zero });
 
                     if (apogeeText != null && perigeeText != null)
                     {
@@ -270,20 +217,29 @@ public class TrajectoryRenderer : MonoBehaviour
                 apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
             }
 
-            // if (showPredictionLines)
-            // {
-            //     float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-            //     bool show = distanceToCamera > lineDisableDistance;
-            //     showPredictionLines = show;
-            //     showOriginLines = show;
-            //     showApogeePerigeeLines = show;
-            // }
-
-            if (originLineRenderer != null && showOriginLines)
+            if (showPredictionLines)
             {
-                originLineRenderer.enabled = true;
-                originLineRenderer.positionCount = 2;
-                originLineRenderer.SetPositions(new Vector3[] { trackedBody.transform.position, Vector3.zero });
+                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
+                bool show = distanceToCamera > lineDisableDistance;
+                if (!show)
+                {
+                    predictionProceduralLine.SetVisibility(false);
+                    originProceduralLine.SetVisibility(false);
+                    apogeeProceduralLine.SetVisibility(false);
+                    perigeeProceduralLine.SetVisibility(false);
+                }
+                else
+                {
+                    predictionProceduralLine.SetVisibility(true);
+                    originProceduralLine.SetVisibility(true);
+                    apogeeProceduralLine.SetVisibility(true);
+                    perigeeProceduralLine.SetVisibility(true);
+                }
+            }
+
+            if (originProceduralLine != null && showOriginLines)
+            {
+                originProceduralLine.UpdateLine(new Vector3[] { trackedBody.transform.position, Vector3.zero });
             }
 
             if (isThrusting)
@@ -388,22 +344,22 @@ public class TrajectoryRenderer : MonoBehaviour
         showOriginLines = showOrigin;
         showApogeePerigeeLines = showApogeePerigee;
 
-        if (!showPrediction && proceduralLine != null)
+        if (!showPrediction && predictionProceduralLine != null)
         {
-            proceduralLine.UpdateLine(new Vector3[0]);
+            predictionProceduralLine.Clear();
         }
 
-        if (!showOrigin && originLineRenderer != null)
+        if (!showOrigin && originProceduralLine != null)
         {
-            originLineRenderer.positionCount = 0;
+            originProceduralLine.Clear();
         }
 
-        if (apogeeLineRenderer != null && perigeeLineRenderer != null)
+        if (apogeeProceduralLine != null && perigeeProceduralLine != null)
         {
             if (!showApogeePerigee)
             {
-                apogeeLineRenderer.positionCount = 0;
-                perigeeLineRenderer.positionCount = 0;
+                apogeeProceduralLine.Clear();
+                perigeeProceduralLine.Clear();
             }
 
             if (uIManager != null)
@@ -420,29 +376,6 @@ public class TrajectoryRenderer : MonoBehaviour
         else
         {
             orbitIsDirty = false;
-        }
-    }
-
-    /** 
-    * Retrieves a material from the pool or creates a new one if it doesn't exist 
-    * @param hexColor - The hexColor associated with a material from dictionary.
-    **/
-    private Material GetOrCreateMaterial(string hexColor)
-    {
-        if (materialPool.ContainsKey(hexColor))
-        {
-            return materialPool[hexColor];
-        }
-        else
-        {
-            Material newMaterial = new Material(Shader.Find("Sprites/Default"));
-            if (ColorUtility.TryParseHtmlString(hexColor, out Color colorValue))
-            {
-                newMaterial.color = colorValue;
-            }
-
-            materialPool[hexColor] = newMaterial;
-            return newMaterial;
         }
     }
 }

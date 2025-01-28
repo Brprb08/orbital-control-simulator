@@ -89,10 +89,6 @@ public class NBody : MonoBehaviour
             trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
             trajectoryRenderer.apogeeText = this.apogeeText;
             trajectoryRenderer.perigeeText = this.perigeeText;
-            trajectoryRenderer.lineWidth = 3f;
-            trajectoryRenderer.lineColor = Color.blue;
-            trajectoryRenderer.lineDisableDistance = 50f;
-
             trajectoryRenderer.SetTrackedBody(this);
         }
 

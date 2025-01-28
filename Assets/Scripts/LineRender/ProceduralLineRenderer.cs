@@ -1,81 +1,116 @@
 using UnityEngine;
 using System;
 
-/**
-* A component for rendering lines procedurally using a `Mesh`. 
-* This class allows for dynamically updating a line based on an array of points 
-* and supports customization of line width.
-**/
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralLineRenderer : MonoBehaviour
 {
     private Mesh lineMesh;
     private MeshFilter meshFilter;
+    private MeshRenderer meshRenderer;
 
+    [Header("Line Settings")]
     public float lineWidth = 0.1f;
 
-    /**
-    * Initializes the `Mesh` and assigns it to the `MeshFilter` component.
-    **/
     void Awake()
     {
         meshFilter = GetComponent<MeshFilter>();
+        meshRenderer = GetComponent<MeshRenderer>();
+
         lineMesh = new Mesh { name = "LineMesh" };
         meshFilter.mesh = lineMesh;
 
-        var mr = GetComponent<MeshRenderer>();
-        if (!mr.sharedMaterial)
+        if (!meshRenderer.sharedMaterial)
         {
-            mr.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
+            meshRenderer.sharedMaterial = new Material(Shader.Find("Sprites/Default"));
         }
     }
 
-    /**
-    * Updates the line based on an array of points. Each point defines a vertex
-    * in the line, and the method connects them sequentially.
-    *
-    * @param points An array of points that define the line. Must contain at least 2 points.
-    *               If fewer points are provided, the line will be cleared.
-    **/
+    /// <summary>
+    /// Dynamically sets the line color by updating the material's color.
+    /// </summary>
+    public void SetLineColor(string hexColor)
+    {
+        if (ColorUtility.TryParseHtmlString(hexColor, out Color color))
+        {
+            meshRenderer.material.color = color;
+        }
+        else
+        {
+            Debug.LogWarning($"Invalid hex color string: {hexColor}");
+        }
+    }
+
+    /// <summary>
+    /// Dynamically sets the line width (currently not used in mesh generation, see notes below).
+    /// </summary>
+    public void SetLineWidth(float width)
+    {
+        lineWidth = width;
+        // NOTE: Because this uses MeshTopology.Lines, 
+        // changing lineWidth won't make thick lines automatically. 
+        // You'd need a custom approach to create quads or geometry for thicker lines. 
+        // This method is here for convenience if you later implement a thicker line solution.
+    }
+
+    /// <summary>
+    /// Clears the line mesh.
+    /// </summary>
+    public void Clear()
+    {
+        lineMesh.Clear();
+    }
+
+    /// <summary>
+    /// Updates (or creates) the line mesh from an array of points.
+    /// Each point is connected sequentially in a line-strip style.
+    /// </summary>
     public void UpdateLine(Vector3[] points)
     {
+        // Edge case: if invalid or too few points, clear mesh
         if (points == null || points.Length < 2)
         {
-            lineMesh.Clear();
+            Clear();
             return;
         }
 
+        // Safety clamp to avoid massive arrays
         int maxPoints = Math.Min(points.Length, 30000);
+
+        // Convert world positions to local positions so the mesh
+        // will move/rotate with the parent object
         for (int i = 0; i < maxPoints; i++)
         {
             points[i] = transform.InverseTransformPoint(points[i]);
         }
 
+        // Prepare arrays
         Vector3[] vertices = new Vector3[maxPoints];
         int[] indices = new int[(maxPoints - 1) * 2];
 
+        // Assign vertices
         for (int i = 0; i < maxPoints; i++)
         {
             vertices[i] = points[i];
         }
 
-        // Line strip (connect each point)
+        // Build line indices (pairwise from point i to i+1)
         for (int i = 0; i < maxPoints - 1; i++)
         {
             indices[i * 2] = i;
             indices[i * 2 + 1] = i + 1;
         }
+
+        // Update mesh
         lineMesh.Clear();
         lineMesh.vertices = vertices;
         lineMesh.SetIndices(indices, MeshTopology.Lines, 0);
     }
 
-    /**
-    * Clears the line by resetting the underlying `Mesh`.
-    * This removes all previously rendered line data.
-    **/
-    public void Clear()
+    public void SetVisibility(bool isVisible)
     {
-        lineMesh.Clear();
+        if (meshRenderer != null)
+        {
+            meshRenderer.enabled = isVisible;
+        }
     }
 }
