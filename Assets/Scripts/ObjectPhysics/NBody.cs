@@ -157,6 +157,15 @@ public class NBody : MonoBehaviour
         force = Vector3.zero;
     }
 
+    private void OnDestroy()
+    {
+        // Safely deregister so the manager no longer keeps a reference to this body.
+        if (LineVisibilityManager.Instance != null)
+        {
+            LineVisibilityManager.Instance.DeregisterNBody(this);
+        }
+    }
+
     /**
     * Calculates the predicted trajectory of an orbit by passing calculation to the GPU
     * @param steps - Number of prediction line render points to render

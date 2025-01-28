@@ -93,7 +93,6 @@ public class TrajectoryRenderer : MonoBehaviour
         ConfigureLineRenderer(perigeeLineRenderer, 3f, "#00FF00"); // Green for Perigee
 
         mainCamera = Camera.main;
-        Debug.LogError("*)(*)(*)(*)(*)*()(*)");
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
@@ -204,10 +203,8 @@ public class TrajectoryRenderer : MonoBehaviour
 
             trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
             bool isElliptical = eccentricity < 1f;
-            Debug.LogError("Show Prediction prior: " + showPredictionLines + " --- Orbit is Dirty: " + orbitIsDirty);
             if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
-                Debug.LogError("INSIDE PREDICTION LINE RENDER");
                 if (isElliptical)
                 {
                     float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
@@ -235,7 +232,13 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
                 {
-                    proceduralLine.UpdateLine(resultList.ToArray());
+                    var fullTrajectory = resultList.ToArray();
+
+                    // Clip the trajectory at the first planet/central body hit
+                    var clippedPoints = ClipTrajectory(fullTrajectory);
+
+                    // Finally, update your line
+                    proceduralLine.UpdateLine(clippedPoints);
                 });
 
                 orbitIsDirty = false;
@@ -296,6 +299,42 @@ public class TrajectoryRenderer : MonoBehaviour
 
     }
 
+    private Vector3[] ClipTrajectory(Vector3[] points)
+    {
+        // Safety checks
+        if (points == null || points.Length < 2)
+            return points;
+
+        List<Vector3> clippedPoints = new List<Vector3>();
+        // Always include the first point
+        clippedPoints.Add(points[0]);
+
+        for (int i = 1; i < points.Length; i++)
+        {
+            Vector3 start = points[i - 1];
+            Vector3 end = points[i];
+            Vector3 dir = end - start;
+            float dist = dir.magnitude;
+
+            // Raycast from 'start' to 'end'
+            if (Physics.Raycast(start, dir.normalized, out RaycastHit hit, dist))
+            {
+                // Check if we hit a planet or central body
+                if (hit.collider.CompareTag("CentralBody"))
+                {
+                    // Add the intersection point and then stop
+                    clippedPoints.Add(hit.point);
+                    break;
+                }
+            }
+
+            // If no collision, just add the next point
+            clippedPoints.Add(end);
+        }
+
+        return clippedPoints.ToArray();
+    }
+
     /**
     * Updates the UI elements for apogee and perigee.
     * @param apogee - Farthest orbit path distance from planet
@@ -345,7 +384,6 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
-        Debug.LogError("######## SetLineVisibility:TR:SHOW PRED: " + showPrediction + " #######");
         showPredictionLines = showPrediction;
         showOriginLines = showOrigin;
         showApogeePerigeeLines = showApogeePerigee;
@@ -374,21 +412,15 @@ public class TrajectoryRenderer : MonoBehaviour
             }
         }
 
-        Debug.LogError(showPredictionLines);
         // Re-run RecomputeTrajectory to show lines when reset
         if (showPredictionLines)
         {
-            Debug.LogError("CHANGING ORBIT-IS-DIRTY TO TRUE");
             orbitIsDirty = true;
         }
         else
         {
-            Debug.LogError("CHANGING ORBIT-IS-DIRTY TO FALSE");
             orbitIsDirty = false;
         }
-        // if (originLineRenderer != null) originLineRenderer.enabled = showOrigin;
-        // if (apogeeLineRenderer != null) apogeeLineRenderer.enabled = showApogeePerigee;
-        // if (perigeeLineRenderer != null) perigeeLineRenderer.enabled = showApogeePerigee;
     }
 
     /** 

@@ -80,28 +80,21 @@ public class LineVisibilityManager : MonoBehaviour
         {
             lineVisibilityStates[lineType] = isVisible;
 
-            // NBody body = nBodyInstances.Find(b => b == trackedBody);
             foreach (NBody body in nBodyInstances)
             {
-                Debug.LogError("SetLineVisibility:LVM:Body: " + body + " --- TrackedBODY: " + trackedBody);
-                if (body == trackedBody)
+                TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
+                if (trajectoryRenderer != null)
                 {
-                    TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
-                    if (trajectoryRenderer != null)
-                    {
-                        Debug.LogError("CHANGING LINE VISIBILITY STATES");
-                        bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
-                        bool currentOriginState = lineVisibilityStates[LineType.Origin];
-                        bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
-                        Debug.LogError("Current Prediction state: " + currentPredictionState);
-                        trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
-                    }
-                    else
-                    {
-                        Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
-                    }
-
+                    bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
+                    bool currentOriginState = lineVisibilityStates[LineType.Origin];
+                    bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
+                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
                 }
+                else
+                {
+                    Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
+                }
+
             }
 
             Debug.Log($"LineVisibilityManager: {lineType} Lines are now {(isVisible ? "Enabled" : "Disabled")}");

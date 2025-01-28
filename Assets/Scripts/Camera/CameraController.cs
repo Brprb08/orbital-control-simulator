@@ -110,7 +110,6 @@ public class CameraController : MonoBehaviour
                 trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
                 if (LineVisibilityManager.Instance != null)
                 {
-                    Debug.LogError("Hello");
                     LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
                 }
 
@@ -318,19 +317,38 @@ public class CameraController : MonoBehaviour
     public void SwitchToNextValidBody(NBody removedBody)
     {
         RefreshBodiesList();
+        if (LineVisibilityManager.Instance != null)
+        {
+            LineVisibilityManager.Instance.DeregisterNBody(bodies[currentIndex]);
+        }
         bodies.Remove(removedBody);
+
 
         if (bodies.Count > 0)
         {
             currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
-            cameraMovement.SetTargetBody(bodies[currentIndex]);
-            Debug.Log($"Camera switched to track: {bodies[currentIndex].name}");
+
+            NBody nextBody = bodies[currentIndex];
+
+            cameraMovement.SetTargetBody(nextBody);
+
+            TrajectoryRenderer newTrajectoryRenderer = nextBody.GetComponentInChildren<TrajectoryRenderer>();
+            if (newTrajectoryRenderer != null)
+            {
+                // Update CameraController's reference and set the new tracked body.
+                this.trajectoryRenderer = newTrajectoryRenderer;
+                this.trajectoryRenderer.SetTrackedBody(nextBody);
+            }
+            ReturnToTracking();
+            Debug.Log($"Camera switched to track: {nextBody.name}");
         }
         else
         {
             BreakToFreeCam();
             Debug.Log("No valid bodies to track. Switched to FreeCam.");
         }
+
+
     }
 
     /**

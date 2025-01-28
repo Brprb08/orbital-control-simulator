@@ -339,7 +339,7 @@ public class VelocityDragManager : MonoBehaviour
         gravityManager.RegisterBody(planetNBody);
 
         trajectoryRenderer.SetTrackedBody(planetNBody);
-
+        trajectoryRenderer.orbitIsDirty = true;
 
         CameraController cameraController = gravityManager.GetComponent<CameraController>();
         if (cameraController != null)
