@@ -1,6 +1,11 @@
 using UnityEngine;
 using System;
 
+/**
+* This class handles the creation and rendering of procedural lines using a mesh-based approach.
+* It supports dynamic updates of line positions, colors, and visibility, making it ideal for
+* applications like trajectory rendering or debug visualization.
+**/
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralLineRenderer : MonoBehaviour
 {
@@ -11,6 +16,10 @@ public class ProceduralLineRenderer : MonoBehaviour
     [Header("Line Settings")]
     public float lineWidth = 0.1f;
 
+    /**
+    * Initializes the ProceduralLineRenderer by setting up the mesh and material components.
+    * Ensures a default material is applied if none exists.
+    **/
     void Awake()
     {
         meshFilter = GetComponent<MeshFilter>();
@@ -25,9 +34,10 @@ public class ProceduralLineRenderer : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Dynamically sets the line color by updating the material's color.
-    /// </summary>
+    /**
+    * Sets the color of the line by modifying the material's color.
+    * @param hexColor -  A valid hex color string (e.g., "#FF0000" for red).
+    **/
     public void SetLineColor(string hexColor)
     {
         if (ColorUtility.TryParseHtmlString(hexColor, out Color color))
@@ -40,67 +50,61 @@ public class ProceduralLineRenderer : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Dynamically sets the line width (currently not used in mesh generation, see notes below).
-    /// </summary>
+    /**
+    * Sets the width of the line. This property does not currently affect
+    * the rendered line due to limitations of MeshTopology.Lines.
+    * @param width  - The desired width of the line.
+    **/
     public void SetLineWidth(float width)
     {
         lineWidth = width;
-        // NOTE: Because this uses MeshTopology.Lines, 
         // changing lineWidth won't make thick lines automatically. 
-        // You'd need a custom approach to create quads or geometry for thicker lines. 
-        // This method is here for convenience if you later implement a thicker line solution.
+        // Need a custom approach to create quads or geometry for thicker lines. 
+        // This method is a placeholder for a potential later change.
     }
 
-    /// <summary>
-    /// Clears the line mesh.
-    /// </summary>
+    /**
+    * Clears all existing line data from the mesh, effectively hiding the line.
+    **/
     public void Clear()
     {
         lineMesh.Clear();
     }
 
-    /// <summary>
-    /// Updates (or creates) the line mesh from an array of points.
-    /// Each point is connected sequentially in a line-strip style.
-    /// </summary>
+    /**
+    * Updates the line mesh with a new set of points. Each point is connected
+    * sequentially in a line-strip style.
+    * @param points  - An array of points defining the line's shape.
+    **/
     public void UpdateLine(Vector3[] points)
     {
-        // Edge case: if invalid or too few points, clear mesh
         if (points == null || points.Length < 2)
         {
             Clear();
             return;
         }
 
-        // Safety clamp to avoid massive arrays
         int maxPoints = Math.Min(points.Length, 30000);
 
-        // Convert world positions to local positions so the mesh
-        // will move/rotate with the parent object
         for (int i = 0; i < maxPoints; i++)
         {
             points[i] = transform.InverseTransformPoint(points[i]);
         }
 
-        // Prepare arrays
         Vector3[] vertices = new Vector3[maxPoints];
         int[] indices = new int[(maxPoints - 1) * 2];
 
-        // Assign vertices
         for (int i = 0; i < maxPoints; i++)
         {
             vertices[i] = points[i];
         }
 
-        // Build line indices (pairwise from point i to i+1)
         for (int i = 0; i < maxPoints - 1; i++)
         {
             indices[i * 2] = i;
             indices[i * 2 + 1] = i + 1;
         }
 
-        // Update mesh
         lineMesh.Clear();
         lineMesh.vertices = vertices;
         lineMesh.SetIndices(indices, MeshTopology.Lines, 0);

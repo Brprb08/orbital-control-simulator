@@ -103,16 +103,12 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private ProceduralLineRenderer CreateProceduralLineRenderer(string name, string hexColor)
     {
-        // Create a new GameObject
         GameObject lineObject = new GameObject(name);
 
-        // Add ProceduralLineRenderer component
         ProceduralLineRenderer lineRenderer = lineObject.AddComponent<ProceduralLineRenderer>();
 
-        // Set line color
         lineRenderer.SetLineColor(hexColor);
 
-        // Optionally set other defaults like width
         lineRenderer.SetLineWidth(0.1f);
 
         return lineRenderer;
@@ -186,10 +182,8 @@ public class TrajectoryRenderer : MonoBehaviour
                 {
                     var fullTrajectory = resultList.ToArray();
 
-                    // Clip the trajectory at the first planet/central body hit
                     var clippedPoints = ClipTrajectory(fullTrajectory);
 
-                    // Finally, update your line
                     predictionProceduralLine.UpdateLine(clippedPoints);
                 });
 
@@ -257,11 +251,11 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private Vector3[] ClipTrajectory(Vector3[] points)
     {
-        // Safety checks
         if (points == null || points.Length < 2)
             return points;
 
         List<Vector3> clippedPoints = new List<Vector3>();
+
         // Always include the first point
         clippedPoints.Add(points[0]);
 
@@ -272,10 +266,8 @@ public class TrajectoryRenderer : MonoBehaviour
             Vector3 dir = end - start;
             float dist = dir.magnitude;
 
-            // Raycast from 'start' to 'end'
             if (Physics.Raycast(start, dir.normalized, out RaycastHit hit, dist))
             {
-                // Check if we hit a planet or central body
                 if (hit.collider.CompareTag("CentralBody"))
                 {
                     // Add the intersection point and then stop

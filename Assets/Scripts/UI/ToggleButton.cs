@@ -91,26 +91,13 @@ public class ToggleButton : MonoBehaviour
     public void ToggleState()
     {
         isOn = !isOn;
-        Debug.Log($"[ToggleState] Step 1 => isOn={isOn}");
 
-        // Notify the LineVisibilityManager
         if (manager != null)
         {
             manager.SetLineVisibility(lineType, isOn);
         }
-        Debug.Log($"[ToggleState] Step 2 => isOn={isOn} (after SetLineVisibility)");
-
-        // Immediately fetch the actual state after applying to avoid desync
-        // if (manager != null)
-        // {
-        //     bool fromManager = manager.GetInitialLineState(lineType);
-        //     Debug.Log($"[ToggleState] Step 3 => manager says '{fromManager}', " +
-        //               $"overwriting local 'isOn' of {isOn}");
-        //     isOn = fromManager;
-        // }
 
         UpdateButtonColor();
-        Debug.Log($"[ToggleState] FINAL => isOn={isOn}");
     }
 
     /**

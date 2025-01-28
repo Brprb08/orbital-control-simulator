@@ -79,18 +79,16 @@ public class TrajectoryComputeController : MonoBehaviour
         trajectoryComputeShader.SetBuffer(kernelIndex, "bodyMasses", bodyMassesBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "outTrajectory", outputTrajectoryBuffer);
 
-        // Pass uniforms
+        // Pass constants
         trajectoryComputeShader.SetFloat("deltaTime", dt);
         trajectoryComputeShader.SetInt("steps", steps);
         trajectoryComputeShader.SetFloat("gravitationalConstant", PhysicsConstants.G);
         trajectoryComputeShader.SetInt("numOtherBodies", otherBodyPositions.Length);
 
-        // New: pass in LOD and output size
         trajectoryComputeShader.SetInt("lodFactor", lodFactor);
         trajectoryComputeShader.SetInt("outputCount", outputCount);
 
-        // Dispatch. numthreads(8,8,1) in the shader, you can do (1,1,1) here too.
-        trajectoryComputeShader.Dispatch(kernelIndex, 1, 1, 1);
+        trajectoryComputeShader.Dispatch(kernelIndex, 8, 8, 1);
 
         // Use AsyncGPUReadback to avoid blocking the CPU
         AsyncGPUReadback.Request(
@@ -104,7 +102,6 @@ public class TrajectoryComputeController : MonoBehaviour
 
     /**
     * Handles the completion of an asynchronous GPU readback request.
-    *
     * @param request The readback request from the GPU.
     * @param onComplete Callback function to handle the resulting trajectory data.
     **/

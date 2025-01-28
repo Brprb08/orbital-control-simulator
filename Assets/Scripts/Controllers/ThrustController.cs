@@ -180,7 +180,6 @@ public class ThrustController : MonoBehaviour
         // Rotate the particle system to align with the opposite of the thrust direction
         thrustParticles.transform.rotation = Quaternion.LookRotation(-thrustDirection, targetBody.transform.up);
 
-        // Start the particle system if it's not already playing
         if (!thrustParticles.isPlaying || thrustStopped)
         {
             thrustParticles.Clear();

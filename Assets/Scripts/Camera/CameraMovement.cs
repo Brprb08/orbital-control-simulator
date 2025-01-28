@@ -11,22 +11,22 @@ public class CameraMovement : MonoBehaviour
     public static CameraMovement Instance { get; private set; }
 
     [Header("Tracking Target")]
-    public NBody targetBody; // The celestial body to track.
-    public Transform targetPlaceholder; // Placeholder object to track when no real NBody is set.
+    public NBody targetBody;
+    public Transform targetPlaceholder;
     public CameraController cameraController;
 
     [Header("Camera Settings")]
-    public float distance = 100f; // Default distance from the target.
-    public float height = 30f; // Default height from the target.
-    public float baseZoomSpeed = 100f; // Base zoom speed for mouse scroll.
-    public float maxDistance = 50000f; // Maximum distance from the target.
+    public float distance = 100f;
+    public float height = 30f;
+    public float baseZoomSpeed = 100f;
+    public float maxDistance = 50000f;
 
     [Header("UI References")]
-    public TextMeshProUGUI velocityText; // UI element for displaying velocity.
-    public TextMeshProUGUI altitudeText; // UI element for displaying altitude.
-    public TextMeshProUGUI trackingObjectNameText; // UI element for displaying the tracked object's name.
+    public TextMeshProUGUI velocityText;
+    public TextMeshProUGUI altitudeText;
+    public TextMeshProUGUI trackingObjectNameText;
 
-    private float minDistance = 0.1f; // Minimum distance from the target (adjusted dynamically).
+    private float minDistance = 0.1f;
     private float placeholderRadius = 0f;
     private Camera mainCamera;
 
