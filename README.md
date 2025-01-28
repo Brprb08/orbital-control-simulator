@@ -10,6 +10,19 @@ An educational **orbital mechanics** simulator built in Unity, showcasing real-t
 
 ---
 
+## Table of Contents
+- [Overview](#overview)
+- [Project Motivation and Goals](#project-motivation-and-goals)
+- [Key Features](#key-features)
+- [Orbit Mechanics](#orbit-mechanics)
+- [How to Use](#how-to-use)
+- [Physics Breakdown](#physics-breakdown)
+- [Planned Updates](#planned-updates)
+- [Limitations](#limitations)
+- [Getting Started](#getting-started)
+
+---
+
 ## Project Motivation and Goals
 
 I’ve always been into space and wanted to build something that wasn’t just visually cool but actually simulated real orbital mechanics. I started with the basics—getting orbits to behave realistically—but as I kept working, it evolved into something much bigger. Now it has GPU-based trajectory rendering, real-time thrust mechanics, and RK4 integration for accurate physics.
@@ -50,19 +63,6 @@ Now, the goal is to refine it, improve the UI, and expand features like collisio
    - Basic **prograde, retrograde, radial in/out, and lateral** thrust controls for the **tracked** body.
    - Force is scaled by the object’s mass, altering orbits in real time.
    - Allows users to experiment with orbital maneuvers at a fundamental level (e.g., quick burns to raise/lower altitude)
-
----
-
-## Table of Contents
-- [Overview](#overview)
-- [Project Motivation and Goals](#project-motivation-and-goals)
-- [Key Features](#key-features)
-- [Orbit Mechanics](#orbit-mechanics)
-- [How to Use](#how-to-use)
-- [Physics Breakdown](#physics-breakdown)
-- [Planned Updates](#planned-updates)
-- [Limitations](#limitations)
-- [Getting Started](#getting-started)
 
 ---
 
