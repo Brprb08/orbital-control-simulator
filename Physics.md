@@ -8,13 +8,8 @@ This file contains a detailed breakdown of the physics and methods used in the O
 
 ## Table of Contents
 - [Numerical Integration: RK4 in Detail](#numerical-integration-rk4-in-detail)
-  - [What Does RK4 Do?](#what-does-rk4-do)
-  - [How RK4 is Implemented Here](#how-rk4-is-implemented-here)
 - [CalculateDerivatives](#calculatederivatives)
-  - [Steps](#steps)
 - [ComputeAccelerationFromData](#computeaccelerationfromdata)
-  - [Purpose](#purpose)
-  - [Steps](#steps-1)
 - [Example: Pulling It All Together](#example-pulling-it-all-together)
 - [Why This Approach?](#why-this-approach)
 - [Orbital Dynamics](#orbital-dynamics)
