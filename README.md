@@ -2,8 +2,7 @@
 
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/01-28Track.png)
 ![Satellite Close Up Elliptical Orbit](./Assets/Images/01-28SatelliteCloseUp.png)
-![Orbit Mechanics Simulator in Free Cam](./Assets/Images/01-28Free.png)
-_Current state of the simulation. Top image shows the Track cam with current object you are tracking, as well as velocity and altitude. The second image shows Free Cam where you can move around wherever. Work in progress._
+_Current state of the simulation. Top image shows the Track cam with current object you are tracking, as well as velocity and altitude. The second image is Track cam up close showing the Satellite model. Work in progress._
 
 # Orbit Mechanics Simulator
 

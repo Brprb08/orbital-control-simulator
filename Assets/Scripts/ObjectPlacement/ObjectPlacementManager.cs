@@ -100,7 +100,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
 
         lastPlacedGameObject = Instantiate(spherePrefab);
-        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 0.2f, parsedRadius.y * 0.2f, parsedRadius.z * 0.2f);
+        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x, parsedRadius.y, parsedRadius.z);
         lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
         satelliteCount++;

@@ -332,7 +332,7 @@ public class VelocityDragManager : MonoBehaviour
             }
 
             planetNBody.mass = placeholderMass > 0f ? placeholderMass : 400000f;
-            planetNBody.radius = planet.transform.localScale.x * 10f;
+            planetNBody.radius = planet.transform.localScale.x;
         }
 
         planetNBody.velocity = velocityToApply;
