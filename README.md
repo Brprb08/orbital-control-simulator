@@ -1,115 +1,108 @@
-# Orbit Simulator
+# Orbit Mechanics Simulator  
 
-![Orbit Mechanics Simulator in Track Cam](./Assets/Images/01-28Track.png)
-![Satellite Close Up Elliptical Orbit](./Assets/Images/01-28SatelliteCloseUp.png)
-_Current state of the simulation. Top image shows the Track cam with current object you are tracking, as well as velocity and altitude. The second image is Track cam up close showing the Satellite model. Work in progress._
-
-# Orbit Mechanics Simulator
-
-An educational **orbital mechanics** simulator built in Unity, showcasing real-time gravitational interactions, trajectory predictions, and user-driven placement. This project is built for anyone who’s fascinated by space. It gives you the tools to interact with orbital physics in real-time, manipulate celestial bodies, tweak initial velocities, and scale time to watch how gravity affects all objects.
-
----
+An interactive, real-time N-body orbital physics simulator built in Unity, featuring RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
 ## Table of Contents
 - [Overview](#overview)
-- [Project Motivation and Goals](#project-motivation-and-goals)
 - [Key Features](#key-features)
-- [Orbit Mechanics](#orbit-mechanics)
+- [How It Works](#how-it-works)
 - [How to Use](#how-to-use)
-- [Physics Breakdown](#physics-breakdown)
-- [Planned Updates](#planned-updates)
+- [Planned Features](#planned-features)
 - [Limitations](#limitations)
 - [Getting Started](#getting-started)
+- [Demo and Showcase](#demo-and-showcase)
+- [References and External Links](#references-and-external-links)
+- [Contact and Contributions](#contact-and-contributions)
+- [Technical Physics Breakdown](./Physics.md) *(separate file for RK4 and gravity calculations)*
 
 ---
 
-## Project Motivation and Goals
+## Overview
+This project is a real-time orbital mechanics simulator that allows users to visualize, manipulate, and experiment with accurate gravitational physics. It includes fully interactive thrust mechanics, trajectory predictions, and scalable time controls to demonstrate how small adjustments affect long-term orbits.
 
-I’ve always been into space and wanted to build something that wasn’t just visually cool but actually simulated real orbital mechanics. I started with the basics—getting orbits to behave realistically—but as I kept working, it evolved into something much bigger. Now it has GPU-based trajectory rendering, real-time thrust mechanics, and RK4 integration for accurate physics.
-
-Now, the goal is to refine it, improve the UI, and expand features like collision handling and orbital maneuvers. It’s both a passion project and a technical showcase, proving I can take complex systems and make them work. Long-term, I’d love for this to help me break into space-related simulation or aerospace work.
-
----
-
-## Key Features                                                                                                                                                                                                                                 1. **Central Body Rotation**                                                                                               
-   - A central body (e.g., Earth) remains in place but **rotates**, simulating real-world planetary spin.  
-
-2. **Custom Planet Placement**
-   - **Free Camera Mode**: Create planets on the fly, specifying their mass and radius.                                    
-   - **Manual Velocity Assignment**: Use a slider or drag mechanics to set initial velocity vectors for newly placed bodies
-
-3. **Runge-Kutta Integration**
-   - Employs **RK4** for numerically stable and accurate orbital trajectory updates.
-
-4. **Collision Detection & Removal**
-   - Automatically removes smaller bodies upon collision.
-   - If the tracked body is removed, the camera switches to the next available target or to Free Camera.
-
-5. **Multiple Camera Modes**
-   - **Track Camera**: Follows a selected celestial body, with UI for velocity/altitude readouts.
-   - **Free Camera**: Roam freely to observe the entire scene and place new objects.
-
-6. **Time Control**
-   - **Slider** for simulation speed (e.g., 1× to 100×).
-   - **Pause/Resume** with a button.
-   - **Reset** time scale by pressing **R**.
-
-7. **Real-Time Feedback**
-   - **Velocity** displayed in m/s and mph.
-   - **Altitude** displayed in km and ft.
-   - **Apogee & Perigee** lines (and future expansions) visible for the tracked object.
-
-8. **Interactive Thrust (Prototype)**
-   - Basic **prograde, retrograde, radial in/out, and lateral** thrust controls for the **tracked** body.
-   - Force is scaled by the object’s mass, altering orbits in real time.
-   - Allows users to experiment with orbital maneuvers at a fundamental level (e.g., quick burns to raise/lower altitude)
+Built in Unity, it leverages Runge-Kutta 4th Order (RK4) integration for accurate physics and GPU acceleration for smooth trajectory rendering.
 
 ---
 
-## Orbit Mechanics
+## Key Features
 
-### Physics Breakdown
-This project uses real physics principals and numerical methods to model orbital mechanics [Physics.md](./Physics.md)
+### Full N-Body Orbital Simulation
+- Each celestial body influences others using Newtonian gravity.
+- Runge-Kutta 4th Order (RK4) integration ensures numerical stability over time.
+- Earth remains stationary, but objects like the moon and satellites interact dynamically.
+
+### Real-Time GPU-Accelerated Trajectory Rendering
+- Trajectory visualization is handled on the GPU, reducing CPU overhead.
+- Predicted orbits update dynamically based on real-time inputs.
+
+### Interactive Thrust Mechanics
+- Apply prograde, retrograde, radial, and lateral burns to modify orbits.
+- Mass-based force scaling for realistic physics.
+
+### Multiple Camera Modes
+- Track Camera: Follows a selected celestial body with velocity and altitude readouts.
+- Free Camera: Roam the scene, place new objects, and analyze trajectories.
+
+### Time Control and Scaling
+- Adjust time scale from real-time to 100x.
+- Pause and resume simulation without resetting orbits.
+
+### Advanced Orbital Interactions
+- Computes apogee and perigee dynamically.
+- Supports orbital decay, close encounters, and gravity assists.
 
 ---
 
-## How to Use
+## How It Works  
+*(For in-depth equations and derivations, see [PHYSICS.md](PHYSICS.md))*
+
+### Numerical Integration (RK4)
+- Uses Runge-Kutta 4th Order (RK4) instead of Euler for better stability.
+- Computes position and velocity updates using four derivative calculations per step.
+- Prevents numerical drift, keeping orbits stable over long simulations.
+
+### Gravity Calculations
+- Uses Newton’s Law of Gravitation to compute forces between all objects:
+```
+ F = G * (m1 * m2) / r^2 
+```
+- Avoids singularities by applying minimum distance thresholds.
+
+### Real-Time Thrust Mechanics
+- Thrust force applied relative to orbital velocity.
+- Supports prograde/retrograde burns, radial adjustments, and lateral maneuvers.
+
+---
+
+## How to Use  
 
 ### Track Camera Mode
-- **Select a Body**: Press **Tab** to cycle through existing bodies.
-- **Camera Controls**: Right mouse button to rotate around the target; mouse wheel to zoom.
-- **UI**: Displays the tracked body’s velocity (m/s and mph) and altitude (km and ft).
+- Switch Tracked Object: Press `Tab` to cycle between orbiting bodies.
+- Camera Controls: Right mouse button to rotate, scroll wheel to zoom.
+- View Real-Time Data: Velocity (m/s and mph) and altitude (km and ft).
 
 ### Free Camera Mode
-- **Navigation**: Use WASD/arrow keys to move; right mouse drag to rotate; mouse wheel to zoom.
-- **Placement**: Allows real-time creation of new planets.
+- Move with `WASD` or arrow keys, rotate with right-click, zoom with scroll wheel.
+- Place New Planets: Set mass, radius, and velocity dynamically.
 
-### Time Control
-- **Slider**: Adjust the simulation speed from real-time up to high-speed time-lapse.
-- **Pause/Resume**: Halt or restart the entire simulation at will.
-- **Reset**: Press **R** to revert speed to the default.
+### Thrust Controls
+- `Prograde Burn ↑` - Increase orbital speed.
+- `Retrograde Burn ↓` - Decrease orbital speed.
+- `Radial In/Out` - Modify altitude.
+- `Lateral Burns` - Change inclination.
 
-### Placing New Celestial Bodies
-1. **Enter Mass & Radius**: In the UI, specify the planet’s properties (1–500,000 kg mass, and any radius scale).
-2. **Place Object**: Click **Place Planet** to instantiate a placeholder.
-3. **Set Velocity**: Drag to form a velocity vector or enter numeric values directly. Click **Set Velocity** to finalize orbit insertion.
-
-### Early Thrust Implementation
-- Available **only** when a body is tracked (in Track Camera mode).
-- **Prograde/Retrograde**: Increase or decrease orbital velocity along the current velocity vector.
-- **Radial In/Out**: Burn toward or away from the planet’s center vector for orbital radius changes.
-- **Lateral (Left/Right)**: Burn perpendicular to the orbit path, altering inclination or path shape.
-- Thrust is **scaled by the object’s mass**, so heavier bodies require more force for the same effect.
+### Time Scaling
+- Adjust with the slider (1x to 100x).
+- Press `R` to reset time to normal speed.
 
 ---
 
-## Planned Features
+## Planned Features  
 
-- **Refined Thrust & Maneuvers**: Planning realistic orbital maneuvers (e.g., circularization, Hohmann transfers) with fuel usage baked in.
-- **Advanced Collision Effects**: Right now, collisions just remove smaller bodies, but I want to add realistic effects like explosions or merging.
-- **Extended Physics**: Stuff like orbital decay or atmospheric drag to make long-term orbits more realistic.
-- **Polished Visuals**: The graphics are rough right now, but I’m working on smoother camera transitions, cleaner UI, and better models.
-- **Fuel Tracking**: Add real engine burn times and consumption to make mission planning more challenging (and rewarding).
+- Maneuver Planning System - Pre-plan orbital burns similar to Kerbal Space Program.
+- Full N-Body Simulation (Moving Earth) - Allow Earth to respond dynamically to forces.
+- Barnes-Hut Optimization - Improve N-body calculations for better performance.
+- Fuel System and Delta-V Calculations - Limit thrust by fuel mass, making burns more strategic.
 
 ---
 

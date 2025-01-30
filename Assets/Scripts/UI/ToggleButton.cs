@@ -11,8 +11,8 @@ public class ToggleButton : MonoBehaviour
     private LineVisibilityManager manager;
 
     [Header("Button Colors")]
-    public string activeColorHex = "#150B28";   // Dark blue for active state
-    public string inactiveColorHex = "#1B2735"; // Purple for inactive state
+    public string activeColorHex = "#2A4E6C";
+    public string inactiveColorHex = "#1B2735";
 
     [Header("Button States")]
     private Color activeColor;

@@ -66,8 +66,8 @@ public class UIManager : MonoBehaviour
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
-
         trackCamButton.Select();
+        trackCamButton.interactable = false;
     }
 
     /**
@@ -89,6 +89,9 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, false);
         ShowThrustButtonsPanel(false);
         ShowApogeePerigeePanel(false);
+
+        freeCamButton.interactable = false;
+        trackCamButton.interactable = true;
 
         if (velocityInputField != null)
         {
@@ -126,6 +129,9 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, true);
         ShowThrustButtonsPanel(true);
         ShowApogeePerigeePanel(true);
+
+        trackCamButton.interactable = false;
+        freeCamButton.interactable = true;
 
         if (velocityInputField != null)
         {
@@ -210,7 +216,7 @@ public class UIManager : MonoBehaviour
 
         if (isPressed)
         {
-            ColorUtility.TryParseHtmlString("#150B28", out newColor); // Dark blue for active state.
+            ColorUtility.TryParseHtmlString("#2A4E6C", out newColor); // Dark blue for active state.
         }
         else
         {
