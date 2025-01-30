@@ -2,6 +2,10 @@
 
 An interactive, real-time N-body orbital physics simulator built in Unity, featuring RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
+![Orbit Mechanics Simulator in Track Cam](./Assets/Images/01-28Track.png)
+![Satellite Close Up Elliptical Orbit](./Assets/Images/01-28SatelliteCloseUp.png)
+_Current state of the simulation. Top image shows the Track cam with current object you are tracking, as well as velocity and altitude. The second image is Track cam up close showing the Satellite model. Work in progress._
+
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
