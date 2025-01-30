@@ -142,7 +142,6 @@ public class LineVisibilityManager : MonoBehaviour
     **/
     public void SetTrackedBody(NBody body)
     {
-        Debug.LogError(body);
         trackedBody = body;
     }
 }

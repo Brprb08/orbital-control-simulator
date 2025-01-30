@@ -167,7 +167,10 @@ public class UIManager : MonoBehaviour
     **/
     public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showApogeePerigeePanel, bool showPanel)
     {
-        ShowObjectPlacementPanel(showObjectPlacementPanel);
+        if (!freeCamButton.interactable)
+        {
+            ShowObjectPlacementPanel(showObjectPlacementPanel);
+        }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
         ShowApogeePerigeePanel(showApogeePerigeePanel);
         ShowPanel(showPanel);
