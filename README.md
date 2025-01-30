@@ -153,4 +153,4 @@ Visuals are still a work in progress, but the core physics engine is up and runn
 - If no hierarchy or GameObjects are visible, ensure you have opened the correct scene by double-clicking `SampleScene.unity`.
 - Click the `Play` button to start the simulation.
 
-[⬆ Back to Top](#orbit-simulator)
+[⬆ Back to Top](#orbit-mechanics-simulator)

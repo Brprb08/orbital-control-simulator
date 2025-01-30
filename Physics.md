@@ -111,4 +111,4 @@ The simulation supports **adjustable time scaling** from **real-time to 100x spe
 ## Summary  
 This physics model ensures **high-accuracy orbital calculations** while balancing **performance and stability**. The use of **RK4, Newtonian gravity, and real-time thrust mechanics** allows users to experiment with real orbital mechanics in an interactive environment.  
 
-Back to README -> [README.md](./README.md)
+[⬆ Back to Top](#orbital-physics-breakdown)
