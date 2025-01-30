@@ -10,9 +10,6 @@ An interactive, real-time N-body orbital physics simulator built in Unity, featu
 - [Planned Features](#planned-features)
 - [Limitations](#limitations)
 - [Getting Started](#getting-started)
-- [Demo and Showcase](#demo-and-showcase)
-- [References and External Links](#references-and-external-links)
-- [Contact and Contributions](#contact-and-contributions)
 - [Technical Physics Breakdown](./Physics.md) *(separate file for RK4 and gravity calculations)*
 
 ---
@@ -54,7 +51,7 @@ Built in Unity, it leverages Runge-Kutta 4th Order (RK4) integration for accurat
 ---
 
 ## How It Works  
-*(For in-depth equations and derivations, see [PHYSICS.md](PHYSICS.md))*
+*(For in-depth equations and derivations, see [Physics.md](./Physics.md))*
 
 ### Numerical Integration (RK4)
 - Uses Runge-Kutta 4th Order (RK4) instead of Euler for better stability.

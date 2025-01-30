@@ -1,159 +1,114 @@
 [⬅ Back to README](https://github.com/Brprb08/space-orbit-simulation#readme)
 
-# Physics Documentation
+# Orbital Physics Breakdown  
 
-This file contains a detailed breakdown of the physics and methods used in the Orbit Mechanics Simulator, including how the **Runge-Kutta 4th Order (RK4)** integration is implemented and the underlying calculations for forces, acceleration, and velocity.
-
----
-
-## Table of Contents
-- [Numerical Integration: RK4 in Detail](#numerical-integration-rk4-in-detail)
-- [CalculateDerivatives](#calculatederivatives)
-- [ComputeAccelerationFromData](#computeaccelerationfromdata)
-- [Example: Pulling It All Together](#example-pulling-it-all-together)
-- [Why This Approach?](#why-this-approach)
-- [Orbital Dynamics](#orbital-dynamics)
-- [Thrust Mechanics (Prototype)](#thrust-mechanics-prototype)
+This document details the physics behind the Orbit Mechanics Simulator, including numerical integration methods, gravitational force calculations, and thrust mechanics.
 
 ---
 
-## Numerical Integration: RK4 in Detail
-
-The **Runge-Kutta 4th Order Method (RK4)** is used to update the position and velocity of celestial bodies in the simulation. Here’s how it works in the context of this project:
-
----
-
-### What Does RK4 Do?
-
-RK4 predicts the future state of an object (its position and velocity) by calculating intermediate steps (called "slopes") at different points within the time step (`deltaTime`). These slopes represent derivatives of the position and velocity, and they are used to compute a weighted average for the final result. This ensures the accuracy of the simulation.
+## Table of Contents  
+- [Numerical Integration: Runge-Kutta 4 (RK4)](#numerical-integration-runge-kutta-4-rk4)  
+- [Gravitational Force Calculations](#gravitational-force-calculations)  
+- [Thrust Mechanics](#thrust-mechanics)  
+- [Time Scaling and Accuracy](#time-scaling-and-accuracy)  
+- [Limitations and Future Improvements](#limitations-and-future-improvements)  
 
 ---
 
-### How RK4 is Implemented Here
+## Numerical Integration: Runge-Kutta 4 (RK4)  
 
-In this simulation, RK4 works by repeatedly calling the method `CalculateDerivatives`. This method takes the current state of the object (position and velocity), calculates the acceleration due to gravity and thrust, and then returns the derivatives needed for the RK4 algorithm.
+### Why RK4?  
+Most basic physics simulations use **Euler integration**, but Euler’s method accumulates errors over time, leading to **instability in orbital paths**. RK4 (Runge-Kutta 4th Order) is a **higher-order numerical method** that significantly improves accuracy.  
 
-The RK4 process is broken down into the following steps:
+### RK4 Process  
+The RK4 method estimates the next position and velocity of a body in four steps:  
 
-- **Step 1: Initial Derivatives (`k1`)**  
-  The derivatives for the current position and velocity are calculated directly using the method `CalculateDerivatives`.
+1. Compute initial derivatives (k1) using the current position and velocity.  
+2. Compute k2 and k3 using values at the midpoint of the timestep.  
+3. Compute k4 at the end of the timestep.  
+4. Combine k1, k2, k3, and k4 using a weighted average to get the final state update.  
 
-- **Step 2 & 3: Intermediate Steps (`k2` and `k3`)**  
-  For `k2` and `k3`, the derivatives are calculated at a midpoint, adjusting the position and velocity slightly forward in time using the previous derivatives.
+**Mathematical Formulation:**  
+``` newPosition = currentPosition + (dt / 6) * (k1.position + 2 * k2.position + 2 * k3.position + k4.position) ```  
+``` newVelocity = currentVelocity + (dt / 6) * (k1.velocity + 2 * k2.velocity + 2 * k3.velocity + k4.velocity) ```  
 
-- **Step 4: Final Derivatives (`k4`)**  
-  The derivatives are calculated at the end of the time step, using the state adjusted fully forward in time.
-
-- **Step 5: Weighted Average**  
-  The derivatives (`k1`, `k2`, `k3`, `k4`) are combined in a weighted average to compute the object's new position and velocity.
-
----
-
-### `CalculateDerivatives`
-
-This is where things start to come together. `CalculateDerivatives` figures out how fast the object is moving (velocity) and how much its speed will change (acceleration). It combines forces from gravity, thrust, and any external factors to return a snapshot of the object’s state.. Here’s how it works:
-
-#### Steps:
-1. **Compute Gravitational Acceleration**  
-   The method calls `ComputeAccelerationFromData`, which calculates the total gravitational acceleration acting on the object due to all other bodies in the system.
-
-2. **Combine Thrust Impulse**  
-   If a thrust impulse is applied, it adds the corresponding acceleration to the gravitational acceleration.
-
-3. **Return Derivatives**  
-   The velocity and acceleration are packaged into an `OrbitalState` object, which is used in the RK4 process.
+This ensures that **orbital calculations remain stable** even over long time periods.  
 
 ---
 
-### `ComputeAccelerationFromData`
+## Gravitational Force Calculations  
 
-This method does the gritty physics math. It loops through every celestial body in the system, calculates the pull from each one, and adds it all up. It also makes sure things stay realistic, like preventing infinite forces when objects get too close.
+Gravity is modeled using **Newton’s Law of Universal Gravitation**, where each body exerts a force on every other body in the system:  
 
-#### Purpose:
-To calculate the total acceleration on an object due to:
-- Gravitational forces from other celestial bodies.
-- Any external forces, such as thrust.
-
-#### Steps:
-1. **Gravitational Force Calculation**  
-   For each other body in the system:
-   - Calculate the direction of the gravitational pull using the vector difference between positions.
-   - Compute the distance squared to avoid expensive square root calculations.
-   - Use Newton’s Law of Gravitation:
-
-```
- F = G * (m1 * m2) / r^2 
+**Equation:**  
+``` 
+F = G * (m1 * m2) / r^2 
 ```
 
-   - Add the resulting force vector to the total force.
+Where:  
+- **G** is the gravitational constant  
+- **m1, m2** are the masses of the interacting bodies  
+- **r** is the distance between the centers of mass  
 
-2. **Avoid Singularities**  
-   To prevent division by zero or excessive force magnitudes when two objects are very close, a minimum distance threshold is enforced.
+### Implementation in N-Body Simulation  
+For every time step, each body’s acceleration is computed based on the sum of all gravitational influences from other objects.  
 
-3. **Add External Forces**  
-   Combine the gravitational acceleration with the thrust impulse (if applied).
+**Steps:**  
+1. Calculate distance vectors between all bodies.  
+2. Compute individual gravitational forces.  
+3. Apply acceleration based on **F = ma**.  
+4. Update velocity and position using RK4 integration.  
 
-4. **Return Total Acceleration**  
-   The total acceleration is returned and used by `CalculateDerivatives`.
-
----
-
-### Example: Pulling It All Together
-
-At each time step, the RK4 process combines everything:
-
-1. **Start with the Current State**  
-   Use the current position and velocity of the object.
-
-2. **Call `CalculateDerivatives`**  
-   Compute `k1`, `k2`, `k3`, and `k4` derivatives at different points within the time step.
-
-3. **Update State**  
-   Compute the new position and velocity using the weighted average of the derivatives:
-
-```
- newPosition = currentState.position + (deltaTime / 6) * (k1.position + 2 * k2.position + 2 * k3.position + k4.position)
-```
-
-```
-newVelocity = currentState.velocity + (deltaTime / 6) * (k1.velocity + 2 * k2.velocity + 2 * k3.velocity + k4.velocity)
-```
-
-This process repeats for every body in the system, ensuring accurate updates to their orbits.
+### Avoiding Singularities and Overflows  
+- **Minimum Distance Threshold:** Prevents division by zero when objects are too close.  
+- **Softened Gravity (Optional):** If needed, small **epsilon terms** can smooth interactions.  
 
 ---
 
-### Why This Approach?
+## Thrust Mechanics  
 
-Using RK4 allows the simulation to:
-- Maintain stable orbits over long periods.
-- Accurately handle complex multi-body interactions.
-- Allow for external forces (like thrust) to be seamlessly integrated into the simulation.
+Thrust is applied as an instantaneous force that modifies a body’s velocity.  
 
-By combining physical accuracy with numerical stability, RK4 ensures that the simulator is both realistic and reliable for a variety of orbital scenarios.
+**Equation:**  
+```
+ F_thrust = mass * acceleration  
+```
+Thrust can be applied in four directions:  
+- **Prograde (along velocity vector)** → Increases orbit altitude.  
+- **Retrograde (opposite velocity vector)** → Lowers orbit altitude.  
+- **Radial In/Out (toward/away from central body)** → Adjusts eccentricity.  
+- **Lateral (perpendicular to orbit plane)** → Changes inclination.  
+
+The magnitude of acceleration follows:  
+``` 
+a_thrust = F_thrust / mass 
+```
 
 ---
 
-## Orbital Dynamics
+## Time Scaling and Accuracy  
 
-Combining gravitational forces and RK4 integration creates realistic orbital behavior, including:
-- **Stable orbits**: Elliptical or circular orbits naturally form.
-- **Orbital transfers**: Adjustments to velocity simulate real-world orbital maneuvers.
-- **Gravitational slingshots**: Smaller bodies gain or lose energy after close encounters.
+The simulation supports **adjustable time scaling** from **real-time to 100x speed**.  
+- RK4 integration maintains accuracy even at high speeds.  
+- Time steps are kept **adaptive** to ensure stability in fast-forward modes.  
 
 ---
 
-## Thrust Mechanics (Prototype)
+## Limitations and Future Improvements  
 
-Thrust is applied to a tracked body as an instantaneous force. It is proportional to the object's mass:
+### Current Limitations  
+- **No Relativity** → The simulation is **Newtonian only**, meaning no relativistic corrections.  
+- **No Atmospheric Drag** → Objects in low orbits remain indefinitely.  
+- **Simplified Collisions** → Objects are removed upon collision instead of merging.  
 
-```
-F_thrust = m * a 
-```
+### Future Upgrades  
+- **Barnes-Hut Optimization for N-Body Physics** → Improves performance for large simulations.  
+- **GPU Acceleration for RK4 Computations** → Moving integration to the GPU for better scaling.  
+- **Maneuver Node System** → Pre-plan orbital transfers like in Kerbal Space Program.  
 
-Directions include:
-- Prograde/Retrograde (along the orbit).
-- Radial (toward or away from the central body).
-- Lateral (perpendicular to the orbital plane).
+---
 
-[⬆ Back to Top](#physics-documentation)
+## Summary  
+This physics model ensures **high-accuracy orbital calculations** while balancing **performance and stability**. The use of **RK4, Newtonian gravity, and real-time thrust mechanics** allows users to experiment with real orbital mechanics in an interactive environment.  
+
+Back to README -> [README.md](./README.md)
