@@ -27,7 +27,7 @@ public class NBody : MonoBehaviour
     public int predictionSteps = 5000;
     public float predictionDeltaTime = .5f;
     private static Material lineMaterial;
-    private TrajectoryRenderer trajectoryRenderer;
+    public TrajectoryRenderer trajectoryRenderer;
     public float tolerance = 0f;
 
     [Header("Thrust Feedback")]

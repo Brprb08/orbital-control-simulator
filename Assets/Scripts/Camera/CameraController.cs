@@ -275,6 +275,8 @@ public class CameraController : MonoBehaviour
             freeCam.TogglePlacementMode(false);
         }
 
+        targetBody.trajectoryRenderer.orbitIsDirty = true;
+
         isFreeCamMode = false;
         Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");
     }

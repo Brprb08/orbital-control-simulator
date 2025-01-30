@@ -58,8 +58,8 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Line Colors")]
     public string predictionLineColor = "#2978FF"; // Blue
     public string originLineColor = "#FFFFFF";     // White
-    public string apogeeLineColor = "#FF0000";     // Red
-    public string perigeeLineColor = "#00FF00";    // Green
+    public string apogeeLineColor = "#C0392B";     // Red
+    public string perigeeLineColor = "#009B4D";    // Green
     private float lineDisableDistance = 50f;
 
     /**

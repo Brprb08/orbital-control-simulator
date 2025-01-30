@@ -13,12 +13,14 @@ public class UIManager : MonoBehaviour
     [Header("Buttons")]
     public Button freeCamButton;
     public Button trackCamButton;
+    public Button feedbackButton;
 
     [Header("Panels")]
     public GameObject objectPlacementPanel;
     public GameObject panel;
     public GameObject thrustButtons;
     public GameObject apogeePerigeePanel;
+    public GameObject feedbackPanel;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -33,6 +35,7 @@ public class UIManager : MonoBehaviour
 
 
     public TextMeshProUGUI feedbackText;
+    public bool showFeedbackText = true;
 
     /**
     * Setup the singleton for accessing UIManager
@@ -68,6 +71,8 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, true);
         trackCamButton.Select();
         trackCamButton.interactable = false;
+
+        UpdateButtonText();
     }
 
     /**
@@ -202,6 +207,22 @@ public class UIManager : MonoBehaviour
     private void ShowPanel(bool show)
     {
         panel.SetActive(show);
+    }
+
+    public void ShowFeedbackPanel()
+    {
+        showFeedbackText = !showFeedbackText;
+        UpdateButtonText(); // Update the button text when toggling
+        feedbackPanel.SetActive(showFeedbackText);
+    }
+
+    private void UpdateButtonText()
+    {
+        TMP_Text tmpButtonText = feedbackButton.GetComponentInChildren<TMP_Text>();
+        if (tmpButtonText != null)
+        {
+            tmpButtonText.text = showFeedbackText ? "Hide Instructions" : "Show Instructions";
+        }
     }
 
     /**
