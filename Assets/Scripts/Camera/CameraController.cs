@@ -253,6 +253,7 @@ public class CameraController : MonoBehaviour
             cameraMovement.SetTargetBody(bodies[currentIndex]);
             targetPosition = bodies[currentIndex].transform.position;
             targetBody = bodies[currentIndex];
+            targetBody.trajectoryRenderer.orbitIsDirty = true;
         }
         else
         {
@@ -275,7 +276,7 @@ public class CameraController : MonoBehaviour
             freeCam.TogglePlacementMode(false);
         }
 
-        targetBody.trajectoryRenderer.orbitIsDirty = true;
+
 
         isFreeCamMode = false;
         Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");

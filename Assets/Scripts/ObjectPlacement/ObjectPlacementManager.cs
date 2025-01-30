@@ -80,13 +80,13 @@ public class ObjectPlacementManager : MonoBehaviour
         string massText = massInput.text;
         if (string.IsNullOrWhiteSpace(massText))
         {
-            feedbackText.text = "Please enter a mass between 1 and 500000 kg.";
+            feedbackText.text = "Please enter a mass between 5 and 5.0e23 kg.";
             return;
         }
 
         if (!TryParseMass(massText, out float mass))
         {
-            feedbackText.text = "Invalid mass input. Please enter a number between 1 and 500000.";
+            feedbackText.text = "Invalid mass input. Please enter a number between 500 and 5.0e23.";
             return;
         }
 
@@ -100,7 +100,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
 
         lastPlacedGameObject = Instantiate(spherePrefab);
-        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x, parsedRadius.y, parsedRadius.z);
+        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * .2f, parsedRadius.y * .2f, parsedRadius.z * .2f);
         lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
         satelliteCount++;
@@ -108,13 +108,13 @@ public class ObjectPlacementManager : MonoBehaviour
         lastPlacedGameObject.name = customName;
         lastPlacedGameObject.tag = "Planet";
 
-        Renderer renderer = lastPlacedGameObject.GetComponent<Renderer>();
-        if (renderer != null)
-        {
-            Color c = renderer.material.color;
-            c.a = 0.5f; // Semi-transparent
-            renderer.material.color = c;
-        }
+        // Renderer renderer = lastPlacedGameObject.GetComponent<Renderer>();
+        // if (renderer != null)
+        // {
+        //     Color c = renderer.material.color;
+        //     c.a = 0.5f; // Semi-transparent
+        //     renderer.material.color = c;
+        // }
 
         if (velocityDragManager != null)
         {
@@ -207,7 +207,7 @@ public class ObjectPlacementManager : MonoBehaviour
         if (!float.TryParse(input, out float parsedMass))
             return false;
 
-        if (parsedMass < 1 || parsedMass > 5.972e+50)
+        if (parsedMass < 500 || parsedMass > 5.972e+50)
             return false;
 
         mass = parsedMass;

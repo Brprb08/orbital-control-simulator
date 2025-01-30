@@ -17,10 +17,11 @@ public class UIManager : MonoBehaviour
 
     [Header("Panels")]
     public GameObject objectPlacementPanel;
-    public GameObject panel;
+    public GameObject objectInfoPanel;
     public GameObject thrustButtons;
     public GameObject apogeePerigeePanel;
     public GameObject feedbackPanel;
+    public GameObject toggleOptionsPanel;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -36,6 +37,8 @@ public class UIManager : MonoBehaviour
 
     public TextMeshProUGUI feedbackText;
     public bool showFeedbackText = true;
+
+    private bool isTracking = true;
 
     /**
     * Setup the singleton for accessing UIManager
@@ -86,7 +89,8 @@ public class UIManager : MonoBehaviour
     "• Use WASD to move around, and mouse button 2 to rotate camera.\n" +
     "• To place a satellite:\n" +
     "     • Naming is optional; defaults to \"Satellite (n)\".\n" +
-    "     • Set the Mass (1-500,000 kg) and Radius Scale.\n" +
+    "     • Set the Mass (500 - 5.0e23 kg).\n" +
+    "     • Set the Radius (1-50). Radius is set as follows: 5,45,3\n" +
     "     • Click \"Place Satellite\" to spawn it.";
         ShowObjectPlacementPanel(true);
         ShowPanel(false);
@@ -97,6 +101,8 @@ public class UIManager : MonoBehaviour
 
         freeCamButton.interactable = false;
         trackCamButton.interactable = true;
+
+        isTracking = false;
 
         if (velocityInputField != null)
         {
@@ -138,6 +144,8 @@ public class UIManager : MonoBehaviour
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;
 
+        isTracking = true;
+
         if (velocityInputField != null)
         {
             velocityInputField.interactable = false;
@@ -165,15 +173,32 @@ public class UIManager : MonoBehaviour
     * @param showApogeePerigeePanel - Displays the Apogee Perigee panel on canvas
     * @param showPanel - Displays the Velocity/Altitude panel on canvas
     **/
-    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showApogeePerigeePanel, bool showPanel)
+    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel)
     {
+        // If were tracking and any of the booleans are false
+        if (!showObjectPlacementPanel)
+        {
+            toggleOptionsPanel.SetActive(false);
+            freeCamButton.interactable = false;
+            trackCamButton.interactable = false;
+        }
+        else
+        {
+            toggleOptionsPanel.SetActive(true);
+            if (isTracking)
+            {
+                freeCamButton.interactable = true;
+            }
+            else
+            {
+                trackCamButton.interactable = true;
+            }
+        }
         if (!freeCamButton.interactable)
         {
             ShowObjectPlacementPanel(showObjectPlacementPanel);
         }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
-        ShowApogeePerigeePanel(showApogeePerigeePanel);
-        ShowPanel(showPanel);
     }
 
     /**
@@ -209,7 +234,7 @@ public class UIManager : MonoBehaviour
     **/
     private void ShowPanel(bool show)
     {
-        panel.SetActive(show);
+        objectInfoPanel.SetActive(show);
     }
 
     public void ShowFeedbackPanel()
