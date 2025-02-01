@@ -62,6 +62,8 @@ public class TrajectoryRenderer : MonoBehaviour
     public string perigeeLineColor = "#009B4D";    // Green
     private float lineDisableDistance = 50f;
 
+    private bool isComputingPrediction = false;
+
     /**
     * Initializes line renderers and sets up materials
     **/
@@ -155,40 +157,45 @@ public class TrajectoryRenderer : MonoBehaviour
             bool isElliptical = eccentricity < 1f;
             if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
-                if (isElliptical)
+                if (!isComputingPrediction)
                 {
-                    float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
-                    orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 3) / gravitationalParameter);
+                    isComputingPrediction = true;
+                    if (isElliptical)
+                    {
+                        float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
+                        orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 3) / gravitationalParameter);
 
-                    // Adjust prediction steps to cover the full orbital loop
-                    predictionSteps = Mathf.Clamp(
-                        Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
-                        1,
-                        30000
-                    );
+                        // Adjust prediction steps to cover the full orbital loop
+                        predictionSteps = Mathf.Clamp(
+                            Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
+                            1,
+                            30000
+                        );
+                    }
+                    else
+                    {
+                        // For hyperbolic orbits, use a fixed number of steps
+                        predictionSteps = 5000;
+                    }
+
+                    if (isThrusting)
+                    {
+                        predictionSteps = 3000;
+                    }
+
+                    trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
+                    {
+                        var fullTrajectory = resultList.ToArray();
+
+                        var clippedPoints = ClipTrajectory(fullTrajectory);
+
+                        predictionProceduralLine.UpdateLine(clippedPoints);
+                    });
+
+                    orbitIsDirty = false;
+                    if (update) update = false;
+                    isComputingPrediction = false;
                 }
-                else
-                {
-                    // For hyperbolic orbits, use a fixed number of steps
-                    predictionSteps = 5000;
-                }
-
-                if (isThrusting)
-                {
-                    predictionSteps = 3000;
-                }
-
-                trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
-                {
-                    var fullTrajectory = resultList.ToArray();
-
-                    var clippedPoints = ClipTrajectory(fullTrajectory);
-
-                    predictionProceduralLine.UpdateLine(clippedPoints);
-                });
-
-                orbitIsDirty = false;
-                if (update) update = false;
             }
 
             if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime)

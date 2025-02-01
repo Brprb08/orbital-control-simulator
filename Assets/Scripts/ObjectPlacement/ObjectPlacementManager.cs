@@ -108,14 +108,6 @@ public class ObjectPlacementManager : MonoBehaviour
         lastPlacedGameObject.name = customName;
         lastPlacedGameObject.tag = "Planet";
 
-        // Renderer renderer = lastPlacedGameObject.GetComponent<Renderer>();
-        // if (renderer != null)
-        // {
-        //     Color c = renderer.material.color;
-        //     c.a = 0.5f; // Semi-transparent
-        //     renderer.material.color = c;
-        // }
-
         if (velocityDragManager != null)
         {
             velocityDragManager.ResetDragManager();
