@@ -70,10 +70,6 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 ```
 - Avoids singularities by applying minimum distance thresholds.
 
-### Real-Time Thrust Mechanics
-- Thrust force applied relative to orbital velocity.
-- Supports prograde/retrograde burns, radial adjustments, and lateral maneuvers.
-
 ---
 
 ## How to Use  
@@ -150,8 +146,8 @@ Visuals are still a work in progress, but the core physics engine is up and runn
 
 2. **Run the Simulation:**
 
-- Open the `SampleScene.unity` file located in the `Assets/Scenes` directory.
-- If no hierarchy or GameObjects are visible, ensure you have opened the correct scene by double-clicking `SampleScene.unity`.
+- Open the `OrbitSimulation.unity` file located in the `Assets/Scenes` directory.
+- If no hierarchy or GameObjects are visible, ensure you have opened the correct scene by double-clicking `OrbitSimulation.unity`.
 - Click the `Play` button to start the simulation.
 
 [⬆ Back to Top](#orbit-mechanics-simulator)
