@@ -15,7 +15,7 @@ _Current state of the simulation. Top image shows the Track cam from a distance 
 - [Planned Features](#planned-features)
 - [Limitations](#limitations)
 - [Getting Started](#getting-started)
-- [Technical Physics Breakdown](./Physics.md) *(separate file for RK4 and gravity calculations)*
+- [Technical Physics Breakdown](./NBODY_PHYSICS_RK4.md) *(separate file for RK4 and gravity calculations)*
 
 ---
 
@@ -56,7 +56,7 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 ---
 
 ## How It Works  
-*(For in-depth equations and derivations, see [Physics.md](./Physics.md))*
+*(For in-depth equations and derivations, see [NBody_Physics_RK4.md](./NBODY_PHYSICS_RK4.md))*
 
 ### Numerical Integration (RK4)
 - Uses Runge-Kutta 4th Order (RK4) instead of Euler for better stability.
