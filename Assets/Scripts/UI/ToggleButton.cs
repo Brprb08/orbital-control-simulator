@@ -1,5 +1,6 @@
 using UnityEngine;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /**
 * Sets the color of a button based on if it is pressed held or active
@@ -98,6 +99,7 @@ public class ToggleButton : MonoBehaviour
         }
 
         UpdateButtonColor();
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**

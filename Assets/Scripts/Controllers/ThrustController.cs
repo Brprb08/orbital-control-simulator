@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using UnityEngine.EventSystems;
 
 /**
 * Manages the thrust system for a spacecraft or object, allowing for various directional thrusts 
@@ -225,15 +226,44 @@ public class ThrustController : MonoBehaviour
 
     // UI Button Handlers
     public void StartForwardThrust() => isForwardThrustActive = true;
-    public void StopForwardThrust() => isForwardThrustActive = false;
+    public void StopForwardThrust()
+    {
+        isForwardThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
     public void StartReverseThrust() => isReverseThrustActive = true;
-    public void StopReverseThrust() => isReverseThrustActive = false;
+    public void StopReverseThrust()
+    {
+        isReverseThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
     public void StartLeftThrust() => isLeftThrustActive = true;
-    public void StopLeftThrust() => isLeftThrustActive = false;
+    public void StopLeftThrust()
+    {
+        isLeftThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
     public void StartRightThrust() => isRightThrustActive = true;
-    public void StopRightThrust() => isRightThrustActive = false;
+    public void StopRightThrust()
+    {
+        isRightThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
     public void StartRadialInThrust() => isRadialInThrustActive = true;
-    public void StopRadialInThrust() => isRadialInThrustActive = false;
+    public void StopRadialInThrust()
+    {
+        isRadialInThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
     public void StartRadialOutThrust() => isRadialOutThrustActive = true;
-    public void StopRadialOutThrust() => isRadialOutThrustActive = false;
+    public void StopRadialOutThrust()
+    {
+        isRadialOutThrustActive = false;
+        EventSystem.current.SetSelectedGameObject(null);
+    }
 }

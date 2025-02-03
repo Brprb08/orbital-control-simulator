@@ -130,9 +130,14 @@ public class TimeController : MonoBehaviour
         }
         else
         {
+            if (timeScaleText != null)
+            {
+                timeScaleText.text = $"Time Scale: Paused";
+            }
             Pause();
         }
         UpdatePauseButtonText();
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**
@@ -155,6 +160,10 @@ public class TimeController : MonoBehaviour
     {
         timeSlider.interactable = true;
         Time.timeScale = previousTimeScale;
+        if (timeScaleText != null)
+        {
+            timeScaleText.text = $"Time Scale: {previousTimeScale:F1}x";
+        }
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
         uIManager.ShowSelectPanels(true, true);
         isPaused = false;

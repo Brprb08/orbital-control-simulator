@@ -147,6 +147,7 @@ public class ObjectPlacementManager : MonoBehaviour
     "• Use the velocity vector tool to set the direction.\n" +
     "• Adjust velocity using the slider or by typing a value.\n" +
     "• Click \"Set Velocity\" to begin orbit.";
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**

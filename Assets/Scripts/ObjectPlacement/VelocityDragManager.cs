@@ -311,6 +311,7 @@ public class VelocityDragManager : MonoBehaviour
     public void callApplyVelocity()
     {
         ApplyVelocityToPlanet(currentVelocity);
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**

@@ -169,7 +169,7 @@ public class TrajectoryRenderer : MonoBehaviour
                         predictionSteps = Mathf.Clamp(
                             Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
                             1,
-                            30000
+                            70000
                         );
                     }
                     else
@@ -378,3 +378,4 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 }
+

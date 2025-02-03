@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /**
 * UIManager class manages the user interface for switching between free camera and tracking camera modes.
@@ -90,7 +91,9 @@ public class UIManager : MonoBehaviour
     "• To place a satellite:\n" +
     "     • Naming is optional; defaults to \"Satellite (n)\".\n" +
     "     • Set the Mass (500 - 5.0e23 kg).\n" +
-    "     • Set the Radius (1-50). Radius is set as follows: 5,45,3\n" +
+    "     • Set the Radius (1-50)\n" +
+    "          - Radius is set as follows: 5,45,3\n" +
+    "          - No parenthesis, negatives, or Non-numeric characters\n" +
     "     • Click \"Place Satellite\" to spawn it.";
         ShowObjectPlacementPanel(true);
         ShowPanel(false);
@@ -98,6 +101,9 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, false);
         ShowThrustButtonsPanel(false);
         ShowApogeePerigeePanel(false);
+
+        toggleOptionsPanel.SetActive(false);
+
 
         freeCamButton.interactable = false;
         trackCamButton.interactable = true;
@@ -119,6 +125,7 @@ public class UIManager : MonoBehaviour
 
             placeObjectButton.interactable = true;
         }
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**
@@ -140,6 +147,8 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, true);
         ShowThrustButtonsPanel(true);
         ShowApogeePerigeePanel(true);
+
+        toggleOptionsPanel.SetActive(false);
 
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;
@@ -164,6 +173,7 @@ public class UIManager : MonoBehaviour
 
             placeObjectButton.interactable = false;
         }
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     /**
@@ -242,6 +252,7 @@ public class UIManager : MonoBehaviour
         showFeedbackText = !showFeedbackText;
         UpdateButtonText(); // Update the button text when toggling
         feedbackPanel.SetActive(showFeedbackText);
+        EventSystem.current.SetSelectedGameObject(null);
     }
 
     private void UpdateButtonText()
@@ -265,11 +276,11 @@ public class UIManager : MonoBehaviour
 
         if (isPressed)
         {
-            ColorUtility.TryParseHtmlString("#2A4E6C", out newColor); // Dark blue for active state.
+            ColorUtility.TryParseHtmlString("#008CDB", out newColor); // Dark blue for active state.
         }
         else
         {
-            ColorUtility.TryParseHtmlString("#1B2735", out newColor); // Purple for inactive state.
+            ColorUtility.TryParseHtmlString("#008CDB", out newColor); // Purple for inactive state.
         }
 
         colors.normalColor = newColor;
