@@ -22,7 +22,7 @@ _Current state of the simulation. Top image shows the Track cam from a distance 
 ## Overview
 This project is a real-time orbital mechanics simulator that allows users to visualize, manipulate, and experiment with accurate gravitational physics. It includes fully interactive thrust mechanics, trajectory predictions, and scalable time controls to demonstrate how small adjustments affect long-term orbits.
 
-Built in Unity, it leverages Runge-Kutta 4th Order (RK4) integration for accurate physics and GPU acceleration for smooth trajectory rendering.
+Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate physics and GPU acceleration for smooth trajectory rendering.
 
 ---
 
