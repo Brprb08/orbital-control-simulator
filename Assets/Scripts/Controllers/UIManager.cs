@@ -61,14 +61,21 @@ public class UIManager : MonoBehaviour
     private void Start()
     {
         feedbackText.text =
-    "Welcome to the Orbit Simulator!\n\n" +
-    "You’re in Track Cam mode, following the planet’s orbit.\n" +
-    "• Use Tab to switch the object you are tracking.\n" +
-    "• Use right mouse button to rotate the camera around.\n" +
-    "• Zoom in and out with mousewheel.\n" +
-    "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
-    "• Monitor Altitude and Velocity values to observe orbital behaviors.\n" +
-    "• Switch to Free Cam to explore or place satellites.";
+    "<b>Welcome to the Orbit Simulator!</b>\n" +
+    "<b>Track Cam Mode Activated!</b>\n\n" +
+    "<b>CONTROLS:</b>\n" +
+    "- Tab: Switch the tracked object.\n" +
+    "- Right Mouse Button: Rotate the camera.\n" +
+    "- Mousewheel: Zoom in/out.\n" +
+    "- Time Scaler: Adjust time speed (Reset: 'R').\n\n" +
+    "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
+    "<b>THRUST:</b>\n" +
+    "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
+    "- Left / Right: Adjust lateral movement (changes inclination).\n" +
+    "- Radial In / Radial Out: Thrust toward or away from the planet your orbiting.\n\n" +
+    "Monitor these values to observe orbital behaviors.\n" +
+    "Switch to Free Cam to explore or place satellites.";
+
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
@@ -85,16 +92,19 @@ public class UIManager : MonoBehaviour
     public void OnFreeCamPressed()
     {
         feedbackText.text =
-    "Free Cam Mode Activated!\n\n" +
-    "• You can freely move to explore or place satellites.\n" +
-    "• Use WASD to move around, and mouse button 2 to rotate camera.\n" +
-    "• To place a satellite:\n" +
-    "     • Naming is optional; defaults to \"Satellite (n)\".\n" +
-    "     • Set the Mass (500 - 5.0e23 kg).\n" +
-    "     • Set the Radius (1-50)\n" +
-    "          - Radius is set as follows: 5,45,3\n" +
-    "          - No parenthesis, negatives, or Non-numeric characters\n" +
-    "     • Click \"Place Satellite\" to spawn it.";
+        "<b>Free Cam Mode Activated!</b>\n\n" +
+        "You can freely move to explore or place satellites.\n\n" +
+        "<b>CONTROLS:</b>\n" +
+        "- WASD: Move around.\n" +
+        "- Right Mouse Button: Rotate the camera.\n\n" +
+        "<b>PLACING A SATELLITE:</b>\n" +
+        "- Naming is optional (defaults to 'Satellite (n)').\n" +
+        "- Set Mass (500 - 5.0e23 kg).\n" +
+        "- Set Radius (1-50).\n" +
+        "  * Format: 5,45,3\n" +
+        "  * No parentheses, negatives, or non-numeric characters.\n" +
+        "- Click 'Place Satellite' to spawn.";
+
         ShowObjectPlacementPanel(true);
         ShowPanel(false);
         SetButtonState(freeCamButton, true);
@@ -134,13 +144,20 @@ public class UIManager : MonoBehaviour
     public void OnTrackCamPressed()
     {
         feedbackText.text =
-        "Track Cam Mode Activated!\n\n" +
-        "• Use Tab to switch the object you are tracking.\n" +
-    "• Use right mouse button to the rotate camera around.\n" +
-    "• Zoom in and out with mousewheel.\n" +
-    "• Use the Time Scaler to speed up or slow down time, as well as reset with 'R'.\n" +
-    "• Monitor Altitude and Velocity values to observe orbital behaviors.\n" +
-    "• Switch to Free Cam to explore or place satellites.";
+    "<b>Track Cam Mode Activated!</b>\n\n" +
+    "<b>CONTROLS:</b>\n" +
+    "- Tab: Switch the tracked object.\n" +
+    "- Right Mouse Button: Rotate the camera.\n" +
+    "- Mousewheel: Zoom in/out.\n" +
+    "- Time Scaler: Adjust time speed (Reset: 'R').\n\n" +
+    "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
+    "<b>THRUST:</b>\n" +
+    "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
+    "- Left / Right: Adjust lateral movement (changes inclination).\n" +
+    "- Radial In / Radial Out: Thrust toward or away from the planet your orbiting.\n\n" +
+    "Monitor these values to observe orbital behaviors.\n" +
+    "Switch to Free Cam to explore or place satellites.";
+
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
@@ -148,7 +165,7 @@ public class UIManager : MonoBehaviour
         ShowThrustButtonsPanel(true);
         ShowApogeePerigeePanel(true);
 
-        toggleOptionsPanel.SetActive(false);
+        toggleOptionsPanel.SetActive(true);
 
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;

@@ -169,15 +169,15 @@ public class CameraMovement : MonoBehaviour
         {
             float velocityMagnitude = targetBody.velocity.magnitude;
             float velocityInMetersPerSecond = velocityMagnitude * 10000f;
-            float velocityInMph = velocityInMetersPerSecond * 2.23694f;
-            velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s ({velocityInMph:F2} mph)";
+            // float velocityInMph = velocityInMetersPerSecond * 2.23694f;
+            velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s";
         }
 
         if (altitudeText != null && targetBody != null)
         {
             float altitude = targetBody.altitude;
-            float altitudeInFeet = altitude * 3280.84f;
-            altitudeText.text = $"Altitude: {altitude * 10:F2} km ({altitudeInFeet:F0} ft)";
+            // float altitudeInFeet = altitude * 3280.84f;
+            altitudeText.text = $"Altitude: {altitude * 10:F2} km";
         }
 
         if (trackingObjectNameText != null && targetBody != null)
