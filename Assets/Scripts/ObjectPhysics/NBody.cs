@@ -302,7 +302,6 @@ public class NBody : MonoBehaviour
     public void ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, float centralBodyMass)
     {
         float mu = PhysicsConstants.G * centralBodyMass;
-
         Vector3 r = transform.position;
         Vector3 v = velocity;
 
@@ -317,7 +316,7 @@ public class NBody : MonoBehaviour
             return;
         }
 
-        // Specific orbital energy: epsilon = v^2/2 - mu/r
+        // Specific orbital energy
         float energy = (vMag * vMag) / 2f - (mu / rMag);
 
         if (energy >= 0f) // Hyperbolic or parabolic orbit
@@ -340,9 +339,17 @@ public class NBody : MonoBehaviour
             return;
         }
 
-        eccentricity = Mathf.Sqrt(1f + (2f * energy * hMag * hMag) / (mu * mu));
+        float innerSqrt = 1f + (2f * energy * hMag * hMag) / (mu * mu);
 
-        // Preserve small eccentricities to differentiate apogee and perigee
+        if (innerSqrt < 1e-8f)
+        {
+            eccentricity = 1e-8f; // a tiny nonzero eccentricity for visualization
+        }
+        else
+        {
+            eccentricity = Mathf.Sqrt(innerSqrt);
+        }
+
         eccentricity = Mathf.Max(eccentricity, 1e-8f);
     }
 
@@ -350,7 +357,7 @@ public class NBody : MonoBehaviour
     * Returns the apogee and perigee Vector3 positions
     * @param centralBodyMass - Mass of central body (Earth)
     **/
-    public void GetOrbitalApogeePerigee(float centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition)
+    public void GetOrbitalApogeePerigee(float centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular)
     {
         ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, centralBodyMass);
 
@@ -359,6 +366,7 @@ public class NBody : MonoBehaviour
             Debug.LogError("[ERROR] Invalid orbital elements. Cannot compute apogee and perigee.");
             apogeePosition = Vector3.zero;
             perigeePosition = Vector3.zero;
+            isCircular = false;
             return;
         }
 
@@ -385,7 +393,17 @@ public class NBody : MonoBehaviour
 
             perigeePosition = Vector3.zero + (eUnit * perigeeDistance);
             apogeePosition = Vector3.zero;
+            isCircular = false;
             return;
+        }
+
+        if (eccentricity <= 0f)
+        {
+            isCircular = true;
+        }
+        else
+        {
+            isCircular = false;
         }
 
         // If elliptical orbit, compute apogee and perigee

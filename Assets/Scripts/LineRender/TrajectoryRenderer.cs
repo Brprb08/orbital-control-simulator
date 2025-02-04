@@ -38,7 +38,7 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Coroutine")]
     private Coroutine predictionCoroutine;
     private float updateIntervalApogeePerigee = 10f;
-    private float apogeePerigeeUpdateTime = 1f;
+    private float apogeePerigeeUpdateTime = 5f;
 
     public float apogeeDistance = 0f;
     public float perigeeDistance = 0f;
@@ -198,9 +198,9 @@ public class TrajectoryRenderer : MonoBehaviour
                 }
             }
 
-            if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime)
+            if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime || isThrusting)
             {
-                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition);
+                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular);
 
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
@@ -209,8 +209,18 @@ public class TrajectoryRenderer : MonoBehaviour
 
                     if (apogeeText != null && perigeeText != null)
                     {
-                        float apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-                        float perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                        float apogeeAltitude;
+                        float perigeeAltitude;
+                        if (isCircular)
+                        {
+                            apogeeAltitude = trackedBody.transform.position.magnitude - 637.1f;
+                            perigeeAltitude = trackedBody.transform.position.magnitude - 637.1f;
+                        }
+                        else
+                        {
+                            apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                            perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                        }
 
                         UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
                     }
@@ -299,16 +309,27 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         if (apogeeText != null)
         {
-            apogeeText.text = $"Apogee: {apogee:F2} km";
+            if (apogee < 0)
+            {
+                apogeeText.text = $"";
+            }
+            else
+            {
+                apogeeText.text = $"Apogee: {apogee:F0} km";
+            }
+
         }
 
         if (perigeeText != null)
         {
             if (perigee < 0)
             {
-                perigee = 0;
+                perigeeText.text = $"";
             }
-            perigeeText.text = $"Perigee: {perigee:F2} km";
+            else
+            {
+                perigeeText.text = $"Perigee: {perigee:F0} km";
+            }
         }
     }
 
