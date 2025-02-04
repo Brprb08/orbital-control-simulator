@@ -20,6 +20,16 @@ This document details the physics behind the Orbit Mechanics Simulator, includin
 ### Why RK4?  
 Most basic physics simulations use **Euler integration**, but Euler’s method accumulates errors over time, leading to **instability in orbital paths**. RK4 (Runge-Kutta 4th Order) is a **higher-order numerical method** that significantly improves accuracy.  
 
+### Why RK4 Instead of a Symplectic Integrator?
+For long-term orbital simulations (spanning years or centuries), **symplectic integrators** (like Leapfrog or Verlet) are often preferred because they conserve **energy and angular momentum**, ensuring long-term stability. However, this simulation is focused on **short-duration orbital maneuvering** and **visualization over days or months**, where **local accuracy is more important than long-term energy conservation**.
+
+RK4 provides **higher accuracy per time step** compared to symplectic methods, making it ideal for:
+- **Precise maneuvering** during burns and trajectory adjustments.
+- **Short-term orbit propagation**, where numerical drift is not a major concern.
+- **Real-time visualization**, as RK4 allows flexible time step adjustments.
+
+Since RK4 is not symplectic, energy conservation **will degrade over very long simulations** (e.g., centuries), but for the intended use case of maneuvering and short-term predictions, this trade-off is acceptable.
+
 ### RK4 Process  
 The RK4 method estimates the next position and velocity of a body in four steps:  
 
