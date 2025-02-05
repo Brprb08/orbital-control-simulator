@@ -82,16 +82,6 @@ public class NBody : MonoBehaviour
             Debug.LogError("NBody: ThrustController not found on GravityManager.");
         }
 
-        if (GetComponentInChildren<TrajectoryRenderer>() == null)
-        {
-            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
-            trajectoryObj.transform.parent = this.transform;
-            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
-            trajectoryRenderer.apogeeText = this.apogeeText;
-            trajectoryRenderer.perigeeText = this.perigeeText;
-            trajectoryRenderer.SetTrackedBody(this);
-        }
-
         tcc = FindFirstObjectByType<TrajectoryComputeController>();
         if (!tcc)
         {

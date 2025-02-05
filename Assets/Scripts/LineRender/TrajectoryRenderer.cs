@@ -9,9 +9,11 @@ using TMPro;
 * The class also updates the UI elements for apogee and perigee distances
 * and toggles line visibility based on user inputs and simulation state.
 **/
-[RequireComponent(typeof(LineRenderer))]
+// [RequireComponent(typeof(LineRenderer))]
 public class TrajectoryRenderer : MonoBehaviour
 {
+    public static TrajectoryRenderer Instance { get; private set; }
+
     [Header("Trajectory Prediction Settings")]
     public int predictionSteps = 5000;
     public float predictionDeltaTime = 5f;
@@ -69,12 +71,12 @@ public class TrajectoryRenderer : MonoBehaviour
     **/
     void Awake()
     {
+
         mainCamera = Camera.main;
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
-
-        predictionProceduralLine = CreateProceduralLineRenderer("PredictionLine", predictionLineColor);
+        predictionProceduralLine = CreateProceduralLineRenderer("Prediction1Line", predictionLineColor);
         originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
         apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
         perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);

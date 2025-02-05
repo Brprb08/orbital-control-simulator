@@ -2,6 +2,7 @@ using UnityEngine;
 using System.Collections.Generic;
 using UnityEngine.EventSystems;
 using System.Collections;
+using TMPro;
 
 /**
 * Handles camera movement, tracking of celestial bodies, and free camera mode.
@@ -31,6 +32,9 @@ public class CameraController : MonoBehaviour
 
     private float lastTabTime = -1f;
     private float tabCooldown = 1f;
+
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
 
     /**
     * Used by object placement manager to ensure cam is in FreeCam mode when placing.
@@ -62,7 +66,14 @@ public class CameraController : MonoBehaviour
             StartCoroutine(InitializeCamera());
         }
 
-        StartCoroutine(FindTrajectoryRendererWithDelay());
+        if (trajectoryRenderer == null)
+        {
+            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
+            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
+            trajectoryRenderer.apogeeText = this.apogeeText;
+            trajectoryRenderer.perigeeText = this.perigeeText;
+            trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
+        }
     }
 
 
@@ -253,7 +264,7 @@ public class CameraController : MonoBehaviour
             cameraMovement.SetTargetBody(bodies[currentIndex]);
             targetPosition = bodies[currentIndex].transform.position;
             targetBody = bodies[currentIndex];
-            targetBody.trajectoryRenderer.orbitIsDirty = true;
+            trajectoryRenderer.orbitIsDirty = true;
         }
         else
         {

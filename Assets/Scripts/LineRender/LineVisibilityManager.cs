@@ -10,6 +10,7 @@ public class LineVisibilityManager : MonoBehaviour
 {
     public static LineVisibilityManager Instance { get; private set; }
     private NBody trackedBody;
+    public TrajectoryRenderer centralTrajectoryRenderer;
 
     public enum LineType
     {
@@ -38,7 +39,6 @@ public class LineVisibilityManager : MonoBehaviour
             Destroy(gameObject);
             return;
         }
-
     }
 
     /**
@@ -80,21 +80,17 @@ public class LineVisibilityManager : MonoBehaviour
         {
             lineVisibilityStates[lineType] = isVisible;
 
-            foreach (NBody body in nBodyInstances)
+            centralTrajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
+            if (centralTrajectoryRenderer != null)
             {
-                TrajectoryRenderer trajectoryRenderer = body.GetComponentInChildren<TrajectoryRenderer>();
-                if (trajectoryRenderer != null)
-                {
-                    bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
-                    bool currentOriginState = lineVisibilityStates[LineType.Origin];
-                    bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
-                    trajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
-                }
-                else
-                {
-                    Debug.LogWarning($"No TrajectoryRenderer found for {body.name}");
-                }
-
+                bool currentPredictionState = lineVisibilityStates[LineType.Prediction];
+                bool currentOriginState = lineVisibilityStates[LineType.Origin];
+                bool currentApogeePerigeeState = lineVisibilityStates[LineType.ApogeePerigee];
+                centralTrajectoryRenderer.SetLineVisibility(currentPredictionState, currentOriginState, currentApogeePerigeeState);
+            }
+            else
+            {
+                Debug.LogWarning("Central TrajectoryRenderer not found!");
             }
 
             Debug.Log($"LineVisibilityManager: {lineType} Lines are now {(isVisible ? "Enabled" : "Disabled")}");
