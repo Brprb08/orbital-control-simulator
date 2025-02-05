@@ -102,6 +102,10 @@ public class VelocityDragManager : MonoBehaviour
             return;
         }
 
+        // Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
+        // lineMaterial.color = Color.red;
+        // dragLineRenderer.material = lineMaterial;
+
         if (Input.GetMouseButtonDown(0))
         {
             if (EventSystem.current.IsPointerOverGameObject())
@@ -127,8 +131,9 @@ public class VelocityDragManager : MonoBehaviour
     **/
     private void StartDrag()
     {
+        Debug.Log("StartDrag() called!");
         if (planet == null || mainCamera == null) return;
-
+        Debug.Log("inside if");
         isDragging = true;
         dragStartPos = planet.transform.position;
 
@@ -146,15 +151,11 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.SetPosition(0, dragStartPos);
             dragLineRenderer.SetPosition(1, dragStartPos);
             dragLineRenderer.widthMultiplier = 0.25f;
-
-            Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
-            lineMaterial.color = Color.red;
-            dragLineRenderer.material = lineMaterial;
-
-            velocityDisplayText.interactable = true;
-            velocitySpeedSlider.interactable = true;
-            setVelocityButton.interactable = true;
         }
+        velocityDisplayText.interactable = true;
+        velocitySpeedSlider.interactable = true;
+        setVelocityButton.interactable = true;
+        Canvas.ForceUpdateCanvases();  // Force UI to update
 
         dragDirection = Vector3.zero;
     }
