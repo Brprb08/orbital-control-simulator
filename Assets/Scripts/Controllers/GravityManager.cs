@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using TMPro;
 
 /**
 * GravityManager class handles the registration, deregistration, and management of celestial bodies.
@@ -13,6 +14,8 @@ public class GravityManager : MonoBehaviour
     public float minCollisionDistance = 0.5f;
 
     public List<NBody> Bodies => bodies;
+
+    public TMP_Dropdown bodyDropdown;
 
     /**
     * Initializes the singleton instance of GravityManager.
@@ -33,6 +36,8 @@ public class GravityManager : MonoBehaviour
         {
             bodies = new List<NBody>(); // Ensure the list is initialized.
         }
+
+        bodyDropdown.ClearOptions();
     }
 
     /**
@@ -46,6 +51,7 @@ public class GravityManager : MonoBehaviour
             if (!bodies.Contains(body))
             {
                 bodies.Add(body);
+
                 Debug.Log($"Registered pre-existing NBody: {body.gameObject.name}");
             }
         }
@@ -60,6 +66,11 @@ public class GravityManager : MonoBehaviour
         if (!bodies.Contains(body))
         {
             bodies.Add(body);
+            if (body.name != "Earth")
+            {
+                bodyDropdown.options.Add(new TMP_Dropdown.OptionData(body.name));
+                bodyDropdown.RefreshShownValue();
+            }
         }
 
         if (LineVisibilityManager.Instance != null)
@@ -82,6 +93,13 @@ public class GravityManager : MonoBehaviour
         if (bodies.Contains(body))
         {
             bodies.Remove(body);
+        }
+
+        int indexToRemove = bodyDropdown.options.FindIndex(option => option.text == body.name);
+        if (indexToRemove != -1)
+        {
+            bodyDropdown.options.RemoveAt(indexToRemove);
+            bodyDropdown.RefreshShownValue();
         }
     }
 
@@ -108,6 +126,8 @@ public class GravityManager : MonoBehaviour
         {
             cameraController.RefreshBodiesList();
         }
+
+        cameraController.UpdateDropdownSelection();
 
         Debug.Log($"Removed {bodyToRemove.name} due to collision.");
     }

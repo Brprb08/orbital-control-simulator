@@ -90,8 +90,54 @@ public class CameraController : MonoBehaviour
         }
         ReturnToTracking();
 
+        UpdateDropdownSelection();
+
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
     }
+
+    // RENAME THIS
+    public void UpdateDropdownSelection()
+    {
+        if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
+
+        TMP_Dropdown dropdown = BodyDropdownManager.Instance.bodyDropdown;
+
+        // Find the correct dropdown index by name
+        string currentBodyName = bodies[currentIndex].name;
+        int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
+
+        // Ensure the index is valid before setting it
+        if (dropdownIndex != -1)
+        {
+            dropdown.onValueChanged.RemoveListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
+
+            dropdown.value = dropdownIndex;
+            dropdown.RefreshShownValue();
+            // BodyDropdownManager.Instance.HandleDropdownValueChanged(dropdownIndex);
+
+            dropdown.onValueChanged.AddListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
+            Debug.Log($"Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
+        }
+        else
+        {
+            Debug.LogError($"No matching dropdown entry found for body: {currentBodyName}");
+        }
+    }
+
+    // RENAME THIS
+    // public void UpdateDropdownCheckmark(int index)
+    // {
+    //     if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
+
+    //     TMP_Dropdown dropdown = BodyDropdownManager.Instance.bodyDropdown;
+
+    //     string currentBodyName = bodies[currentIndex].name;
+    //     int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
+
+    //     dropdown.value = index;
+    //     dropdown.RefreshShownValue();
+    //     Debug.Log($"Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
+    // }
 
     /**
     * Coroutine to find the trajectory renderer with a small delay.
@@ -114,20 +160,20 @@ public class CameraController : MonoBehaviour
     {
         if (!isFreeCamMode)
         {
-            if (Time.time - lastTabTime > tabCooldown && Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
-            {
-                lastTabTime = Time.time;
-                currentIndex = (currentIndex + 1) % bodies.Count;
-                trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
-                if (LineVisibilityManager.Instance != null)
-                {
-                    LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
-                }
+            // if (Time.time - lastTabTime > tabCooldown && Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
+            // {
+            //     lastTabTime = Time.time;
+            //     currentIndex = (currentIndex + 1) % bodies.Count;
+            //     trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
+            //     if (LineVisibilityManager.Instance != null)
+            //     {
+            //         LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
+            //     }
 
-                trajectoryRenderer.orbitIsDirty = true;
+            //     trajectoryRenderer.orbitIsDirty = true;
 
-                ReturnToTracking();
-            }
+            //     ReturnToTracking();
+            // }
 
             if (Input.GetMouseButton(1) && cameraPivotTransform != null)
             {
@@ -141,6 +187,17 @@ public class CameraController : MonoBehaviour
                 cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
             }
         }
+    }
+
+    public void UpdateTrajectoryRender(int index)
+    {
+        trajectoryRenderer.SetTrackedBody(bodies[index]);
+        if (LineVisibilityManager.Instance != null)
+        {
+            LineVisibilityManager.Instance.SetTrackedBody(bodies[index]);
+        }
+
+        trajectoryRenderer.orbitIsDirty = true;
     }
 
     /**
@@ -346,13 +403,8 @@ public class CameraController : MonoBehaviour
 
             cameraMovement.SetTargetBody(nextBody);
 
-            TrajectoryRenderer newTrajectoryRenderer = nextBody.GetComponentInChildren<TrajectoryRenderer>();
-            if (newTrajectoryRenderer != null)
-            {
-                // Update CameraController's reference and set the new tracked body.
-                this.trajectoryRenderer = newTrajectoryRenderer;
-                this.trajectoryRenderer.SetTrackedBody(nextBody);
-            }
+            UpdateTrajectoryRender(currentIndex);
+
             ReturnToTracking();
             Debug.Log($"Camera switched to track: {nextBody.name}");
         }
@@ -361,8 +413,6 @@ public class CameraController : MonoBehaviour
             BreakToFreeCam();
             Debug.Log("No valid bodies to track. Switched to FreeCam.");
         }
-
-
     }
 
     /**
@@ -394,6 +444,8 @@ public class CameraController : MonoBehaviour
         {
             cameraMovement.SetTargetBody(realNBody);
         }
+
+        UpdateDropdownSelection();
     }
 
     /**

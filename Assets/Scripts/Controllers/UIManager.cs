@@ -23,6 +23,7 @@ public class UIManager : MonoBehaviour
     public GameObject apogeePerigeePanel;
     public GameObject feedbackPanel;
     public GameObject toggleOptionsPanel;
+    public GameObject dropdown;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -113,7 +114,7 @@ public class UIManager : MonoBehaviour
         ShowApogeePerigeePanel(false);
 
         toggleOptionsPanel.SetActive(false);
-
+        dropdown.SetActive(false);
 
         freeCamButton.interactable = false;
         trackCamButton.interactable = true;
@@ -166,6 +167,7 @@ public class UIManager : MonoBehaviour
         ShowApogeePerigeePanel(true);
 
         toggleOptionsPanel.SetActive(true);
+        dropdown.SetActive(true);
 
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;
