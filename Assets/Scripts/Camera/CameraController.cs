@@ -36,6 +36,9 @@ public class CameraController : MonoBehaviour
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
 
+    public bool inEarthViewCam = false;
+    private NBody previousTrackedBody;
+
     /**
     * Used by object placement manager to ensure cam is in FreeCam mode when placing.
     **/
@@ -113,7 +116,6 @@ public class CameraController : MonoBehaviour
 
             dropdown.value = dropdownIndex;
             dropdown.RefreshShownValue();
-            // BodyDropdownManager.Instance.HandleDropdownValueChanged(dropdownIndex);
 
             dropdown.onValueChanged.AddListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
             Debug.Log($"Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
@@ -329,6 +331,8 @@ public class CameraController : MonoBehaviour
             return;
         }
 
+        previousTrackedBody = targetBody;
+
         float distanceMultiplier = 100.0f;  // Adjust for how far back the camera should be
         float radius = (targetBody != null) ? targetBody.radius : 3f;  // Use the body's radius or a default
         float desiredDistance = radius * distanceMultiplier;
@@ -370,6 +374,36 @@ public class CameraController : MonoBehaviour
         cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
 
         Debug.Log($"Camera pivot adjusted to point at {centralBody.name} behind target, with upward tilt.");
+    }
+
+    public void SwitchToEarthCam()
+    {
+        if (!inEarthViewCam)
+        {
+            GameObject centralBody = GameObject.FindWithTag("CentralBody");
+
+            if (centralBody == null)
+            {
+                Debug.LogError("Central body not found. Ensure it has the correct tag.");
+                return;
+            }
+
+            NBody nBodyComponent = centralBody.GetComponent<NBody>();
+
+            if (nBodyComponent == null)
+            {
+                Debug.LogError("NBody component not found on the central body.");
+                return;
+            }
+
+            cameraMovement.SetTargetBodyTemp(nBodyComponent);
+            inEarthViewCam = true;
+        }
+        else
+        {
+            cameraMovement.SetTargetBodyTemp(previousTrackedBody);
+            inEarthViewCam = false;
+        }
     }
 
     /**

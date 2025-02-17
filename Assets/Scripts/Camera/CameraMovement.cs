@@ -30,6 +30,9 @@ public class CameraMovement : MonoBehaviour
     private float placeholderRadius = 0f;
     private Camera mainCamera;
 
+    public bool inEarthView = false;
+    public NBody tempEarthBody;
+
     /**
     * Setup the singleton for accessing UIManager
     **/
@@ -62,7 +65,14 @@ public class CameraMovement : MonoBehaviour
 
         bool usingPlaceholder = (targetBody == null && targetPlaceholder != null);
         float radius = usingPlaceholder ? placeholderRadius : targetBody.radius;
-        transform.position = usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position;
+        if (inEarthView)
+        {
+            transform.position = tempEarthBody.transform.position;
+        }
+        else
+        {
+            transform.position = usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position;
+        }
 
         if (radius <= 0.5f)
         {
@@ -77,6 +87,10 @@ public class CameraMovement : MonoBehaviour
             minDistance = radius + 400f;
         }
 
+        if (inEarthView)
+        {
+            minDistance = 800f;
+        }
         distance = Mathf.Clamp(distance, minDistance, maxDistance);
 
         float scroll = Input.GetAxis("Mouse ScrollWheel");
@@ -84,7 +98,7 @@ public class CameraMovement : MonoBehaviour
         {
             float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);
-            float zoomSpeed = baseZoomSpeed * sizeMultiplier * distanceFactor * 2f;
+            float zoomSpeed = baseZoomSpeed * sizeMultiplier * 100f * 2f;
 
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
@@ -129,12 +143,59 @@ public class CameraMovement : MonoBehaviour
             float midpointDistance = (minDistance + maxDistance) / 2f;
 
             float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;
-            float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
+
+            float defaultDistance;
+            if (inEarthView)
+            {
+                defaultDistance = 2500f;
+            }
+            else
+            {
+                defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
+            }
             maxDistance = 10000f;
 
             distance = defaultDistance;
 
             Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
+        }
+    }
+
+    // Sets the earth as the camera track
+    public void SetTargetBodyTemp(NBody newTarget)
+    {
+        if (inEarthView)
+        {
+            inEarthView = false;
+            targetBody = newTarget;
+        }
+        else
+        {
+            inEarthView = true;
+            tempEarthBody = newTarget;
+        }
+        targetPlaceholder = null;
+
+        if (newTarget != null)
+        {
+            transform.position = targetBody.transform.position;
+
+            if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
+            {
+                Debug.LogError($"[ERROR] Camera transform is NaN after setting target {tempEarthBody.name}");
+            }
+
+            minDistance = CalculateMinDistance(tempEarthBody.radius) * 5;
+            maxDistance = CalculateMaxDistance(tempEarthBody.radius);
+            float midpointDistance = (minDistance + maxDistance) / 2f;
+
+            float closerFraction = tempEarthBody.radius <= 10f ? 0.15f : 0.25f;
+            float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
+            maxDistance = 30000f;
+
+            distance = defaultDistance;
+
+            Debug.Log($"Camera target set to {tempEarthBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
         }
     }
 

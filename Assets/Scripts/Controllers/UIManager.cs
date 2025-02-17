@@ -15,6 +15,7 @@ public class UIManager : MonoBehaviour
     public Button freeCamButton;
     public Button trackCamButton;
     public Button feedbackButton;
+    public Button earthCamButton;
 
     [Header("Panels")]
     public GameObject objectPlacementPanel;
@@ -35,13 +36,13 @@ public class UIManager : MonoBehaviour
 
     public CameraController cameraController;
     public TMP_InputField velocityInputField;
-
+    public TMP_Text earthCamButtonText;
 
     public TextMeshProUGUI feedbackText;
     public bool showFeedbackText = true;
 
     private bool isTracking = true;
-
+    private bool earthCamPressed = true;
     /**
     * Setup the singleton for accessing UIManager
     **/
@@ -193,6 +194,20 @@ public class UIManager : MonoBehaviour
             placeObjectButton.interactable = false;
         }
         EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    public void OnEarthCamPressed()
+    {
+        if (earthCamPressed)
+        {
+            earthCamButtonText.text = "Satellite Cam";
+            earthCamPressed = false;
+        }
+        else
+        {
+            earthCamButtonText.text = "Earth Cam";
+            earthCamPressed = true;
+        }
     }
 
     /**
