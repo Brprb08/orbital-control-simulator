@@ -179,8 +179,8 @@ public class CameraController : MonoBehaviour
 
             if (Input.GetMouseButton(1) && cameraPivotTransform != null)
             {
-                float rotationX = Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
-                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
+                float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
+                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
                 cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
                 cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
 

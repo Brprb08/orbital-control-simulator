@@ -806,7 +806,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.749, y: 0.133}
   m_AnchorMax: {x: 0.98600006, y: 0.41135243}
-  m_AnchoredPosition: {x: 102.599976, y: -16.300018}
+  m_AnchoredPosition: {x: 102.599976, y: -16.300049}
   m_SizeDelta: {x: -255, y: -185}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &73661007
@@ -12650,7 +12650,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: -166.34453, y: -100.56271, z: -115.80295, w: -126.32778}
+  m_margin: {x: -166.34453, y: -100.56271, z: -182.3743, w: -166.01976}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -15677,6 +15677,7 @@ MonoBehaviour:
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
   inEarthViewCam: 0
+  previousTrackedBody: {fileID: 0}
 --- !u!114 &1586431852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15690,7 +15691,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mainCamera: {fileID: 330585545}
-  spherePrefab: {fileID: 5729769492589239550, guid: 2d5207b547d23e342b03e47df3c3e897, type: 3}
+  spherePrefab: {fileID: 879182255719916475, guid: a8198519d61adf040bf112b328014a5a, type: 3}
   gravityManager: {fileID: 1586431850}
   radiusInput: {fileID: 770696344}
   objectNameInputField: {fileID: 861192241}
@@ -15738,6 +15739,7 @@ MonoBehaviour:
   earthCamButtonText: {fileID: 26694654}
   feedbackText: {fileID: 1138443355}
   showFeedbackText: 1
+  earthCamPressed: 1
 --- !u!114 &1586431854
 MonoBehaviour:
   m_ObjectHideFlags: 0
