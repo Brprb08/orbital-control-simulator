@@ -37,7 +37,7 @@ public class CameraController : MonoBehaviour
     public TextMeshProUGUI perigeeText;
 
     public bool inEarthViewCam = false;
-    private NBody previousTrackedBody;
+    public NBody previousTrackedBody;
 
     /**
     * Used by object placement manager to ensure cam is in FreeCam mode when placing.
@@ -338,8 +338,8 @@ public class CameraController : MonoBehaviour
         float desiredDistance = radius * distanceMultiplier;
 
         Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
-        cameraTransform.position = targetPosition - directionToTarget * desiredDistance;
-
+        cameraTransform.position = targetPosition - directionToTarget;
+        // * desiredDistance
         PointCameraTowardCentralBody(centralBody.transform, targetPosition);
 
         FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
@@ -347,8 +347,6 @@ public class CameraController : MonoBehaviour
         {
             freeCam.TogglePlacementMode(false);
         }
-
-
 
         isFreeCamMode = false;
         Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");
@@ -378,6 +376,7 @@ public class CameraController : MonoBehaviour
 
     public void SwitchToEarthCam()
     {
+        Debug.LogError(inEarthViewCam);
         if (!inEarthViewCam)
         {
             GameObject centralBody = GameObject.FindWithTag("CentralBody");
@@ -401,9 +400,15 @@ public class CameraController : MonoBehaviour
         }
         else
         {
+            Debug.LogError(previousTrackedBody);
             cameraMovement.SetTargetBodyTemp(previousTrackedBody);
             inEarthViewCam = false;
         }
+    }
+
+    public void SetInEarthView(bool inEarthView)
+    {
+        cameraMovement.inEarthView = inEarthView;
     }
 
     /**
@@ -474,8 +479,16 @@ public class CameraController : MonoBehaviour
 
         isTrackingPlaceholder = false;
         placeholderTarget = null;
+        previousTrackedBody = realNBody;
+        inEarthViewCam = false;
+        if (!UIManager.Instance.earthCamPressed)
+        {
+            UIManager.Instance.OnEarthCamPressed();
+        }
+
         if (cameraMovement != null)
         {
+            cameraMovement.inEarthView = false;
             cameraMovement.SetTargetBody(realNBody);
         }
 

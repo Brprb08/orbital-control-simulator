@@ -100,7 +100,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
 
         lastPlacedGameObject = Instantiate(spherePrefab);
-        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * .2f, parsedRadius.y * .2f, parsedRadius.z * .2f);
+        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 1f, parsedRadius.y * 1f, parsedRadius.z * 1f);
         lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
 
         satelliteCount++;
@@ -124,6 +124,7 @@ public class ObjectPlacementManager : MonoBehaviour
             {
                 camController.ReturnToTracking();
             }
+            camController.SetInEarthView(false);
         }
 
         ClearAndUnfocusInputField(radiusInput);

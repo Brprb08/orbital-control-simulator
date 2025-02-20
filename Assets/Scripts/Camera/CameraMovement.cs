@@ -98,7 +98,7 @@ public class CameraMovement : MonoBehaviour
         {
             float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);
-            float zoomSpeed = baseZoomSpeed * sizeMultiplier * 100f * 2f;
+            float zoomSpeed = baseZoomSpeed * sizeMultiplier * 50f * 2f;
 
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);
@@ -210,7 +210,7 @@ public class CameraMovement : MonoBehaviour
 
         if (planet != null)
         {
-            placeholderRadius = planet.localScale.x * 10f;
+            placeholderRadius = planet.localScale.x * 1f;
             distance = 2f * placeholderRadius;
             height = 0.2f * placeholderRadius;
             Debug.Log($"Camera now tracks placeholder: {planet.name}, radius={placeholderRadius}");

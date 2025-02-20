@@ -42,7 +42,7 @@ public class UIManager : MonoBehaviour
     public bool showFeedbackText = true;
 
     private bool isTracking = true;
-    private bool earthCamPressed = true;
+    public bool earthCamPressed = true;
     /**
     * Setup the singleton for accessing UIManager
     **/
@@ -66,17 +66,22 @@ public class UIManager : MonoBehaviour
     "<b>Welcome to the Orbit Simulator!</b>\n" +
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
-    "- Tab: Switch the tracked object.\n" +
+    "- Dropdown Menu: Select the tracked object.\n" +
     "- Right Mouse Button: Rotate the camera.\n" +
     "- Mousewheel: Zoom in/out.\n" +
-    "- Time Scaler: Adjust time speed (Reset: 'R').\n\n" +
+    "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
+    "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
+    "     * Earth Cam: Centers the view on Earth.\n" +
+    "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
     "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
     "<b>THRUST:</b>\n" +
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
-    "- Radial In / Radial Out: Thrust toward or away from the planet your orbiting.\n\n" +
+    "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
     "Monitor these values to observe orbital behaviors.\n" +
     "Switch to Free Cam to explore or place satellites.";
+
+
 
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
@@ -148,17 +153,21 @@ public class UIManager : MonoBehaviour
         feedbackText.text =
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
-    "- Tab: Switch the tracked object.\n" +
+    "- Dropdown Menu: Select the tracked object.\n" +
     "- Right Mouse Button: Rotate the camera.\n" +
     "- Mousewheel: Zoom in/out.\n" +
-    "- Time Scaler: Adjust time speed (Reset: 'R').\n\n" +
+    "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
+    "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
+    "     * Earth Cam: Centers the view on Earth.\n" +
+    "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
     "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
     "<b>THRUST:</b>\n" +
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
-    "- Radial In / Radial Out: Thrust toward or away from the planet your orbiting.\n\n" +
+    "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
     "Monitor these values to observe orbital behaviors.\n" +
     "Switch to Free Cam to explore or place satellites.";
+
 
         ShowObjectPlacementPanel(false);
         ShowPanel(true);
@@ -198,6 +207,7 @@ public class UIManager : MonoBehaviour
 
     public void OnEarthCamPressed()
     {
+        Debug.LogError("Here: " + earthCamPressed);
         if (earthCamPressed)
         {
             earthCamButtonText.text = "Satellite Cam";

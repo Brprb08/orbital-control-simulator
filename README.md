@@ -1,4 +1,4 @@
-# Orbit Mechanics Simulator  
+# Satellite Maneuver Simulator  
 
 An interactive, real-time N-body orbital physics simulator built in Unity, featuring RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
@@ -78,9 +78,12 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 ## How to Use  
 
 ### Track Camera Mode
-- Switch Tracked Object: Press `Tab` to cycle between orbiting bodies.
+- Switch Tracked Object: Use the **dropdown menu** to select the object you want to track.
 - Camera Controls: Right mouse button to rotate, scroll wheel to zoom.
 - View Real-Time Data: Velocity (m/s and mph) and altitude (km and ft).
+- **Earth Cam Button**: Toggles between two camera modes:
+  - **Earth Cam**: Centers the view on Earth, making it easier to observe satellite orbits around the planet.
+  - **Satellite Cam**: Centers the view on the selected satellite, following it as it moves around Earth.
 
 ### Free Camera Mode
 - Move with `WASD` or arrow keys, rotate with right-click, zoom with scroll wheel.
