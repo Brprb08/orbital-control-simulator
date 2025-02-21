@@ -1,4 +1,4 @@
-# Satellite Maneuver Simulator  
+# Satellite Maneuver Simulator Prototype  
 
 An interactive, real-time N-body orbital physics simulator built in Unity, featuring RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
