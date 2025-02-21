@@ -71,7 +71,6 @@ For every time step, each body’s acceleration is computed based on the sum of 
 
 ### Avoiding Singularities and Overflows  
 - **Minimum Distance Threshold:** Prevents division by zero when objects are too close.  
-- **Softened Gravity (Optional):** If needed, small **epsilon terms** can smooth interactions.  
 
 ---
 
@@ -83,11 +82,11 @@ Thrust is applied as an instantaneous force that modifies a body’s velocity.
 ```
  F_thrust = mass * acceleration  
 ```
-Thrust can be applied in four directions:  
+Thrust can be applied in six directions:  
 - **Prograde (along velocity vector)** → Increases orbit altitude.  
 - **Retrograde (opposite velocity vector)** → Lowers orbit altitude.  
 - **Radial In/Out (toward/away from central body)** → Adjusts eccentricity.  
-- **Lateral (perpendicular to orbit plane)** → Changes inclination.  
+- **Lateral Left and Right (perpendicular to orbit plane)** → Changes inclination.  
 
 The magnitude of acceleration follows:  
 ``` 
