@@ -5,7 +5,7 @@ using System.Collections;
 using TMPro;
 
 /**
-* Handles camera movement, tracking of celestial bodies, and free camera mode.
+* Handles camera movement, setting current tracked body, and switching between cameras.
 * This script supports switching between tracking celestial bodies and free movement.
 * It also manages trajectory visualization and placeholder tracking for temporary objects.
 **/
@@ -54,7 +54,8 @@ public class CameraController : MonoBehaviour
 
     /**
     * Initializes the camera's default position and starts tracking the first celestial body.
-    * Also initializes the trajectory renderer after a short delay.
+    * Also initializes the trajectory renderer creatomg component, adding text fields for UI
+    *      and setting the TrajectoryRenderer tracked body to follow. 
     **/
     void Start()
     {
@@ -66,6 +67,7 @@ public class CameraController : MonoBehaviour
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
+            Debug.LogError("Hello");
             StartCoroutine(InitializeCamera());
         }
 
@@ -82,6 +84,7 @@ public class CameraController : MonoBehaviour
 
     /**
     * Coroutine to initialize the camera after all NBody.Start() methods have executed.
+    * Sets the tracked body for the LineVisibilityManger
     **/
     IEnumerator InitializeCamera()
     {
@@ -98,14 +101,37 @@ public class CameraController : MonoBehaviour
         Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
     }
 
-    // RENAME THIS
+    /**
+    * Handles input for camera controls and switching between tracking and free camera mode.
+    **/
+    void Update()
+    {
+        if (!isFreeCamMode)
+        {
+            if (Input.GetMouseButton(1) && cameraPivotTransform != null)
+            {
+                float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
+                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
+                cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
+                cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
+
+                Vector3 currentRotation = cameraPivotTransform.eulerAngles;
+                float clampedX = CameraCalculations.Instance.ClampAngle(currentRotation.x, -80f, 80f);
+                cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
+            }
+        }
+    }
+
+    /**
+    * Refreshing the dropdown to have the current tracked body selected.
+    * The body is found by name and set as the dropdown value, then refreshed.
+    **/
     public void UpdateDropdownSelection()
     {
         if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
 
         TMP_Dropdown dropdown = BodyDropdownManager.Instance.bodyDropdown;
 
-        // Find the correct dropdown index by name
         string currentBodyName = bodies[currentIndex].name;
         int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
 
@@ -126,71 +152,10 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    // RENAME THIS
-    // public void UpdateDropdownCheckmark(int index)
-    // {
-    //     if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
-
-    //     TMP_Dropdown dropdown = BodyDropdownManager.Instance.bodyDropdown;
-
-    //     string currentBodyName = bodies[currentIndex].name;
-    //     int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
-
-    //     dropdown.value = index;
-    //     dropdown.RefreshShownValue();
-    //     Debug.Log($"Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
-    // }
 
     /**
-    * Coroutine to find the trajectory renderer with a small delay.
+    * Method used to update the current line render for the tracked body.
     **/
-    private IEnumerator FindTrajectoryRendererWithDelay()
-    {
-        yield return new WaitForSeconds(0.1f);
-        trajectoryRenderer = Object.FindFirstObjectByType<TrajectoryRenderer>();
-
-        if (trajectoryRenderer == null)
-        {
-            Debug.LogError("TrajectoryRenderer not found after delay!");
-        }
-    }
-
-    /**
-    * Handles input for camera controls and switching between tracking and free camera mode.
-    **/
-    void Update()
-    {
-        if (!isFreeCamMode)
-        {
-            // if (Time.time - lastTabTime > tabCooldown && Input.GetKeyDown(KeyCode.Tab) && bodies.Count > 0)
-            // {
-            //     lastTabTime = Time.time;
-            //     currentIndex = (currentIndex + 1) % bodies.Count;
-            //     trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
-            //     if (LineVisibilityManager.Instance != null)
-            //     {
-            //         LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
-            //     }
-
-            //     trajectoryRenderer.orbitIsDirty = true;
-
-            //     ReturnToTracking();
-            // }
-
-            if (Input.GetMouseButton(1) && cameraPivotTransform != null)
-            {
-                float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
-                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
-                cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
-                cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
-
-                Vector3 currentRotation = cameraPivotTransform.eulerAngles;
-                float clampedX = ClampAngle(currentRotation.x, -80f, 80f);
-                cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
-            }
-        }
-    }
-
     public void UpdateTrajectoryRender(int index)
     {
         trajectoryRenderer.SetTrackedBody(bodies[index]);
@@ -200,31 +165,6 @@ public class CameraController : MonoBehaviour
         }
 
         trajectoryRenderer.orbitIsDirty = true;
-    }
-
-    /**
-    * Clamps an angle between a minimum and maximum value.
-    * @param angle The angle to clamp.
-    * @param min The minimum value.
-    * @param max The maximum value.
-    * @return The clamped angle.
-    **/
-    private float ClampAngle(float angle, float min, float max)
-    {
-        angle = NormalizeAngle(angle);
-        return Mathf.Clamp(angle, min, max);
-    }
-
-    /**
-    * Normalizes an angle to be within -180 to 180 degrees.
-    * @param angle The angle to normalize.
-    * @return The normalized angle.
-    **/
-    private float NormalizeAngle(float angle)
-    {
-        while (angle > 180f) angle -= 360f;
-        while (angle < -180f) angle += 360f;
-        return angle;
     }
 
     /**
@@ -257,40 +197,10 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-    * Resets the camera's local position and rotation relative to the pivot.
-    **/
-    private void ResetCameraPosition()
-    {
-        if (cameraTransform != null)
-        {
-            Debug.Log($"Resetting Camera to default local position: {defaultLocalPosition}");
-            cameraTransform.localPosition = defaultLocalPosition;
-            cameraTransform.localRotation = Quaternion.identity;
-        }
-        else
-        {
-            Debug.LogError("cameraTransform is null. Ensure it is assigned in the Inspector!");
-        }
-    }
-
-    /**
-    * Resets the pivot's rotation to the default orientation.
-    **/
-    private void ResetPivotRotation()
-    {
-        if (cameraPivotTransform != null)
-        {
-            Debug.Log("Resetting CameraPivot rotation to identity (pointing at the planet).");
-            cameraPivotTransform.rotation = Quaternion.identity;
-        }
-        else
-        {
-            Debug.LogError("cameraPivotTransform is null. Ensure it is assigned in the Inspector!");
-        }
-    }
-
-    /**
     * Returns the camera to tracking mode, focusing on a celestial body or placeholder.
+    * If placing planet we set the camera to track the placeholder temporarily using the transform
+    * If not placing planet the camera is set to current bodies[index]  to track 
+    * Target body is set, trajectory render is updated, and camera points to central body direction
     **/
     public void ReturnToTracking()
     {
@@ -421,6 +331,7 @@ public class CameraController : MonoBehaviour
     }
 
     /**
+    * Called from GravityManager after a body is removed from collision.
     * Switches the camera to another valid body if the current one is removed.
     * @param removedBody - Body that has been removed (Collision)
     **/
@@ -455,7 +366,7 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-    * Sets the camera to track a placeholder object.
+    * Called from ObjectPlacementManager to set the track temporarily before setting velocity.
     * @param radius - Placeholder object to track temporarily
     **/
     public void SetTargetPlaceholder(Transform placeholder)
@@ -470,7 +381,7 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-    * Switches the camera to track a real NBody object.
+    * Called from VelocityDragManager to switch to real body to start tracking.
     * @param realNBody - Real object being added to sim to track
     **/
     public void SwitchToRealNBody(NBody realNBody)
@@ -496,7 +407,7 @@ public class CameraController : MonoBehaviour
     }
 
     /**
-    * Refreshes the list of celestial bodies being tracked.
+    * Refreshes the list of celestial bodies currently in GravityManager
     **/
     public void RefreshBodiesList()
     {

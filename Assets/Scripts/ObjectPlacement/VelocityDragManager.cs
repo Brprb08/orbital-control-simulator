@@ -352,7 +352,6 @@ public class VelocityDragManager : MonoBehaviour
             {
                 cameraController.currentIndex = newIndex;
                 cameraController.SwitchToRealNBody(planetNBody);
-                // cameraController.UpdateDropdownSelection();
             }
         }
 

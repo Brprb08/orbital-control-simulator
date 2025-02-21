@@ -205,9 +205,11 @@ public class UIManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    /**
+    * Switches the text for the UI Earth Btn/Satellite Btn
+    **/
     public void OnEarthCamPressed()
     {
-        Debug.LogError("Here: " + earthCamPressed);
         if (earthCamPressed)
         {
             earthCamButtonText.text = "Satellite Cam";

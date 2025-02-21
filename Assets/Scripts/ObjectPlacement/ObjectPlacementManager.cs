@@ -222,14 +222,6 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-    * Deselects the current UI element to prevent accidental input.
-    **/
-    public void DeselectUI()
-    {
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    /**
     * Enables FreeCam mode for object placement.
     **/
     public void BreakToFreeCam()
@@ -248,51 +240,10 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-    * Resets the camera position to its default relative to the pivot.
-    **/
-    private void ResetCameraPosition()
-    {
-        if (cameraTransform != null)
-        {
-            Debug.Log($"Resetting Camera to default local position: {defaultLocalPosition}");
-            cameraTransform.localPosition = defaultLocalPosition;
-            cameraTransform.localRotation = Quaternion.identity;
-        }
-        else
-        {
-            Debug.LogError("cameraTransform is null. Ensure it is assigned in the Inspector!");
-        }
-    }
-
-    /**
-    * Resets the pivot rotation to its default state.
-    **/
-    private void ResetPivotRotation()
-    {
-        if (cameraPivotTransform != null)
-        {
-            Debug.Log("Resetting CameraPivot rotation to identity (pointing at the planet).");
-            cameraPivotTransform.rotation = Quaternion.identity;
-        }
-        else
-        {
-            Debug.LogError("cameraPivotTransform is null. Ensure it is assigned in the Inspector!");
-        }
-    }
-
-    /**
     * Resets the reference to the last placed GameObject.
     **/
     public void ResetLastPlacedGameObject()
     {
         lastPlacedGameObject = null;
-    }
-
-    /**
-    * Gets the reference to the last placed GameObject.
-    **/
-    public GameObject GetLastPlacedGameObject()
-    {
-        return lastPlacedGameObject;
     }
 }
