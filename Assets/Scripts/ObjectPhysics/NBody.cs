@@ -87,6 +87,8 @@ public class NBody : MonoBehaviour
         {
             Debug.LogError("No TrajectoryComputeController found in scene!");
         }
+        Debug.Log($"[DEBUG] Moon Start Pos: {transform.position}, Vel: {velocity}");
+
     }
 
     /**
@@ -112,17 +114,34 @@ public class NBody : MonoBehaviour
         }
         else
         {
-            Dictionary<NBody, Vector3> bodyPositions = new Dictionary<NBody, Vector3>();
-            foreach (var body in GravityManager.Instance.Bodies)
+            List<NBody> bodies = GravityManager.Instance.Bodies;
+            int numBodies = bodies.Count;
+
+            Vector3[] positions = new Vector3[numBodies];
+            Vector3[] velocities = new Vector3[numBodies];
+            float[] masses = new float[numBodies];
+
+            for (int i = 0; i < numBodies; i++)
             {
-                bodyPositions[body] = body.transform.position;
+                positions[i] = bodies[i].transform.position;
+                velocities[i] = bodies[i].velocity;
+                masses[i] = bodies[i].mass;
             }
 
-            OrbitalState currentState = new OrbitalState(transform.position, velocity);
-            OrbitalState newState = RungeKuttaStep(currentState, Time.fixedDeltaTime, bodyPositions);
+            Vector3 thrustImpulse = force;  // Adjust if necessary
+                                            // Reset the accumulated force so it's only applied once per frame
+            force = Vector3.zero;
 
-            velocity = newState.velocity;
-            transform.position = newState.position;
+            // Call native C++ function to update only this body
+            Vector3 tempPosition = transform.position;
+            Vector3 tempVelocity = velocity;
+
+            // Call native C++ function to update only this body
+            NativePhysics.RungeKuttaSingle(ref tempPosition, ref tempVelocity, mass, positions, masses, numBodies, Time.fixedDeltaTime, ref thrustImpulse);
+
+            // ✅ Apply back the updated values
+            transform.position = tempPosition;
+            velocity = tempVelocity;
 
             // Check for collisions.
             foreach (var body in GravityManager.Instance.Bodies)

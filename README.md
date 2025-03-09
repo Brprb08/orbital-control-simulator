@@ -36,6 +36,11 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 - Runge-Kutta 4th Order (RK4) integration ensures numerical stability over time.
 - Earth remains stationary, but objects like the moon and satellites interact dynamically.
 
+### C++ DLL Integration for Physics
+- Core physics calculations are offloaded to a C++ DLL using native plugins.
+- Significantly boosts performance by leveraging compiled code for heavy calculations.
+- Reduces CPU overhead, improving simulation stability and frame rates.
+
 ### Real-Time GPU-Accelerated Trajectory Rendering
 - Trajectory visualization is handled on the GPU, reducing CPU overhead.
 - Predicted orbits update dynamically based on real-time inputs.
@@ -65,6 +70,11 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 - Uses Runge-Kutta 4th Order (RK4) instead of Euler for better stability.
 - Computes position and velocity updates using four derivative calculations per step.
 - Prevents numerical drift, keeping orbits stable over long simulations.
+
+### C++ Physics Module
+- The core gravitational and RK4 physics logic is handled by a C++ DLL.
+- Unity calls native C++ functions through the `NativePhysics` wrapper, enhancing performance.
+- Avoids performance bottlenecks by processing large arrays and vector operations natively.
 
 ### Gravity Calculations
 - Uses Newton’s Law of Gravitation to compute forces between all objects:
@@ -118,7 +128,7 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 
 ## Status
 
-Visuals are still a work in progress, but the core physics engine is up and running. Updates will focus on polishing usability and expanding features like orbital maneuvers and collision realism.
+The core physics engine now utilizes a C++ DLL to improve computational performance and stability. Visual improvements and advanced feature development are ongoing.
 
 ## Getting Started
 
