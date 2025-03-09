@@ -1,6 +1,6 @@
 # Satellite Maneuver Simulator Prototype  
 
-An interactive, real-time N-body orbital physics sim built in Unity, featuring RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
+An interactive, real-time N-body orbital physics simulator built in Unity, now enhanced with a C++ DLL for improved physics performance. This project features RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
 [Watch the Demo Video](https://www.youtube.com/watch?v=aADKGJIdwKM) *Cntl-click to open in new tab*
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/02-19Track.png)
