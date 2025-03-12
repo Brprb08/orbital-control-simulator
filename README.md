@@ -76,7 +76,7 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 | Circular - 408.8km Altitude | 92.74 min | 92.616 min | 99.87% |
 | Elliptical – 7,000 km Perigee / 20,007 km Apogee | 7.75 hrs | 7.88 hrs | 99.98% |
 
-These results were determined through **direct in-simulation timing** using a high-speed time scale and manual stopwatch measurements. Future iterations may incorporate additional perturbation forces (e.g., atmospheric drag, J2 oblateness, relativity), but for now, this remains a purely Newtonian N-body simulation..
+These results were determined through **direct in-simulation timing** using a high-speed time scale and manual stopwatch measurements. Future iterations may incorporate additional perturbation forces (e.g., atmospheric drag, J2 oblateness), but for now, this remains a purely Newtonian N-body simulation.
 
 ---
 
