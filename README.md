@@ -61,7 +61,7 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accuracy and
 
 ### **Orbital Accuracy Validation**
 - The RK4 numerical integration method ensures highly stable and precise orbits.
-- Orbital periods match theoretical Keplerian calculations within **99.98% accuracy**.
+- Orbital periods match theoretical Keplerian calculations within **99.87% accuracy**.
 - **Tested orbital configurations (no atmospheric drag applied):**
   - **Low Earth Orbit (LEO):** Circular orbit at **408.773 km altitude**, expected period **92.74 min**, measured **92.616 min**.
   - **Elliptical Orbit:** **Perigee 7,000 km**, **Apogee 20,007 km**, expected period **7.75 hours**, measured **7.88 hours**.
@@ -69,7 +69,7 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accuracy and
 | Orbit Type  | Expected Period | Measured Period | Accuracy |
 |------------|----------------|----------------|----------|
 | Circular - 408.8km Altitude | 92.74 min | 92.616 min | 99.87% |
-| Elliptical – 7,000 km Perigee / 20,007 km Apogee | 7.75 hrs | 7.88 hrs | 99.98% |
+| Elliptical – 7,000 km Perigee / 20,007 km Apogee | 7.75 hrs | 7.88 hrs | 98.32% |
 
 These results were determined through **direct in-simulation timing** using a high-speed time scale and manual stopwatch measurements. Future iterations may incorporate additional perturbation forces (e.g., atmospheric drag, J2 oblateness), but for now, this remains a purely Newtonian N-body simulation.
 
