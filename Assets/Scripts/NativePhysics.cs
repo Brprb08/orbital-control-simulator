@@ -33,7 +33,8 @@ public static class NativePhysics
         }
     }
 
-    [DllImport("PhysicsPlugin", EntryPoint = "RungeKuttaSingle", CallingConvention = CallingConvention.Cdecl)]
+
+    [DllImport("PhysicsPluginTest", EntryPoint = "RungeKuttaSingle", CallingConvention = CallingConvention.Cdecl)]
     public static extern void RungeKuttaSingle(
         ref Vector3 position,
         ref Vector3 velocity,

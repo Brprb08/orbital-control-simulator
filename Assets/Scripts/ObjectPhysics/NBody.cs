@@ -380,11 +380,29 @@ public class NBody : MonoBehaviour
         }
 
         float mu = PhysicsConstants.G * centralBodyMass;
-
         Vector3 r = transform.position; // Current position relative to the central body
         Vector3 v = velocity;           // Current velocity
         Vector3 hVec = Vector3.Cross(r, v); // Angular momentum vector
         float hMag = hVec.magnitude; // Angular momentum vector
+
+        float nearZeroThreshold = 1e-3f;
+        if (eccentricity < nearZeroThreshold)
+        {
+            isCircular = true;
+
+            // For a circular orbit, the radius is constant and equals the semi-major axis.
+            float orbitRadius = semiMajorAxis;
+
+            // Use the current radial direction as a reference.
+            Vector3 radialDirection = r.normalized;
+            perigeePosition = radialDirection * orbitRadius;
+            apogeePosition = -radialDirection * orbitRadius;
+            return;
+        }
+        else
+        {
+            isCircular = false;
+        }
 
         // Compute the eccentricity vector
         Vector3 eVec = (Vector3.Cross(v, hVec) / mu) - (r / r.magnitude);

@@ -62,7 +62,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public string originLineColor = "#FFFFFF";     // White
     public string apogeeLineColor = "#C0392B";     // Red
     public string perigeeLineColor = "#009B4D";    // Green
-    private float lineDisableDistance = 50f;
+    private float lineDisableDistance = 20f;
 
     private bool isComputingPrediction = false;
 
@@ -206,8 +206,11 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
-                    apogeeProceduralLine.UpdateLine(new Vector3[] { apogeePosition, Vector3.zero });
-                    perigeeProceduralLine.UpdateLine(new Vector3[] { perigeePosition, Vector3.zero });
+                    if (!isCircular)
+                    {
+                        apogeeProceduralLine.UpdateLine(new Vector3[] { apogeePosition, Vector3.zero });
+                        perigeeProceduralLine.UpdateLine(new Vector3[] { perigeePosition, Vector3.zero });
+                    }
 
                     if (apogeeText != null && perigeeText != null)
                     {
@@ -215,8 +218,8 @@ public class TrajectoryRenderer : MonoBehaviour
                         float perigeeAltitude;
                         if (isCircular)
                         {
-                            apogeeAltitude = trackedBody.transform.position.magnitude - 637.1f;
-                            perigeeAltitude = trackedBody.transform.position.magnitude - 637.1f;
+                            apogeeAltitude = (trackedBody.transform.position.magnitude - 637.1f) * 10f;
+                            perigeeAltitude = (trackedBody.transform.position.magnitude - 637.1f) * 10f;
                         }
                         else
                         {

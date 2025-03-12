@@ -66,10 +66,10 @@ public class TimeController : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.R))
         {
-            SetTimeScale(1.0f);
+            SetTimeScale(50.0f);
             if (timeSlider != null)
             {
-                timeSlider.value = 1.0f;
+                timeSlider.value = 50.0f;
             }
 
             if (timeScaleText != null)
@@ -100,7 +100,8 @@ public class TimeController : MonoBehaviour
     private void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
-        Time.fixedDeltaTime = 0.02f * scale;
+        // Time.fixedDeltaTime = 0.02f * (scale * .5f);
+        Time.fixedDeltaTime = Mathf.Clamp(0.02f * scale, 0.02f, 2f);
 
         GravityManager gravityManager = GravityManager.Instance;
         if (gravityManager != null)
