@@ -2,6 +2,9 @@
 
 An interactive, real-time N-body orbital physics simulator built in Unity, now enhanced with a C++ DLL for improved physics performance. This project features RK4 numerical integration, GPU-accelerated trajectory rendering, and real-time thrust mechanics.
 
+## Motivation
+I got into this from watching SpaceX launches and being fascinated by booster landings. That got me interested in orbital mechanics and how we maneuver satellites. I wanted to build a simulator where I could both deepen my understanding of the physics and show my technical skills, not just as a software developer but as someone aiming for a career in simulation engineering. Along the way, this project led me to explore GMAT, where I learned a lot about delta-v, transfer orbits, and mission planning, which reinforced my interest in space simulation and has been helpful for validating my own work. This has been a hands-on way to dive into real-time physics, complex systems, and simulation development.
+
 [Watch the Demo Video](https://www.youtube.com/watch?v=aADKGJIdwKM) *Cntl-click to open in new tab*
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/02-19Track.png)
 ![Satellite Close Up Elliptical Orbit](./Assets/Images/02-03SatelliteCloseUp.png)
@@ -26,41 +29,33 @@ _Current state of the simulation. Top image shows the Track cam from a distance 
 ## Overview
 This project is a real-time orbital mechanics simulator that allows users to visualize, manipulate, and experiment with accurate gravitational physics. It includes fully interactive thrust mechanics, trajectory predictions, and scalable time controls to demonstrate how small adjustments affect long-term orbits.
 
-Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate physics and GPU acceleration for smooth trajectory rendering.
+Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accuracy and GPU acceleration for smooth trajectory rendering. Core physics calculations are offloaded to a **C++ DLL**, significantly improving performance.
 
 ---
 
 ## Key Features
 
-### Full N-Body Orbital Simulation
-- Each celestial body influences others using Newtonian gravity.
-- Runge-Kutta 4th Order (RK4) integration ensures numerical stability over time.
-- Earth remains stationary, but objects like the moon and satellites interact dynamically.
+### Real-Time N-Body Simulation
+- Newtonian gravity with all celestial bodies affecting each other dynamically.
+- RK4 numerical integration ensures long-term orbital stability.
+- Earth remains stationary, but objects like the Moon and satellites interact.
 
-### C++ DLL Integration for Physics
-- Core physics calculations are offloaded to a C++ DLL using native plugins.
-- Significantly boosts performance by leveraging compiled code for heavy calculations.
-- Reduces CPU overhead, improving simulation stability and frame rates.
+### Performance Optimization
+- **C++ DLL Integration:** Handles core physics calculations, reducing CPU load.
+- **GPU-Accelerated Trajectories:** Offloads visualization to the GPU for better performance.
 
-### Real-Time GPU-Accelerated Trajectory Rendering
-- Trajectory visualization is handled on the GPU, reducing CPU overhead.
-- Predicted orbits update dynamically based on real-time inputs.
+### Orbital Maneuvering & Thrust Mechanics
+- Prograde, retrograde, radial, and lateral burns for orbit adjustments.
+- Realistic mass-based thrust scaling.
+- Dynamic computation of apogee, perigee, and orbital period.
 
-### Interactive Thrust Mechanics
-- Apply prograde, retrograde, radial, and lateral burns to modify orbits.
-- Mass-based force scaling for realistic physics.
+### Camera & Visualization
+- **Track Camera:** Follow a selected object with live velocity and altitude readouts.
+- **Free Camera:** Move freely, place new objects, and analyze orbits.
 
-### Multiple Camera Modes
-- Track Camera: Follows a selected celestial body with velocity and altitude readouts.
-- Free Camera: Roam the scene, place new objects, and analyze trajectories.
-
-### Time Control and Scaling
-- Adjust time scale from real-time to 100x.
-- Pause and resume simulation without resetting orbits.
-
-### Advanced Orbital Interactions
-- Computes apogee and perigee dynamically.
-- Supports orbital decay, close encounters, and gravity assists.
+### Time Control & Scaling
+- Adjust time scale (**1x to 100x**).
+- Pause and resume without resetting orbits.
 
 ---
 
