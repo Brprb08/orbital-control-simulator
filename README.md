@@ -73,8 +73,8 @@ Built in Unity, it uses Runge-Kutta 4th Order (RK4) integration for accurate phy
 
 | Orbit Type  | Expected Period | Measured Period | Accuracy |
 |------------|----------------|----------------|----------|
-| LEO (408.773 km) | 92.74 min | 92.616 min | 99.87% |
-| Elliptical (7000km - 20007km) | 7.75 hrs | 7.88 hrs | 99.98% |
+| Circular - 408.8km Altitude | 92.74 min | 92.616 min | 99.87% |
+| Elliptical – 7,000 km Perigee / 20,007 km Apogee | 7.75 hrs | 7.88 hrs | 99.98% |
 
 These results were determined through **direct in-simulation timing** using a high-speed time scale and manual stopwatch measurements. Future iterations will incorporate **atmospheric drag modeling** for even higher precision.
 
