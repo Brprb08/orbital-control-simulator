@@ -8,7 +8,7 @@ A real-time orbital mechanics simulator with RK4 integration, full N-body Newton
 
 ## Who This Is For
 
-This document is intended for developers, tech leads, and simulation engineers who want a deeper look into the architecture, math, and design decisions behind the simulator. If you’re evaluating technical depth, performance strategy, or physics implementation—this breakdown is for you.
+This document is intended for developers, tech leads, and simulation engineers who want a deeper look into the architecture, math, and design decisions behind the simulator. If you’re evaluating technical depth, performance strategy, or physics implementation, this breakdown is for you.
 
 ---
 
