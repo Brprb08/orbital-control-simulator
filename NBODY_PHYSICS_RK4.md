@@ -23,6 +23,28 @@ RK4 was chosen for:
 
 RK4 uses four derivative evaluations per step and averages them to compute the next position and velocity. Time step is fixed per frame and scales with time multiplier.
 
+RK4 Flow Per Frame:
+```
+   current_state
+        │
+     compute k1
+        │
+  estimate midpoint (k1)
+        │
+     compute k2
+        │
+  estimate midpoint (k2)
+        │
+     compute k3
+        │
+  estimate endpoint (k3)
+        │
+     compute k4
+        │
+    final update:
+    state + (dt/6) * (k1 + 2k2 + 2k3 + k4)
+```
+
 ### Gravity Calculations
 
 Gravity follows Newton’s law:  

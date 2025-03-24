@@ -6,6 +6,12 @@ A real-time orbital mechanics simulator with RK4 integration, full N-body Newton
 
 ---
 
+## Who This Is For
+
+This document is intended for developers, tech leads, and simulation engineers who want a deeper look into the architecture, math, and design decisions behind the simulator. If you’re evaluating technical depth, performance strategy, or physics implementation—this breakdown is for you.
+
+---
+
 ## Table of Contents
 
 - [Motivation](#motivation)
@@ -14,7 +20,7 @@ A real-time orbital mechanics simulator with RK4 integration, full N-body Newton
 - [Physics Breakdown](#physics-breakdown)
 - [Interop Architecture](#interop-architecture)
 - [Validation Results](#validation-results)
-- [Usage Instructions](#usage-instructions)
+- [How To Run It](#how-to-run-it)
 - [Planned Enhancements](#planned-enhancements)
 - [Limitations](#limitations)
 - [Repo & Setup](#repo--setup)
@@ -90,12 +96,20 @@ Timing captured through high-speed simulation and stopwatch measurement. No atmo
 
 ---
 
-## Usage Instructions
+## How to Run It
 
-1. Clone the repository
-2. Open the project in Unity 2020.3 or later
-3. Open the scene: `Assets/Scenes/OrbitSimulation.unity`
-4. Hit `Play`
+### Requirements
+- Unity 2020.3 or later (tested on LTS versions)
+- Windows OS (for C++ DLL compatibility)
+
+### Getting Started
+1. Clone the repo:
+```
+git clone https://github.com/Brprb08/space-orbit-simulation.git
+```
+2. Open the project in Unity Hub
+3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`
+4. Press `Play`
 
 Controls:
 ```
