@@ -1,6 +1,6 @@
 [⬅ Back to README](./README.md)
 
-# Satellite Maneuver Simulator (Unity + C++)
+# Satellite Maneuver Simulator - Unity + C++
 
 A real-time orbital mechanics simulator with RK4 integration, full N-body Newtonian gravity, thrust maneuvering, and GPU-drawn trajectories. Physics is offloaded to a native C++ DLL for better performance and control.
 
