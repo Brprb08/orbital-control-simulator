@@ -2,7 +2,7 @@
 
 A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian N-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
 
-**Built from scratch to simulate realistic orbital mechanics in real time—no Unity physics used.**
+**Built from scratch to simulate realistic orbital mechanics in real time, no Unity physics used.**
 
 [Watch the Demo Video](https://www.youtube.com/watch?v=aADKGJIdwKM) *Cntl-click to open in new tab*
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/02-19Track.png)
@@ -15,10 +15,10 @@ A real-time orbital mechanics simulator built in **Unity** with core physics han
 
 This is a simulation prototype that allows:
 
-- Runtime placement of satellites and celestial bodies
-- Real-time thrust maneuvers: prograde, retrograde, radial, lateral
+- Runtime placement of satellites with mass, radius, starting velocity and direction
+- Real-time thrust maneuvers: prograde, retrograde, radial, normal/anti-normal
 - Live visualization of orbital trajectories with GPU acceleration
-- Continuous tracking of apogee, perigee, orbital period, and velocity
+- Continuous tracking of apogee, perigee, velocity, and altitude
 - Time scaling from 1x to 100x
 - Two camera modes: Free and Track
 
