@@ -1,4 +1,4 @@
-[⬅ Back to README](./TECHNICAL_README.md)
+[⬅ Back to TECHNICAL README](./TECHNICAL_README.md)
 
 # Orbital Physics Breakdown
 
