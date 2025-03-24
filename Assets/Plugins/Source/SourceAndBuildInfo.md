@@ -1,23 +1,27 @@
 ### N-Body Simulation Source Code
 
-This folder contains the source code (`rk4Physics.cpp`) for the N-Body simulation used in the Unity project. The compiled DLL (`PhysicsPlugin.dll`) is in the `Plugins/x86_64` directory.
+This folder contains the C++ source file (`rk4Physics.cpp`) used to build the native plugin (`PhysicsPlugin.dll`) for the Unity simulation. The compiled DLL is located in `Assets/Plugins/x86_64`.
 
 ### Purpose
-The source code is included for reference and to allow rebuilding the DLL if needed.
+
+This code handles all N-body gravity and RK4 integration calculations. Included here for transparency and to allow modification or rebuilding if needed.
 
 ### How to Build the DLL
-1. Use a C++ compiler that supports dynamic linking.
-2. Compile the code to a DLL with a command like:
+
+1. Use any C++ compiler that supports dynamic linking.
+2. Compile the source into a Windows DLL using a command like:
 
 ```
 g++ -shared -fPIC -o PhysicsPlugin.dll rk4Physics.cpp
 ```
 
-### After rebuilding DLL file -> Replace the DLL in Unity:
-- Navigate to Assets/Plugins/x86_64/.
-- Delete the existing PhysicsPlugin.dll.
-- Copy the newly compiled PhysicsPlugin.dll into the same directory.
-- Refresh the Unity project (e.g., right-click the Assets folder and select "Refresh").
+### Replacing the DLL in Unity
 
-### Additional Info
-This source code is not directly used by Unity but is provided for transparency and potential modification.
+- Go to `Assets/Plugins/x86_64/`
+- Replace the existing `PhysicsPlugin.dll` with your newly compiled version
+- In Unity, refresh the project to reload the plugin
+
+### Notes
+
+Unity doesn’t directly use the `.cpp` file — only the compiled DLL. This file is included for review, debugging, or extending the physics logic.
+

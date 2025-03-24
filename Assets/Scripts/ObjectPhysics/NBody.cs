@@ -19,7 +19,7 @@ public class NBody : MonoBehaviour
     public float mass = 5.0e21f;
     public Vector3 velocity = new Vector3(0, 0, 20);
     public bool isCentralBody = false;
-    public float radius = 637.1f;
+    public float radius = 637.8137f;
     public Vector3 force = Vector3.zero;
     public float centralBodyMass = 5.972e24f;
 
@@ -469,7 +469,7 @@ public class NBody : MonoBehaviour
         {
             float distanceFromCenter = transform.position.magnitude;
             float distanceInKm = distanceFromCenter;
-            float earthRadiusKm = 637.1f;
+            float earthRadiusKm = 637.8137f;
             return distanceInKm - earthRadiusKm;
         }
     }

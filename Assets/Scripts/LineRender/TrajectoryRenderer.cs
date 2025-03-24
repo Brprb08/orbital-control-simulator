@@ -218,13 +218,13 @@ public class TrajectoryRenderer : MonoBehaviour
                         float perigeeAltitude;
                         if (isCircular)
                         {
-                            apogeeAltitude = (trackedBody.transform.position.magnitude - 637.1f) * 10f;
-                            perigeeAltitude = (trackedBody.transform.position.magnitude - 637.1f) * 10f;
+                            apogeeAltitude = (trackedBody.transform.position.magnitude - 637.8f) * 10f;
+                            perigeeAltitude = (trackedBody.transform.position.magnitude - 637.8f) * 10f;
                         }
                         else
                         {
-                            apogeeAltitude = (apogeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
-                            perigeeAltitude = (perigeePosition.magnitude - 637.1f) * 10f; // Convert to kilometers
+                            apogeeAltitude = (apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
+                            perigeeAltitude = (perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
                         }
 
                         UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);

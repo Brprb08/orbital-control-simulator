@@ -6392,7 +6392,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1274.2, y: 1274.2, z: 1274.2}
+  m_LocalScale: {x: 1275.6274, y: 1275.6274, z: 1275.6274}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 1739926632}
@@ -14591,7 +14591,7 @@ Transform:
   m_GameObject: {fileID: 1455420376}
   serializedVersion: 2
   m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 677.9773}
+  m_LocalPosition: {x: 678.6337, y: 0, z: 0}
   m_LocalScale: {x: 0.0109, y: 0.002, z: 0.0073}
   m_ConstrainProportionsScale: 0
   m_Children:
@@ -14718,7 +14718,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mass: 420000
-  velocity: {x: -0.47627, y: 0.6009, z: 0}
+  velocity: {x: 0, y: 0.6009, z: 0.47627}
   isCentralBody: 0
   radius: 0.5
   force: {x: 0, y: 0, z: 0}
@@ -16342,7 +16342,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e963154806e5ee74d91cf86ce66fef76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mass: 7.348e+11
+  mass: 7.348e+18
   velocity: {x: 0.1018, y: 0.0091, z: 0}
   isCentralBody: 0
   radius: 86.85

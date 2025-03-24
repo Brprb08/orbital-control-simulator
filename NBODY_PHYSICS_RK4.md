@@ -1,123 +1,71 @@
 [⬅ Back to README](https://github.com/Brprb08/space-orbit-simulation#readme)
 
-# Orbital Physics Breakdown  
+# Orbital Physics Breakdown
 
-This document details the physics behind the Orbit Mechanics Simulator, including numerical integration methods, gravitational force calculations, and thrust mechanics.
+This doc explains how the simulation handles gravity, integration, thrust, and time scaling. Focus is on accurate short-term orbital mechanics using math-based systems, no external physics engine.
 
----
+### Table of Contents
+- [RK4 Integration](#rk4-integration)
+- [Gravity Calculations](#gravity-calculations)
+- [Thrust Mechanics](#thrust-mechanics)
+- [Time Scaling](#time-scaling)
+- [Limitations and Plans](#limitations-and-plans)
+- [Back to Top](#back-to-top)
 
-## Table of Contents  
-- [Numerical Integration: Runge-Kutta 4 (RK4)](#numerical-integration-runge-kutta-4-rk4)  
-- [Gravitational Force Calculations](#gravitational-force-calculations)  
-- [Thrust Mechanics](#thrust-mechanics)  
-- [Time Scaling and Accuracy](#time-scaling-and-accuracy)  
-- [Limitations and Future Improvements](#limitations-and-future-improvements)  
+### RK4 Integration
 
----
+The sim uses Runge-Kutta 4th Order (RK4) for all motion updates. Euler was too unstable and inaccurate over time. Symplectic integrators conserve energy better for long-term sims, but RK4 gives better local accuracy per step, which matters more here.
 
-## Numerical Integration: Runge-Kutta 4 (RK4)  
+RK4 was chosen for:
+- Short-to-mid duration accuracy (maneuvers, transfers, burns)
+- Real-time visualization without long-term drift being an issue
+- Better precision during thrust events and fast-forwarded simulation
 
-### Why RK4?  
-Most basic physics simulations use **Euler integration**, but Euler’s method accumulates errors over time, leading to **instability in orbital paths**. RK4 (Runge-Kutta 4th Order) is a **higher-order numerical method** that significantly improves accuracy.  
+RK4 uses four derivative evaluations per step and averages them to compute the next position and velocity. Time step is fixed per frame and scales with time multiplier.
 
-### Why RK4 Instead of a Symplectic Integrator?
-Symplectic integrators like Leapfrog or Verlet are great for **long-term orbital simulations** (years or centuries) because they naturally conserve **energy and angular momentum**, keeping orbits stable over time. But this sim isn’t about running orbits for centuries, it’s built for **short-duration maneuvering** and **visualizing trajectories over days or months**, where **local accuracy matters more than long-term conservation**.
+### Gravity Calculations
 
-RK4 gives **higher accuracy per step** than symplectic methods, making it the better choice for:
-- **Precise maneuvering** during burns and trajectory tweaks.
-- **Short-term orbit propagation**, where small numerical drift isn’t a big deal.
-- **Real-time visualization**, since RK4 lets you adjust time steps freely.
+Gravity follows Newton’s law:  
+F = G * (m1 * m2) / r^2
 
-It’s true that RK4 doesn’t conserve energy over the long haul, so if you tried running a system for centuries, orbits would slowly drift. But for **maneuvering, short-term predictions, and visualization**, this trade-off makes sense.
+Every object calculates gravitational pull from every other object in the system. Acceleration is computed per-body and summed. Position and velocity are updated through RK4 using these force-derived accelerations.
 
-### RK4 Process  
-The RK4 method estimates the next position and velocity of a body in four steps:  
+Close approaches use a minimum r threshold to avoid singularities or floating point issues.
 
-1. Compute initial derivatives (k1) using the current position and velocity.  
-2. Compute k2 and k3 using values at the midpoint of the timestep.  
-3. Compute k4 at the end of the timestep.  
-4. Combine k1, k2, k3, and k4 using a weighted average to get the final state update.  
+### Thrust Mechanics
 
-**Mathematical Formulation:**  
-``` newPosition = currentPosition + (dt / 6) * (k1.position + 2 * k2.position + 2 * k3.position + k4.position) ```  
-``` newVelocity = currentVelocity + (dt / 6) * (k1.velocity + 2 * k2.velocity + 2 * k3.velocity + k4.velocity) ```  
+Thrust is modeled as continuous acceleration applied to the body in a given direction while input is active.
 
-This ensures that **orbital calculations remain stable** even over long time periods.  
+Available thrust directions:
+- Prograde (along velocity vector)
+- Retrograde (opposite velocity vector)
+- Radial in / out (toward or away from central body)
+- Normal up / down (inclination change)
 
----
+Acceleration is computed as:
+a = F / m
 
-## Gravitational Force Calculations  
+Mass is adjustable per object, and thrust strength is scaled accordingly. There's no fuel system yet, so thrust is unlimited during input.
 
-Gravity is modeled using **Newton’s Law of Universal Gravitation**, where each body exerts a force on every other body in the system:  
+### Time Scaling
 
-**Equation:**  
-``` 
-F = G * (m1 * m2) / r^2 
-```
+User can increase time scale up to 100x. RK4 remains stable but slightly less accurate as dt increases. Currently using fixed timestep per frame, but may switch to adaptive or GPU-integrated RK4 later.
 
-Where:  
-- **G** is the gravitational constant  
-- **m1, m2** are the masses of the interacting bodies  
-- **r** is the distance between the centers of mass  
+### Limitations and Plans
 
-### Implementation in N-Body Simulation  
-For every time step, each body’s acceleration is computed based on the sum of all gravitational influences from other objects.  
+Current limitations:
+- No relativity, strictly Newtonian
+- No drag model, so low orbits don’t decay
+- No collision physics, objects are removed on impact
+- Thrust is always available, no fuel use yet
 
-**Steps:**  
-1. Calculate distance vectors between all bodies.  
-2. Compute individual gravitational forces.  
-3. Apply acceleration based on **F = ma**.  
-4. Update velocity and position using RK4 integration.  
+Planned features:
+- Maneuver planning UI like Kerbal
+- Fuel-based delta-v tracking
+- Earth as a dynamic object (currently static)
+- Barnes-Hut optimization for scaling up body count
+- GPU-accelerated RK4 for better performance
 
-### Avoiding Singularities and Overflows  
-- **Minimum Distance Threshold:** Prevents division by zero when objects are too close.  
-
----
-
-## Thrust Mechanics  
-
-Thrust is applied as an instantaneous force that modifies a body’s velocity.  
-
-**Equation:**  
-```
- F_thrust = mass * acceleration  
-```
-Thrust can be applied in six directions:  
-- **Prograde (along velocity vector)** → Increases orbit altitude.  
-- **Retrograde (opposite velocity vector)** → Lowers orbit altitude.  
-- **Radial In/Out (toward/away from central body)** → Adjusts eccentricity.  
-- **Lateral Left and Right (perpendicular to orbit plane)** → Changes inclination.  
-
-The magnitude of acceleration follows:  
-``` 
-a_thrust = F_thrust / mass 
-```
-
----
-
-## Time Scaling and Accuracy  
-
-The simulation supports **adjustable time scaling** from **real-time to 100x speed**.  
-- RK4 integration maintains accuracy even at high speeds.  
-- Time steps are kept **adaptive** to ensure stability in fast-forward modes.  
-
----
-
-## Limitations and Future Improvements  
-
-### Current Limitations  
-- **No Relativity** → The simulation is **Newtonian only**, meaning no relativistic corrections.  
-- **No Atmospheric Drag** → Objects in low orbits remain indefinitely.  
-- **Simplified Collisions** → Objects are removed upon collision instead of merging.  
-
-### Future Upgrades  
-- **Barnes-Hut Optimization for N-Body Physics** → Improves performance for large simulations.  
-- **GPU Acceleration for RK4 Computations** → Moving integration to the GPU for better scaling.  
-- **Maneuver Node System** → Pre-plan orbital transfers like in Kerbal Space Program.  
-
----
-
-## Summary  
-This physics model ensures **high-accuracy orbital calculations** while balancing **performance and stability**. The use of **RK4, Newtonian gravity, and real-time thrust mechanics** allows users to experiment with real orbital mechanics in an interactive environment.  
+### Back to Top
 
 [⬆ Back to Top](#orbital-physics-breakdown)

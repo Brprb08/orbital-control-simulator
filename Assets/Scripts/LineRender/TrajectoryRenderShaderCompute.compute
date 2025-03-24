@@ -10,7 +10,7 @@ float3 ComputeAcceleration(float3 position, float thisMass)
 
     float minDistSq = .0001;
     float maxDistSq = 1e12;
-    float maxForce = 2e16;   
+    float maxForce = 1e12;   
 
     for (uint i = 0; i < numOtherBodies; i++)
     {
