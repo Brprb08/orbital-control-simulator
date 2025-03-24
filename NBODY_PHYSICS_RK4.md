@@ -1,4 +1,4 @@
-[⬅ Back to README](https://github.com/Brprb08/space-orbit-simulation#readme)
+[⬅ Back to README](./TECHNICAL_README.md)
 
 # Orbital Physics Breakdown
 
