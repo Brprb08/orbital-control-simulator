@@ -41,14 +41,15 @@ RK4 Flow Per Frame:
         │
      compute k4
         │
-    final update:
-    state + (dt/6) * (k1 + 2k2 + 2k3 + k4)
+    final update: state + (dt/6) * (k1 + 2k2 + 2k3 + k4)
 ```
 
 ### Gravity Calculations
 
-Gravity follows Newton’s law:  
+Gravity follows Newton’s law:
+```
 F = G * (m1 * m2) / r^2
+```
 
 Every object calculates gravitational pull from every other object in the system. Acceleration is computed per-body and summed. Position and velocity are updated through RK4 using these force-derived accelerations.
 
@@ -65,7 +66,9 @@ Available thrust directions:
 - Normal up / down (inclination change)
 
 Acceleration is computed as:
+```
 a = F / m
+```
 
 Mass is adjustable per object, and thrust strength is scaled accordingly. There's no fuel system yet, so thrust is unlimited during input.
 
