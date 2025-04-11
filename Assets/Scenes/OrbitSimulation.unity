@@ -1848,7 +1848,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Perigee: 0km'
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0c937181986dd9b4c84b97c404ca1357, type: 2}
   m_sharedMaterial: {fileID: -150577145404890469, guid: 0c937181986dd9b4c84b97c404ca1357, type: 2}
@@ -5745,7 +5745,6 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   targetBody: {fileID: 1455420385}
   targetPlaceholder: {fileID: 0}
-  cameraController: {fileID: 0}
   distance: -100
   height: 0
   baseZoomSpeed: 10
@@ -6522,12 +6521,7 @@ MonoBehaviour:
   radius: 637.1
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionSteps: 0
   predictionDeltaTime: 0.1
-  trajectoryRenderer: {fileID: 0}
-  tolerance: 0.001
-  apogeeText: {fileID: 0}
-  perigeeText: {fileID: 0}
 --- !u!1 &916841081
 GameObject:
   m_ObjectHideFlags: 0
@@ -12507,8 +12501,6 @@ MonoBehaviour:
   setVelocityButton: {fileID: 1461049984}
   gravityManager: {fileID: 1586431850}
   trajectoryRenderer: {fileID: 0}
-  apogeeText: {fileID: 0}
-  perigeeText: {fileID: 0}
   speedSlider: {fileID: 42808061}
   planet: {fileID: 0}
   sphereRadiusMultiplier: 10
@@ -13853,12 +13845,7 @@ MonoBehaviour:
   radius: 1
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionSteps: 20000
   predictionDeltaTime: 0
-  trajectoryRenderer: {fileID: 0}
-  tolerance: 0
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
 --- !u!120 &1387400465
 LineRenderer:
   serializedVersion: 2
@@ -14723,12 +14710,7 @@ MonoBehaviour:
   radius: 0.5
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionSteps: 3000
   predictionDeltaTime: 0
-  trajectoryRenderer: {fileID: 0}
-  tolerance: 0
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
 --- !u!114 &1455420386
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15671,12 +15653,12 @@ MonoBehaviour:
   cameraMovement: {fileID: 817157355}
   cameraPivotTransform: {fileID: 817157354}
   cameraTransform: {fileID: 330585546}
+  apogeeText: {fileID: 1715665085}
+  perigeeText: {fileID: 288121592}
   sensitivity: 100
   bodies: []
   currentIndex: 0
   trajectoryRenderer: {fileID: 0}
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
   inEarthViewCam: 0
   previousTrackedBody: {fileID: 0}
 --- !u!114 &1586431852
@@ -15704,8 +15686,6 @@ MonoBehaviour:
   radiusInputField: {fileID: 770696344}
   placeObjectButton: {fileID: 229281974}
   lastPlacedGameObject: {fileID: 0}
-  cameraPivotTransform: {fileID: 817157354}
-  cameraTransform: {fileID: 330585546}
 --- !u!114 &1586431853
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -15721,7 +15701,6 @@ MonoBehaviour:
   freeCamButton: {fileID: 1142357709}
   trackCamButton: {fileID: 1407380277}
   feedbackButton: {fileID: 499242614}
-  earthCamButton: {fileID: 1490468289}
   objectPlacementPanel: {fileID: 61829408}
   objectInfoPanel: {fileID: 223772662}
   thrustButtons: {fileID: 573697104}
@@ -15733,13 +15712,10 @@ MonoBehaviour:
   massInputField: {fileID: 916841083}
   radiusInputField: {fileID: 770696344}
   placeObjectButton: {fileID: 229281974}
-  apogeeText: {fileID: 0}
-  perigeeText: {fileID: 0}
-  cameraController: {fileID: 0}
   velocityInputField: {fileID: 0}
   earthCamButtonText: {fileID: 26694654}
-  feedbackText: {fileID: 1138443355}
-  showFeedbackText: 1
+  instructionText: {fileID: 1138443355}
+  showInstructionText: 0
   earthCamPressed: 1
 --- !u!114 &1586431854
 MonoBehaviour:
@@ -15770,7 +15746,6 @@ MonoBehaviour:
   maxReverseThrustMagnitude: 10
   maxLateralThrustMagnitude: 5
   maxRadialThrustMagnitude: 10
-  thrustRampUpTime: 2
   thrustParticles: {fileID: 1019586387}
   isForwardThrustActive: 0
   isReverseThrustActive: 0
@@ -16342,18 +16317,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e963154806e5ee74d91cf86ce66fef76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mass: 7.348e+18
+  mass: 7.348e+11
   velocity: {x: 0.1018, y: 0.0091, z: 0}
   isCentralBody: 0
   radius: 86.85
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionSteps: 1000
   predictionDeltaTime: 5
-  trajectoryRenderer: {fileID: 0}
-  tolerance: 0
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
 --- !u!120 &1713781786
 LineRenderer:
   serializedVersion: 2
@@ -16607,7 +16577,7 @@ MonoBehaviour:
   m_OnCullStateChanged:
     m_PersistentCalls:
       m_Calls: []
-  m_text: 'Apogee: 0km'
+  m_text: 
   m_isRightToLeft: 0
   m_fontAsset: {fileID: 11400000, guid: 0c937181986dd9b4c84b97c404ca1357, type: 2}
   m_sharedMaterial: {fileID: -150577145404890469, guid: 0c937181986dd9b4c84b97c404ca1357, type: 2}
@@ -18170,12 +18140,7 @@ MonoBehaviour:
   radius: 0.6
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionSteps: 3000
   predictionDeltaTime: 0
-  trajectoryRenderer: {fileID: 0}
-  tolerance: 0
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
 --- !u!120 &2136029599
 LineRenderer:
   serializedVersion: 2
