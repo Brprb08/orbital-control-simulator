@@ -139,7 +139,6 @@ public class NBody : MonoBehaviour
             // Call native C++ function to update only this body
             NativePhysics.RungeKuttaSingle(ref tempPosition, ref tempVelocity, mass, positions, masses, numBodies, Time.fixedDeltaTime, ref thrustImpulse);
 
-            // ✅ Apply back the updated values
             transform.position = tempPosition;
             velocity = tempVelocity;
 
