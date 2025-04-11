@@ -24,18 +24,10 @@ public class NBody : MonoBehaviour
     public float centralBodyMass = 5.972e24f;
 
     [Header("Trajectory Prediction Settings")]
-    public int predictionSteps = 5000;
     public float predictionDeltaTime = .5f;
-    private static Material lineMaterial;
-    public TrajectoryRenderer trajectoryRenderer;
-    public float tolerance = 0f;
 
     [Header("Thrust Feedback")]
     private ThrustController thrustController;
-
-    [Header("UI Elements")]
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
 
     [Header("References")]
     private TrajectoryComputeController tcc;
@@ -49,19 +41,6 @@ public class NBody : MonoBehaviour
         if (GravityManager.Instance != null)
         {
             GravityManager.Instance.RegisterBody(this);
-        }
-
-        if (lineMaterial == null)
-        {
-            Shader shader = Shader.Find("Sprites/Default");
-            if (shader == null)
-            {
-                Debug.LogError("Shader 'Sprites/Default' not found. Please ensure it exists in your project.");
-            }
-            else
-            {
-                lineMaterial = new Material(shader);
-            }
         }
     }
 
@@ -128,15 +107,12 @@ public class NBody : MonoBehaviour
                 masses[i] = bodies[i].mass;
             }
 
-            Vector3 thrustImpulse = force;  // Adjust if necessary
-                                            // Reset the accumulated force so it's only applied once per frame
+            Vector3 thrustImpulse = force;
             force = Vector3.zero;
 
-            // Call native C++ function to update only this body
             Vector3 tempPosition = transform.position;
             Vector3 tempVelocity = velocity;
 
-            // Call native C++ function to update only this body
             NativePhysics.RungeKuttaSingle(ref tempPosition, ref tempVelocity, mass, positions, masses, numBodies, Time.fixedDeltaTime, ref thrustImpulse);
 
             transform.position = tempPosition;
@@ -163,7 +139,6 @@ public class NBody : MonoBehaviour
 
     private void OnDestroy()
     {
-        // Safely deregister so the manager no longer keeps a reference to this body.
         if (LineVisibilityManager.Instance != null)
         {
             LineVisibilityManager.Instance.DeregisterNBody(this);
@@ -189,7 +164,7 @@ public class NBody : MonoBehaviour
         if (tcc == null)
         {
             Debug.LogError("TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
-            onComplete?.Invoke(null); // Return null to signal failure
+            onComplete?.Invoke(null);
             return;
         }
 
@@ -227,83 +202,6 @@ public class NBody : MonoBehaviour
     }
 
     /**
-    * Performs a single Runge-Kutta (RK4) step to update position and velocity.
-    * Calculates derivatives for the Runge-Kutta integration.
-    * @param state - The position and velocity of NBody object
-    * @param bodyPositions - Current positions of all NBody objects
-    * @param isTrajectory - If True RK4 is used for precise object motion, otherwise RK2 for line render
-    * @param thrustImpulse - The current thrust value applied to object
-    **/
-    private OrbitalState RungeKuttaStep(OrbitalState currentState, float deltaTime, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
-    {
-        OrbitalState k1;
-        OrbitalState k2;
-        OrbitalState k3;
-        OrbitalState k4;
-        k1 = CalculateDerivatives(currentState, bodyPositions, thrustImpulse);
-        k2 = CalculateDerivatives(new OrbitalState(
-            currentState.position + k1.position * (deltaTime / 2f),
-            currentState.velocity + k1.velocity * (deltaTime / 2f)
-        ), bodyPositions, thrustImpulse);
-
-        k3 = CalculateDerivatives(new OrbitalState(
-            currentState.position + k2.position * (deltaTime / 2f),
-            currentState.velocity + k2.velocity * (deltaTime / 2f)
-        ), bodyPositions, thrustImpulse);
-
-        k4 = CalculateDerivatives(new OrbitalState(
-            currentState.position + k3.position * deltaTime,
-            currentState.velocity + k3.velocity * deltaTime
-        ), bodyPositions, thrustImpulse);
-
-        Vector3 newPosition = currentState.position + (deltaTime / 6f) * (k1.position + 2f * k2.position + 2f * k3.position + k4.position);
-        Vector3 newVelocity = currentState.velocity + (deltaTime / 6f) * (k1.velocity + 2f * k2.velocity + 2f * k3.velocity + k4.velocity);
-        return new OrbitalState(newPosition, newVelocity);
-
-    }
-
-    /**
-    * Calculates derivatives for the Runge-Kutta integration.
-    * @param state - The position and velocity of NBody object
-    * @param bodyPositions - Current positions of all NBody objects
-    * @param thrustImpulse - The current thrust value applied to object
-    **/
-    private OrbitalState CalculateDerivatives(OrbitalState state, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
-    {
-        Vector3 acceleration = ComputeAccelerationFromData(state.position, bodyPositions, thrustImpulse);
-        return new OrbitalState(state.velocity, acceleration);
-    }
-
-    /**
-    * Computes the gravitational acceleration for a given position.
-    * @param position - Current position of runge-kutta step
-    * @param bodyPositions - Current positions of all NBody objects
-    * @param thrustImpulse - The current thrust value applied to object
-    **/
-    private Vector3 ComputeAccelerationFromData(Vector3 position, Dictionary<NBody, Vector3> bodyPositions, Vector3 thrustImpulse = default)
-    {
-        Vector3 totalForce = Vector3.zero;
-        float minDistance = 0.001f;  // Prevent divide-by-zero issues.
-
-        foreach (var body in bodyPositions.Keys)
-        {
-            if (body != this)
-            {
-                Vector3 direction = bodyPositions[body] - position;
-                float distanceSquared = Mathf.Max(direction.sqrMagnitude, minDistance * minDistance);
-                float forceMagnitude = PhysicsConstants.G * (mass * body.mass) / distanceSquared;
-                totalForce += direction.normalized * forceMagnitude;
-            }
-        }
-
-        Vector3 externalAcceleration = (force / mass) + (thrustImpulse / mass);
-
-        // Total acceleration plus external acceleration
-        Vector3 totalAcceleration = (totalForce / mass) + externalAcceleration;
-        return totalAcceleration;
-    }
-
-    /**
     * Computes and returns the Semi Major Axis and Eccentricity of an orbit
     * @param centralBodyMass - Mass of central body (Earth)
     **/
@@ -324,13 +222,12 @@ public class NBody : MonoBehaviour
             return;
         }
 
-        // Specific orbital energy
         float energy = (vMag * vMag) / 2f - (mu / rMag);
 
         if (energy >= 0f) // Hyperbolic or parabolic orbit
         {
             semiMajorAxis = 0f;
-            eccentricity = 1f + (rMag * vMag * vMag) / mu; // Hyperbolic eccentricity (> 1)
+            eccentricity = 1f + (rMag * vMag * vMag) / mu;
             Debug.LogWarning($"Hyperbolic orbit detected. Eccentricity set to {eccentricity:F3}.");
             return;
         }
@@ -348,96 +245,79 @@ public class NBody : MonoBehaviour
         }
 
         float innerSqrt = 1f + (2f * energy * hMag * hMag) / (mu * mu);
-
-        if (innerSqrt < 1e-8f)
-        {
-            eccentricity = 1e-8f; // a tiny nonzero eccentricity for visualization
-        }
-        else
-        {
-            eccentricity = Mathf.Sqrt(innerSqrt);
-        }
-
-        eccentricity = Mathf.Max(eccentricity, 1e-8f);
+        innerSqrt = Mathf.Max(innerSqrt, 0f);
+        eccentricity = Mathf.Sqrt(innerSqrt);
     }
 
     /**
     * Returns the apogee and perigee Vector3 positions
     * @param centralBodyMass - Mass of central body (Earth)
     **/
-    public void GetOrbitalApogeePerigee(float centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular)
+    public void GetOrbitalApogeePerigee(float centralBodyMass, Vector3 centralBodyPosition,
+                                    out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular)
     {
+        // Compute the orbital elements: semi-major axis and eccentricity
         ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, centralBodyMass);
 
         if (float.IsNaN(semiMajorAxis) || float.IsNaN(eccentricity))
         {
             Debug.LogError("[ERROR] Invalid orbital elements. Cannot compute apogee and perigee.");
-            apogeePosition = Vector3.zero;
-            perigeePosition = Vector3.zero;
+            apogeePosition = perigeePosition = centralBodyPosition;
             isCircular = false;
             return;
         }
 
-        float mu = PhysicsConstants.G * centralBodyMass;
-        Vector3 r = transform.position; // Current position relative to the central body
-        Vector3 v = velocity;           // Current velocity
-        Vector3 hVec = Vector3.Cross(r, v); // Angular momentum vector
-        float hMag = hVec.magnitude; // Angular momentum vector
+        Debug.Log($"Semi-Major Axis: {semiMajorAxis}, Eccentricity: {eccentricity}");
 
-        float nearZeroThreshold = 1e-3f;
+        float mu = PhysicsConstants.G * centralBodyMass;
+
+        Vector3 r = transform.position - centralBodyPosition;
+        Vector3 v = velocity;
+        Vector3 hVec = Vector3.Cross(r, v);
+        float hMag = hVec.magnitude;
+
+        float nearZeroThreshold = 1e-6f;
+
+        // Handle near-circular orbits.
         if (eccentricity < nearZeroThreshold)
         {
             isCircular = true;
-
-            // For a circular orbit, the radius is constant and equals the semi-major axis.
-            float orbitRadius = semiMajorAxis;
-
-            // Use the current radial direction as a reference.
+            float orbitRadius = r.magnitude;
             Vector3 radialDirection = r.normalized;
-            perigeePosition = radialDirection * orbitRadius;
-            apogeePosition = -radialDirection * orbitRadius;
+            perigeePosition = centralBodyPosition + radialDirection * orbitRadius;
+            apogeePosition = centralBodyPosition - radialDirection * orbitRadius;
+            Debug.Log("Nearly circular orbit. Using current radial direction as fallback.");
             return;
         }
         else
         {
             isCircular = false;
         }
+        isCircular = false;
 
         // Compute the eccentricity vector
         Vector3 eVec = (Vector3.Cross(v, hVec) / mu) - (r / r.magnitude);
-        Vector3 eUnit = eVec.normalized;
 
-        float perigeeDistance;
+        // Use a fallback if the computed eccentricity vectors magnitude is too low
+        Vector3 eUnit = eVec.magnitude > nearZeroThreshold ? eVec.normalized : r.normalized;
 
-        if (eccentricity >= 1f) // Hyperbolic or parabolic orbit
+        // Check for non-elliptical trajectories
+        if (eccentricity >= 1f)
         {
-            Debug.LogWarning("Hyperbolic orbit detected. Showing true closest approach for perigee.");
-
-            float semiLatusRectum = (hMag * hMag) / (mu * (1f + eccentricity));
-
-            perigeeDistance = semiLatusRectum;
-
-            perigeePosition = Vector3.zero + (eUnit * perigeeDistance);
-            apogeePosition = Vector3.zero;
-            isCircular = false;
+            Debug.LogWarning("Hyperbolic or parabolic orbit detected. Computing closest approach only.");
+            float perigeeDistance = (hMag * hMag) / (mu * (1f + eccentricity));
+            perigeePosition = centralBodyPosition + eUnit * perigeeDistance;
+            apogeePosition = Vector3.zero; // Apogee not defined for open trajectories.
             return;
         }
 
-        if (eccentricity <= 0f)
-        {
-            isCircular = true;
-        }
-        else
-        {
-            isCircular = false;
-        }
+        float perigeeDistanceElliptical = semiMajorAxis * (1f - eccentricity);
+        float apogeeDistanceElliptical = semiMajorAxis * (1f + eccentricity);
 
-        // If elliptical orbit, compute apogee and perigee
-        float apogeeDistance = semiMajorAxis * (1f + eccentricity);
-        perigeeDistance = semiMajorAxis * (1f - eccentricity);
+        perigeePosition = centralBodyPosition + eUnit * perigeeDistanceElliptical;
+        apogeePosition = centralBodyPosition - eUnit * apogeeDistanceElliptical;
 
-        perigeePosition = Vector3.zero + (eUnit * perigeeDistance);
-        apogeePosition = Vector3.zero - (eUnit * apogeeDistance);
+        Debug.Log($"Perigee Distance: {perigeeDistanceElliptical}, Apogee Distance: {apogeeDistanceElliptical}");
     }
 
     /**

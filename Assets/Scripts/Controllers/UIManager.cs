@@ -15,7 +15,6 @@ public class UIManager : MonoBehaviour
     public Button freeCamButton;
     public Button trackCamButton;
     public Button feedbackButton;
-    public Button earthCamButton;
 
     [Header("Panels")]
     public GameObject objectPlacementPanel;
@@ -31,18 +30,15 @@ public class UIManager : MonoBehaviour
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
-
-    public CameraController cameraController;
     public TMP_InputField velocityInputField;
     public TMP_Text earthCamButtonText;
+    public TextMeshProUGUI instructionText;
 
-    public TextMeshProUGUI feedbackText;
-    public bool showFeedbackText = true;
-
+    [Header("UI Flags")]
+    public bool showInstructionText = false;
     private bool isTracking = true;
     public bool earthCamPressed = true;
+
     /**
     * Setup the singleton for accessing UIManager
     **/
@@ -62,7 +58,7 @@ public class UIManager : MonoBehaviour
     **/
     private void Start()
     {
-        feedbackText.text =
+        instructionText.text =
     "<b>Welcome to the Orbit Simulator!</b>\n" +
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
@@ -90,6 +86,7 @@ public class UIManager : MonoBehaviour
         trackCamButton.Select();
         trackCamButton.interactable = false;
 
+        feedbackPanel.SetActive(showInstructionText);
         UpdateButtonText();
     }
 
@@ -98,7 +95,7 @@ public class UIManager : MonoBehaviour
     **/
     public void OnFreeCamPressed()
     {
-        feedbackText.text =
+        instructionText.text =
         "<b>Free Cam Mode Activated!</b>\n\n" +
         "You can freely move to explore or place satellites.\n\n" +
         "<b>CONTROLS:</b>\n" +
@@ -150,7 +147,7 @@ public class UIManager : MonoBehaviour
     **/
     public void OnTrackCamPressed()
     {
-        feedbackText.text =
+        instructionText.text =
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
     "- Dropdown Menu: Select the tracked object.\n" +
@@ -295,9 +292,9 @@ public class UIManager : MonoBehaviour
 
     public void ShowFeedbackPanel()
     {
-        showFeedbackText = !showFeedbackText;
+        showInstructionText = !showInstructionText;
         UpdateButtonText(); // Update the button text when toggling
-        feedbackPanel.SetActive(showFeedbackText);
+        feedbackPanel.SetActive(showInstructionText);
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -306,7 +303,7 @@ public class UIManager : MonoBehaviour
         TMP_Text tmpButtonText = feedbackButton.GetComponentInChildren<TMP_Text>();
         if (tmpButtonText != null)
         {
-            tmpButtonText.text = showFeedbackText ? "Hide Instructions" : "Show Instructions";
+            tmpButtonText.text = showInstructionText ? "Hide Instructions" : "Show Instructions";
         }
     }
 

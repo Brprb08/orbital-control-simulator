@@ -42,15 +42,6 @@ public class TrajectoryRenderer : MonoBehaviour
     private float updateIntervalApogeePerigee = 10f;
     private float apogeePerigeeUpdateTime = 5f;
 
-    public float apogeeDistance = 0f;
-    public float perigeeDistance = 0f;
-    public bool justSwitchedTrack = false;
-
-    [Header("Optimizations")]
-    public bool useLOD = true;
-    public float lodDistanceThreshold = 5000f;
-    public float maxRecomputeInterval = 5f;
-
     [Header("Procedural Lines")]
     public ProceduralLineRenderer predictionProceduralLine;
     public ProceduralLineRenderer originProceduralLine;
@@ -200,9 +191,10 @@ public class TrajectoryRenderer : MonoBehaviour
                 }
             }
 
+
             if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime || isThrusting)
             {
-                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular);
+                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, Vector3.zero, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular);
 
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
@@ -218,8 +210,8 @@ public class TrajectoryRenderer : MonoBehaviour
                         float perigeeAltitude;
                         if (isCircular)
                         {
-                            apogeeAltitude = (trackedBody.transform.position.magnitude - 637.8f) * 10f;
-                            perigeeAltitude = (trackedBody.transform.position.magnitude - 637.8f) * 10f;
+                            apogeeAltitude = (apogeePosition.magnitude - 637.8f) * 10f;
+                            perigeeAltitude = (perigeePosition.magnitude - 637.8f) * 10f;
                         }
                         else
                         {
@@ -314,7 +306,7 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         if (apogeeText != null)
         {
-            if (apogee < 0)
+            if (apogee <= 0)
             {
                 apogeeText.text = $"";
             }
@@ -327,7 +319,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (perigeeText != null)
         {
-            if (perigee < 0)
+            if (perigee <= 0)
             {
                 perigeeText.text = $"";
             }
@@ -336,25 +328,6 @@ public class TrajectoryRenderer : MonoBehaviour
                 perigeeText.text = $"Perigee: {perigee:F0} km";
             }
         }
-    }
-
-    /**
-    * Adjusts the trajectory prediction settings based on time scale.
-    * @param timeScale - The current time slider value for simulation speed.
-    **/
-    public void AdjustPredictionSettings(float timeScale)
-    {
-        float distance = transform.position.magnitude;
-        float speed = 300f;
-        float baseDeltaTime = 0.5f;
-        float minDeltaTime = 0.5f;
-        float maxDeltaTime = 3f;
-
-        float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
-        adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
-
-        predictionDeltaTime = adjustedDelta;
-        predictionSteps = 5000;
     }
 
     /**

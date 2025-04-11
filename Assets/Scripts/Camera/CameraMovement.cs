@@ -13,7 +13,6 @@ public class CameraMovement : MonoBehaviour
     [Header("Tracking Target")]
     public NBody targetBody;
     public Transform targetPlaceholder;
-    public CameraController cameraController;
 
     [Header("Camera Settings")]
     public float distance = 100f;
@@ -26,10 +25,10 @@ public class CameraMovement : MonoBehaviour
     public TextMeshProUGUI altitudeText;
     public TextMeshProUGUI trackingObjectNameText;
 
+    [Header("Camera Variables")]
     private float minDistance = 0.1f;
     private float placeholderRadius = 0f;
     private Camera mainCamera;
-
     public bool inEarthView = false;
     public NBody tempEarthBody;
 

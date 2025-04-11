@@ -23,8 +23,6 @@ public class VelocityDragManager : MonoBehaviour
     private GameObject dragSphereObject;
 
     [Header("UI Elements")]
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
     public Slider speedSlider;
 
     [Header("Planet to Apply Velocity To")]
@@ -44,8 +42,6 @@ public class VelocityDragManager : MonoBehaviour
     private float sliderSpeed = 0f;
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
-
-
 
     /**
     * Initializes the drag manager and sets up components.
@@ -101,10 +97,6 @@ public class VelocityDragManager : MonoBehaviour
         {
             return;
         }
-
-        // Material lineMaterial = new Material(Shader.Find("Unlit/Color"));
-        // lineMaterial.color = Color.red;
-        // dragLineRenderer.material = lineMaterial;
 
         if (Input.GetMouseButtonDown(0))
         {

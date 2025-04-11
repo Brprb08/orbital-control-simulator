@@ -20,7 +20,7 @@ public class ThrustController : MonoBehaviour
     public float maxReverseThrustMagnitude = 10f;
     public float maxLateralThrustMagnitude = 10f;
     public float maxRadialThrustMagnitude = 10f;
-    public float thrustRampUpTime = 2f;
+    // public float thrustRampUpTime = 2f;
 
     [Header("Visual Feedback")]
     public ParticleSystem thrustParticles;
@@ -175,7 +175,7 @@ public class ThrustController : MonoBehaviour
         }
         if (!thrustParticles) return;
 
-        // Set the position of the particle system to the target body's position
+        // Set the position of the particle system to the target bodys position
         thrustParticles.transform.position = targetBody.transform.position;
 
         // Rotate the particle system to align with the opposite of the thrust direction

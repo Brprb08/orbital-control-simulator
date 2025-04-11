@@ -11,25 +11,25 @@ public static class NativePhysics
     static NativePhysics()
     {
         string unityPluginsPath = Path.Combine(Application.dataPath, "Plugins/x86_64/PhysicsPlugin.dll");
-        Debug.Log($"🔍 [DEBUG] Checking for DLL at: {unityPluginsPath}");
+        Debug.Log($"Checking for DLL at: {unityPluginsPath}");
 
         if (File.Exists(unityPluginsPath))
         {
-            Debug.Log("✅ [DEBUG] DLL exists at expected path!");
+            Debug.Log("DLL exists at expected path!");
         }
         else
         {
-            Debug.LogError("❌ [DEBUG] DLL NOT FOUND! Check file path.");
+            Debug.LogError("DLL NOT FOUND! Check file path.");
         }
 
         IntPtr handle = LoadLibrary(unityPluginsPath);
         if (handle == IntPtr.Zero)
         {
-            Debug.LogError($"❌ [DEBUG] DLL LOAD FAILED! Error Code: {Marshal.GetLastWin32Error()}");
+            Debug.LogError($"DLL load failed! Error Code: {Marshal.GetLastWin32Error()}");
         }
         else
         {
-            Debug.Log("✅ [DEBUG] DLL loaded successfully!");
+            Debug.Log("DLL loaded successfully");
         }
     }
 

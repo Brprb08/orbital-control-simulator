@@ -16,6 +16,9 @@ public class CameraController : MonoBehaviour
     public CameraMovement cameraMovement;
     public Transform cameraPivotTransform;
     public Transform cameraTransform;
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
+
     [Header("Settings")]
     public float sensitivity = 100f;
 
@@ -29,13 +32,6 @@ public class CameraController : MonoBehaviour
     private Transform placeholderTarget;
     private bool isTrackingPlaceholder = false;
     public TrajectoryRenderer trajectoryRenderer;
-
-    private float lastTabTime = -1f;
-    private float tabCooldown = 1f;
-
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
-
     public bool inEarthViewCam = false;
     public NBody previousTrackedBody;
 
@@ -67,7 +63,6 @@ public class CameraController : MonoBehaviour
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
-            Debug.LogError("Hello");
             StartCoroutine(InitializeCamera());
         }
 
@@ -80,7 +75,6 @@ public class CameraController : MonoBehaviour
             trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
         }
     }
-
 
     /**
     * Coroutine to initialize the camera after all NBody.Start() methods have executed.
@@ -151,7 +145,6 @@ public class CameraController : MonoBehaviour
             Debug.LogError($"No matching dropdown entry found for body: {currentBodyName}");
         }
     }
-
 
     /**
     * Method used to update the current line render for the tracked body.

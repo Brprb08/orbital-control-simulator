@@ -14,7 +14,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
     [Header("References")]
     public Camera mainCamera;
-    public GameObject spherePrefab; // Placeholder GameObject without NBody script.
+    public GameObject spherePrefab; // Placeholder GameObject without NBody script
     public GravityManager gravityManager;
     public TMP_InputField radiusInput;
     public TMP_InputField objectNameInputField;
@@ -27,14 +27,9 @@ public class ObjectPlacementManager : MonoBehaviour
     public Button placeObjectButton;
 
     [Header("Placement State")]
-    public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject.
+    public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject
     private bool isInPlacementMode = false;
     private int satelliteCount = 0;
-
-    [Header("Camera Components")]
-    public Transform cameraPivotTransform;
-    public Transform cameraTransform;
-    private Vector3 defaultLocalPosition;
 
     private void Awake()
     {
