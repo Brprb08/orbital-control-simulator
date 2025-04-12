@@ -377,7 +377,7 @@ public class VelocityDragManager : MonoBehaviour
     private void OnVelocityInputChanged(string inputText)
     {
         Vector3 newVelocity;
-        if (TryParseVector3(inputText, out newVelocity))
+        if (ParsingUtils.Instance.TryParseVector3(inputText, out newVelocity))
         {
             currentVelocity = newVelocity;
             UpdateLineRenderer();
@@ -393,18 +393,18 @@ public class VelocityDragManager : MonoBehaviour
     * @param input - String input from input field 
     * @param result - Vector 3 output from (x,y,z) format
     **/
-    private bool TryParseVector3(string input, out Vector3 result)
-    {
-        result = Vector3.zero;
-        string[] parts = input.Split(',');
-        if (parts.Length != 3) return false;
+    // private bool TryParseVector3(string input, out Vector3 result)
+    // {
+    //     result = Vector3.zero;
+    //     string[] parts = input.Split(',');
+    //     if (parts.Length != 3) return false;
 
-        float x, y, z;
-        if (!float.TryParse(parts[0], out x) || !float.TryParse(parts[1], out y) || !float.TryParse(parts[2], out z)) return false;
+    //     float x, y, z;
+    //     if (!float.TryParse(parts[0], out x) || !float.TryParse(parts[1], out y) || !float.TryParse(parts[2], out z)) return false;
 
-        result = new Vector3(x, y, z);
-        return true;
-    }
+    //     result = new Vector3(x, y, z);
+    //     return true;
+    // }
 
     /**
     * Updates the line renderer to match the current velocity.

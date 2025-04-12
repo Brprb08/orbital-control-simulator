@@ -62,26 +62,26 @@ public class ObjectPlacementManager : MonoBehaviour
         string radiusText = radiusInput.text;
         if (string.IsNullOrWhiteSpace(radiusText))
         {
-            feedbackText.text = "Please enter a radius in the format x,y,z.";
+            feedbackText.text = "Please enter a radius in the format x,y,z. Numbers only.";
             return;
         }
 
-        if (!TryParseVector3(radiusText, out Vector3 parsedRadius))
+        if (!ParsingUtils.Instance.TryParseVector3(radiusText, out Vector3 parsedRadius))
         {
-            feedbackText.text = "Invalid radius format. Use x,y,z with no spaces.";
+            feedbackText.text = "Invalid radius. Use numeric x,y,z.";
             return;
         }
 
         string massText = massInput.text;
         if (string.IsNullOrWhiteSpace(massText))
         {
-            feedbackText.text = "Please enter a mass between 5 and 5.0e23 kg.";
+            feedbackText.text = "Please enter a numeric mass between 5 and 5.0e23 kg.";
             return;
         }
 
-        if (!TryParseMass(massText, out float mass))
+        if (!ParsingUtils.Instance.TryParseMass(massText, out float mass))
         {
-            feedbackText.text = "Invalid mass input. Please enter a number between 500 and 5.0e23.";
+            feedbackText.text = "Invalid mass. Enter a number between 500 and 5.0e23.";
             return;
         }
 
@@ -139,10 +139,11 @@ public class ObjectPlacementManager : MonoBehaviour
 
         feedbackText.text =
     "Setting Satellite Velocity:\n\n" +
-    "• Click the satellite to select it and drag to set a direction.\n" +
-    "• Use the velocity vector tool to set the direction.\n" +
-    "• Adjust velocity using the slider or by typing a value.\n" +
-    "• Click \"Set Velocity\" to begin orbit.";
+"• Click the satellite to activate the direction line.\n" +
+"• Drag the line to set the desired direction.\n" +
+"• Use the velocity input field to adjust speed.\n" +
+"• The line updates to reflect direction and speed.\n" +
+"• Click \"Set Velocity\" to apply the changes.";
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -162,48 +163,6 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /**
-    * Tries to parse a string as a Vector3.
-    * @param input - The input string in "x,y,z" format.
-    * @param result - The resulting Vector3.
-    * @return - True if parsing succeeds; false otherwise.
-    **/
-    private bool TryParseVector3(string input, out Vector3 result)
-    {
-        result = Vector3.zero;
-        string[] parts = input.Split(',');
-        if (parts.Length != 3) return false;
-
-        return float.TryParse(parts[0], out result.x) &&
-               float.TryParse(parts[1], out result.y) &&
-               float.TryParse(parts[2], out result.z);
-    }
-
-    /**
-    * Tries to parse the given string input as a valid mass value.
-    * The mass must be a numeric value between 1 and 500000 (inclusive).
-    * Non-numeric values, negative numbers, or values outside the allowed range are considered invalid.
-    * @param input - The string representation of the mass to be parsed.
-    * @param mass - The output float value of the parsed mass if valid.
-    * @return - True if the input is a valid mass within the specified range; false otherwise.
-    **/
-    private bool TryParseMass(string input, out float mass)
-    {
-        mass = 0f;
-
-        if (string.IsNullOrWhiteSpace(input))
-            return false;
-
-        if (!float.TryParse(input, out float parsedMass))
-            return false;
-
-        if (parsedMass < 500 || parsedMass > 5.972e+50)
-            return false;
-
-        mass = parsedMass;
-        return true;
-    }
-
-    /**
     * Clears and unfocuses a TMP_InputField.
     * @param inputField - The input field to clear.
     **/
@@ -218,6 +177,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
     /**
     * Enables FreeCam mode for object placement.
+    * Called from 'Free Cam' button
     **/
     public void BreakToFreeCam()
     {
@@ -239,6 +199,7 @@ public class ObjectPlacementManager : MonoBehaviour
     **/
     public void ResetLastPlacedGameObject()
     {
+        feedbackText.text = "";
         lastPlacedGameObject = null;
     }
 }

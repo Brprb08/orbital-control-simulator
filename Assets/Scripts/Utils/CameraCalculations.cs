@@ -1,8 +1,4 @@
 using UnityEngine;
-// using System.Collections.Generic;
-// using UnityEngine.EventSystems;
-// using System.Collections;
-// using TMPro;
 
 /**
 * 
