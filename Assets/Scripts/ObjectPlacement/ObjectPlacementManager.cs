@@ -30,6 +30,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject
     private bool isInPlacementMode = false;
     private int satelliteCount = 0;
+    private bool objectIsPlaced = false;
 
     private void Awake()
     {
@@ -93,6 +94,7 @@ public class ObjectPlacementManager : MonoBehaviour
             Mathf.Clamp(parsedRadius.z, 1f, 100f)
         );
 
+        objectIsPlaced = true;
 
         lastPlacedGameObject = Instantiate(spherePrefab);
         lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 1f, parsedRadius.y * 1f, parsedRadius.z * 1f);
@@ -158,8 +160,13 @@ public class ObjectPlacementManager : MonoBehaviour
             lastPlacedGameObject = null;
         }
 
-        feedbackText.text = "Placement canceled. Returned to tracking mode.";
-        ExitFreeCam();
+        feedbackText.text = "";
+
+        velocityDragManager.dragLineRenderer.positionCount = 0;
+
+        CameraController.Instance.UpdateTrajectoryRender(CameraController.Instance.currentIndex);
+        CameraController.Instance.isTrackingPlaceholder = false;
+        CameraController.Instance.ReturnToTracking();
     }
 
     /**
@@ -191,6 +198,16 @@ public class ObjectPlacementManager : MonoBehaviour
     public void ExitFreeCam()
     {
         Debug.Log("Exiting FreeCam...");
+
+        if (objectIsPlaced)
+        {
+            objectIsPlaced = false;
+            CancelPlacement();
+        }
+        else
+        {
+            CameraController.Instance.ReturnToTracking();
+        }
         isInPlacementMode = false;
     }
 

@@ -12,6 +12,8 @@ using TMPro;
 public class CameraController : MonoBehaviour
 {
 
+    public static CameraController Instance { get; private set; }
+
     [Header("References")]
     public CameraMovement cameraMovement;
     public Transform cameraPivotTransform;
@@ -30,7 +32,7 @@ public class CameraController : MonoBehaviour
     private Vector3 defaultLocalPosition;
     private bool isSwitchingToFreeCam = false;
     private Transform placeholderTarget;
-    private bool isTrackingPlaceholder = false;
+    public bool isTrackingPlaceholder = false;
     public TrajectoryRenderer trajectoryRenderer;
     public bool inEarthViewCam = false;
     public NBody previousTrackedBody;
@@ -46,6 +48,16 @@ public class CameraController : MonoBehaviour
             Debug.Log($"isFreeCamMode changed to {value}. Call stack:\n{System.Environment.StackTrace}");
             isFreeCamMode = value;
         }
+    }
+
+    private void Awake()
+    {
+        if (Instance != null && Instance != this)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        Instance = this;
     }
 
     /**
@@ -217,12 +229,14 @@ public class CameraController : MonoBehaviour
 
         if (isTrackingPlaceholder && placeholderTarget != null)
         {
+            Debug.LogError("here");
             cameraMovement.SetTargetBodyPlaceholder(placeholderTarget);
             targetPosition = placeholderTarget.position;
             targetBody = placeholderTarget.GetComponent<NBody>();
         }
         else if (bodies.Count > 0)
         {
+            Debug.LogError("there");
             cameraMovement.SetTargetBody(bodies[currentIndex]);
             targetPosition = bodies[currentIndex].transform.position;
             targetBody = bodies[currentIndex];
@@ -338,6 +352,28 @@ public class CameraController : MonoBehaviour
         bodies.Remove(removedBody);
 
 
+        if (bodies.Count > 0)
+        {
+            currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
+
+            NBody nextBody = bodies[currentIndex];
+
+            cameraMovement.SetTargetBody(nextBody);
+
+            UpdateTrajectoryRender(currentIndex);
+
+            ReturnToTracking();
+            Debug.Log($"Camera switched to track: {nextBody.name}");
+        }
+        else
+        {
+            BreakToFreeCam();
+            Debug.Log("No valid bodies to track. Switched to FreeCam.");
+        }
+    }
+
+    public void SwitchToNBody()
+    {
         if (bodies.Count > 0)
         {
             currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
