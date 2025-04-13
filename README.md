@@ -4,7 +4,7 @@ A real-time orbital mechanics simulator built in **Unity** with core physics han
 
 **Built from scratch to simulate realistic orbital mechanics in real time, no Unity physics used.**
 
-[Watch the Demo Video](https://www.youtube.com/watch?v=aADKGJIdwKM) *Cntl-click to open in new tab*
+[Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aADKGJIdwKM)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-11Track.png)
 ![Satellite Close Up Elliptical Orbit](./Assets/Images/04-11SatelliteCloseUp.png)
 ![Simulator in Free Cam](./Assets/Images/02-03Free.png)
@@ -43,7 +43,7 @@ It also served as a way to deepen my understanding of orbital maneuvering and ph
 
 - **Physics Core (C++):** RK4 integration and gravitational forces
 - **Unity Frontend:** Object instantiation, camera controls, and trajectory visualization
-- **Thrust Model:** Instantaneous velocity change based on direction and current mass
+- **Thrust Model:** Instantaneous velocity change (impulse burn) based on burn direction and current mass
 - **Trajectory Rendering:** GPU-drawn orbital paths for performance
 - **Interop:** Unity uses `DllImport` to communicate with native physics functions
 
