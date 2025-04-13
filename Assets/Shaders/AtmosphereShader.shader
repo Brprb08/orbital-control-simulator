@@ -48,7 +48,7 @@ Shader "Custom/Atmosphere"
                 float fresnel = pow(dot(i.normal, i.viewDir), _FresnelPower);
                 fresnel = saturate(fresnel * 1 - 0.3); // Minor tweak for better fade
 
-                float alpha = fresnel * 0.4; // Maintain transparency strength
+                float alpha = fresnel * 0.5; // Maintain transparency strength
                 return float4(_Color.rgb * fresnel, alpha);
             }
             ENDCG
