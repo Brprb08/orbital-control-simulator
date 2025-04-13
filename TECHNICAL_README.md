@@ -89,23 +89,23 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ---
 
-### Orbital Period Comparison
+###Orbital Period Comparison
 
-| Orbit Type                  | Reference Tool | Expected Period | Simulated Period (avg) | Accuracy   |
-|-----------------------------|----------------|------------------|-------------------------|------------|
-| LEO (408 km circular)       | Keplerian Calc | 92.74 min        | 92.62 min               | ~99.87%    |
-| Elliptical (7000–20007 km)  | Keplerian Calc | 7.75 hrs         | 7.88 hrs                | ~98.32%    |
+| Orbit Type                  | Reference Tool | Expected Period (min/hr, avg) | Simulated Period (min/hr, avg) | Accuracy   |
+|-----------------------------|----------------|-------------------------------|--------------------------------|------------|
+| LEO (408 km circular)       | Keplerian Calc | 92.74 min                     | 92.62 min                      | ~99.87%    |
+| Elliptical (7000–20007 km)  | Keplerian Calc | 7.75 hrs                      | 7.88 hrs                       | ~98.32%    |
 
 ---
 
 ### Perigee & Apogee Comparison
 
-| Orbit Type                     | Tool   | Perigee (km)       | Apogee (km)        | Accuracy         |
-|--------------------------------|--------|---------------------|---------------------|------------------|
-| LEO (408.2–421.5 km)           | My Sim | 408.2               | 421.5               | ~99.63% apogee   |
-|                                | GMAT   | 407.93               | 420.2               | —                |
-| Elliptical (6993.2–20001.6 km) | My Sim | 6993.47 (avg)       | 20001.61 (avg)      | ~99.86% apogee   |
-|                                | GMAT   | 6995.76 (avg)       | 19982.58 (avg)      | —                |
+| Orbit Type                     | Tool   | Perigee (km, avg)     | Apogee (km, avg)      | Accuracy         |
+|--------------------------------|--------|------------------------|------------------------|------------------|
+| LEO (408.2–421.5 km)           | My Sim | 408.2                  | 421.5                  | ~99.63% apogee   |
+|                                | GMAT   | 407.93                 | 420.2                  | —                |
+| Elliptical (6993.2–20001.6 km) | My Sim | 6993.47                | 20001.61               | ~99.86% apogee   |
+|                                | GMAT   | 6995.76                | 19982.58               | —                |
 
 ---
 
