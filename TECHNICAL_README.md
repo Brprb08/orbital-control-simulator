@@ -89,7 +89,7 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ---
 
-###Orbital Period Comparison
+### Orbital Period Comparison
 
 | Orbit Type                  | Reference Tool | Expected Period (avg, min/hr) | Simulated Period (avg, min/hr) | Accuracy   |
 |-----------------------------|----------------|-------------------------------|--------------------------------|------------|
