@@ -91,7 +91,7 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ### Orbital Period Comparison
 
-| Orbit Type                  | Reference Tool | Expected Period (avg, min/hr) | Simulated Period (avg, min/hr) | Accuracy   |
+| Orbit Type                  | Reference Tool | Expected Period (avg) | Simulated Period (avg) | Accuracy   |
 |-----------------------------|----------------|-------------------------------|--------------------------------|------------|
 | LEO (408 km circular)       | Keplerian Calc | 92.74 min                     | 92.62 min                      | ~99.87%    |
 | Elliptical (7000–20007 km)  | Keplerian Calc | 7.75 hrs                      | 7.88 hrs                       | ~98.32%    |
@@ -111,7 +111,7 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 **Notes:**  
 - **LEO test**: Simulated for 10 orbits at 100× speed.
-  - Perigee error: +.27 km (~.066%)
+  - Perigee error: +0.27 km (~0.066%)
   - Apogee error: +1.3 km (~0.31%)
 - **Elliptical test**: Simulated for 2 orbits at 100× speed.  
   - Perigee error: −2.29 km (~0.037%)
