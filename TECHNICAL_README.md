@@ -2,10 +2,6 @@
 
 # Satellite Maneuver Simulator - Unity + C++
 
-A real-time orbital mechanics simulator with RK4 integration, full N-body Newtonian gravity, thrust maneuvering, and GPU-drawn trajectories. Physics is offloaded to a native C++ DLL for better performance and control.
-
----
-
 ## Who This Is For
 
 This document is intended for developers, tech leads, and simulation engineers who want a deeper look into the architecture, math, and design decisions behind the simulator. If you’re evaluating technical depth, performance strategy, or physics implementation, this breakdown is for you.
@@ -29,14 +25,14 @@ This document is intended for developers, tech leads, and simulation engineers w
 
 ## Motivation
 
-This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now a hands-on testbed for building simulation systems, digging into numerical integration, and optimizing real-time systems using Unity and native C++.
+This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now am area for digging into numerical integration, and optimizing real-time systems using Unity and native C++.
 
 ---
 
 ## Simulation Core
 
 - RK4 numerical integrator ensures long-term stability of orbits
-- Newtonian N-body simulation with mutual gravitational attraction
+- Newtonian multi-body simulation with mutual gravitational attraction
 - Thrust system allows for real-time orbital maneuvers
 - GPU-rendered trajectories keep performance smooth
 - All physics offloaded to a C++ DLL for max performance
@@ -45,7 +41,6 @@ This project began as a personal exploration into orbital dynamics after being i
 
 ## Features
 
-- Real-time N-body orbital dynamics
 - Custom satellite/object placement with initial velocity and mass
 - Thrust controls (prograde, retrograde, radial, normal, etc.)
 - Dynamic apogee/perigee/orbital period computation
@@ -57,7 +52,7 @@ This project began as a personal exploration into orbital dynamics after being i
 
 ## Physics Breakdown
 
-See [NBODY_PHYSICS_RK4.md](./NBODY_PHYSICS_RK4.md) for full math.
+See [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md) for full math.
 
 - Newton’s Law of Gravity:
   ```
@@ -157,16 +152,6 @@ Controls:
 - Earth is fixed; no back-reaction from satellite mass
 - No relativistic corrections
 - Simplified collision behavior (non-elastic removal)
-
----
-
-## Repo & Setup
-
-```
-git clone https://github.com/Brprb08/space-orbit-simulation.git
-```
-
-Open in Unity Hub, load the main scene, and start the simulation.
 
 ---
 

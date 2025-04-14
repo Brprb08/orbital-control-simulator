@@ -1,13 +1,12 @@
 # Satellite Maneuver Simulator
 
-A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian N-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
+A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian multi-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
 
 **Built from scratch to simulate realistic orbital mechanics in real time, no Unity physics used.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aADKGJIdwKM)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-11Track.png)
 ![Satellite Close Up Elliptical Orbit](./Assets/Images/04-11SatelliteCloseUp.png)
-![Simulator in Free Cam](./Assets/Images/02-03Free.png)
 
 ---
 
@@ -35,27 +34,17 @@ After following real-world missions like SpaceX and exploring tools like GMAT, I
 - Work with C++ and Unity interoperability (DLL calls)
 - Optimize both simulation logic and rendering
 
-It also served as a way to deepen my understanding of orbital maneuvering and physics systems that underpin spaceflight simulation.
+It also served as a way to deepen my understanding of orbital maneuvering and physics systems that create spaceflight simulation.
 
 ---
 
-## System Breakdown
+## System & Tools Breakdown
 
 - **Physics Core (C++):** RK4 integration and gravitational forces
 - **Unity Frontend:** Object instantiation, camera controls, and trajectory visualization
 - **Thrust Model:** Instantaneous velocity change (impulse burn) based on burn direction and current mass
 - **Trajectory Rendering:** GPU-drawn orbital paths for performance
 - **Interop:** Unity uses `DllImport` to communicate with native physics functions
-
----
-
-## Tools & Technologies
-
-- Unity (C#)
-- Native C++ DLL (Windows)
-- RK4 Numerical Integration
-- Manual N-body gravity implementation (no built-in physics engine)
-- Real-time rendering via Unity’s LineRenderer and GPU instancing
 
 ---
 

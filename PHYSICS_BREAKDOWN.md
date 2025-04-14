@@ -12,6 +12,8 @@ This doc explains how the simulation handles gravity, integration, thrust, and t
 - [Limitations and Plans](#limitations-and-plans)
 - [Back to Top](#back-to-top)
 
+---
+
 ### RK4 Integration
 
 The sim uses Runge-Kutta 4th Order (RK4) for all motion updates. Euler was too unstable and inaccurate over time. Symplectic integrators conserve energy better for long-term sims, but RK4 gives better local accuracy per step, which matters more here.
@@ -44,6 +46,8 @@ RK4 Flow Per Frame:
     final update: state + (dt/6) * (k1 + 2k2 + 2k3 + k4)
 ```
 
+---
+
 ### Gravity Calculations
 
 Gravity follows Newton’s law:
@@ -54,6 +58,8 @@ F = G * (m1 * m2) / r^2
 Every object calculates gravitational pull from every other object in the system. Acceleration is computed per-body and summed. Position and velocity are updated through RK4 using these force-derived accelerations.
 
 Close approaches use a minimum r threshold to avoid singularities or floating point issues.
+
+---
 
 ### Thrust Mechanics
 
@@ -72,9 +78,13 @@ a = F / m
 
 Mass is adjustable per object, and thrust strength is scaled accordingly. There's no fuel system yet, so thrust is unlimited during input.
 
+---
+
 ### Time Scaling
 
 User can increase time scale up to 100x. RK4 remains stable but slightly less accurate as dt increases. Currently using fixed timestep per frame, but may switch to adaptive or GPU-integrated RK4 later.
+
+---
 
 ### Limitations and Plans
 
@@ -89,7 +99,8 @@ Planned features:
 - Fuel-based delta-v tracking
 - Earth as a dynamic object (currently static)
 - Barnes-Hut optimization for scaling up body count
-- GPU-accelerated RK4 for better performance
+
+---
 
 ### Back to Top
 
