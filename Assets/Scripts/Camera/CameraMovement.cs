@@ -17,7 +17,7 @@ public class CameraMovement : MonoBehaviour
     [Header("Camera Settings")]
     public float distance = 100f;
     public float height = 30f;
-    public float baseZoomSpeed = 100f;
+    public float baseZoomSpeed = 40f;
     public float maxDistance = 50000f;
 
     [Header("UI References")]
@@ -95,9 +95,10 @@ public class CameraMovement : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
-            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : 1f, 1f, 20f);
-            float distanceFactor = Mathf.Clamp(distance / minDistance, 0.5f, 50f);
-            float zoomSpeed = baseZoomSpeed * sizeMultiplier * 50f * 2f;
+            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : .4f, 1f, 20f);
+            float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
+            Debug.LogError(distanceFactor);
+            float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
 
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minDistance, maxDistance);

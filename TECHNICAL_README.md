@@ -102,22 +102,18 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 | Orbit Type                     | Tool   | Perigee (avg, km)     | Apogee (avg, km)      | Accuracy         |
 |--------------------------------|--------|------------------------|------------------------|------------------|
-| LEO (408.2–421.5 km)           | My Sim | 408.2                  | 421.5                  | ~99.63% apogee   |
-|                                | GMAT   | 407.93                 | 420.2                  | —                |
-| Elliptical (6993.2–20001.6 km) | My Sim | 6993.47                | 20001.61               | ~99.86% apogee   |
-|                                | GMAT   | 6995.76                | 19982.58               | —                |
+| LEO (408.2–421.5 km)           | My Sim | 408.2                  | 421.5                  | ~98.6%    |
+|                                | GMAT   | 407.93                 | 427.39                  | —                |
+| Elliptical (6993.2–20001.6 km) | My Sim | 6993.47                | 20001.61               | ~98.32%   |
+|                                | GMAT   | 6995.76                | 20330.47               | —                |
 
 ---
 
 **Notes:**  
 - **LEO test**: Simulated for 10 orbits at 100× speed.
-  - Perigee error: +0.27 km (~0.066%)
-  - Apogee error: +1.3 km (~0.31%)
-- **Elliptical test**: Simulated for 2 orbits at 100× speed.  
-  - Perigee error: −2.29 km (~0.037%)
-  - Apogee error: +19.03 km (~0.095%)
+- **Elliptical test**: Simulated for 6 orbits at 100× speed.  
 
-Results confirm **sub-0.1% accuracy** in apogee tracking and stable RK4 integration under idealized conditions.
+Results confirm **sub-2% accuracy** in apogee tracking and stable RK4 integration under idealized conditions.
 
 ---
 
