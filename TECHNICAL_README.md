@@ -1,6 +1,6 @@
 [⬅ Back to README](./README.md)
 
-# Satellite Maneuver Simulator - Technical Breakdown
+# Technical Breakdown – Satellite Maneuver Simulator
 
 ## Who This Is For
 
@@ -25,7 +25,7 @@ This document is intended for developers, tech leads, and simulation engineers w
 
 ## Motivation
 
-This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now am area for digging into numerical integration, and optimizing real-time systems using Unity and native C++.
+This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now an area for digging into numerical integration, and optimizing real-time systems using Unity and native C++.
 
 ---
 
