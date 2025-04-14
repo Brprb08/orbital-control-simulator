@@ -1,6 +1,6 @@
 [⬅ Back to README](./README.md)
 
-# Satellite Maneuver Simulator - Unity + C++
+# Satellite Maneuver Simulator - Technical Breakdown
 
 ## Who This Is For
 
