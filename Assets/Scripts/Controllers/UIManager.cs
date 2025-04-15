@@ -33,6 +33,8 @@ public class UIManager : MonoBehaviour
     public TMP_InputField velocityInputField;
     public TMP_Text earthCamButtonText;
     public TextMeshProUGUI instructionText;
+    public TextMeshProUGUI apogeeText;
+    public TextMeshProUGUI perigeeText;
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
@@ -331,5 +333,38 @@ public class UIManager : MonoBehaviour
 
         button.Select();
         button.OnDeselect(null); // Force the button to refresh its visual state.
+    }
+
+    /**
+    * Updates the UI elements for apogee and perigee.
+    * @param apogee - Farthest orbit path distance from planet
+    * @param timeScale - Closest orbit path distance to planet
+    **/
+    public void UpdateApogeePerigeeUI(float apogee, float perigee)
+    {
+        if (apogeeText != null)
+        {
+            if (apogee <= 0)
+            {
+                apogeeText.text = $"";
+            }
+            else
+            {
+                apogeeText.text = $"Apogee: {apogee:F0} km";
+            }
+
+        }
+
+        if (perigeeText != null)
+        {
+            if (perigee <= 0)
+            {
+                perigeeText.text = $"";
+            }
+            else
+            {
+                perigeeText.text = $"Perigee: {perigee:F0} km";
+            }
+        }
     }
 }

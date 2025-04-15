@@ -146,7 +146,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
             float eccentricity, semiMajorAxis, orbitalPeriod = 0f;
 
-            trackedBody.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass);
+            OrbitalCalculations.Instance.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass, trackedBody.transform, trackedBody.velocity);
             bool isElliptical = eccentricity < 1f;
             if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
@@ -189,12 +189,9 @@ public class TrajectoryRenderer : MonoBehaviour
                     if (update) update = false;
                     isComputingPrediction = false;
                 }
-            }
 
-
-            if (showApogeePerigeeLines && Time.time >= apogeePerigeeUpdateTime || isThrusting)
-            {
-                trackedBody.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, Vector3.zero, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular);
+                // THIS NEEDS FIXING, WE SHOULDNT CALL TWICE -- see line 149 (ComputeOrbitalElements)
+                OrbitalCalculations.Instance.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, Vector3.zero, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular, trackedBody.transform, trackedBody.velocity);
 
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
@@ -219,7 +216,7 @@ public class TrajectoryRenderer : MonoBehaviour
                             perigeeAltitude = (perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
                         }
 
-                        UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
+                        UIManager.Instance.UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
                     }
                 }
                 apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
@@ -295,39 +292,6 @@ public class TrajectoryRenderer : MonoBehaviour
         }
 
         return clippedPoints.ToArray();
-    }
-
-    /**
-    * Updates the UI elements for apogee and perigee.
-    * @param apogee - Farthest orbit path distance from planet
-    * @param timeScale - Closest orbit path distance to planet
-    **/
-    private void UpdateApogeePerigeeUI(float apogee, float perigee)
-    {
-        if (apogeeText != null)
-        {
-            if (apogee <= 0)
-            {
-                apogeeText.text = $"";
-            }
-            else
-            {
-                apogeeText.text = $"Apogee: {apogee:F0} km";
-            }
-
-        }
-
-        if (perigeeText != null)
-        {
-            if (perigee <= 0)
-            {
-                perigeeText.text = $"";
-            }
-            else
-            {
-                perigeeText.text = $"Perigee: {perigee:F0} km";
-            }
-        }
     }
 
     /**

@@ -10,6 +10,7 @@ using System;
 **/
 public class TrajectoryComputeController : MonoBehaviour
 {
+
     [Header("Compute Shader/Buffers")]
     public ComputeShader trajectoryComputeShader;
 

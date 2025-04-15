@@ -97,7 +97,6 @@ public class CameraMovement : MonoBehaviour
         {
             float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : .4f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
-            Debug.LogError(distanceFactor);
             float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
 
             distance -= scroll * zoomSpeed;
