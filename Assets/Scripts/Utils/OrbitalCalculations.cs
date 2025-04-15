@@ -1,5 +1,12 @@
 using UnityEngine;
 
+/**
+ * Class responsible for calculating orbital mechanics data for satellites.
+ * 
+ * This component provides utilities to compute various orbital parameters (such as semi-major axis, 
+ * eccentricity, apogee/perigee positions, and orbital period) using classical Newtonian physics.
+ *
+ **/
 public class OrbitalCalculations : MonoBehaviour
 {
     public static OrbitalCalculations Instance { get; private set; }
@@ -16,86 +23,31 @@ public class OrbitalCalculations : MonoBehaviour
         }
     }
 
+
     /**
-        * Returns the apogee and perigee Vector3 positions
-        * @param centralBodyMass - Mass of central body (Earth)
-        **/
-    public void GetOrbitalApogeePerigee(float centralBodyMass, Vector3 centralBodyPosition,
-                                    out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular, Transform transform, Vector3 velocity)
+     * Calculates key orbital parameters (semi-major axis, eccentricity, apogee, perigee, and orbital period)
+     * for a satellite in orbit around a central body.
+     *
+     * This method uses classical orbital mechanics equations based on position and velocity vectors,
+     * and returns a structured result containing all the relevant elements.
+     *
+     * @param centralBodyMass       The mass of the central body in kilograms.
+     * @param centralBodyPosition   The world-space position of the central body.
+     * @param bodyTransform         The Transform of the orbiting body.
+     * @param velocity              The velocity vector of the orbiting body in world-space.
+     * 
+     * @return OrbitalParameters    A struct containing calculated orbital elements such as:
+     *                              semi-major axis, eccentricity, orbital period, apogee/perigee positions,
+     *                              and flags indicating whether the orbit is circular or valid.
+     **/
+
+    public OrbitalParameters CalculateOrbitalParameters(float centralBodyMass, Vector3 centralBodyPosition, Transform bodyTransform, Vector3 velocity)
     {
-        // Compute the orbital elements: semi-major axis and eccentricity
-        ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, centralBodyMass, transform, velocity);
-
-        if (float.IsNaN(semiMajorAxis) || float.IsNaN(eccentricity))
-        {
-            Debug.LogError("[ERROR] Invalid orbital elements. Cannot compute apogee and perigee.");
-            apogeePosition = perigeePosition = centralBodyPosition;
-            isCircular = false;
-            return;
-        }
-
-        Debug.Log($"Semi-Major Axis: {semiMajorAxis}, Eccentricity: {eccentricity}");
+        OrbitalParameters result = new OrbitalParameters(false);
 
         float mu = PhysicsConstants.G * centralBodyMass;
 
-        Vector3 r = transform.position - centralBodyPosition;
-        Vector3 v = velocity;
-        Vector3 hVec = Vector3.Cross(r, v);
-        float hMag = hVec.magnitude;
-
-        float nearZeroThreshold = 1e-6f;
-
-        // Handle near-circular orbits.
-        if (eccentricity < nearZeroThreshold)
-        {
-            isCircular = true;
-            float orbitRadius = r.magnitude;
-            Vector3 radialDirection = r.normalized;
-            perigeePosition = centralBodyPosition + radialDirection * orbitRadius;
-            apogeePosition = centralBodyPosition - radialDirection * orbitRadius;
-            Debug.Log("Nearly circular orbit. Using current radial direction as fallback.");
-            return;
-        }
-        else
-        {
-            isCircular = false;
-        }
-        isCircular = false;
-
-        // Compute the eccentricity vector
-        Vector3 eVec = (Vector3.Cross(v, hVec) / mu) - (r / r.magnitude);
-
-
-        // Use a fallback if the computed eccentricity vectors magnitude is too low
-        Vector3 eUnit = eVec.magnitude > nearZeroThreshold ? eVec.normalized : r.normalized;
-
-        // Check for non-elliptical trajectories
-        if (eccentricity >= 1f)
-        {
-            Debug.LogWarning("Hyperbolic or parabolic orbit detected. Computing closest approach only.");
-            float perigeeDistance = (hMag * hMag) / (mu * (1f + eccentricity));
-            perigeePosition = centralBodyPosition + eUnit * perigeeDistance;
-            apogeePosition = Vector3.zero; // Apogee not defined for open trajectories.
-            return;
-        }
-
-        float perigeeDistanceElliptical = semiMajorAxis * (1f - eccentricity);
-        float apogeeDistanceElliptical = semiMajorAxis * (1f + eccentricity);
-
-        perigeePosition = centralBodyPosition + eUnit * perigeeDistanceElliptical;
-        apogeePosition = centralBodyPosition - eUnit * apogeeDistanceElliptical;
-
-        Debug.Log($"Perigee Distance: {perigeeDistanceElliptical}, Apogee Distance: {apogeeDistanceElliptical}");
-    }
-
-    /**
-    * Computes and returns the Semi Major Axis and Eccentricity of an orbit
-    * @param centralBodyMass - Mass of central body (Earth)
-    **/
-    public void ComputeOrbitalElements(out float semiMajorAxis, out float eccentricity, float centralBodyMass, Transform transform, Vector3 velocity)
-    {
-        float mu = PhysicsConstants.G * centralBodyMass;
-        Vector3 r = transform.position;
+        Vector3 r = bodyTransform.position - centralBodyPosition;
         Vector3 v = velocity;
 
         float rMag = r.magnitude;
@@ -103,36 +55,87 @@ public class OrbitalCalculations : MonoBehaviour
 
         if (rMag < 1f || vMag < 1e-6f)
         {
-            Debug.LogError("[ERROR] Position or velocity magnitude too small. Cannot compute orbital elements.");
-            semiMajorAxis = 0f;
-            eccentricity = 0f;
-            return;
+            Debug.LogError("[ERROR] Position or velocity magnitude too small. Cannot compute orbital parameters.");
+            return result;
         }
 
         float energy = (vMag * vMag) / 2f - (mu / rMag);
-
-        if (energy >= 0f) // Hyperbolic or parabolic orbit
-        {
-            semiMajorAxis = 0f;
-            eccentricity = 1f + (rMag * vMag * vMag) / mu;
-            Debug.LogWarning($"Hyperbolic orbit detected. Eccentricity set to {eccentricity:F3}.");
-            return;
-        }
-
-        semiMajorAxis = -mu / (2f * energy);
-
         Vector3 hVec = Vector3.Cross(r, v);
         float hMag = hVec.magnitude;
 
         if (hMag < 1e-6f)
         {
-            Debug.LogError("[ERROR] Angular momentum too small. Cannot compute orbital elements.");
-            eccentricity = 0f;
-            return;
+            Debug.LogError("[ERROR] Angular momentum too small. Cannot compute orbital parameters.");
+            return result;
         }
 
+        // Eccentricity
         float innerSqrt = 1f + (2f * energy * hMag * hMag) / (mu * mu);
         innerSqrt = Mathf.Max(innerSqrt, 0f);
-        eccentricity = Mathf.Sqrt(innerSqrt);
+        result.eccentricity = Mathf.Sqrt(innerSqrt);
+
+        if (energy >= 0f)
+        {
+            result.semiMajorAxis = 0f;
+            result.isCircular = false;
+            result.isValid = true;
+            return result;
+        }
+
+        result.semiMajorAxis = -mu / (2f * energy);
+        result.orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(result.semiMajorAxis, 3) / mu);
+
+        Vector3 eVec = (Vector3.Cross(v, hVec) / mu) - (r / r.magnitude);
+        Vector3 eUnit = eVec.magnitude > 1e-6f ? eVec.normalized : r.normalized;
+
+        if (result.eccentricity < 1e-6f)
+        {
+            result.isCircular = true;
+            float orbitRadius = r.magnitude;
+            result.perigeePosition = centralBodyPosition + r.normalized * orbitRadius;
+            result.apogeePosition = centralBodyPosition - r.normalized * orbitRadius;
+        }
+        else if (result.eccentricity >= 1f)
+        {
+            Debug.LogWarning("Hyperbolic or parabolic orbit detected.");
+            float perigeeDistance = (hMag * hMag) / (mu * (1f + result.eccentricity));
+            result.perigeePosition = centralBodyPosition + eUnit * perigeeDistance;
+            result.apogeePosition = Vector3.zero;
+        }
+        else
+        {
+            float perigeeDistance = result.semiMajorAxis * (1f - result.eccentricity);
+            float apogeeDistance = result.semiMajorAxis * (1f + result.eccentricity);
+            result.perigeePosition = centralBodyPosition + eUnit * perigeeDistance;
+            result.apogeePosition = centralBodyPosition - eUnit * apogeeDistance;
+        }
+
+        result.isValid = true;
+        return result;
+    }
+}
+
+/**
+ * A data structure representing the key elements of an orbit.
+**/
+public struct OrbitalParameters
+{
+    public float semiMajorAxis;
+    public float eccentricity;
+    public float orbitalPeriod;
+    public Vector3 apogeePosition;
+    public Vector3 perigeePosition;
+    public bool isCircular;
+    public bool isValid;
+
+    public OrbitalParameters(bool valid)
+    {
+        semiMajorAxis = 0;
+        eccentricity = 0;
+        orbitalPeriod = 0;
+        apogeePosition = Vector3.zero;
+        perigeePosition = Vector3.zero;
+        isCircular = false;
+        isValid = valid;
     }
 }

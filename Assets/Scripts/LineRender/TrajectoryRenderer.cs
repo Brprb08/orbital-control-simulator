@@ -9,7 +9,6 @@ using TMPro;
 * The class also updates the UI elements for apogee and perigee distances
 * and toggles line visibility based on user inputs and simulation state.
 **/
-// [RequireComponent(typeof(LineRenderer))]
 public class TrajectoryRenderer : MonoBehaviour
 {
     public static TrajectoryRenderer Instance { get; private set; }
@@ -19,7 +18,6 @@ public class TrajectoryRenderer : MonoBehaviour
     public float predictionDeltaTime = 5f;
     public bool orbitIsDirty = true;
     private bool isThrusting = false;
-    private bool update = false;
 
     [Header("References")]
     public TextMeshProUGUI apogeeText;
@@ -39,8 +37,6 @@ public class TrajectoryRenderer : MonoBehaviour
 
     [Header("Coroutine")]
     private Coroutine predictionCoroutine;
-    private float updateIntervalApogeePerigee = 10f;
-    private float apogeePerigeeUpdateTime = 5f;
 
     [Header("Procedural Lines")]
     public ProceduralLineRenderer predictionProceduralLine;
@@ -144,11 +140,26 @@ public class TrajectoryRenderer : MonoBehaviour
                 continue;
             }
 
-            float eccentricity, semiMajorAxis, orbitalPeriod = 0f;
+            var orbitalParams = OrbitalCalculations.Instance.CalculateOrbitalParameters(
+                trackedBody.centralBodyMass,
+                Vector3.zero,
+                trackedBody.transform,
+                trackedBody.velocity
+            );
 
-            OrbitalCalculations.Instance.ComputeOrbitalElements(out semiMajorAxis, out eccentricity, trackedBody.centralBodyMass, trackedBody.transform, trackedBody.velocity);
-            bool isElliptical = eccentricity < 1f;
-            if (showPredictionLines && (update || isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
+            if (!orbitalParams.isValid)
+            {
+                yield return new WaitForSeconds(0.5f);
+                continue;
+            }
+
+            bool isElliptical = orbitalParams.eccentricity < 1f;
+
+            // If we should show prediction lines and..
+            //     - isThrusting = true
+            //     - orbitIsDirty = true
+            //     - If not thrusting, orbit is elliptical, and prediction steps are still low
+            if (showPredictionLines && (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
                 if (!isComputingPrediction)
                 {
@@ -156,18 +167,18 @@ public class TrajectoryRenderer : MonoBehaviour
                     if (isElliptical)
                     {
                         float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
-                        orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(semiMajorAxis, 3) / gravitationalParameter);
+                        orbitalParams.orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(orbitalParams.semiMajorAxis, 3) / gravitationalParameter);
 
                         // Adjust prediction steps to cover the full orbital loop
                         predictionSteps = Mathf.Clamp(
-                            Mathf.CeilToInt(orbitalPeriod / predictionDeltaTime),
+                            Mathf.CeilToInt(orbitalParams.orbitalPeriod / predictionDeltaTime),
                             1,
                             70000
                         );
                     }
                     else
                     {
-                        // For hyperbolic orbits, use a fixed number of steps
+                        // For hyperbolic orbits use a fixed number of steps
                         predictionSteps = 5000;
                     }
 
@@ -186,40 +197,25 @@ public class TrajectoryRenderer : MonoBehaviour
                     });
 
                     orbitIsDirty = false;
-                    if (update) update = false;
                     isComputingPrediction = false;
                 }
 
-                // THIS NEEDS FIXING, WE SHOULDNT CALL TWICE -- see line 149 (ComputeOrbitalElements)
-                OrbitalCalculations.Instance.GetOrbitalApogeePerigee(trackedBody.centralBodyMass, Vector3.zero, out Vector3 apogeePosition, out Vector3 perigeePosition, out bool isCircular, trackedBody.transform, trackedBody.velocity);
-
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
-                    if (!isCircular)
+                    if (!orbitalParams.isCircular)
                     {
-                        apogeeProceduralLine.UpdateLine(new Vector3[] { apogeePosition, Vector3.zero });
-                        perigeeProceduralLine.UpdateLine(new Vector3[] { perigeePosition, Vector3.zero });
+                        apogeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.apogeePosition, Vector3.zero });
+                        perigeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.perigeePosition, Vector3.zero });
                     }
 
                     if (apogeeText != null && perigeeText != null)
                     {
-                        float apogeeAltitude;
-                        float perigeeAltitude;
-                        if (isCircular)
-                        {
-                            apogeeAltitude = (apogeePosition.magnitude - 637.8f) * 10f;
-                            perigeeAltitude = (perigeePosition.magnitude - 637.8f) * 10f;
-                        }
-                        else
-                        {
-                            apogeeAltitude = (apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
-                            perigeeAltitude = (perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
-                        }
+                        float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
+                        float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
 
                         UIManager.Instance.UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
                     }
                 }
-                apogeePerigeeUpdateTime = Time.time + updateIntervalApogeePerigee;
             }
 
             if (showPredictionLines)
@@ -249,6 +245,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
             if (isThrusting)
             {
+                // For high timescales, slightly reduce update speed
                 if (Time.timeScale >= 50)
                 {
                     yield return new WaitForSeconds(3f);
