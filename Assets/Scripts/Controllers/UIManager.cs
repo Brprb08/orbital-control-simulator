@@ -344,7 +344,7 @@ public class UIManager : MonoBehaviour
     {
         SetText(apogeeText, "Apogee", apogee);
         SetText(perigeeText, "Perigee", perigee);
-        SetText(semiMajorAxisText, "Semi-Major Axis", semiMajorAxis);
+        SetText(semiMajorAxisText, "Semi-Major Axis", semiMajorAxis * 10f);
         SetText(eccentricityText, "Eccentricity", eccentricity, "", "F3");
         SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
     }
