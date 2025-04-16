@@ -35,6 +35,9 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI instructionText;
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
+    public TextMeshProUGUI semiMajorAxisText;
+    public TextMeshProUGUI eccentricityText;
+    public TextMeshProUGUI orbitalPeriodText;
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
@@ -335,36 +338,20 @@ public class UIManager : MonoBehaviour
         button.OnDeselect(null); // Force the button to refresh its visual state.
     }
 
-    /**
-    * Updates the UI elements for apogee and perigee.
-    * @param apogee - Farthest orbit path distance from planet
-    * @param timeScale - Closest orbit path distance to planet
-    **/
-    public void UpdateApogeePerigeeUI(float apogee, float perigee)
+
+
+    public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod)
     {
-        if (apogeeText != null)
-        {
-            if (apogee <= 0)
-            {
-                apogeeText.text = $"";
-            }
-            else
-            {
-                apogeeText.text = $"Apogee: {apogee:F0} km";
-            }
+        SetText(apogeeText, "Apogee", apogee);
+        SetText(perigeeText, "Perigee", perigee);
+        SetText(semiMajorAxisText, "Semi-Major Axis", semiMajorAxis);
+        SetText(eccentricityText, "Eccentricity", eccentricity, "", "F3");
+        SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
+    }
 
-        }
-
-        if (perigeeText != null)
-        {
-            if (perigee <= 0)
-            {
-                perigeeText.text = $"";
-            }
-            else
-            {
-                perigeeText.text = $"Perigee: {perigee:F0} km";
-            }
-        }
+    private void SetText(TextMeshProUGUI textElement, string label, float value, string unit = "km", string format = "F0")
+    {
+        if (textElement != null)
+            textElement.text = value > .0000001 ? $"{label}: {value.ToString(format)} {unit}".Trim() : string.Empty;
     }
 }

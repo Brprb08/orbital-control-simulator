@@ -202,7 +202,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 }
             }
 
-            if (showApogeePerigeeLines && apogeePerigeeLinesDirty)
+            if (showApogeePerigeeLines)
             {
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
@@ -217,16 +217,10 @@ public class TrajectoryRenderer : MonoBehaviour
                         float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
                         float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
 
-                        UIManager.Instance.UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
+                        UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity, orbitalParams.orbitalPeriod);
                     }
                 }
-                apogeePerigeeLinesDirty = false;
             }
-
-            // if (showApogeePerigeeLines && !apogeeProceduralLine.GetComponent<Renderer>().isVisible)
-            // {
-            //     apogeePerigeeLinesDirty = true;
-            // }
 
             if (showPredictionLines)
             {
