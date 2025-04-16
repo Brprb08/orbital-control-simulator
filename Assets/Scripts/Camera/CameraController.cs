@@ -312,20 +312,20 @@ public class CameraController : MonoBehaviour
                 return;
             }
 
-            cameraMovement.SetTargetBodyTemp(nBodyComponent);
+            cameraMovement.SetTargetEarth(nBodyComponent);
             inEarthViewCam = true;
         }
         else
         {
             Debug.LogError(previousTrackedBody);
-            cameraMovement.SetTargetBodyTemp(previousTrackedBody);
+            cameraMovement.SetTargetEarth(previousTrackedBody);
             inEarthViewCam = false;
         }
     }
 
-    public void SetInEarthView(bool inEarthView)
+    public void SetInEarthView(bool inEarthCam)
     {
-        cameraMovement.inEarthView = inEarthView;
+        cameraMovement.inEarthCam = inEarthCam;
     }
 
     /**
@@ -425,10 +425,9 @@ public class CameraController : MonoBehaviour
         {
             UIManager.Instance.OnEarthCamPressed();
         }
-
         if (cameraMovement != null)
         {
-            cameraMovement.inEarthView = false;
+            cameraMovement.inEarthCam = false;
             cameraMovement.SetTargetBody(realNBody);
         }
 

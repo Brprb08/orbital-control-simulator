@@ -43,4 +43,46 @@ public class CameraCalculations : MonoBehaviour
         while (angle < -180f) angle += 360f;
         return angle;
     }
+
+    /**
+    * Calculates the minimumcameraDistance based on the radius of the object being tracked.
+    * @param radius - Radius of object being tracked by camera
+    **/
+    public float CalculateMinDistance(float radius)
+    {
+        if (radius <= 0.5f)
+        {
+            return Mathf.Max(0.4f, radius * 10f);
+        }
+        else if (radius > 0.5f && radius <= 100f)
+        {
+            return radius * 4f;
+        }
+        else
+        {
+            return radius + 400f;
+        }
+    }
+
+    /**
+    * Calculates the maximumcameraDistance based on the radius of the object being tracked.
+    * @param radius - Radius of object being tracked by camera
+    **/
+    public float CalculateMaxDistance(float radius)
+    {
+        float minimumMaxDistance = 2000f;
+
+        if (radius <= 0.5f)
+        {
+            return Mathf.Max(minimumMaxDistance, radius * 500f);  // Small objects
+        }
+        else if (radius > 0.5f && radius <= 100f)
+        {
+            return Mathf.Max(minimumMaxDistance, radius * 100f);  // Medium objects
+        }
+        else
+        {
+            return Mathf.Max(minimumMaxDistance, radius + 2000f);  // Large onjects
+        }
+    }
 }

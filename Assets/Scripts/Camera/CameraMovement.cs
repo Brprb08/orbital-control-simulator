@@ -18,19 +18,20 @@ public class CameraMovement : MonoBehaviour
     public float distance = 100f;
     public float height = 30f;
     public float baseZoomSpeed = 40f;
-    public float maxDistance = 50000f;
+    public float maxCameraDistance = 50000f;
+    private float minCameraDistance = 0.1f;
+
+    // Placeholders are used when placing a body before it becomes an NBody
+    private float placeholderBodyRadius = 0f;
+    private Camera mainCamera;
+    public bool inEarthCam = false;
+    public NBody tempEarthBody;
+
 
     [Header("UI References")]
     public TextMeshProUGUI velocityText;
     public TextMeshProUGUI altitudeText;
     public TextMeshProUGUI trackingObjectNameText;
-
-    [Header("Camera Variables")]
-    private float minDistance = 0.1f;
-    private float placeholderRadius = 0f;
-    private Camera mainCamera;
-    public bool inEarthView = false;
-    public NBody tempEarthBody;
 
     /**
     * Setup the singleton for accessing UIManager
@@ -63,45 +64,33 @@ public class CameraMovement : MonoBehaviour
         if (mainCamera == null) return;
 
         bool usingPlaceholder = (targetBody == null && targetPlaceholder != null);
-        float radius = usingPlaceholder ? placeholderRadius : targetBody.radius;
-        if (inEarthView)
+        float radius = usingPlaceholder ? placeholderBodyRadius : targetBody.radius;
+
+        transform.position = inEarthCam
+            ? tempEarthBody.transform.position
+            : (usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position);
+
+        // Determine base min distance based on radius
+        if (inEarthCam)
         {
-            transform.position = tempEarthBody.transform.position;
+            minCameraDistance = 800f;
+        }
+        else if (radius <= 0.5f)
+        {
+            minCameraDistance = Mathf.Max(0.01f, radius * 0.7f);
+        }
+        else if (radius <= 100f)
+        {
+            minCameraDistance = radius * 5f;
         }
         else
         {
-            transform.position = usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position;
+            minCameraDistance = radius + 400f;
         }
 
-        if (radius <= 0.5f)
-        {
-            minDistance = Mathf.Max(0.01f, radius * 0.7f);
-        }
-        else if (radius > 0.5f && radius <= 100f)
-        {
-            minDistance = radius * 5f;
-        }
-        else
-        {
-            minDistance = radius + 400f;
-        }
+        // distance = Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
 
-        if (inEarthView)
-        {
-            minDistance = 800f;
-        }
-        distance = Mathf.Clamp(distance, minDistance, maxDistance);
-
-        float scroll = Input.GetAxis("Mouse ScrollWheel");
-        if (Mathf.Abs(scroll) > 0.01f)
-        {
-            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : .4f, 1f, 20f);
-            float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
-            float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
-
-            distance -= scroll * zoomSpeed;
-            distance = Mathf.Clamp(distance, minDistance, maxDistance);
-        }
+        HandleZoom();
 
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
 
@@ -120,6 +109,62 @@ public class CameraMovement : MonoBehaviour
     }
 
     /**
+    * Configures the camera's distance, position, and zoom boundaries based on the selected celestial body.
+    *
+    * This method calculates appropriate min and max distances depending on the body's radius,
+    * clamps the current zoom level, and moves the camera into orbit view. It's used both for general
+    * body tracking and Earth-focused views, with some internal logic differences depending on the mode.
+    *
+    * @param body                The celestial body to focus the camera on.
+    * @param togglingEarth       True if we're switching into Earth view mode (used for special zoom behavior).
+    * @param closerFraction      How close the camera should default to the body (0 = minDistance, 1 = midpoint).
+    * @param customMinMultiplier Optional multiplier to apply to the min camera distance (e.g. 5x for Earth view).
+    * @param customMaxOverride   Optional override for max camera distance. Set to -1 to auto-calculate.
+    **/
+    private void ConfigureCameraForBody(NBody body, bool togglingEarth, float closerFraction, float customMinMultiplier = 1f, float customMaxOverride = -1f)
+    {
+        if (body == null) return;
+
+        transform.position = body.transform.position;
+
+        if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
+        {
+            Debug.LogError($"[ERROR] Camera transform is NaN after setting target {body.name}");
+        }
+
+        minCameraDistance = CameraCalculations.Instance.CalculateMinDistance(body.radius) * customMinMultiplier;
+        maxCameraDistance = (customMaxOverride > 0f)
+            ? customMaxOverride
+            : CameraCalculations.Instance.CalculateMaxDistance(body.radius);
+
+        float midpointDistance = (minCameraDistance + maxCameraDistance) / 2f;
+
+        if (togglingEarth)
+        {
+            float defaultDistance = minCameraDistance + (midpointDistance - minCameraDistance) * closerFraction;
+            maxCameraDistance = 30000f;
+            distance = defaultDistance;
+        }
+        else
+        {
+            float defaultDistance;
+            if (inEarthCam)
+            {
+                defaultDistance = 2500f;
+            }
+            else
+            {
+                defaultDistance = minCameraDistance + (midpointDistance - minCameraDistance) * closerFraction;
+            }
+            maxCameraDistance = 10000f;
+
+            distance = defaultDistance;
+        }
+
+        Debug.Log($"Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
+    }
+
+    /**
     * Sets the real celestial body as the camera's target.
     * @param newTarget - New target for camera to track
     **/
@@ -130,71 +175,33 @@ public class CameraMovement : MonoBehaviour
 
         if (targetBody != null)
         {
-            transform.position = targetBody.transform.position;
-
-            if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
-            {
-                Debug.LogError($"[ERROR] Camera transform is NaN after setting target {targetBody.name}");
-            }
-
-            minDistance = CalculateMinDistance(targetBody.radius);
-            maxDistance = CalculateMaxDistance(targetBody.radius);
-            float midpointDistance = (minDistance + maxDistance) / 2f;
-
             float closerFraction = targetBody.radius <= 10f ? 0.15f : 0.25f;
+            float earthViewOverride = inEarthCam ? 2500f : -1f;
 
-            float defaultDistance;
-            if (inEarthView)
-            {
-                defaultDistance = 2500f;
-            }
-            else
-            {
-                defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
-            }
-            maxDistance = 10000f;
-
-            distance = defaultDistance;
-
-            Debug.Log($"Camera target set to {targetBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
+            ConfigureCameraForBody(targetBody, false, closerFraction, 1f, earthViewOverride > 0 ? 10000f : -1f);
+            if (earthViewOverride > 0) distance = earthViewOverride;
         }
     }
 
-    // Sets the earth as the camera track
-    public void SetTargetBodyTemp(NBody newTarget)
+    /**
+    * Sets the Earth as the cameras target
+    * @param Earth - New target for camera to track
+    **/
+    public void SetTargetEarth(NBody earth)
     {
-        if (inEarthView)
-        {
-            inEarthView = false;
-            targetBody = newTarget;
-        }
-        else
-        {
-            inEarthView = true;
-            tempEarthBody = newTarget;
-        }
+        inEarthCam = !inEarthCam;
+
+        tempEarthBody = earth;
+
         targetPlaceholder = null;
 
-        if (newTarget != null)
+        if (earth != null)
         {
-            transform.position = targetBody.transform.position;
+            float closerFraction = earth.radius <= 10f ? 0.15f : 0.25f;
+            float customMinMultiplier = 5f;
+            float customMaxOverride = 30000f;
 
-            if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
-            {
-                Debug.LogError($"[ERROR] Camera transform is NaN after setting target {tempEarthBody.name}");
-            }
-
-            minDistance = CalculateMinDistance(tempEarthBody.radius) * 5;
-            maxDistance = CalculateMaxDistance(tempEarthBody.radius);
-            float midpointDistance = (minDistance + maxDistance) / 2f;
-
-            float closerFraction = tempEarthBody.radius <= 10f ? 0.15f : 0.25f;
-            float defaultDistance = minDistance + (midpointDistance - minDistance) * closerFraction;
-            maxDistance = 30000f;
-
-            distance = defaultDistance;
-
-            Debug.Log($"Camera target set to {tempEarthBody.name}. Min Distance: {minDistance}, Max Distance: {maxDistance}");
+            ConfigureCameraForBody(earth, true, closerFraction, customMinMultiplier, customMaxOverride);
         }
     }
 
@@ -209,14 +216,31 @@ public class CameraMovement : MonoBehaviour
 
         if (planet != null)
         {
-            placeholderRadius = planet.localScale.x * 1f;
-            distance = 2f * placeholderRadius;
-            height = 0.2f * placeholderRadius;
-            Debug.Log($"Camera now tracks placeholder: {planet.name}, radius={placeholderRadius}");
+            placeholderBodyRadius = planet.localScale.x * 1f;
+            distance = 2f * placeholderBodyRadius;
+            height = 0.2f * placeholderBodyRadius;
+            Debug.Log($"Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
         }
         else
         {
             Debug.Log("SetTargetBodyPlaceholder called with null. No placeholder assigned.");
+        }
+    }
+
+    /**
+    * Handles all zoom for track cam
+    **/
+    void HandleZoom()
+    {
+        float scroll = Input.GetAxis("Mouse ScrollWheel");
+        if (Mathf.Abs(scroll) > 0.01f)
+        {
+            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : .4f, 1f, 20f);
+            float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
+            float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
+
+            distance -= scroll * zoomSpeed;
+            distance = Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
         }
     }
 
@@ -229,62 +253,18 @@ public class CameraMovement : MonoBehaviour
         {
             float velocityMagnitude = targetBody.velocity.magnitude;
             float velocityInMetersPerSecond = velocityMagnitude * 10000f;
-            // float velocityInMph = velocityInMetersPerSecond * 2.23694f;
             velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s";
         }
 
         if (altitudeText != null && targetBody != null)
         {
             float altitude = targetBody.altitude;
-            // float altitudeInFeet = altitude * 3280.84f;
             altitudeText.text = $"Altitude: {altitude * 10:F2} km";
         }
 
         if (trackingObjectNameText != null && targetBody != null)
         {
             trackingObjectNameText.text = $"{targetBody.name}";
-        }
-    }
-
-    /**
-    * Calculates the minimum distance based on the radius of the object being tracked.
-    * @param radius - Radius of object being tracked by camera
-    **/
-    private float CalculateMinDistance(float radius)
-    {
-        if (radius <= 0.5f)
-        {
-            return Mathf.Max(0.4f, radius * 10f);
-        }
-        else if (radius > 0.5f && radius <= 100f)
-        {
-            return radius * 4f;
-        }
-        else
-        {
-            return radius + 400f;
-        }
-    }
-
-    /**
-    * Calculates the maximum distance based on the radius of the object being tracked.
-    * @param radius - Radius of object being tracked by camera
-    **/
-    private float CalculateMaxDistance(float radius)
-    {
-        float minimumMaxDistance = 2000f;
-
-        if (radius <= 0.5f)
-        {
-            return Mathf.Max(minimumMaxDistance, radius * 500f);  // Small objects
-        }
-        else if (radius > 0.5f && radius <= 100f)
-        {
-            return Mathf.Max(minimumMaxDistance, radius * 100f);  // Medium objects
-        }
-        else
-        {
-            return Mathf.Max(minimumMaxDistance, radius + 2000f);  // Large onjects
         }
     }
 }
