@@ -40,7 +40,6 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     /**

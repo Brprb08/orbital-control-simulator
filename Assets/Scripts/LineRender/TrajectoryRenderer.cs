@@ -34,7 +34,6 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool showPredictionLines;
     private bool showOriginLines;
     private bool showApogeePerigeeLines;
-    private bool apogeePerigeeLinesDirty = true;
 
     [Header("Coroutine")]
     private Coroutine predictionCoroutine;
@@ -217,7 +216,8 @@ public class TrajectoryRenderer : MonoBehaviour
                         float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
                         float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
 
-                        UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity, orbitalParams.orbitalPeriod);
+                        UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
+                            orbitalParams.orbitalPeriod, orbitalParams.inclination, orbitalParams.RAAN);
                     }
                 }
             }
@@ -329,11 +329,6 @@ public class TrajectoryRenderer : MonoBehaviour
             {
                 uIManager.ShowApogeePerigeePanel(showApogeePerigeeLines);
             }
-        }
-
-        if (showApogeePerigeeLines)
-        {
-            apogeePerigeeLinesDirty = true;
         }
 
         // Re-run RecomputeTrajectory to show lines when reset

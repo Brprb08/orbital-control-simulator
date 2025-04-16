@@ -5,8 +5,8 @@ A real-time orbital mechanics simulator built in **Unity** with core physics han
 **Built from scratch to simulate realistic orbital mechanics in real time, no Unity physics used.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=Y3UxFyOn_uI)
-![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-16Track.png)
-![Elliptical Orbit](./Assets/Images/04-16SatelliteUpClose.png)
+![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
+![Elliptical Orbit](./Assets/Images/04-17SatelliteUpClose.png)
 ![Free Cam](./Assets/Images/04-16Free.png)
 
 

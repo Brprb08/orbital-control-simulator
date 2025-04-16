@@ -20,10 +20,10 @@ public class TimeController : MonoBehaviour
     /**
     * Ensures this object persists between scene reloads.
     **/
-    void Awake()
-    {
-        DontDestroyOnLoad(gameObject);
-    }
+    // void Awake()
+    // {
+    //     DontDestroyOnLoad(gameObject);
+    // }
 
 
     /**

@@ -110,6 +110,29 @@ public class OrbitalCalculations : MonoBehaviour
             result.apogeePosition = centralBodyPosition - eUnit * apogeeDistance;
         }
 
+        Vector3 hUnit = -hVec.normalized;
+        result.inclination = Mathf.Acos(Vector3.Dot(hUnit, Vector3.up)) * Mathf.Rad2Deg;
+
+
+        // RAAN (angle between X axis and ascending node)
+        Vector3 nodeVec = Vector3.Cross(Vector3.up, hVec); // Unity Y-up
+        float nodeMag = nodeVec.magnitude;
+
+        if (nodeMag > 1e-6f)
+        {
+            result.RAAN = Mathf.Acos(nodeVec.x / nodeMag) * Mathf.Rad2Deg;
+            if (nodeVec.z < 0) result.RAAN = 360f - result.RAAN;
+
+            if (result.RAAN == 360f)
+            {
+                result.RAAN = 0f;
+            }
+        }
+        else
+        {
+            result.RAAN = 0f;
+        }
+
         result.isValid = true;
         return result;
     }
@@ -125,6 +148,8 @@ public struct OrbitalParameters
     public float orbitalPeriod;
     public Vector3 apogeePosition;
     public Vector3 perigeePosition;
+    public float inclination;
+    public float RAAN;
     public bool isCircular;
     public bool isValid;
 
@@ -135,6 +160,8 @@ public struct OrbitalParameters
         orbitalPeriod = 0;
         apogeePosition = Vector3.zero;
         perigeePosition = Vector3.zero;
+        inclination = 0;
+        RAAN = 0;
         isCircular = false;
         isValid = valid;
     }

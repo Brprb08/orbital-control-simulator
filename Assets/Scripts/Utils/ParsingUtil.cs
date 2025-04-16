@@ -15,7 +15,6 @@ public class ParsingUtils : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     public bool TryParseVector3(string input, out Vector3 result)

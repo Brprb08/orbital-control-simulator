@@ -38,6 +38,8 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI semiMajorAxisText;
     public TextMeshProUGUI eccentricityText;
     public TextMeshProUGUI orbitalPeriodText;
+    public TextMeshProUGUI inclinationText;
+    public TextMeshProUGUI raanText;
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
@@ -55,7 +57,6 @@ public class UIManager : MonoBehaviour
             return;
         }
         Instance = this;
-        DontDestroyOnLoad(gameObject);
     }
 
     /**
@@ -340,18 +341,20 @@ public class UIManager : MonoBehaviour
 
 
 
-    public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod)
+    public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod, float inclination, float RAAN)
     {
         SetText(apogeeText, "Apogee", apogee);
         SetText(perigeeText, "Perigee", perigee);
         SetText(semiMajorAxisText, "Semi-Major Axis", semiMajorAxis * 10f);
         SetText(eccentricityText, "Eccentricity", eccentricity, "", "F3");
         SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
+        SetText(inclinationText, "Inclination", inclination, "°");
+        SetText(raanText, "RAAN", RAAN, "°", "F1");
     }
 
     private void SetText(TextMeshProUGUI textElement, string label, float value, string unit = "km", string format = "F0")
     {
         if (textElement != null)
-            textElement.text = value > .0000001 ? $"{label}: {value.ToString(format)} {unit}".Trim() : string.Empty;
+            textElement.text = value >= 0 ? $"{label}: {value.ToString(format)} {unit}".Trim() : string.Empty;
     }
 }
