@@ -34,6 +34,7 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool showPredictionLines;
     private bool showOriginLines;
     private bool showApogeePerigeeLines;
+    private bool apogeePerigeeLinesDirty = true;
 
     [Header("Coroutine")]
     private Coroutine predictionCoroutine;
@@ -199,7 +200,10 @@ public class TrajectoryRenderer : MonoBehaviour
                     orbitIsDirty = false;
                     isComputingPrediction = false;
                 }
+            }
 
+            if (showApogeePerigeeLines && apogeePerigeeLinesDirty)
+            {
                 if (apogeeProceduralLine != null && perigeeProceduralLine != null)
                 {
                     if (!orbitalParams.isCircular)
@@ -216,7 +220,13 @@ public class TrajectoryRenderer : MonoBehaviour
                         UIManager.Instance.UpdateApogeePerigeeUI(apogeeAltitude, perigeeAltitude);
                     }
                 }
+                apogeePerigeeLinesDirty = false;
             }
+
+            // if (showApogeePerigeeLines && !apogeeProceduralLine.GetComponent<Renderer>().isVisible)
+            // {
+            //     apogeePerigeeLinesDirty = true;
+            // }
 
             if (showPredictionLines)
             {
@@ -325,6 +335,11 @@ public class TrajectoryRenderer : MonoBehaviour
             {
                 uIManager.ShowApogeePerigeePanel(showApogeePerigeeLines);
             }
+        }
+
+        if (showApogeePerigeeLines)
+        {
+            apogeePerigeeLinesDirty = true;
         }
 
         // Re-run RecomputeTrajectory to show lines when reset

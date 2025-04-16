@@ -16,6 +16,10 @@ public class ProceduralLineRenderer : MonoBehaviour
     [Header("Line Settings")]
     public float lineWidth = 0.1f;
 
+    private Vector3[] lastDrawnPoints;
+
+    public bool HasPoints => lastDrawnPoints != null && lastDrawnPoints.Length > 1;
+
     /**
     * Initializes the ProceduralLineRenderer by setting up the mesh and material components.
     * Ensures a default material is applied if none exists.
@@ -85,10 +89,12 @@ public class ProceduralLineRenderer : MonoBehaviour
         }
 
         int maxPoints = Math.Min(points.Length, 30000);
+        lastDrawnPoints = new Vector3[maxPoints];
 
         for (int i = 0; i < maxPoints; i++)
         {
             points[i] = transform.InverseTransformPoint(points[i]);
+            lastDrawnPoints[i] = points[i];
         }
 
         Vector3[] vertices = new Vector3[maxPoints];

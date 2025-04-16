@@ -118,18 +118,16 @@ public class NBody : MonoBehaviour
             transform.position = tempPosition;
             velocity = tempVelocity;
 
-            // Check for collisions.
-            foreach (var body in GravityManager.Instance.Bodies)
+            NBody earth = GravityManager.Instance.CentralBody;
+            if (earth != null && earth != this)
             {
-                if (body == this) continue;
+                float distance = Vector3.Distance(transform.position, earth.transform.position);
+                float collisionThreshold = radius + earth.radius;
 
-                float distance = Vector3.Distance(transform.position, body.transform.position);
-                float collisionThreshold = radius + body.radius;
-
-                if (body.isCentralBody && distance < collisionThreshold)
+                if (distance < collisionThreshold)
                 {
-                    Debug.Log($"[COLLISION] {body.name} collided with central body {body.name}");
-                    GravityManager.Instance.HandleCollision(this, body);
+                    Debug.Log($"[COLLISION] {name} collided with Earth");
+                    GravityManager.Instance.HandleCollision(this, earth);
                     return;
                 }
             }

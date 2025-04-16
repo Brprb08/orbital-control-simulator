@@ -372,28 +372,6 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    public void SwitchToNBody()
-    {
-        if (bodies.Count > 0)
-        {
-            currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
-
-            NBody nextBody = bodies[currentIndex];
-
-            cameraMovement.SetTargetBody(nextBody);
-
-            UpdateTrajectoryRender(currentIndex);
-
-            ReturnToTracking();
-            Debug.Log($"Camera switched to track: {nextBody.name}");
-        }
-        else
-        {
-            BreakToFreeCam();
-            Debug.Log("No valid bodies to track. Switched to FreeCam.");
-        }
-    }
-
     /**
     * Called from ObjectPlacementManager to set the track temporarily before setting velocity.
     * @param radius - Placeholder object to track temporarily

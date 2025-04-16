@@ -20,12 +20,12 @@ public class CameraCalculations : MonoBehaviour
     }
 
     /**
-        * Clamps an angle between a minimum and maximum value.
-        * @param angle The angle to clamp.
-        * @param min The minimum value.
-        * @param max The maximum value.
-        * @return The clamped angle.
-        **/
+    * Clamps an angle between a minimum and maximum value.
+    * @param angle The angle to clamp.
+    * @param min The minimum value.
+    * @param max The maximum value.
+    * @return The clamped angle.
+    **/
     public float ClampAngle(float angle, float min, float max)
     {
         angle = NormalizeAngle(angle);

@@ -88,8 +88,6 @@ public class CameraMovement : MonoBehaviour
             minCameraDistance = radius + 400f;
         }
 
-        // distance = Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
-
         HandleZoom();
 
         Vector3 targetLocalPos = new Vector3(0f, height, -distance);
@@ -110,10 +108,6 @@ public class CameraMovement : MonoBehaviour
 
     /**
     * Configures the camera's distance, position, and zoom boundaries based on the selected celestial body.
-    *
-    * This method calculates appropriate min and max distances depending on the body's radius,
-    * clamps the current zoom level, and moves the camera into orbit view. It's used both for general
-    * body tracking and Earth-focused views, with some internal logic differences depending on the mode.
     *
     * @param body                The celestial body to focus the camera on.
     * @param togglingEarth       True if we're switching into Earth view mode (used for special zoom behavior).

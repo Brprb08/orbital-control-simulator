@@ -9,6 +9,9 @@ using TMPro;
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
+
+    public NBody CentralBody { get; private set; }
+
     private List<NBody> bodies = new List<NBody>();
 
     public float minCollisionDistance = 0.5f;
@@ -30,11 +33,6 @@ public class GravityManager : MonoBehaviour
         else
         {
             Destroy(gameObject);
-        }
-
-        if (bodies == null)
-        {
-            bodies = new List<NBody>(); // Ensure the list is initialized.
         }
 
         bodyDropdown.ClearOptions();
@@ -63,6 +61,8 @@ public class GravityManager : MonoBehaviour
     **/
     public void RegisterBody(NBody body)
     {
+        if (body.isCentralBody) CentralBody = body;
+
         if (!bodies.Contains(body))
         {
             bodies.Add(body);
@@ -90,6 +90,8 @@ public class GravityManager : MonoBehaviour
     **/
     public void DeregisterBody(NBody body)
     {
+        if (body == CentralBody) CentralBody = null;
+
         if (bodies.Contains(body))
         {
             bodies.Remove(body);
