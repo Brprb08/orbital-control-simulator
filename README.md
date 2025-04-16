@@ -6,8 +6,6 @@ A real-time orbital mechanics simulator built in **Unity** with core physics han
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=Y3UxFyOn_uI)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-16Track.png)
-| Satellite In Elliptical Orbit | Satellite seen from Free cam |
-|---------------------|----------------|
 | ![Elliptical Orbit](./Assets/Images/04-16SatelliteUpClose.png) | ![Free Cam](./Assets/Images/04-16Free.png) |
 
 
