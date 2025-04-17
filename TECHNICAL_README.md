@@ -1,6 +1,6 @@
 [⬅ Back to README](./README.md)
 
-# Technical Breakdown – Satellite Maneuver Simulator
+# Technical Breakdown – Orbital Maneuver Engine
 
 ## Who This Is For
 

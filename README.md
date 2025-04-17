@@ -1,10 +1,10 @@
-# Satellite Maneuver Simulator
+# Orbital Maneuver Engine
 
 A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian multi-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
 
 **Built from scratch to simulate realistic orbital mechanics in real time, no Unity physics used.**
 
-[🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=Y3UxFyOn_uI)
+[🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
 ![Elliptical Orbit](./Assets/Images/04-17SatelliteUpClose.png)
 ![Free Cam](./Assets/Images/04-16Free.png)
