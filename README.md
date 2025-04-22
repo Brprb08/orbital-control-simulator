@@ -56,4 +56,4 @@ It also served as a way to deepen my understanding of orbital mechanics and real
 
 *This project was designed as a technical demonstration of my abilities in simulation engineering, physics programming, and real-time system development.*
 
-[⬆ Back to Top](#satellite-maneuver-simulator)
+[⬆ Back to Top](#orbital-control-simulator)
