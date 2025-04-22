@@ -1,6 +1,6 @@
 [⬅ Back to README](./README.md)
 
-# Technical Breakdown – Orbital Maneuver Engine
+# Technical Breakdown – Orbital Control Simulator
 
 ## Who This Is For
 

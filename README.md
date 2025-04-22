@@ -1,4 +1,4 @@
-# Orbital Maneuver Engine
+# Orbital Control Simulator
 
 A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian multi-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
 
