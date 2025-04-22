@@ -50,8 +50,6 @@ It also served as a way to deepen my understanding of orbital maneuvering and ph
 
 ---
 
-🛰️ Physics validated against Keplerian predictions and NASA GMAT
-
 [See Technical README →](./TECHNICAL_README.md)
 
 ---
