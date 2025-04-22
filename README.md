@@ -2,7 +2,7 @@
 
 A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian multi-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
 
-**Simulates realistic orbital mechanics in real time with a custom physics core, no Unity physics involved.**
+**Simulates realistic orbital mechanics in real time with a custom physics core, no Unity physics.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
@@ -29,7 +29,7 @@ The physics are offloaded to a native C++ library for improved performance, allo
 
 ## Why I Built This
 
-After following real-world missions like SpaceX and exploring tools like GMAT, I wanted to build something hands-on that reflects actual orbital mechanics. This simulator became a space where I could:
+After following real-world missions like SpaceX and exploring tools like GMAT, I wanted to build something hands-on that reflects actual orbital mechanics. This simulator became a platform to:
 
 - Implement numerical integration (RK4) from scratch
 - Explore multi-body gravitational systems in real time

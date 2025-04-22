@@ -65,7 +65,7 @@ See [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md) for full math.
 
 ## Interop Architecture
 
-Unity calls into native C++ functions via platform invoke (`DllImport`), keeping heavy calculations outside managed runtime.
+Unity calls into native C++ functions via platform invoke (`DllImport`), keeping heavy calculations outside the managed runtime.
 
 Example structure:
 ```

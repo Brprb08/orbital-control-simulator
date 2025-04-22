@@ -57,7 +57,7 @@ F = G * (m1 * m2) / r^2
 
 Every object calculates gravitational pull from every other object in the system. Acceleration is computed per-body and summed. Position and velocity are updated through RK4 using these force-derived accelerations.
 
-Close approaches use a minimum r threshold to avoid singularities or floating point issues.
+Close approaches apply a minimum r threshold to prevent singularities and floating point errors.
 
 ---
 
@@ -82,7 +82,7 @@ Mass is adjustable per object, and thrust strength is scaled accordingly. There'
 
 ### Time Scaling
 
-User can increase time scale up to 100x. RK4 remains stable but slightly less accurate as dt increases. Currently using fixed timestep per frame, but may switch to adaptive timesteps or offload RK4 to the GPU later.
+User can increase time scale up to 100x. RK4 remains stable but with reduced accuracy as dt increases. Currently using fixed timestep per frame, but may switch to adaptive timesteps or offload RK4 to the GPU later.
 
 ---
 
