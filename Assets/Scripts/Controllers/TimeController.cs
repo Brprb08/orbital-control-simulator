@@ -66,15 +66,15 @@ public class TimeController : MonoBehaviour
         }
         if (Input.GetKeyDown(KeyCode.R))
         {
-            SetTimeScale(50.0f);
+            SetTimeScale(1.0f);
             if (timeSlider != null)
             {
-                timeSlider.value = 50.0f;
+                timeSlider.value = 1.0f;
             }
 
             if (timeScaleText != null)
             {
-                timeScaleText.text = "Time Scale: 1.0x";
+                timeScaleText.text = "1.0x";
             }
         }
     }
@@ -89,7 +89,7 @@ public class TimeController : MonoBehaviour
 
         if (timeScaleText != null)
         {
-            timeScaleText.text = $"Time Scale: {newTimeScale:F1}x";
+            timeScaleText.text = $"{newTimeScale:F1}x";
         }
     }
 
@@ -163,7 +163,7 @@ public class TimeController : MonoBehaviour
         Time.timeScale = previousTimeScale;
         if (timeScaleText != null)
         {
-            timeScaleText.text = $"Time Scale: {previousTimeScale:F1}x";
+            timeScaleText.text = $"{previousTimeScale:F1}x";
         }
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
         uIManager.ShowSelectPanels(true, true);
