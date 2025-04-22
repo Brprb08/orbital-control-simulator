@@ -25,7 +25,7 @@ This document is intended for developers, tech leads, and simulation engineers w
 
 ## Motivation
 
-This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now an area for digging into numerical integration, and optimizing real-time systems using Unity and native C++.
+This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now an area for experimenting with numerical methods and optimizing real-time simulation performance using Unity and C++.
 
 ---
 
@@ -65,7 +65,7 @@ See [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md) for full math.
 
 ## Interop Architecture
 
-Unity calls into native C++ functions via platform invoke (`DllImport`). The physics core runs outside of Unity’s managed runtime.
+Unity calls into native C++ functions via platform invoke (`DllImport`), keeping heavy calculations outside managed runtime.
 
 Example structure:
 ```

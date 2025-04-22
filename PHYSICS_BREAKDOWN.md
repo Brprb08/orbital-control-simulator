@@ -23,7 +23,7 @@ RK4 was chosen for:
 - Real-time visualization without long-term drift being an issue
 - Better precision during thrust events and fast-forwarded simulation
 
-RK4 uses four derivative evaluations per step and averages them to compute the next position and velocity. Time step is fixed per frame and scales with time multiplier.
+RK4 evaluates four derivatives and averages them to compute the next position and velocity.
 
 RK4 Flow Per Frame:
 ```
@@ -63,7 +63,7 @@ Close approaches use a minimum r threshold to avoid singularities or floating po
 
 ### Thrust Mechanics
 
-Thrust is modeled as continuous acceleration applied to the body in a given direction while input is active.
+Thrust applies continuous acceleration in the chosen direction while input is active.
 
 Available thrust directions:
 - Prograde (along velocity vector)
@@ -82,7 +82,7 @@ Mass is adjustable per object, and thrust strength is scaled accordingly. There'
 
 ### Time Scaling
 
-User can increase time scale up to 100x. RK4 remains stable but slightly less accurate as dt increases. Currently using fixed timestep per frame, but may switch to adaptive or GPU-integrated RK4 later.
+User can increase time scale up to 100x. RK4 remains stable but slightly less accurate as dt increases. Currently using fixed timestep per frame, but may switch to adaptive timesteps or offload RK4 to the GPU later.
 
 ---
 
