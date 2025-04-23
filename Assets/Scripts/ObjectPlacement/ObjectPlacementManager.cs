@@ -187,7 +187,7 @@ public class ObjectPlacementManager : MonoBehaviour
     **/
     public void BreakToFreeCam()
     {
-        Debug.Log("Switching to FreeCam...");
+        //Debug.Log("Switching to FreeCam...");
         isInPlacementMode = true;
     }
 
@@ -196,7 +196,7 @@ public class ObjectPlacementManager : MonoBehaviour
     **/
     public void ExitFreeCam()
     {
-        Debug.Log("Exiting FreeCam...");
+        //Debug.Log("Exiting FreeCam...");
 
         if (objectIsPlaced)
         {

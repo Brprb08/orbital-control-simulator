@@ -155,7 +155,7 @@ public class CameraMovement : MonoBehaviour
             distance = defaultDistance;
         }
 
-        Debug.Log($"[CAMERA MOVEMENT]: Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
+        //Debug.Log($"[CAMERA MOVEMENT]: Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
     }
 
     /**
@@ -213,7 +213,7 @@ public class CameraMovement : MonoBehaviour
             placeholderBodyRadius = planet.localScale.x * 1f;
             distance = 2f * placeholderBodyRadius;
             height = 0.2f * placeholderBodyRadius;
-            Debug.Log($"[CAMERA MOVEMENT]: Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
+            //Debug.Log($"[CAMERA MOVEMENT]: Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
         }
         else
         {

@@ -155,7 +155,7 @@ public class ThrustController : MonoBehaviour
         // Calculate the actual acceleration, scaled to account for 1 unit = 10 km
         float scaledMagnitude = magnitude / 10f;
 
-        Debug.Log($"Applying Scaled Force: {scaledMagnitude} N in direction: {adjustedThrustDirection}, Mass: {targetBody.mass}");
+        //Debug.Log($"Applying Scaled Force: {scaledMagnitude} N in direction: {adjustedThrustDirection}, Mass: {targetBody.mass}");
 
         targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
 

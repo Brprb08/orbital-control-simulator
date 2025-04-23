@@ -150,7 +150,7 @@ public class CameraController : MonoBehaviour
             dropdown.RefreshShownValue();
 
             dropdown.onValueChanged.AddListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
-            Debug.Log($"[CAMERA CONTROLLER]: Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
+            //Debug.Log($"[CAMERA CONTROLLER]: Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
         }
         else
         {
@@ -286,7 +286,6 @@ public class CameraController : MonoBehaviour
 
     public void SwitchToEarthCam()
     {
-        Debug.LogError(inEarthViewCam);
         if (!inEarthViewCam)
         {
             GameObject centralBody = GameObject.FindWithTag("CentralBody");

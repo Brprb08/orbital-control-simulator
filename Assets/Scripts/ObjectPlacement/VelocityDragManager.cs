@@ -123,9 +123,7 @@ public class VelocityDragManager : MonoBehaviour
     **/
     private void StartDrag()
     {
-        Debug.Log("StartDrag() called!");
         if (planet == null || mainCamera == null) return;
-        Debug.Log("inside if");
         isDragging = true;
         dragStartPos = planet.transform.position;
 
@@ -231,7 +229,6 @@ public class VelocityDragManager : MonoBehaviour
     private void EndDrag()
     {
         isDragging = false;
-        Debug.Log(currentVelocity);
     }
 
     /**
@@ -330,7 +327,7 @@ public class VelocityDragManager : MonoBehaviour
         }
 
         planetNBody.velocity = velocityToApply;
-        gravityManager.RegisterBody(planetNBody);
+        // gravityManager.RegisterBody(planetNBody);
 
         trajectoryRenderer.SetTrackedBody(planetNBody);
         trajectoryRenderer.orbitIsDirty = true;
@@ -347,7 +344,7 @@ public class VelocityDragManager : MonoBehaviour
             }
         }
 
-        Debug.Log($"Applied velocity {velocityToApply} to {planet.name} via drag.");
+        //Debug.Log($"Applied velocity {velocityToApply} to {planet.name} via drag.");
         planet = null;
         isVelocitySet = true;
 
@@ -376,6 +373,11 @@ public class VelocityDragManager : MonoBehaviour
      */
     private void OnVelocityInputChanged(string inputText)
     {
+        if (inputText == "")
+        {
+            return;
+        }
+
         Vector3 newVelocity;
         if (ParsingUtils.Instance.TryParseVector3(inputText, out newVelocity))
         {
