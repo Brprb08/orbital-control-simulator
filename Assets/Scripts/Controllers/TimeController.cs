@@ -17,14 +17,6 @@ public class TimeController : MonoBehaviour
     private bool isPaused = false;
     private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
 
-    /**
-    * Ensures this object persists between scene reloads.
-    **/
-    // void Awake()
-    // {
-    //     DontDestroyOnLoad(gameObject);
-    // }
-
 
     /**
     * Initializes the time scale and configures the UI elements.
@@ -47,11 +39,11 @@ public class TimeController : MonoBehaviour
             uIManager = GravityManager.Instance.GetComponent<UIManager>();
             if (uIManager == null)
             {
-                Debug.LogError("TimeController: UIManager reference not set and not found on GravityManager.");
+                Debug.LogError("[TIME CONTROLLER]: UIManager reference not set and not found on GravityManager.");
             }
         }
 
-        Debug.Log($"Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
+        Debug.Log($"[TIME CONTROLLER]: Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
     }
 
     /**
@@ -116,7 +108,7 @@ public class TimeController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("GravityManager instance not found.");
+            Debug.LogWarning("[TIME CONTROLLER]: GravityManager instance not found.");
         }
     }
 
@@ -151,7 +143,7 @@ public class TimeController : MonoBehaviour
         Time.timeScale = 0f;
         uIManager.ShowSelectPanels(false, false);
         isPaused = true;
-        Debug.Log("Simulation Paused");
+        Debug.Log("[TIME CONTROLLER]: Simulation Paused");
     }
 
     /**
@@ -168,7 +160,7 @@ public class TimeController : MonoBehaviour
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
         uIManager.ShowSelectPanels(true, true);
         isPaused = false;
-        Debug.Log("Simulation Resumed");
+        Debug.Log("[TIME CONTROLLER]: Simulation Resumed");
     }
 
     /**

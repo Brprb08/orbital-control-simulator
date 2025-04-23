@@ -52,21 +52,21 @@ public class NBody : MonoBehaviour
         if (isCentralBody)
         {
             velocity = Vector3.zero;
-            Debug.Log($"{gameObject.name} is the central body and will not move.");
+            Debug.Log($"[NBODY]: {gameObject.name} is the central body and will not move.");
         }
 
         thrustController = GravityManager.Instance.GetComponent<ThrustController>();
         if (thrustController == null)
         {
-            Debug.LogError("NBody: ThrustController not found on GravityManager.");
+            Debug.LogError("[NBody]: ThrustController not found on GravityManager.");
         }
 
         tcc = FindFirstObjectByType<TrajectoryComputeController>();
         if (!tcc)
         {
-            Debug.LogError("No TrajectoryComputeController found in scene!");
+            Debug.LogError("[NBODY]: No TrajectoryComputeController found in scene!");
         }
-        Debug.Log($"[DEBUG] Moon Start Pos: {transform.position}, Vel: {velocity}");
+        Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
 
     }
 
@@ -77,7 +77,7 @@ public class NBody : MonoBehaviour
     {
         if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
         {
-            Debug.LogError($"[ERROR] {name} has NaN transform.position! velocity={velocity}, force={force}");
+            Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={force}");
         }
 
         if (mass <= 1e-6f)
@@ -126,7 +126,7 @@ public class NBody : MonoBehaviour
 
                 if (distance < collisionThreshold)
                 {
-                    Debug.Log($"[COLLISION] {name} collided with Earth");
+                    Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
                     GravityManager.Instance.HandleCollision(this, earth);
                     return;
                 }
@@ -161,7 +161,7 @@ public class NBody : MonoBehaviour
 
         if (tcc == null)
         {
-            Debug.LogError("TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
+            Debug.LogError("[NBODY]: TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
             onComplete?.Invoke(null);
             return;
         }

@@ -49,7 +49,7 @@ public class GravityManager : MonoBehaviour
             {
                 bodies.Add(body);
 
-                Debug.Log($"Registered pre-existing NBody: {body.gameObject.name}");
+                Debug.Log($"[GRAVITY MANAGER]: Registered pre-existing NBody: {body.gameObject.name}");
             }
         }
     }
@@ -75,11 +75,11 @@ public class GravityManager : MonoBehaviour
         if (LineVisibilityManager.Instance != null)
         {
             LineVisibilityManager.Instance.RegisterNBody(body);
-            Debug.Log($"Registered NBody with LineVisibilityManager: {body.gameObject.name}");
+            Debug.Log($"[GRAVITY MANAGER]: Registered NBody with LineVisibilityManager: {body.gameObject.name}");
         }
         else
         {
-            Debug.LogError("LineVisibilityManager.Instance is null. Ensure LineVisibilityManager is in the scene.");
+            Debug.LogError("[GRAVITY MANAGER]: LineVisibilityManager.Instance is null. Ensure LineVisibilityManager is in the scene.");
         }
     }
 
@@ -130,6 +130,6 @@ public class GravityManager : MonoBehaviour
 
         cameraController.UpdateDropdownSelection();
 
-        Debug.Log($"Removed {bodyToRemove.name} due to collision.");
+        Debug.Log($"[GRAVITY MANAGER]: Removed {bodyToRemove.name} due to collision.");
     }
 }

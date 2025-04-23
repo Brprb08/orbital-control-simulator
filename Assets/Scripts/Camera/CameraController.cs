@@ -104,7 +104,7 @@ public class CameraController : MonoBehaviour
 
         UpdateDropdownSelection();
 
-        Debug.Log($"Initial camera tracking: {bodies[currentIndex].name}");
+        Debug.Log($"[CAMERA CONTROLLER]: Initial camera tracking: {bodies[currentIndex].name}");
     }
 
     /**
@@ -150,11 +150,11 @@ public class CameraController : MonoBehaviour
             dropdown.RefreshShownValue();
 
             dropdown.onValueChanged.AddListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
-            Debug.Log($"Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
+            Debug.Log($"[CAMERA CONTROLLER]: Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
         }
         else
         {
-            Debug.LogError($"No matching dropdown entry found for body: {currentBodyName}");
+            Debug.LogError($"[CAMERA CONTROLLER]: No matching dropdown entry found for body: {currentBodyName}");
         }
     }
 
@@ -209,8 +209,6 @@ public class CameraController : MonoBehaviour
     **/
     public void ReturnToTracking()
     {
-        Debug.Log("Returning to Tracking Mode...");
-
         if (cameraMovement != null)
         {
             cameraMovement.enabled = true;
@@ -220,7 +218,7 @@ public class CameraController : MonoBehaviour
 
         if (centralBody == null)
         {
-            Debug.LogError("Central body not found. Ensure it has the correct tag.");
+            Debug.LogError("[CAMERA CONTROLLER]: Central body not found. Ensure it has the correct tag.");
             return;
         }
 
@@ -229,14 +227,12 @@ public class CameraController : MonoBehaviour
 
         if (isTrackingPlaceholder && placeholderTarget != null)
         {
-            Debug.LogError("here");
             cameraMovement.SetTargetBodyPlaceholder(placeholderTarget);
             targetPosition = placeholderTarget.position;
             targetBody = placeholderTarget.GetComponent<NBody>();
         }
         else if (bodies.Count > 0)
         {
-            Debug.LogError("there");
             cameraMovement.SetTargetBody(bodies[currentIndex]);
             targetPosition = bodies[currentIndex].transform.position;
             targetBody = bodies[currentIndex];
@@ -244,7 +240,7 @@ public class CameraController : MonoBehaviour
         }
         else
         {
-            Debug.LogWarning("No valid bodies to track.");
+            Debug.LogWarning("[CAMERA CONTROLLER]: No valid bodies to track.");
             return;
         }
 
@@ -266,7 +262,6 @@ public class CameraController : MonoBehaviour
         }
 
         isFreeCamMode = false;
-        Debug.Log($"Camera positioned {desiredDistance} units away from {targetBody?.name ?? "the placeholder"}. Tracking resumed.");
     }
 
     /**
@@ -287,8 +282,6 @@ public class CameraController : MonoBehaviour
         Quaternion pitchAdjustment = Quaternion.Euler(pitchAngle, 0f, 0f);
 
         cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
-
-        Debug.Log($"Camera pivot adjusted to point at {centralBody.name} behind target, with upward tilt.");
     }
 
     public void SwitchToEarthCam()
@@ -300,7 +293,7 @@ public class CameraController : MonoBehaviour
 
             if (centralBody == null)
             {
-                Debug.LogError("Central body not found. Ensure it has the correct tag.");
+                Debug.LogError("[CAMERA CONTROLLER]: Central body not found. Ensure it has the correct tag.");
                 return;
             }
 
@@ -308,7 +301,7 @@ public class CameraController : MonoBehaviour
 
             if (nBodyComponent == null)
             {
-                Debug.LogError("NBody component not found on the central body.");
+                Debug.LogError("[CAMERA CONTROLLER]: NBody component not found on the central body.");
                 return;
             }
 
@@ -363,12 +356,12 @@ public class CameraController : MonoBehaviour
             UpdateTrajectoryRender(currentIndex);
 
             ReturnToTracking();
-            Debug.Log($"Camera switched to track: {nextBody.name}");
+            Debug.Log($"[CAMERA CONTROLLER]: Camera switched to track: {nextBody.name}");
         }
         else
         {
             BreakToFreeCam();
-            Debug.Log("No valid bodies to track. Switched to FreeCam.");
+            Debug.Log("[CAMERA CONTROLLER]: No valid bodies to track. Switched to FreeCam.");
         }
     }
 
@@ -383,8 +376,6 @@ public class CameraController : MonoBehaviour
         placeholderTarget = placeholder;
         isTrackingPlaceholder = true;
         cameraMovement.SetTargetBodyPlaceholder(placeholder);
-
-        Debug.Log($"Switched to tracking placeholder planet: {placeholder.name}");
     }
 
     /**
@@ -418,7 +409,7 @@ public class CameraController : MonoBehaviour
     public void RefreshBodiesList()
     {
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
-        Debug.Log($"RefreshBodiesList called. Found {bodies.Count} bodies.");
+        //Debug.Log($"[CAMERA CONTROLLER]: RefreshBodiesList called. Found {bodies.Count} bodies.");
 
         if (bodies.Count > 0 && currentIndex >= bodies.Count)
         {

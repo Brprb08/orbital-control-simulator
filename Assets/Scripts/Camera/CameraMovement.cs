@@ -123,7 +123,7 @@ public class CameraMovement : MonoBehaviour
 
         if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
         {
-            Debug.LogError($"[ERROR] Camera transform is NaN after setting target {body.name}");
+            Debug.LogError($"[CAMERA MOVEMENT]: Camera transform is NaN after setting target {body.name}");
         }
 
         minCameraDistance = CameraCalculations.Instance.CalculateMinDistance(body.radius) * customMinMultiplier;
@@ -155,7 +155,7 @@ public class CameraMovement : MonoBehaviour
             distance = defaultDistance;
         }
 
-        Debug.Log($"Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
+        Debug.Log($"[CAMERA MOVEMENT]: Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
     }
 
     /**
@@ -213,11 +213,11 @@ public class CameraMovement : MonoBehaviour
             placeholderBodyRadius = planet.localScale.x * 1f;
             distance = 2f * placeholderBodyRadius;
             height = 0.2f * placeholderBodyRadius;
-            Debug.Log($"Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
+            Debug.Log($"[CAMERA MOVEMENT]: Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
         }
         else
         {
-            Debug.Log("SetTargetBodyPlaceholder called with null. No placeholder assigned.");
+            Debug.Log("[CAMERA MOVEMENT]: SetTargetBodyPlaceholder called with null. No placeholder assigned.");
         }
     }
 
