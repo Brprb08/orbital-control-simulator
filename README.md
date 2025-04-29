@@ -1,8 +1,8 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics simulator built in **Unity** with core physics handled by a custom **C++ DLL**. This project demonstrates Newtonian multi-body dynamics, RK4 integration, live thrust maneuvers, and GPU-rendered trajectories.
+A real-time orbital mechanics simulator built in **Unity** with physics computations handled by an optimized **C++ DLL**. This project demonstrates accurate Newtonian multi-body dynamics using the Dormand–Prince 5(4) integrator, live thrust maneuvers, and GPU-rendered trajectories.
 
-**Simulates realistic orbital mechanics in real time with a custom physics core, no Unity physics.**
+**Realistic orbital mechanics simulation in real-time, no Unity physics.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
@@ -31,7 +31,7 @@ The physics are offloaded to a native C++ library for improved performance, allo
 
 After following real-world missions like SpaceX and exploring tools like GMAT, I wanted to build something hands-on that reflects actual orbital mechanics. This simulator became a platform to:
 
-- Implement numerical integration (RK4) from scratch
+- Implementing advanced numerical integration (Dormand–Prince 5(4))
 - Explore multi-body gravitational systems in real time
 - Work with C++ and Unity interoperability (DLL calls)
 - Optimize both simulation logic and rendering
@@ -42,7 +42,7 @@ It also served as a way to deepen my understanding of orbital mechanics and real
 
 ## System & Tools Breakdown
 
-- **Physics Core (C++):** RK4 integration and gravitational forces
+- **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator for superior accuracy
 - **Unity Frontend:** Object instantiation, camera controls, and trajectory visualization
 - **Thrust Model:** Instantaneous velocity change (impulse burn) based on burn direction and current mass
 - **Trajectory Rendering:** GPU-drawn orbital paths for performance

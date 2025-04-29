@@ -2,10 +2,12 @@
 
 # Orbital Physics Breakdown
 
-This doc explains how the simulation handles gravity, integration, thrust, and time scaling. Focus is on accurate short-term orbital mechanics using math-based systems, no external physics engine.
+This document outlines how the simulation models orbital mechanics, including gravity, integration, thrust, and time scaling. The goal is accurate, real-time orbital behavior for short to mid-duration maneuvers using purely mathematical systems, no external physics engine.
+
+> **Note:** The simulation originally used RK4 (Runge-Kutta 4th Order), but has since transitioned to the Dormand–Prince 5(4) integrator (DOPRI5) for better error control and future support for adaptive stepping.
 
 ### Table of Contents
-- [RK4 Integration](#rk4-integration)
+- [Integration Method: Dormand–Prince 5(4)](#integration-method-dormandprince-54)
 - [Gravity Calculations](#gravity-calculations)
 - [Thrust Mechanics](#thrust-mechanics)
 - [Time Scaling](#time-scaling)
@@ -14,38 +16,51 @@ This doc explains how the simulation handles gravity, integration, thrust, and t
 
 ---
 
-### RK4 Integration
+### Integration Method: Dormand–Prince 5(4)
 
-The sim uses Runge-Kutta 4th Order (RK4) for all motion updates. Euler was too unstable and inaccurate over time. Symplectic integrators conserve energy better for long-term sims, but RK4 gives better local accuracy per step, which matters more here.
+The simulation previously used Runge-Kutta 4th Order (RK4) for motion integration. RK4 was selected for its simplicity and high local accuracy, especially during short-duration events like burns and transfers. However, it lacked support for adaptive time stepping and error estimation, which limited its scalability and precision over variable time scales.
 
-RK4 was chosen for:
-- Short-to-mid duration accuracy (maneuvers, transfers, burns)
-- Real-time visualization without long-term drift being an issue
-- Better precision during thrust events and fast-forwarded simulation
+The new integrator is **Dormand–Prince 5(4)**, a fifth-order method with an embedded fourth-order estimate, often referred to as DOPRI5. This allows the simulation to maintain high accuracy while enabling future improvements like variable timesteps and GPU acceleration.
 
-RK4 evaluates four derivatives and averages them to compute the next position and velocity.
+#### Why the switch from RK4?
+- RK4 offers good local accuracy but no built-in error control
+- Dormand–Prince maintains precision while supporting adaptive methods
+- Better handling of edge cases and long-duration simulations
 
-RK4 Flow Per Frame:
+Dormand–Prince evaluates seven stages per step, blending multiple estimates to form a more accurate and stable trajectory update.
+
+Dormand–Prince 5(4) Flow Per Frame:
 ```
-   current_state
-        │
-     compute k1
-        │
-  estimate midpoint (k1)
-        │
-     compute k2
-        │
-  estimate midpoint (k2)
-        │
-     compute k3
-        │
-  estimate endpoint (k3)
-        │
-     compute k4
-        │
-    final update: state + (dt/6) * (k1 + 2k2 + 2k3 + k4)
-```
+   current_state (pos, vel)
+           │
+     ┌─────┴─────┐
+     │ Compute k1│
+     └─────┬─────┘
+           ▼
+  estimate intermediate state (k1)
+           │
+     ┌─────┴─────┐
+     │ Compute k2│
+     └─────┬─────┘
+           ▼
+  estimate intermediate state (k2)
+           │
+     ┌─────┴─────┐
+     │ Compute k3│
+     └─────┬─────┘
+           ▼
+           ...
+           ▼
+     ┌─────┴─────┐
+     │ Compute k7│
+     └─────┬─────┘
+           ▼
+ Combine all stages using weighted sum:
+ final_state = pos + Σ(b[i] * kx[i])
+               vel + Σ(b[i] * kv[i])
 
+ (b[i] = 5th-order weights for position/velocity)
+```
 ---
 
 ### Gravity Calculations
@@ -55,50 +70,51 @@ Gravity follows Newton’s law:
 F = G * (m1 * m2) / r^2
 ```
 
-Every object calculates gravitational pull from every other object in the system. Acceleration is computed per-body and summed. Position and velocity are updated through RK4 using these force-derived accelerations.
+Each object computes gravitational acceleration by summing contributions from every other body. A minimum `r` threshold is applied to avoid singularities and floating-point blowups.
 
-Close approaches apply a minimum r threshold to prevent singularities and floating point errors.
+Acceleration is fed into the integrator (now DOPRI5) for position and velocity updates.
 
 ---
 
 ### Thrust Mechanics
 
-Thrust applies continuous acceleration in the chosen direction while input is active.
+Thrust applies continuous acceleration while user input is active. Available thrust directions:
 
-Available thrust directions:
-- Prograde (along velocity vector)
-- Retrograde (opposite velocity vector)
-- Radial in / out (toward or away from central body)
-- Normal up / down (inclination change)
+- Prograde (along velocity)
+- Retrograde (opposite velocity)
+- Radial In/Out (toward/away from central body)
+- Normal Up/Down (for inclination changes)
 
-Acceleration is computed as:
+Acceleration is calculated using:
 ```
 a = F / m
 ```
 
-Mass is adjustable per object, and thrust strength is scaled accordingly. There's no fuel system yet, so thrust is unlimited during input.
+Thrust does not consume fuel yet, it's unlimited during input. Object mass is configurable, and thrust scales accordingly.
 
 ---
 
 ### Time Scaling
 
-User can increase time scale up to 100x. RK4 remains stable but with reduced accuracy as dt increases. Currently using fixed timestep per frame, but may switch to adaptive timesteps or offload RK4 to the GPU later.
+The user can increase time scale up to 100×. With RK4, higher `dt` values introduced noticeable drift. Dormand–Prince improves stability under fast-forward conditions and sets up for future adaptive time steps.
+
+Currently, timestep is fixed per frame. A move to variable stepping or GPU-offloaded integration is planned.
 
 ---
 
 ### Limitations and Plans
 
 Current limitations:
-- No relativity, strictly Newtonian
-- No drag model, so low orbits don’t decay
-- No collision physics, objects are removed on impact
-- Thrust is always available, no fuel use yet
+- Newtonian physics only (no relativity)
+- No atmospheric drag or orbital decay
+- No collision physics (objects are removed on impact)
+- Unlimited thrust, no fuel usage
 
 Planned features:
-- Maneuver planning UI like Kerbal
-- Fuel-based delta-v tracking
-- Earth as a dynamic object (currently static)
-- Barnes-Hut optimization for scaling up body count
+- Maneuver planning interface
+- Fuel-based delta-v budgeting
+- Dynamic Earth body (currently static)
+- Barnes-Hut optimization for large-body systems
 
 ---
 

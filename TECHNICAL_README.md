@@ -31,11 +31,11 @@ This project began as a personal exploration into orbital dynamics after being i
 
 ## Simulation Core
 
-- RK4 numerical integrator ensures long-term stability of orbits
-- Newtonian multi-body simulation with mutual gravitational attraction
-- Thrust system allows for real-time orbital maneuvers
-- GPU-rendered trajectories keep performance smooth
-- All physics offloaded to a C++ DLL for max performance
+- **Integrator:** Dormand–Prince 5(4), providing high-accuracy orbital state propagation
+- **Dynamics:** Newtonian multi-body gravitational interactions
+- **Thrust Model:** Real-time continuous acceleration (or impulse burns)
+- **GPU Rendering:** Efficient trajectory visualization
+- **Performance:** Physics fully offloaded to native C++ DLL
 
 ---
 
@@ -58,8 +58,9 @@ See [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md) for full math.
   ```
    F = G * (m1 * m2) / r²
   ```
-- RK4 integration applied to both position and velocity vectors
-- Thrust modeled as instantaneous velocity delta based on burn direction and mass
+
+- Dormand–Prince 5(4) integrator used for all motion updates, greatly improving upon previous RK4 method
+- Thrust accelerations applied directly within integrator steps
 
 ---
 
