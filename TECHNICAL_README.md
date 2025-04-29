@@ -87,6 +87,9 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ### Long-Term Orbital Stability (LEO, No Drag)
 
+> Validation was performed at **100× time scale** over a simulated duration of **~77.3 hours** (50 full LEO orbits).  
+> Apogee and perigee were sampled at **each orbital extremum crossing**, not per frame, to ensure precise evaluation of orbital drift.
+
 | Orbit # | Apogee (km) | Perigee (km) |
 |---------|-------------|--------------|
 | 1       | 421.551     | 408.198      |
@@ -103,7 +106,7 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 | Apogee        | 421.551            | 421.526          | -0.025           | -0.0005               | ~0.0059%     |
 | Perigee       | 408.200            | 408.188          | -0.012           | -0.00024              | ~0.0029%     |
 
-> **Note:** Across 50 orbits, orbital extrema remain stable within ±25 meters (apogee) and ±12 meters (perigee), validating the integrator’s long-term stability in a Newtonian vacuum with fixed timestep Dormand–Prince 5(4).
+> **Note:** Across 50 orbits at 100× simulation speed, orbital extrema remained stable within ±25 meters (apogee) and ±12 meters (perigee), validating the Dormand–Prince 5(4) integrator's long-term numerical stability in a Newtonian vacuum with fixed timestep integration.
 
 
 ### Orbital Period Comparison
