@@ -12,7 +12,6 @@ This document outlines how the simulation models orbital mechanics, including gr
 - [Thrust Mechanics](#thrust-mechanics)
 - [Time Scaling](#time-scaling)
 - [Limitations and Plans](#limitations-and-plans)
-- [Back to Top](#back-to-top)
 
 ---
 
@@ -29,7 +28,10 @@ The new integrator is **Dormand–Prince 5(4)**, a fifth-order method with an em
 
 Dormand–Prince evaluates seven stages per step, blending multiple estimates to form a more accurate and stable trajectory update.
 
-Dormand–Prince 5(4) Flow Per Frame:
+---
+
+### Dormand–Prince 5(4) Flow Per Frame:
+
 ```
    current_state (pos, vel)
            │
