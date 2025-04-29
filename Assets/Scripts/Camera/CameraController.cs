@@ -84,6 +84,7 @@ public class CameraController : MonoBehaviour
             trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
             trajectoryRenderer.apogeeText = this.apogeeText;
             trajectoryRenderer.perigeeText = this.perigeeText;
+            Debug.LogError($"HERE {currentIndex}");
             trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
         }
     }
@@ -252,7 +253,7 @@ public class CameraController : MonoBehaviour
 
         Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
         cameraTransform.position = targetPosition - directionToTarget;
-        // * desiredDistance
+
         PointCameraTowardCentralBody(centralBody.transform, targetPosition);
 
         FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
@@ -408,7 +409,6 @@ public class CameraController : MonoBehaviour
     public void RefreshBodiesList()
     {
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
-        //Debug.Log($"[CAMERA CONTROLLER]: RefreshBodiesList called. Found {bodies.Count} bodies.");
 
         if (bodies.Count > 0 && currentIndex >= bodies.Count)
         {

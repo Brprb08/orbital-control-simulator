@@ -53,6 +53,9 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private bool isComputingPrediction = false;
 
+    float nextTime = 0f;
+    float interval = .5f;
+
     /**
     * Initializes line renderers and sets up materials
     **/
@@ -161,86 +164,16 @@ public class TrajectoryRenderer : MonoBehaviour
             //     - If not thrusting, orbit is elliptical, and prediction steps are still low
             if (showPredictionLines && (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
-                if (!isComputingPrediction)
-                {
-                    isComputingPrediction = true;
-                    if (isElliptical)
-                    {
-                        float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
-                        orbitalParams.orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(orbitalParams.semiMajorAxis, 3) / gravitationalParameter);
-
-                        // Adjust prediction steps to cover the full orbital loop
-                        predictionSteps = Mathf.Clamp(
-                            Mathf.CeilToInt(orbitalParams.orbitalPeriod / predictionDeltaTime),
-                            1,
-                            70000
-                        );
-                    }
-                    else
-                    {
-                        // For hyperbolic orbits use a fixed number of steps
-                        predictionSteps = 5000;
-                    }
-
-                    if (isThrusting)
-                    {
-                        predictionSteps = 3000;
-                    }
-
-                    trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
-                    {
-                        var fullTrajectory = resultList.ToArray();
-
-                        var clippedPoints = ClipTrajectory(fullTrajectory);
-
-                        predictionProceduralLine.UpdateLine(clippedPoints);
-                    });
-
-                    orbitIsDirty = false;
-                    isComputingPrediction = false;
-                }
+                ComputePredictionLine(orbitalParams, isElliptical);
             }
 
-            if (showApogeePerigeeLines)
+            if (Time.time >= nextTime)
             {
-                if (apogeeProceduralLine != null && perigeeProceduralLine != null)
-                {
-                    if (!orbitalParams.isCircular)
-                    {
-                        apogeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.apogeePosition, Vector3.zero });
-                        perigeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.perigeePosition, Vector3.zero });
-                    }
-
-                    if (apogeeText != null && perigeeText != null)
-                    {
-                        float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
-                        float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
-
-                        UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
-                            orbitalParams.orbitalPeriod, orbitalParams.inclination, orbitalParams.RAAN);
-                    }
-                }
+                ShowApogeePerigeeLines(orbitalParams);
+                nextTime = Time.time + interval;
             }
 
-            if (showPredictionLines)
-            {
-                float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-                bool show = distanceToCamera > lineDisableDistance;
-                if (!show)
-                {
-                    predictionProceduralLine.SetVisibility(false);
-                    originProceduralLine.SetVisibility(false);
-                    apogeeProceduralLine.SetVisibility(false);
-                    perigeeProceduralLine.SetVisibility(false);
-                }
-                else
-                {
-                    predictionProceduralLine.SetVisibility(true);
-                    originProceduralLine.SetVisibility(true);
-                    apogeeProceduralLine.SetVisibility(true);
-                    perigeeProceduralLine.SetVisibility(true);
-                }
-            }
+            ToggleLines();
 
             if (originProceduralLine != null && showOriginLines)
             {
@@ -259,6 +192,48 @@ public class TrajectoryRenderer : MonoBehaviour
             yield return new WaitForSeconds(.1f);
         }
 
+    }
+
+    private void ComputePredictionLine(OrbitalParameters orbitalParams, bool isElliptical)
+    {
+        if (!isComputingPrediction)
+        {
+            isComputingPrediction = true;
+            if (isElliptical)
+            {
+                float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
+                orbitalParams.orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(orbitalParams.semiMajorAxis, 3) / gravitationalParameter);
+
+                // Adjust prediction steps to cover the full orbital loop
+                predictionSteps = Mathf.Clamp(
+                    Mathf.CeilToInt(orbitalParams.orbitalPeriod / predictionDeltaTime),
+                    1,
+                    70000
+                );
+            }
+            else
+            {
+                // For hyperbolic orbits use a fixed number of steps
+                predictionSteps = 5000;
+            }
+
+            if (isThrusting)
+            {
+                predictionSteps = 3000;
+            }
+
+            trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
+            {
+                var fullTrajectory = resultList.ToArray();
+
+                var clippedPoints = ClipTrajectory(fullTrajectory);
+
+                predictionProceduralLine.UpdateLine(clippedPoints);
+            });
+
+            orbitIsDirty = false;
+            isComputingPrediction = false;
+        }
     }
 
     private Vector3[] ClipTrajectory(Vector3[] points)
@@ -293,6 +268,53 @@ public class TrajectoryRenderer : MonoBehaviour
         }
 
         return clippedPoints.ToArray();
+    }
+
+    private void ShowApogeePerigeeLines(OrbitalParameters orbitalParams)
+    {
+        if (showApogeePerigeeLines)
+        {
+            if (apogeeProceduralLine != null && perigeeProceduralLine != null)
+            {
+                if (!orbitalParams.isCircular)
+                {
+                    apogeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.apogeePosition, Vector3.zero });
+                    perigeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.perigeePosition, Vector3.zero });
+                }
+
+                if (apogeeText != null && perigeeText != null)
+                {
+                    float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
+                    float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
+
+                    UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
+                        orbitalParams.orbitalPeriod, orbitalParams.inclination, orbitalParams.RAAN);
+                }
+            }
+        }
+    }
+
+    private void ToggleLines()
+    {
+        if (showPredictionLines)
+        {
+            float distanceToCamera = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
+            bool show = distanceToCamera > lineDisableDistance;
+            if (!show)
+            {
+                predictionProceduralLine.SetVisibility(false);
+                originProceduralLine.SetVisibility(false);
+                apogeeProceduralLine.SetVisibility(false);
+                perigeeProceduralLine.SetVisibility(false);
+            }
+            else
+            {
+                predictionProceduralLine.SetVisibility(true);
+                originProceduralLine.SetVisibility(true);
+                apogeeProceduralLine.SetVisibility(true);
+                perigeeProceduralLine.SetVisibility(true);
+            }
+        }
     }
 
     /**

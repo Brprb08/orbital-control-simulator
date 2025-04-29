@@ -10,6 +10,8 @@ using System;
 **/
 public class TrajectoryComputeController : MonoBehaviour
 {
+    public static TrajectoryComputeController Instance { get; private set; }
+
 
     [Header("Compute Shader/Buffers")]
     public ComputeShader trajectoryComputeShader;
@@ -24,6 +26,21 @@ public class TrajectoryComputeController : MonoBehaviour
     [Header("LOD")]
     private int lodFactor = 1;
     private int outputCount = 0;
+
+    /**
+    * Initializes the singleton instance of TrajectoryComputeController.
+    **/
+    void Awake()
+    {
+        if (Instance == null)
+        {
+            Instance = this;
+        }
+        else
+        {
+            Destroy(gameObject);
+        }
+    }
 
     /**
     * Calculates the trajectory of a body using a GPU compute shader, asynchronously.

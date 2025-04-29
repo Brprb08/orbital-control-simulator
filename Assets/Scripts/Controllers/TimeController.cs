@@ -92,8 +92,7 @@ public class TimeController : MonoBehaviour
     private void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
-        // Time.fixedDeltaTime = 0.02f * (scale * .5f);
-        Time.fixedDeltaTime = Mathf.Clamp(0.02f * scale, 0.02f, 2f);
+        Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
         GravityManager gravityManager = GravityManager.Instance;
         if (gravityManager != null)
@@ -158,6 +157,7 @@ public class TimeController : MonoBehaviour
             timeScaleText.text = $"{previousTimeScale:F1}x";
         }
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
+
         uIManager.ShowSelectPanels(true, true);
         isPaused = false;
         Debug.Log("[TIME CONTROLLER]: Simulation Resumed");

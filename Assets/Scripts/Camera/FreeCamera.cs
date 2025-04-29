@@ -52,6 +52,5 @@ public class FreeCamera : MonoBehaviour
     public void TogglePlacementMode(bool enable)
     {
         isFreeMode = enable;
-        //Debug.Log($"[FREE CAMERA]: FreeCam mode: {isFreeMode}");
     }
 }

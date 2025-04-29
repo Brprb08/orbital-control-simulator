@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using System.Runtime.InteropServices;
 using UnityEngine;
+using Unity.Mathematics;
 
 public static class NativePhysics
 {
@@ -36,15 +37,15 @@ public static class NativePhysics
     }
 
 
-    [DllImport("PhysicsPluginTest", EntryPoint = "RungeKuttaSingle", CallingConvention = CallingConvention.Cdecl)]
-    public static extern void RungeKuttaSingle(
-        ref Vector3 position,
-        ref Vector3 velocity,
+    [DllImport("PhysicsPlugin", EntryPoint = "DormandPrinceSingle", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void DormandPrinceSingle(
+        ref double3 position,
+        ref double3 velocity,
         float mass,
         Vector3[] bodies,
         float[] masses,
         int numBodies,
         float deltaTime,
-        ref Vector3 thrustImpulse
+        Vector3 thrustImpulse
     );
 }

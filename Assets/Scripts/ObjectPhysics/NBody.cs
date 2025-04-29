@@ -7,6 +7,7 @@ using Unity.Jobs;
 using System.Linq;
 using TMPro;
 using System;
+using Unity.Mathematics;
 
 /**
 * NBody class represents a celestial body in the gravitational system.
@@ -31,6 +32,17 @@ public class NBody : MonoBehaviour
 
     [Header("References")]
     private TrajectoryComputeController tcc;
+
+    [Header("Atmosphere & Drag")]
+    [Tooltip("Sea-level density (kg/km³)")]
+    public float atmosphericDensity0 = 1.225e9f;
+    [Tooltip("Scale height (km)")]
+    public float atmosphericScaleHeight = 8.5f;
+    [Tooltip("Dimensionless drag coefficient")]
+    public float dragCoefficient = 2.2f;
+
+    public double3 truePosition;
+    public double3 trueVelocity;
 
     /**
     * Called when the script instance is being loaded.
@@ -61,13 +73,10 @@ public class NBody : MonoBehaviour
             Debug.LogError("[NBody]: ThrustController not found on GravityManager.");
         }
 
-        tcc = FindFirstObjectByType<TrajectoryComputeController>();
-        if (!tcc)
-        {
-            Debug.LogError("[NBODY]: No TrajectoryComputeController found in scene!");
-        }
         Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
 
+        truePosition = new double3(transform.position.x, transform.position.y, transform.position.z);
+        trueVelocity = new double3(velocity.x, velocity.y, velocity.z);
     }
 
     /**
@@ -75,7 +84,7 @@ public class NBody : MonoBehaviour
     **/
     void FixedUpdate()
     {
-        if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
+        if (HasNaNPosition())
         {
             Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={force}");
         }
@@ -88,53 +97,104 @@ public class NBody : MonoBehaviour
 
         if (isCentralBody)
         {
-            float earthRotationRate = 360f / (24f * 60f * 60f);
-            transform.Rotate(Vector3.up, -earthRotationRate * Time.fixedDeltaTime);
+            RotateCentralBody();
         }
         else
         {
-            List<NBody> bodies = GravityManager.Instance.Bodies;
-            int numBodies = bodies.Count;
-
-            Vector3[] positions = new Vector3[numBodies];
-            Vector3[] velocities = new Vector3[numBodies];
-            float[] masses = new float[numBodies];
-
-            for (int i = 0; i < numBodies; i++)
-            {
-                positions[i] = bodies[i].transform.position;
-                velocities[i] = bodies[i].velocity;
-                masses[i] = bodies[i].mass;
-            }
-
-            Vector3 thrustImpulse = force;
-            force = Vector3.zero;
-
-            Vector3 tempPosition = transform.position;
-            Vector3 tempVelocity = velocity;
-
-            NativePhysics.RungeKuttaSingle(ref tempPosition, ref tempVelocity, mass, positions, masses, numBodies, Time.fixedDeltaTime, ref thrustImpulse);
-
-            transform.position = tempPosition;
-            velocity = tempVelocity;
-
-            NBody earth = GravityManager.Instance.CentralBody;
-            if (earth != null && earth != this)
-            {
-                float distance = Vector3.Distance(transform.position, earth.transform.position);
-                float collisionThreshold = radius + earth.radius;
-
-                if (distance < collisionThreshold)
-                {
-                    Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
-                    GravityManager.Instance.HandleCollision(this, earth);
-                    return;
-                }
-            }
+            SimulateOrbitalMotion();
         }
+
         force = Vector3.zero;
     }
 
+    /**
+    * Checks if the current position has any NaN (not-a-number) values.
+    * This usually means something blew up in the physics sim.
+    **/
+    bool HasNaNPosition()
+    {
+        Vector3 pos = transform.position;
+        return float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z);
+    }
+
+    /**
+    * Rotates the central body (Earth) to simulate its daily spin.
+    * Only applies to objects tagged as Centralbody.
+    **/
+    void RotateCentralBody()
+    {
+        const float earthRotationRate = 360f / (24f * 60f * 60f);
+        transform.Rotate(Vector3.up, -earthRotationRate * Time.fixedDeltaTime);
+    }
+
+    /**
+    * Simulates the object's orbital movement using physics and multiple substeps.
+    * Handles gravity forces and updates position and velocity based on the result.
+    **/
+    void SimulateOrbitalMotion()
+    {
+        List<NBody> bodies = GravityManager.Instance.Bodies;
+        int numBodies = bodies.Count;
+
+        var positions = new Vector3[numBodies];
+        var velocities = new Vector3[numBodies];
+        var masses = new float[numBodies];
+
+        for (int i = 0; i < numBodies; i++)
+        {
+            NBody body = bodies[i];
+            positions[i] = body.transform.position;
+            velocities[i] = body.velocity;
+            masses[i] = body.mass;
+        }
+
+        const float dtMax = 0.002f;
+        int substeps = Mathf.CeilToInt(Time.fixedDeltaTime / dtMax);
+        float dt = Time.fixedDeltaTime / substeps;
+
+        Vector3 thrustImpulse = force;
+        for (int s = 0; s < substeps; s++)
+        {
+            NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse);
+        }
+
+        transform.position = new Vector3(
+            (float)truePosition.x,
+            (float)truePosition.y,
+            (float)truePosition.z
+        );
+
+        velocity = new Vector3(
+            (float)trueVelocity.x,
+            (float)trueVelocity.y,
+            (float)trueVelocity.z
+        );
+
+        CheckCollisionWithEarth();
+    }
+
+    /**
+    * Checks if this object has collided with the central body.
+    * If so, it gets removed.
+    **/
+    void CheckCollisionWithEarth()
+    {
+        NBody earth = GravityManager.Instance.CentralBody;
+        if (earth == null || earth == this) return;
+
+        float distance = Vector3.Distance(transform.position, earth.transform.position);
+        float collisionThreshold = radius + earth.radius;
+
+        if (distance < collisionThreshold)
+        {
+            Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
+            GravityManager.Instance.HandleCollision(this, earth);
+        }
+    }
+
+    /**
+    * Cleanup when this object is destroyed.
+    **/
     private void OnDestroy()
     {
         if (LineVisibilityManager.Instance != null)
@@ -159,7 +219,7 @@ public class NBody : MonoBehaviour
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
         float[] otherMasses = otherBodies.Select(b => b.mass).ToArray();
 
-        if (tcc == null)
+        if (tcc == null && (tcc = TrajectoryComputeController.Instance) == null)
         {
             Debug.LogError("[NBODY]: TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
             onComplete?.Invoke(null);
@@ -210,7 +270,7 @@ public class NBody : MonoBehaviour
 
         float baseDeltaTime = 0.5f;
         float minDeltaTime = 0.5f;
-        float maxDeltaTime = 3f;
+        float maxDeltaTime = 1f;
 
         float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
         adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
@@ -221,10 +281,11 @@ public class NBody : MonoBehaviour
     /**
     * Returns the altitude above the reference central body.
     **/
-    public float altitude
+    public double altitude
     {
         get
         {
+
             float distanceFromCenter = transform.position.magnitude;
             float distanceInKm = distanceFromCenter;
             float earthRadiusKm = 637.8137f;

@@ -44,7 +44,6 @@ public class CameraMovement : MonoBehaviour
             return;
         }
         Instance = this;
-        // DontDestroyOnLoad(gameObject);
     }
 
     /**
@@ -154,8 +153,6 @@ public class CameraMovement : MonoBehaviour
 
             distance = defaultDistance;
         }
-
-        //Debug.Log($"[CAMERA MOVEMENT]: Camera target set to {body.name}. Min Distance: {minCameraDistance}, Max Distance: {maxCameraDistance}");
     }
 
     /**
@@ -213,7 +210,6 @@ public class CameraMovement : MonoBehaviour
             placeholderBodyRadius = planet.localScale.x * 1f;
             distance = 2f * placeholderBodyRadius;
             height = 0.2f * placeholderBodyRadius;
-            //Debug.Log($"[CAMERA MOVEMENT]: Camera now tracks placeholder: {planet.name}, radius={placeholderBodyRadius}");
         }
         else
         {
@@ -252,8 +248,8 @@ public class CameraMovement : MonoBehaviour
 
         if (altitudeText != null && targetBody != null)
         {
-            float altitude = targetBody.altitude;
-            altitudeText.text = $"Altitude: {altitude * 10:F2} km";
+            float altitude = (float)targetBody.altitude;
+            altitudeText.text = $"Altitude: {altitude * 10:F3} km";
         }
 
         if (trackingObjectNameText != null && targetBody != null)
