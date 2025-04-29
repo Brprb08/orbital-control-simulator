@@ -85,6 +85,27 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ---
 
+### Long-Term Orbital Stability (LEO, No Drag)
+
+| Orbit # | Apogee (km) | Perigee (km) |
+|---------|-------------|--------------|
+| 1       | 421.551     | 408.198      |
+| 10      | 421.549     | 408.197      |
+| 20      | 421.550     | 408.189      |
+| 30      | 421.549     | 408.189      |
+| 40      | 421.546     | 408.188      |
+| 50      | 421.526     | 408.188      |
+
+#### Apogee & Perigee Drift Summary
+
+| Metric        | Initial Value (km) | Final Value (km) | Total Drift (km) | Drift per Orbit (km) | Error %      |
+|---------------|--------------------|------------------|------------------|-----------------------|--------------|
+| Apogee        | 421.551            | 421.526          | -0.025           | -0.0005               | ~0.0059%     |
+| Perigee       | 408.200            | 408.188          | -0.012           | -0.00024              | ~0.0029%     |
+
+> **Note:** Across 50 orbits, orbital extrema remain stable within ±25 meters (apogee) and ±12 meters (perigee), validating the integrator’s long-term stability in a Newtonian vacuum with fixed timestep Dormand–Prince 5(4).
+
+
 ### Orbital Period Comparison
 
 | Orbit Type                  | Reference Tool | Expected Period (avg) | Simulated Period (avg) | Accuracy   |
