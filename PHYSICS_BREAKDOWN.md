@@ -2,7 +2,7 @@
 
 # Orbital Physics Breakdown
 
-This document outlines how the simulation models orbital mechanics, including gravity, integration, thrust, and time scaling. The goal is accurate, real-time orbital behavior for short to mid-duration maneuvers using purely mathematical systems, no external physics engine.
+This document outlines how the simulation models orbital mechanics, including gravity, integration, and thrust. The goal is accurate, real-time orbital behavior for short to mid-duration maneuvers using purely mathematical systems, no external physics engine.
 
 > **Note:** The simulation originally used RK4 (Runge-Kutta 4th Order), but has since transitioned to the Dormand–Prince 5(4) integrator (DOPRI5) for better error control and future support for adaptive stepping.
 
@@ -12,7 +12,7 @@ This document outlines how the simulation models orbital mechanics, including gr
 
 The simulation previously used Runge-Kutta 4th Order (RK4) for motion integration. RK4 was selected for its simplicity and high local accuracy, especially during short-duration events like burns and transfers. However, it lacked support for adaptive time stepping and error estimation, which limited its scalability and precision over variable time scales.
 
-The new integrator is **Dormand–Prince 5(4)**, a fifth-order method with an embedded fourth-order estimate, often referred to as DOPRI5. This allows the simulation to maintain high accuracy while enabling future improvements like variable timesteps and GPU acceleration.
+The new integrator is a fifth-order method with an embedded fourth-order estimate, often referred to as DOPRI5. This allows the simulation to maintain high accuracy while enabling future improvements like variable timesteps and GPU acceleration.
 
 #### Why the switch from RK4?
 - RK4 offers good local accuracy but no built-in error control
