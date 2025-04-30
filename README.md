@@ -4,7 +4,7 @@ A real-time orbital mechanics simulator built in **Unity** with physics computat
 
 **Realistic orbital mechanics simulation in real-time, no Unity physics.**
 
-> Note: There’s no drag, J2, or other non-gravitational forces yet. That’s intentional, I wanted to make sure the Dormand–Prince 5(4) integrator with Newtonian gravity was accurate and stable first. The system is in a solid place now, and drag will be the first additional effect to be integrated.
+> Note: There’s no drag, J2, or other non-gravitational forces yet. That’s intentional, I wanted to make sure the Dormand–Prince 5(4) integrator was accurate and stable first. The system is in a solid place now, and drag will be the first additional effect to be integrated.
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
