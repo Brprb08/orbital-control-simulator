@@ -1,8 +1,8 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics simulator built in **Unity** with physics computations handled by an optimized **C++ DLL**. This project demonstrates accurate Newtonian multi-body dynamics using the Dormand–Prince 5(4) integrator, live thrust maneuvers, and GPU-rendered trajectories.
+A real-time orbital mechanics simulator built in **Unity** with physics computations handled with **C++ DLL**. This project demonstrates accurate Newtonian multi-body dynamics using the Dormand–Prince 5(4) integrator, live thrust maneuvers, and GPU-rendered trajectories.
 
-**Realistic orbital mechanics simulation in real-time, no Unity physics.**
+**No built-in Unity physics used.**
 
 > Note: There’s no drag, J2, or other non-gravitational forces yet. That’s intentional, I wanted to make sure the Dormand–Prince 5(4) integrator was accurate and stable first. The system is in a solid place now, and drag will be the first additional effect to be integrated.
 
