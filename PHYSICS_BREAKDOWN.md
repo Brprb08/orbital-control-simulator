@@ -6,13 +6,6 @@ This document outlines how the simulation models orbital mechanics, including gr
 
 > **Note:** The simulation originally used RK4 (Runge-Kutta 4th Order), but has since transitioned to the Dormand–Prince 5(4) integrator (DOPRI5) for better error control and future support for adaptive stepping.
 
-### Table of Contents
-- [Integration Method: Dormand–Prince 5(4)](#integration-method-dormandprince-54)
-- [Gravity Calculations](#gravity-calculations)
-- [Thrust Mechanics](#thrust-mechanics)
-- [Time Scaling](#time-scaling)
-- [Limitations and Plans](#limitations-and-plans)
-
 ---
 
 ### Integration Method: Dormand–Prince 5(4)
@@ -93,30 +86,6 @@ a = F / m
 ```
 
 Thrust does not consume fuel yet, it's unlimited during input. Object mass is configurable, and thrust scales accordingly.
-
----
-
-### Time Scaling
-
-The user can increase time scale up to 100×. With RK4, higher `dt` values introduced noticeable drift. Dormand–Prince improves stability under fast-forward conditions and sets up for future adaptive time steps.
-
-Currently, timestep is fixed per frame. A move to variable stepping or GPU-offloaded integration is planned.
-
----
-
-### Limitations and Plans
-
-Current limitations:
-- Newtonian physics only (no relativity)
-- No atmospheric drag or orbital decay
-- No collision physics (objects are removed on impact)
-- Unlimited thrust, no fuel usage
-
-Planned features:
-- Maneuver planning interface
-- Fuel-based delta-v budgeting
-- Dynamic Earth body (currently static)
-- Barnes-Hut optimization for large-body systems
 
 ---
 
