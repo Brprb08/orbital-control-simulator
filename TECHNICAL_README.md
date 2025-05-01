@@ -12,6 +12,7 @@ This document is intended for developers, tech leads, and simulation engineers w
 
 - [Motivation](#motivation)
 - [Simulation Core](#simulation-core)
+- [Numerics & Physics Details](#numerics--physics-details)
 - [Validation Results](#validation-results)
 - [Physics Breakdown](#physics-breakdown)
 - [Features](#features)
@@ -35,6 +36,72 @@ This project began as a personal exploration into orbital dynamics after being i
 - **Thrust Model:** Real-time continuous acceleration (or impulse burns)
 - **GPU Rendering:** Efficient trajectory visualization
 - **Performance:** Physics fully offloaded to native C++ DLL
+
+---
+
+## Numerics & Physics Details
+
+This section outlines the numerical precision strategy, units, time step logic, and edge-case handling used in the simulator. It’s meant to help understand the assumptions and tolerances behind the integration process and overall stability.
+
+### Precision Map
+
+The sim uses different numeric precisions depending on where the data is flowing and what level of accuracy is required.
+
+| Quantity                     | Type     | Rationale                                                            |
+|-----------------------------|----------|----------------------------------------------------------------------|
+| Orbital State (true pos/vel) | double3  | Prevents drift in long simulations, used for integration accuracy    |
+| Unity Transform             | float    | Unity uses float natively, conversion applied for visualization      |
+| GPU Trajectory Prediction   | float    | Optimized for performance, used for visual prediction only           |
+| Integrator Internals        | double   | Dormand–Prince operates fully in double precision for stability      |
+
+Different float types are intentional. The sim integrates in high precision, then converts to float for rendering or Unity interop. This avoids precision loss over long durations without impacting performance where it’s not critical.
+
+### Units and Reference Frames
+
+The simulator assumes a consistent unit system and reference frame throughout.
+
+| Dimension | Unit             | Reference Frame        |
+|----------|------------------|------------------------|
+| Length   | Kilometers (km)  | Earth-Centered Inertial (ECI) |
+| Velocity | Kilometers/second (km/s) | ECI                        |
+| Time     | Seconds (s)      | Unity time (scaled)    |
+| Mass     | Kilograms (kg)   | Body mass (used in thrust and gravity) |
+
+> Note: 1 Unity unit = 10 kilometers. Earth radius is set to 637.8137f, matching real-world values in km. All physical interactions assume ECI. No conversions are done unless explicitly required for UI or scaling.
+
+### Integrator Error Controls
+
+The Dormand–Prince 5(4) method is used for orbit integration. Integration is performed in fixed steps to ensure consistent performance and simplify threading.
+
+- Integrator: Dormand–Prince 5(4), implemented in native C++
+- Step size: Fixed
+- Substepping: Enabled, with a max dt of 0.002s per substep
+- Step logic: Unity’s Time.fixedDeltaTime is divided into smaller substeps to stay within dt limits
+
+No adaptive error controls are enabled yet, but the integrator code supports embedded 4th-order error estimation. This is a planned change.
+
+### Stability Constraints
+
+The integrator is kept stable by enforcing a maximum time step per substep.
+
+| Parameter         | Value        | Reasoning                                       |
+|------------------|--------------|-------------------------------------------------|
+| Max substep Δt   | 0.002 s      | Prevents large integration errors or instability |
+| Substeps         | Variable     | Derived from Time.fixedDeltaTime per frame      |
+
+Stability has been empirically verified. Long-duration drift tests at 100x time scale confirm orbital extrema drift stays within ±25 meters over 50 orbits.
+
+### Edge-Case Handling
+
+Several numerical protections are in place to prevent simulation blowups or instability.
+
+- Singularity Avoidance: Minimum distance squared threshold (1e-20) used to prevent division by zero during force calculations
+- Max Force Cap: 1e8 N to avoid extreme accelerations from close approaches
+- Overflow Checks: NaN checks are performed each frame on Unity transform positions
+- Collision Handling: Collisions with Earth are detected based on radius overlap and objects are removed immediately
+- Mass Threshold: Bodies with mass below 1e-6 are ignored from simulation updates
+
+More robust collision modeling and adaptive error controls are planned but not yet implemented.
 
 ---
 
