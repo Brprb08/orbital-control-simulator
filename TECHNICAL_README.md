@@ -17,6 +17,7 @@ This document is intended for developers, tech leads, and simulation engineers w
 - [Physics Breakdown](#physics-breakdown)
 - [Features](#features)
 - [Interop Architecture](#interop-architecture)
+- [Directory Layout](#directory-layout)
 - [How To Run It](#how-to-run-it)
 - [Planned Enhancements](#planned-enhancements)
 - [Limitations](#limitations)
@@ -180,6 +181,38 @@ Example structure:
 ```
 
 This setup reduces CPU load and avoids garbage collection overhead.
+
+---
+
+## Directory Layout
+
+```
+OrbitalControlSimulator/
+├── Assets/
+│   ├── Fonts/                     # Custom fonts for UI (Orbitron, FuturaLight)
+│   ├── Images/                    # Screenshot assets for README/demo
+│   ├── Materials/                 # Shaders and grouped material sets (Earth, Satellites, etc.)
+│   ├── Scenes/
+│   │   └── OrbitSimulation.unity  # Main Unity scene
+│   ├── Scripts/
+│   │   ├── Camera/                # Camera control logic (Free, Track)
+│   │   ├── Controllers/           # Game state and thrust/time control
+│   │   ├── LineRender/            # Trajectory rendering & GPU line logic
+│   │   ├── ObjectPhysics/         # Physics constants, body definitions
+│   │   ├── ObjectPlacement/       # Runtime placement and drag manager
+│   │   ├── UI/                    # UI toggle buttons and HUD controls
+│   │   └── Utils/                 # Shared calculations (orbital math, parsing)
+├── Packages/                      # Unity package configuration
+├── Plugins/
+│   ├── Source/                    # Native C++ integrator source (DOPRI5)
+│   └── x86_64/                    # Compiled DLLs for Unity interop
+├── ProjectSettings/               # Unity project settings
+├── LICENSE
+├── .gitignore
+├── README.md                      # Project overview and usage
+├── TECHNICAL_README.md            # Integration details and architecture
+└── PHYSICS_BREAKDOWN.md           # Gravity, thrust, and integrator math
+```
 
 ---
 
