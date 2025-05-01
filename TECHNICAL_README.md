@@ -186,6 +186,9 @@ This setup reduces CPU load and avoids garbage collection overhead.
 
 ## Directory Layout
 
+<details>
+<summary><strong>Click to expand full project structure</strong></summary>
+
 ```
 OrbitalControlSimulator/
 ├── Assets/
@@ -213,6 +216,7 @@ OrbitalControlSimulator/
 ├── TECHNICAL_README.md            # Integration details and architecture
 └── PHYSICS_BREAKDOWN.md           # Gravity, thrust, and integrator math
 ```
+</details>
 
 ---
 
