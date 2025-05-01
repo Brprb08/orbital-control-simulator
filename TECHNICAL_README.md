@@ -143,19 +143,19 @@ Controls:
 
 ## Planned Enhancements
 
-- Orbital burn planning interface (UI + node system)
-- Delta-v and fuel mass modeling
-- Add perturbation forces (J2, drag, solar pressure)
-- Performance scaling using Barnes-Hut for large body counts
+- Integration of atmospheric drag (currently in development)
+- Orbital burn planning and delta-v/fuel mass modeling
+- Perturbation forces including J2 and solar pressure
+- Enhanced performance and scaling via Barnes-Hut algorithm for increased object counts
 
 ---
 
 ## Limitations
 
-- No atmospheric drag or decay modeling
+- Atmospheric drag and orbital decay modeling are currently experimental and nearing integration.
 - Earth is fixed; no back-reaction from satellite mass
 - No relativistic corrections
-- Simplified collision behavior (non-elastic removal)
+- Simplified collision handling (objects removed on collision without detailed physical interaction).
 
 ---
 
