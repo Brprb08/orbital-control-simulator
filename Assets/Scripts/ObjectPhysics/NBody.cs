@@ -152,10 +152,11 @@ public class NBody : MonoBehaviour
         int substeps = Mathf.CeilToInt(Time.fixedDeltaTime / dtMax);
         float dt = Time.fixedDeltaTime / substeps;
 
+        float crossSectionArea = Mathf.PI * radius * radius;
         Vector3 thrustImpulse = force;
         for (int s = 0; s < substeps; s++)
         {
-            NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse);
+            NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse, dragCoefficient, crossSectionArea);
         }
 
         transform.position = new Vector3(

@@ -46,6 +46,8 @@ public static class NativePhysics
         float[] masses,
         int numBodies,
         float deltaTime,
-        Vector3 thrustImpulse
+        Vector3 thrustImpulse,
+        float dragCoeff,
+        float areaUU
     );
 }

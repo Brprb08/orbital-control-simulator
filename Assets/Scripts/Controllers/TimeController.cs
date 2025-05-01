@@ -25,6 +25,7 @@ public class TimeController : MonoBehaviour
     {
         Time.timeScale = 1.0f;
         Time.fixedDeltaTime = 0.02f;
+        Application.targetFrameRate = 60;
 
         if (timeSlider != null)
         {

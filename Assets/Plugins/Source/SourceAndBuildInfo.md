@@ -1,6 +1,6 @@
 ### N-Body Simulation Source Code
 
-This folder contains the C++ source file (`rk4Physics.cpp`) used to build the native plugin (`PhysicsPlugin.dll`) for the Unity simulation. The compiled DLL is located in `Assets/Plugins/x86_64`.
+This folder contains the C++ source file (`Dopri54Physics.cpp`) used to build the native plugin (`PhysicsPlugin.dll`) for the Unity simulation. The compiled DLL is located in `Assets/Plugins/x86_64`.
 
 ### Purpose
 
@@ -12,7 +12,7 @@ This code handles all N-body gravity and RK4 integration calculations. Included 
 2. Compile the source into a Windows DLL using a command like:
 
 ```
-g++ -shared -fPIC -o PhysicsPlugin.dll rk4Physics.cpp
+g++ -shared -fPIC -o PhysicsPlugin.dll Dopri54Physics.cpp
 ```
 
 ### Replacing the DLL in Unity
