@@ -1,10 +1,10 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics simulator built in **Unity** with physics computations handled with **C++ DLL**. This project demonstrates accurate Newtonian multi-body dynamics using the Dormand–Prince 5(4) integrator, live thrust maneuvers, and GPU-rendered trajectories.
+A real-time orbital mechanics simulator with a Unity-based frontend and a native C++ physics backend. This project demonstrates accurate Newtonian multi-body dynamics using a Dormand–Prince 5(4) integrator, live thrust maneuvering, atmospheric drag modeling, and GPU-accelerated trajectory rendering.
 
-**No built-in Unity physics used.**
+Unlike typical Unity projects, this simulator **does not use Unity’s built-in physics**. All orbital dynamics are computed using custom double-precision integration methods offloaded to native C++ code for accuracy and performance.
 
-> **Update:** Atmospheric drag has been fully integrated into the simulation. Initially, non-gravitational forces like drag and J2 perturbations were excluded intentionally to ensure the Dormand–Prince 5(4) integrator's accuracy and stability. With foundational accuracy verified, atmospheric drag is now implemented to simulate realistic orbital decay and perturbations.
+Designed to model realistic spacecraft orbits and perturbations in real time, the simulator is positioned as a lightweight alternative to tools like GMAT or STK, built from scratch for educational, prototyping, and technical demonstration purposes.
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
@@ -14,44 +14,39 @@ A real-time orbital mechanics simulator built in **Unity** with physics computat
 
 ---
 
-## What This Is
+## Capabilities & Features
 
-This is a simulation prototype that allows:
-
-- Runtime placement of satellites with mass, radius, starting velocity and direction
-- Thrust maneuvers: prograde, retrograde, radial, normal/anti-normal
-- Atmospheric drag and realistic orbital decay
-- Visualization of orbital trajectories with GPU acceleration
-- Continuous tracking of apogee, perigee, velocity, and altitude
-- Time scaling from 1x to 100x
-- Two camera modes: Free and Track
-
-The physics are offloaded to a native C++ library for improved performance, allowing Unity to focus on visualization and interaction.
+- Runtime placement of orbiting bodies with mass, radius, velocity, and direction
+- Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)
+- Real-time orbital decay via atmospheric drag modeling
+- Continuous computation of apogee, perigee, velocity, and orbital period
+- Time scaling from 1x to 100x for long-term simulations
+- GPU-rendered trajectory paths for smooth orbital visualization
+- Dual camera modes (free-fly and tracking)
 
 ---
 
-## Why I Built This
+## Purpose
 
-After following real-world missions like SpaceX and exploring tools like GMAT, I wanted to build something hands-on that reflects actual orbital mechanics. This simulator became a platform to:
+I built this to explore and implement core orbital mechanics concepts in a real-time, interactive environment. It served as a platform to:
 
-- Implementing advanced numerical integration (Dormand–Prince 5(4))
-- Model realistic perturbations like atmospheric drag.
-- Explore multi-body gravitational systems in real time
-- Work with C++ and Unity interoperability (DLL calls)
-- Optimize both simulation logic and rendering
+- Deepen my understanding of spacecraft dynamics and numerical integration
+- Implement Dormand–Prince 5(4) for stable, high-accuracy propagation
+- Handle real-world perturbation forces like drag
+- Work on simulation-grade interoperability between Unity and native C++ (via DLLs)
+- Optimize rendering pipelines and data flow in a live physics context
 
-It also served as a way to deepen my understanding of orbital mechanics and real-time spaceflight simulation.
+This was not a game prototype—it was a ground-up build of a small-scale orbital dynamics engine for educational, technical, and portfolio purposes.
 
 ---
 
-## System & Tools Breakdown
+## Architecture Overview
 
-- **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator for superior accuracy
-- **Unity Frontend:** Object instantiation, camera controls, and trajectory visualization
-- **Thrust Model:** Instantaneous velocity change (impulse burn) based on burn direction and current mass
-- **Atmospheric Drag:** Real-time drag force calculations influencing orbital trajectories.
-- **Trajectory Rendering:** GPU-drawn orbital paths for performance
-- **Interop:** Unity uses `DllImport` to communicate with native physics functions
+- **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator, double-precision, real-time execution
+- **Unity Frontend:** UI, scene management, camera controls, and GPU-based line rendering
+- **Thrust Model:** Instantaneous impulse-based velocity change (scaled by body mass)
+- **Atmospheric Drag:** Empirical model using interpolated density tables and cross-sectional area
+- **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
 
 ---
 
