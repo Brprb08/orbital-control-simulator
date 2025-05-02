@@ -73,7 +73,7 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 | Apogee        | 421.551            | 421.526          | -0.025           | -0.0005               | ~0.0059%     |
 | Perigee       | 408.200            | 408.188          | -0.012           | -0.00024              | ~0.0029%     |
 
-> **Note:** Across 50 orbits at 100× simulation speed, orbital extrema remained stable within ±25 meters (apogee) and ±12 meters (perigee), validating the Dormand>
+> **Note:** Across 50 orbits at 100× simulation speed, orbital extrema remained stable within ±25 meters (apogee) and ±12 meters (perigee), validating the integrator.
 
 ### Orbital Period Comparison
 
@@ -111,8 +111,6 @@ The simulator assumes a consistent unit system and reference frame throughout.
 | Velocity | Kilometers/second (km/s) | ECI                        |
 | Time     | Seconds (s)      | Unity time (scaled)    |
 | Mass     | Kilograms (kg)   | Body mass (used in thrust and gravity) |
-
-> Note: 1 Unity unit = 10 kilometers. Earth radius is set to 637.8137f, matching real-world values in km. All physical interactions assume ECI. No conversions are done unless explicitly required for UI or scaling.
 
 ### Core Physical Constants and Body Parameters
 
