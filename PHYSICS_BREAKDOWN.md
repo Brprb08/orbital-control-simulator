@@ -17,10 +17,10 @@ F_{\text{drag}} = \frac{1}{2} C_d \rho v^2 A
 $$
 
 where:
-- \(C_d\) = Drag coefficient (user-defined per satellite)
-- \(\rho\) = Atmospheric density (interpolated from standard atmospheric tables)
-- \(v\) = Satellite velocity relative to Earth’s rotating atmosphere
-- \(A\) = Cross-sectional area of the spacecraft
+- $C_d$ = Drag coefficient (user-defined per satellite)
+- $rho$ = Atmospheric density (interpolated from standard atmospheric tables)
+- $v$ = Satellite velocity relative to Earth’s rotating atmosphere
+- $A$ = Cross-sectional area of the spacecraft
 
 Atmospheric density decreases exponentially with altitude and is computed using a logarithmic interpolation of real atmospheric density data up to 500 km altitude. The Earth's rotation is accounted for to calculate accurate relative velocity, enhancing realism.
 
