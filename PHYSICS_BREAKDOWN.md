@@ -8,6 +8,24 @@ This document outlines how the simulation models orbital mechanics, including gr
 
 ---
 
+### Atmospheric Drag Model
+
+The simulation includes a realistic atmospheric drag model based on empirical atmospheric density data. Drag force is computed using:
+
+$$
+F_{\text{drag}} = \frac{1}{2} C_d \rho v^2 A
+$$
+
+where:
+- \(C_d\) = Drag coefficient (user-defined per satellite)
+- \(\rho\) = Atmospheric density (interpolated from standard atmospheric tables)
+- \(v\) = Satellite velocity relative to Earth’s rotating atmosphere
+- \(A\) = Cross-sectional area of the spacecraft
+
+Atmospheric density decreases exponentially with altitude and is computed using a logarithmic interpolation of real atmospheric density data up to 500 km altitude. The Earth's rotation is accounted for to calculate accurate relative velocity, enhancing realism.
+
+---
+
 ### Integration Method: Dormand–Prince 5(4)
 
 The simulation previously used Runge-Kutta 4th Order (RK4) for motion integration. RK4 was selected for its simplicity and high local accuracy, especially during short-duration events like burns and transfers. However, it lacked support for adaptive time stepping and error estimation, which limited its scalability and precision over variable time scales.
@@ -56,6 +74,20 @@ Dormand–Prince evaluates seven stages per step, blending multiple estimates to
 
  (b[i] = 5th-order weights for position/velocity)
 ```
+---
+
+### Physics Flow with Drag:
+
+1. Compute gravitational acceleration based on body interactions.
+2. Add thrust acceleration if applicable.
+3. Compute and add atmospheric drag acceleration:
+   - Relative velocity to Earth's rotation is calculated.
+   - Atmospheric density is determined at the current altitude.
+   - Drag force is computed and translated into acceleration.
+4. Update orbital state (position and velocity) using Dormand–Prince integrator steps.
+
+Drag implementation significantly enhances realism, accurately modeling orbital decay especially prominent in low-Earth orbit scenarios.
+
 ---
 
 ### Gravity Calculations

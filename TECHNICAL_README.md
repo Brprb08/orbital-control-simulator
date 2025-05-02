@@ -34,6 +34,7 @@ This project began as a personal exploration into orbital dynamics after being i
 
 - **Integrator:** Dormand–Prince 5(4), providing high-accuracy orbital state propagation
 - **Dynamics:** Newtonian multi-body gravitational interactions
+- **Atmospheric Drag:** Implemented for realistic orbital decay and perturbation modeling.
 - **Thrust Model:** Real-time continuous acceleration (or impulse burns)
 - **GPU Rendering:** Efficient trajectory visualization
 - **Performance:** Physics fully offloaded to native C++ DLL
@@ -249,14 +250,13 @@ Controls:
 
 - Integration of atmospheric drag (currently in development)
 - Orbital burn planning and delta-v/fuel mass modeling
-- Perturbation forces including J2 and solar pressure
+- Additional perturbation forces including J2 oblateness and solar radiation pressure.
 - Enhanced performance and scaling via Barnes-Hut algorithm for increased object counts
 
 ---
 
 ## Limitations
 
-- Atmospheric drag and orbital decay modeling are currently experimental and nearing integration.
 - Earth is fixed; no back-reaction from satellite mass
 - No relativistic corrections
 - Simplified collision handling (objects removed on collision without detailed physical interaction).
