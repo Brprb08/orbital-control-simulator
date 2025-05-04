@@ -4,8 +4,6 @@ A real-time orbital mechanics simulator with a Unity-based frontend and a native
 
 Unlike typical Unity projects, this simulator **does not use Unity’s built-in physics**. All orbital dynamics are computed using custom double-precision integration methods offloaded to native C++ code for accuracy and performance.
 
-Designed to model realistic spacecraft orbits and perturbations in real time, the simulator was created as a lightweight alternative to tools like GMAT or STK, built from scratch for educational, prototyping, and technical demonstration purposes.
-
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
 ![Elliptical Orbit](./Assets/Images/04-17SatelliteUpClose.png)
