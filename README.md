@@ -6,10 +6,6 @@ All orbital motion is calculated externally in double-precision native code, no 
 
 > This project started as a way to teach myself orbital mechanics and numerical integration. I'm from a computer science background, so everything here from the integrator to the drag model, was built to understand how real spacecraft dynamics work, beyong just visuals or simplified motion.
 
-A real-time orbital mechanics simulator with a Unity-based frontend and a native C++ physics backend. This project demonstrates accurate Newtonian multi-body dynamics using a Dormand–Prince 5(4) integrator, live thrust maneuvering, atmospheric drag modeling, and GPU-accelerated trajectory rendering.
-
-Unlike typical Unity projects, this simulator **does not use Unity’s built-in physics**. All orbital dynamics are computed using custom double-precision integration methods offloaded to native C++ code for accuracy and performance.
-
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
 ![Elliptical Orbit](./Assets/Images/04-17SatelliteUpClose.png)
