@@ -4,7 +4,7 @@ A real-time orbital mechanics sim built in Unity with a custom C++ physics backe
 
 All orbital motion is calculated externally in double-precision native code, no Unity physics involved.
 
-> This project started as a way to teach myself orbital mechanics and numerical integration. I'm from a computer science background, so everything here from the integrator to the drag model, was built to understand how real spacecraft dynamics work, beyong just visuals or simplified motion.
+> This project started as a way to teach myself orbital mechanics and numerical integration. I'm from a computer science background, so everything here from the integrator to the drag model, was built to understand how real spacecraft dynamics work, beyond just visuals or simplified motion.
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
