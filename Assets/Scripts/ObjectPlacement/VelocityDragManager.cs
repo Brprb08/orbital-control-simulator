@@ -327,7 +327,7 @@ public class VelocityDragManager : MonoBehaviour
         }
 
         planetNBody.velocity = velocityToApply;
-        // gravityManager.RegisterBody(planetNBody);
+        gravityManager.RegisterBody(planetNBody);
 
         trajectoryRenderer.SetTrackedBody(planetNBody);
         trajectoryRenderer.orbitIsDirty = true;

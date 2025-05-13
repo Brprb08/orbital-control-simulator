@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System.Linq;
 
 /**
 * GravityManager class handles the registration, deregistration, and management of celestial bodies.
@@ -42,15 +43,42 @@ public class GravityManager : MonoBehaviour
     **/
     void Start()
     {
-        NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
-        foreach (var body in allBodies)
-        {
-            if (!bodies.Contains(body))
-            {
-                bodies.Add(body);
+        // NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
+        // foreach (var body in allBodies)
+        // {
+        //     if (!bodies.Contains(body))
+        //     {
+        //         bodies.Add(body);
 
-                Debug.Log($"[GRAVITY MANAGER]: Registered pre-existing NBody: {body.gameObject.name}");
-            }
+        //         Debug.Log($"[GRAVITY MANAGER]: Registered pre-existing NBody: {body.gameObject.name}");
+        //     }
+        // }
+        // foreach (var body in allBodies)
+        // {
+        //     Debug.LogError($"BodyName: {body.name} + BodyIsCentral: {body.isCentralBody}");
+        //     if (body.name == "Earth" || body.isCentralBody)
+        //     {
+        //         bodies.Add(body);
+        //         CentralBody = body;
+        //         Debug.Log("[GRAVITY MANAGER]: Registered Central Body: Earth");
+        //         break;
+        //     }
+        // }
+
+        // // Register the rest
+        // foreach (var body in allBodies)
+        // {
+        //     if (!bodies.Contains(body))
+        //     {
+        //         bodies.Add(body);
+        //         Debug.Log($"[GRAVITY MANAGER]: Registered NBody: {body.gameObject.name}");
+        //     }
+        // }
+
+        NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
+        foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody)) // optional
+        {
+            RegisterBody(body); // Now handles central and others
         }
     }
 

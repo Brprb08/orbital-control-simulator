@@ -50,10 +50,10 @@ public class NBody : MonoBehaviour
     **/
     void Awake()
     {
-        if (GravityManager.Instance != null)
-        {
-            GravityManager.Instance.RegisterBody(this);
-        }
+        // if (GravityManager.Instance != null)
+        // {
+        //     GravityManager.Instance.RegisterBody(this);
+        // }
     }
 
     /**
@@ -75,6 +75,8 @@ public class NBody : MonoBehaviour
 
         Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
 
+        Debug.LogError($"POS - x: {transform.position.x} y: {transform.position.y} z: {transform.position.z}");
+        Debug.LogError($"VEL - x: {velocity.x} y: {velocity.y} z: {velocity.z}");
         truePosition = new double3(transform.position.x, transform.position.y, transform.position.z);
         trueVelocity = new double3(velocity.x, velocity.y, velocity.z);
     }
@@ -133,7 +135,8 @@ public class NBody : MonoBehaviour
     **/
     void SimulateOrbitalMotion()
     {
-        List<NBody> bodies = GravityManager.Instance.Bodies;
+        List<NBody> bodies = GravityManager.Instance?.Bodies;
+        if (bodies == null || bodies.Count == 0) return;
         int numBodies = bodies.Count;
 
         var positions = new Vector3[numBodies];
@@ -154,10 +157,14 @@ public class NBody : MonoBehaviour
 
         float crossSectionArea = Mathf.PI * radius * radius;
         Vector3 thrustImpulse = force;
+        // Debug.LogError($"VEL - x: {trueVelocity.x} y: {trueVelocity.y} z: {trueVelocity.z}");
+        // Debug.LogError($"POS - x: {truePosition.x} y: {truePosition.y} z: {truePosition.z}");
+
         for (int s = 0; s < substeps; s++)
         {
             NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse, dragCoefficient, crossSectionArea);
         }
+        // Debug.LogError($"VEL - x: {(float)trueVelocity.x} y: {(float)trueVelocity.y} z: {(float)trueVelocity.z}");
 
         transform.position = new Vector3(
             (float)truePosition.x,
@@ -170,6 +177,8 @@ public class NBody : MonoBehaviour
             (float)trueVelocity.y,
             (float)trueVelocity.z
         );
+
+
 
         CheckCollisionWithEarth();
     }
@@ -218,7 +227,7 @@ public class NBody : MonoBehaviour
     {
         var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
-        float[] otherMasses = otherBodies.Select(b => b.mass).ToArray();
+        float[] otherMasses = otherBodies.Select(b => (float)b.mass).ToArray();
 
         if (tcc == null && (tcc = TrajectoryComputeController.Instance) == null)
         {

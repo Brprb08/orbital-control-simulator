@@ -30,7 +30,7 @@ public class TimeController : MonoBehaviour
         if (timeSlider != null)
         {
             timeSlider.minValue = 1f;
-            timeSlider.maxValue = 100f;
+            timeSlider.maxValue = 250f;
             timeSlider.value = Time.timeScale;
             timeSlider.onValueChanged.AddListener(OnTimeScaleChanged);
         }

@@ -65,6 +65,8 @@ public class TrajectoryComputeController : MonoBehaviour
         Action<Vector3[]> onComplete   // callback once data is ready
     )
     {
+
+        float bodyMassFloat = bodyMass;
         int maxPoints = 2500;
         lodFactor = Mathf.Max(1, steps / maxPoints);
         outputCount = (int)Mathf.Ceil((float)steps / lodFactor);
@@ -83,7 +85,7 @@ public class TrajectoryComputeController : MonoBehaviour
         // Set data on the buffers
         initialPositionBuffer.SetData(new Vector3[] { startPos });
         initialVelocityBuffer.SetData(new Vector3[] { startVel });
-        massBuffer.SetData(new float[] { bodyMass });
+        massBuffer.SetData(new float[] { bodyMassFloat });
 
         bodyPositionsBuffer.SetData(otherBodyPositions);
         bodyMassesBuffer.SetData(otherBodyMasses);
