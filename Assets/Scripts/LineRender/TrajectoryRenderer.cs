@@ -2,13 +2,12 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using TMPro;
+using Unity.Mathematics;
 
-/** 
-* Handles the rendering of trajectory prediction lines for celestial bodies.
-* This includes prediction lines, origin lines, and apogee/perigee indicators.
-* The class also updates the UI elements for apogee and perigee distances
-* and toggles line visibility based on user inputs and simulation state.
-**/
+/// <summary>
+/// Handles the rendering of trajectory prediction lines for celestial bodies.
+/// This includes prediction, origin, and apogee/perigee lines, as well as updating the UI.
+/// </summary>
 public class TrajectoryRenderer : MonoBehaviour
 {
     public static TrajectoryRenderer Instance { get; private set; }
@@ -56,9 +55,9 @@ public class TrajectoryRenderer : MonoBehaviour
     float nextTime = 0f;
     float interval = .5f;
 
-    /**
-    * Initializes line renderers and sets up materials
-    **/
+    /// <summary>
+    /// Initializes trajectory line renderers and singleton references.
+    /// </summary>
     void Awake()
     {
 
@@ -76,6 +75,9 @@ public class TrajectoryRenderer : MonoBehaviour
         uIManager = UIManager.Instance;
     }
 
+    /// <summary>
+    /// Updates internal state, including thrust status, each frame.
+    /// </summary>
     void Update()
     {
         if (thrustController != null)
@@ -84,9 +86,9 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
-    /** 
-    * Stops the prediction coroutine when this object is destroyed 
-    **/
+    /// <summary>
+    /// Stops the trajectory prediction coroutine when this object is destroyed.
+    /// </summary>
     void OnDestroy()
     {
         if (predictionCoroutine != null)
@@ -95,6 +97,12 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Creates a new procedural line renderer GameObject with the specified color.
+    /// </summary>
+    /// <param name="name">The name of the new line GameObject.</param>
+    /// <param name="hexColor">Hex color string (e.g., "#FF0000").</param>
+    /// <returns>The created ProceduralLineRenderer.</returns>
     private ProceduralLineRenderer CreateProceduralLineRenderer(string name, string hexColor)
     {
         GameObject lineObject = new GameObject(name);
@@ -108,10 +116,10 @@ public class TrajectoryRenderer : MonoBehaviour
         return lineRenderer;
     }
 
-    /**
-    * Assigns the NBody to be tracked by this TrajectoryRenderer.
-    * @param body - Nbody the line renders switch to.
-    **/
+    /// <summary>
+    /// Assigns the NBody to be tracked for trajectory rendering.
+    /// </summary>
+    /// <param name="body">The NBody to track.</param>
     public void SetTrackedBody(NBody body)
     {
         trackedBody = body;
@@ -122,9 +130,10 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
-    /** 
-    * Recomputes the prediction, origin, and apogee/perigee line renders using the GPU
-    **/
+    /// <summary>
+    /// Continuously recomputes and updates trajectory prediction lines using orbital calculations.
+    /// </summary>
+    /// <returns>Coroutine enumerator.</returns>
     public IEnumerator RecomputeTrajectory()
     {
         Vector3 lastPosition = trackedBody.transform.position;
@@ -158,11 +167,19 @@ public class TrajectoryRenderer : MonoBehaviour
 
             bool isElliptical = orbitalParams.eccentricity < 1f;
 
+            // TEMP CHECK TO STOP RENDERS FOR MOON
+            bool moonFlag = false;
+            if (trackedBody.name == "Moon")
+            {
+                moonFlag = true;
+            }
+
             // If we should show prediction lines and..
             //     - isThrusting = true
             //     - orbitIsDirty = true
             //     - If not thrusting, orbit is elliptical, and prediction steps are still low
-            if (showPredictionLines && (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
+            // TEMP MOON FLAG TO PREVENT LINE RENDERS FOR MOON
+            if (showPredictionLines && (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)) && !moonFlag)
             {
                 ComputePredictionLine(orbitalParams, isElliptical);
             }
@@ -194,8 +211,22 @@ public class TrajectoryRenderer : MonoBehaviour
 
     }
 
+    /// <summary>
+    /// Computes the trajectory prediction line, including adjusting for orbital shape and thrust.
+    /// </summary>
+    /// <param name="orbitalParams">Calculated orbital parameters.</param>
+    /// <param name="isElliptical">Whether the orbit is elliptical.</param>
     private void ComputePredictionLine(OrbitalParameters orbitalParams, bool isElliptical)
     {
+        if (trackedBody.name == "Moon")
+        {
+            Debug.Log("[PREDICTION]: Skipping prediction line for Moon.");
+            predictionProceduralLine.Clear();
+            orbitIsDirty = false;
+            isComputingPrediction = false;
+            return;
+        }
+
         if (!isComputingPrediction)
         {
             isComputingPrediction = true;
@@ -236,6 +267,11 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Clips a trajectory based on raycasting collisions with tagged objects.
+    /// </summary>
+    /// <param name="points">Full trajectory points array.</param>
+    /// <returns>Clipped points array.</returns>
     private Vector3[] ClipTrajectory(Vector3[] points)
     {
         if (points == null || points.Length < 2)
@@ -270,6 +306,10 @@ public class TrajectoryRenderer : MonoBehaviour
         return clippedPoints.ToArray();
     }
 
+    /// <summary>
+    /// Draws apogee and perigee lines and updates the UI with related orbital stats.
+    /// </summary>
+    /// <param name="orbitalParams">Orbital parameters used for rendering and display.</param>
     private void ShowApogeePerigeeLines(OrbitalParameters orbitalParams)
     {
         if (showApogeePerigeeLines)
@@ -294,6 +334,9 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Toggles line visibility based on camera distance.
+    /// </summary>
     private void ToggleLines()
     {
         if (showPredictionLines)
@@ -317,12 +360,12 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
-    /**
-    * Sets the enabled state of specific LineRenderers associated with this NBody.
-    * @param showPrediction Whether to show/hide the prediction lines (predictionRenderer, activeRenderer, backgroundRenderer).
-    * @param showOrigin Whether to show/hide the origin line.
-    * @param showApogeePerigee Whether to show/hide the apogee/perigee lines and panel.
-    **/
+    /// <summary>
+    /// Sets the visibility of prediction, origin, and apogee/perigee lines.
+    /// </summary>
+    /// <param name="showPrediction">Whether to show prediction lines.</param>
+    /// <param name="showOrigin">Whether to show origin lines.</param>
+    /// <param name="showApogeePerigee">Whether to show apogee/perigee lines.</param>
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
         showPredictionLines = showPrediction;

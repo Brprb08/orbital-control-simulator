@@ -3,10 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
 
-/**
-* TimeController class manages the simulation time scale, pause/resume states, and user interface elements.
-* It allows the user to control the time flow using a slider and pause button.
-**/
+/// <summary>
+/// Manages the simulation's time flow, including time scale adjustment,
+/// pause/resume functionality, and relevant UI elements.
+/// </summary>
 public class TimeController : MonoBehaviour
 {
     public Slider timeSlider;
@@ -18,9 +18,9 @@ public class TimeController : MonoBehaviour
     private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
 
 
-    /**
-    * Initializes the time scale and configures the UI elements.
-    **/
+    /// <summary>
+    /// Initializes the time controller, sets default time scale, and configures UI.
+    /// </summary>
     void Start()
     {
         Time.timeScale = 1.0f;
@@ -30,7 +30,7 @@ public class TimeController : MonoBehaviour
         if (timeSlider != null)
         {
             timeSlider.minValue = 1f;
-            timeSlider.maxValue = 250f;
+            timeSlider.maxValue = 100f;
             timeSlider.value = Time.timeScale;
             timeSlider.onValueChanged.AddListener(OnTimeScaleChanged);
         }
@@ -47,9 +47,9 @@ public class TimeController : MonoBehaviour
         Debug.Log($"[TIME CONTROLLER]: Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
     }
 
-    /**
-    * Checks for user input to reset the time scale.
-    **/
+    /// <summary>
+    /// Checks for user input (reset time scale) and handles input lock during UI focus.
+    /// </summary>
     void Update()
     {
         if (EventSystem.current.currentSelectedGameObject != null &&
@@ -72,10 +72,11 @@ public class TimeController : MonoBehaviour
         }
     }
 
-    /**
-    * Handles changes to the time scale from the slider.
-    * @param newTimeScale - The new time scale value from the slider.
-    **/
+    /// <summary>
+    /// Called when the time scale slider value changes.
+    /// Updates time scale and text label.
+    /// </summary>
+    /// <param name="newTimeScale">The new time scale value from the slider.</param>
     public void OnTimeScaleChanged(float newTimeScale)
     {
         SetTimeScale(newTimeScale);
@@ -86,10 +87,10 @@ public class TimeController : MonoBehaviour
         }
     }
 
-    /**
-    * Sets the time scale and updates the physics time step.
-    * @param scale - The new time scale value.
-    **/
+    /// <summary>
+    /// Sets the simulation time scale and updates related physics settings.
+    /// </summary>
+    /// <param name="scale">The new time scale to apply.</param>
     private void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
@@ -112,9 +113,10 @@ public class TimeController : MonoBehaviour
         }
     }
 
-    /**
-    * Toggles the simulation between paused and resumed states.
-    **/
+    /// <summary>
+    /// Toggles the simulation between paused and running states.
+    /// Updates UI and simulation accordingly.
+    /// </summary>
     public void TogglePause()
     {
         if (isPaused)
@@ -133,9 +135,9 @@ public class TimeController : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Pauses the simulation and saves the current time scale.
-    **/
+    /// <summary>
+    /// Pauses the simulation and disables user input for the time slider.
+    /// </summary>
     private void Pause()
     {
         timeSlider.interactable = false;
@@ -146,9 +148,9 @@ public class TimeController : MonoBehaviour
         Debug.Log("[TIME CONTROLLER]: Simulation Paused");
     }
 
-    /**
-    * Resumes the simulation and restores the previous time scale.
-    **/
+    /// <summary>
+    /// Resumes the simulation and restores the previous time scale.
+    /// </summary>
     private void Resume()
     {
         timeSlider.interactable = true;
@@ -164,9 +166,9 @@ public class TimeController : MonoBehaviour
         Debug.Log("[TIME CONTROLLER]: Simulation Resumed");
     }
 
-    /**
-    * Updates the pause button text to reflect the current state.
-    **/
+    /// <summary>
+    /// Updates the pause/resume button text based on current simulation state.
+    /// </summary>
     private void UpdatePauseButtonText()
     {
         if (pauseButtonText != null)

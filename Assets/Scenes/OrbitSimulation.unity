@@ -7028,6 +7028,7 @@ MonoBehaviour:
   radius: 637.81
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972168e+24
+  cameraDistanceRadius: 637
   predictionDeltaTime: 0.1
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -7040,6 +7041,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 5e+21
 --- !u!1 &916841081
 GameObject:
   m_ObjectHideFlags: 0
@@ -14471,6 +14473,7 @@ MonoBehaviour:
   radius: 1
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972168e+24
+  cameraDistanceRadius: 1
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -14483,6 +14486,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 500
 --- !u!120 &1387400465
 LineRenderer:
   serializedVersion: 2
@@ -15345,6 +15349,7 @@ MonoBehaviour:
   radius: 0.002
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
+  cameraDistanceRadius: 0.5
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -15357,6 +15362,7 @@ MonoBehaviour:
     x: 0
     y: 0.6009
     z: 0.47627
+  trueMass: 420000
 --- !u!1 &1455678692
 GameObject:
   m_ObjectHideFlags: 0
@@ -16630,12 +16636,13 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e963154806e5ee74d91cf86ce66fef76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mass: 420000
+  mass: 420001
   velocity: {x: -0.779, y: 0, z: 0}
   isCentralBody: 0
   radius: 0.002
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972168e+24
+  cameraDistanceRadius: 637
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -16648,6 +16655,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 420000
 --- !u!120 &1590649027
 LineRenderer:
   serializedVersion: 2
@@ -17245,13 +17253,14 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: e963154806e5ee74d91cf86ce66fef76, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  mass: 73.48
+  mass: 7.348e+22
   velocity: {x: -0.1018, y: 0.0091, z: 0}
   isCentralBody: 0
   radius: 86.85
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
-  predictionDeltaTime: 0
+  cameraDistanceRadius: 637
+  predictionDeltaTime: 0.12
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
   dragCoefficient: 2.2
@@ -17263,6 +17272,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 7.348e+22
 --- !u!120 &1713781786
 LineRenderer:
   serializedVersion: 2
@@ -17960,6 +17970,7 @@ MonoBehaviour:
   radius: 0.6
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
+  cameraDistanceRadius: 637
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -17972,6 +17983,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 5e+21
 --- !u!120 &1798072484
 LineRenderer:
   serializedVersion: 2
@@ -19412,6 +19424,7 @@ MonoBehaviour:
   radius: 0.6
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972e+24
+  cameraDistanceRadius: 0.6
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -19424,6 +19437,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 1000
 --- !u!120 &2136029599
 LineRenderer:
   serializedVersion: 2
@@ -19795,6 +19809,7 @@ MonoBehaviour:
   radius: 637.81
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972168e+24
+  cameraDistanceRadius: 637.81
   predictionDeltaTime: 0.1
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -19807,6 +19822,7 @@ MonoBehaviour:
     x: 0
     y: 0
     z: 0
+  trueMass: 5.972168e+24
 --- !u!120 &2867651322944578906
 LineRenderer:
   serializedVersion: 2

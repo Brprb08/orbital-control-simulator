@@ -2,10 +2,10 @@ using UnityEngine;
 using TMPro;
 using System.Collections;
 
-/**
-* CameraMovement handles camera positioning and UI updates while tracking celestial bodies.
-* Supports switching between real NBody objects and placeholder objects.
-**/
+/// <summary>
+/// Handles camera positioning, zoom, and UI updates while tracking celestial bodies.
+/// Supports tracking both real NBody objects and placeholder objects during placement.
+/// </summary>
 public class CameraMovement : MonoBehaviour
 {
     public static CameraMovement Instance { get; private set; }
@@ -33,9 +33,9 @@ public class CameraMovement : MonoBehaviour
     public TextMeshProUGUI altitudeText;
     public TextMeshProUGUI trackingObjectNameText;
 
-    /**
-    * Setup the singleton for accessing UIManager
-    **/
+    /// <summary>
+    /// Sets up the singleton instance for camera control.
+    /// </summary>
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -46,24 +46,25 @@ public class CameraMovement : MonoBehaviour
         Instance = this;
     }
 
-    /**
-    * Initializes the main camera and sets the starting position relative to the target.
-    **/
+    /// <summary>
+    /// Initializes the main camera reference.
+    /// </summary>
     void Start()
     {
         mainCamera = GetComponentInChildren<Camera>();
     }
 
-    /**
-    * Updates the camera's position, zoom, and UI each frame.
-    **/
+    /// <summary>
+    /// Updates the camera position and UI each frame after all updates are processed.
+    /// </summary>
     void LateUpdate()
     {
         if (targetBody == null && targetPlaceholder == null) return;
         if (mainCamera == null) return;
 
         bool usingPlaceholder = (targetBody == null && targetPlaceholder != null);
-        float radius = usingPlaceholder ? placeholderBodyRadius : targetBody.radius;
+        // float radius = usingPlaceholder ? placeholderBodyRadius : targetBody.radius;
+        float cameraDistanceRadius = usingPlaceholder ? placeholderBodyRadius : targetBody.cameraDistanceRadius;
 
         transform.position = inEarthCam
             ? tempEarthBody.transform.position
@@ -74,17 +75,17 @@ public class CameraMovement : MonoBehaviour
         {
             minCameraDistance = 800f;
         }
-        else if (radius <= 0.5f)
+        else if (cameraDistanceRadius <= 0.5f)
         {
-            minCameraDistance = Mathf.Max(0.01f, radius * 0.7f);
+            minCameraDistance = Mathf.Max(0.01f, cameraDistanceRadius * 0.7f);
         }
-        else if (radius <= 100f)
+        else if (cameraDistanceRadius <= 100f)
         {
-            minCameraDistance = radius * 5f;
+            minCameraDistance = cameraDistanceRadius * 5f;
         }
         else
         {
-            minCameraDistance = radius + 400f;
+            minCameraDistance = cameraDistanceRadius + 400f;
         }
 
         HandleZoom();
@@ -105,15 +106,14 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Configures the camera's distance, position, and zoom boundaries based on the selected celestial body.
-    *
-    * @param body                The celestial body to focus the camera on.
-    * @param togglingEarth       True if we're switching into Earth view mode (used for special zoom behavior).
-    * @param closerFraction      How close the camera should default to the body (0 = minDistance, 1 = midpoint).
-    * @param customMinMultiplier Optional multiplier to apply to the min camera distance (e.g. 5x for Earth view).
-    * @param customMaxOverride   Optional override for max camera distance. Set to -1 to auto-calculate.
-    **/
+    /// <summary>
+    /// Configures camera zoom limits and default positioning for a given NBody.
+    /// </summary>
+    /// <param name="body">The celestial body to focus on.</param>
+    /// <param name="togglingEarth">Whether this is a toggle into Earth view mode.</param>
+    /// <param name="closerFraction">Fraction used to place the camera closer to the object.</param>
+    /// <param name="customMinMultiplier">Optional multiplier for minimum camera distance.</param>
+    /// <param name="customMaxOverride">Optional override for max camera distance.</param>
     private void ConfigureCameraForBody(NBody body, bool togglingEarth, float closerFraction, float customMinMultiplier = 1f, float customMaxOverride = -1f)
     {
         if (body == null) return;
@@ -155,10 +155,10 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Sets the real celestial body as the camera's target.
-    * @param newTarget - New target for camera to track
-    **/
+    /// <summary>
+    /// Sets an NBody object as the target for the camera to follow.
+    /// </summary>
+    /// <param name="newTarget">The celestial body to track.</param>
     public void SetTargetBody(NBody newTarget)
     {
         targetBody = newTarget;
@@ -174,10 +174,10 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Sets the Earth as the cameras target
-    * @param Earth - New target for camera to track
-    **/
+    /// <summary>
+    /// Switches camera into or out of Earth tracking mode.
+    /// </summary>
+    /// <param name="earth">The Earth body to track.</param>
     public void SetTargetEarth(NBody earth)
     {
         inEarthCam = !inEarthCam;
@@ -196,10 +196,10 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Sets a placeholder object as the camera's target.
-    * @param planet - Placeholder for camera to track while object is being placed
-    **/
+    /// <summary>
+    /// Sets a placeholder transform as the camera's target (during placement).
+    /// </summary>
+    /// <param name="planet">The transform of the placeholder object.</param>
     public void SetTargetBodyPlaceholder(Transform planet)
     {
         targetBody = null;
@@ -217,15 +217,15 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Handles all zoom for track cam
-    **/
+    /// <summary>
+    /// Handles scroll-wheel zooming and enforces camera distance constraints.
+    /// </summary>
     void HandleZoom()
     {
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
-            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.radius / 20f : .4f, 1f, 20f);
+            float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.cameraDistanceRadius / 20f : .4f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
             float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
 
@@ -234,9 +234,9 @@ public class CameraMovement : MonoBehaviour
         }
     }
 
-    /**
-    * Updates the velocity and altitude display in the UI.
-    **/
+    /// <summary>
+    /// Updates the velocity, altitude, and tracked object name in the UI.
+    /// </summary>
     void UpdateVelocityAndAltitudeUI()
     {
         if (velocityText != null && targetBody != null)

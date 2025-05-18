@@ -1,19 +1,14 @@
 using UnityEngine;
-using System.Collections;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Unity.Collections;
-using Unity.Jobs;
 using System.Linq;
-using TMPro;
 using System;
 using Unity.Mathematics;
 
-/**
-* NBody class represents a celestial body in the gravitational system.
-* It simulates gravitational interactions, velocity, and trajectory prediction.
-**/
-[RequireComponent(typeof(LineRenderer))]
+/// <summary>
+/// Represents a celestial body in the gravitational system.
+/// Simulates gravity, thrust, drag, and integrates with prediction and rendering systems.
+/// </summary>
+// [RequireComponent(typeof(LineRenderer))]
 public class NBody : MonoBehaviour
 {
     [Header("Celestial Body Properties")]
@@ -23,6 +18,7 @@ public class NBody : MonoBehaviour
     public float radius = 637.8137f;
     public Vector3 force = Vector3.zero;
     public float centralBodyMass = 5.972e24f;
+    public float cameraDistanceRadius = 637f;
 
     [Header("Trajectory Prediction Settings")]
     public float predictionDeltaTime = .5f;
@@ -43,22 +39,11 @@ public class NBody : MonoBehaviour
 
     public double3 truePosition;
     public double3 trueVelocity;
+    public double trueMass = 5.0e21;
 
-    /**
-    * Called when the script instance is being loaded.
-    * Registers this NBody with the GravityManager.
-    **/
-    void Awake()
-    {
-        // if (GravityManager.Instance != null)
-        // {
-        //     GravityManager.Instance.RegisterBody(this);
-        // }
-    }
-
-    /**
-    * Start method initializes line renderers and sets up trajectory predictions.
-    **/
+    /// <summary>
+    /// Initializes trajectory data and sets the body to static if it's the central body.
+    /// </summary>
     void Start()
     {
         if (isCentralBody)
@@ -75,15 +60,14 @@ public class NBody : MonoBehaviour
 
         Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
 
-        Debug.LogError($"POS - x: {transform.position.x} y: {transform.position.y} z: {transform.position.z}");
-        Debug.LogError($"VEL - x: {velocity.x} y: {velocity.y} z: {velocity.z}");
         truePosition = new double3(transform.position.x, transform.position.y, transform.position.z);
         trueVelocity = new double3(velocity.x, velocity.y, velocity.z);
     }
 
-    /**
-    * FixedUpdate is called at a consistent interval and updates the NBody's physics state.
-    **/
+    /// <summary>
+    /// Updates the physics state of the body at fixed intervals.
+    /// Handles motion integration and rotation for the central body.
+    /// </summary>
     void FixedUpdate()
     {
         if (HasNaNPosition())
@@ -109,46 +93,48 @@ public class NBody : MonoBehaviour
         force = Vector3.zero;
     }
 
-    /**
-    * Checks if the current position has any NaN (not-a-number) values.
-    * This usually means something blew up in the physics sim.
-    **/
+    /// <summary>
+    /// Checks if the body's position has become NaN (indicative of numerical instability).
+    /// </summary>
+    /// <returns>True if any component of position is NaN.</returns>
     bool HasNaNPosition()
     {
         Vector3 pos = transform.position;
         return float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z);
     }
 
-    /**
-    * Rotates the central body (Earth) to simulate its daily spin.
-    * Only applies to objects tagged as Centralbody.
-    **/
+    /// <summary>
+    /// Simulates Earth-like rotation for the central body.
+    /// </summary>
     void RotateCentralBody()
     {
         const float earthRotationRate = 360f / (24f * 60f * 60f);
         transform.Rotate(Vector3.up, -earthRotationRate * Time.fixedDeltaTime);
     }
 
-    /**
-    * Simulates the object's orbital movement using physics and multiple substeps.
-    * Handles gravity forces and updates position and velocity based on the result.
-    **/
+    /// <summary>
+    /// Applies gravity using Dormand-Prince integration and updates position/velocity.
+    /// </summary>
     void SimulateOrbitalMotion()
     {
         List<NBody> bodies = GravityManager.Instance?.Bodies;
         if (bodies == null || bodies.Count == 0) return;
-        int numBodies = bodies.Count;
+
+        var bodiesFiltered = new List<NBody>();
+        foreach (var b in GravityManager.Instance.Bodies)
+        {
+            if (b != this)
+                bodiesFiltered.Add(b);
+        }
+        int numBodies = bodiesFiltered.Count;
 
         var positions = new Vector3[numBodies];
-        var velocities = new Vector3[numBodies];
-        var masses = new float[numBodies];
+        var masses = new double[numBodies];
 
         for (int i = 0; i < numBodies; i++)
         {
-            NBody body = bodies[i];
-            positions[i] = body.transform.position;
-            velocities[i] = body.velocity;
-            masses[i] = body.mass;
+            positions[i] = bodiesFiltered[i].transform.position;
+            masses[i] = bodiesFiltered[i].trueMass;
         }
 
         const float dtMax = 0.002f;
@@ -157,14 +143,12 @@ public class NBody : MonoBehaviour
 
         float crossSectionArea = Mathf.PI * radius * radius;
         Vector3 thrustImpulse = force;
-        // Debug.LogError($"VEL - x: {trueVelocity.x} y: {trueVelocity.y} z: {trueVelocity.z}");
-        // Debug.LogError($"POS - x: {truePosition.x} y: {truePosition.y} z: {truePosition.z}");
+
 
         for (int s = 0; s < substeps; s++)
         {
             NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse, dragCoefficient, crossSectionArea);
         }
-        // Debug.LogError($"VEL - x: {(float)trueVelocity.x} y: {(float)trueVelocity.y} z: {(float)trueVelocity.z}");
 
         transform.position = new Vector3(
             (float)truePosition.x,
@@ -183,10 +167,9 @@ public class NBody : MonoBehaviour
         CheckCollisionWithEarth();
     }
 
-    /**
-    * Checks if this object has collided with the central body.
-    * If so, it gets removed.
-    **/
+    /// <summary>
+    /// Checks for collision with the central body and triggers a removal event if detected.
+    /// </summary>
     void CheckCollisionWithEarth()
     {
         NBody earth = GravityManager.Instance.CentralBody;
@@ -202,9 +185,9 @@ public class NBody : MonoBehaviour
         }
     }
 
-    /**
-    * Cleanup when this object is destroyed.
-    **/
+    /// <summary>
+    /// Cleans up line rendering references when this body is destroyed.
+    /// </summary>
     private void OnDestroy()
     {
         if (LineVisibilityManager.Instance != null)
@@ -213,12 +196,12 @@ public class NBody : MonoBehaviour
         }
     }
 
-    /**
-    * Calculates the predicted trajectory of an orbit by passing calculation to the GPU
-    * @param steps - Number of prediction line render points to render
-    * @param deltaTime - Time step for simulation
-    * @param onComplete - Async call from GPU to let know that calculations are complete
-    **/
+    /// <summary>
+    /// Asynchronously calculates the trajectory prediction using GPU compute shaders.
+    /// </summary>
+    /// <param name="steps">Number of prediction points to compute.</param>
+    /// <param name="deltaTime">Timestep for each prediction step.</param>
+    /// <param name="onComplete">Callback invoked when prediction is finished.</param>
     public void CalculatePredictedTrajectoryGPU_Async(
         int steps,
         float deltaTime,
@@ -260,19 +243,19 @@ public class NBody : MonoBehaviour
         );
     }
 
-    /**
-    * Adds a force vector to this NBody.
-    * @param additionalForce - Additional force being applied to object (Thrust)
-    **/
+    /// <summary>
+    /// Adds an external force (thrust) to the body.
+    /// </summary>
+    /// <param name="additionalForce">Force vector to apply.</param>
     public void AddForce(Vector3 additionalForce)
     {
         force += additionalForce;
     }
 
-    /**
-    * Adjusts the trajectory prediction settings based on time scale.
-    * @param timeScale - Current time scale of the simulation
-    **/
+    /// <summary>
+    /// Dynamically adjusts the trajectory prediction delta time based on position and simulation time scale.
+    /// </summary>
+    /// <param name="timeScale">Current simulation time scale.</param>
     public void AdjustPredictionSettings(float timeScale)
     {
         float distance = transform.position.magnitude;
@@ -288,9 +271,9 @@ public class NBody : MonoBehaviour
         predictionDeltaTime = adjustedDelta;
     }
 
-    /**
-    * Returns the altitude above the reference central body.
-    **/
+    /// <summary>
+    /// Gets the current altitude above the surface of the central body.
+    /// </summary>
     public double altitude
     {
         get
@@ -303,9 +286,10 @@ public class NBody : MonoBehaviour
         }
     }
 
-    /**
-    * OrbitalState struct holds the position and velocity for Runge-Kutta calculations.
-    **/
+    /// <summary>
+    /// Represents the state of an orbit (position and velocity).
+    /// Used for physics calculations.
+    /// </summary>
     public struct OrbitalState
     {
         public Vector3 position;
