@@ -88,9 +88,9 @@ public class ObjectPlacementManager : MonoBehaviour
         float placeholderMass = mass;
 
         parsedRadius = new Vector3(
-            Mathf.Clamp(parsedRadius.x, 1f, 100f),
-            Mathf.Clamp(parsedRadius.y, 1f, 100f),
-            Mathf.Clamp(parsedRadius.z, 1f, 100f)
+            Mathf.Clamp(parsedRadius.x, .5f, 1f),
+            Mathf.Clamp(parsedRadius.y, .5f, 1f),
+            Mathf.Clamp(parsedRadius.z, .5f, 1f)
         );
 
         objectIsPlaced = true;

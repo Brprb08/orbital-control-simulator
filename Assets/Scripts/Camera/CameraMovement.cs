@@ -33,6 +33,10 @@ public class CameraMovement : MonoBehaviour
     public TextMeshProUGUI altitudeText;
     public TextMeshProUGUI trackingObjectNameText;
 
+    [Header("Constants")]
+    private const float EarthCamMinDistance = 500f;
+    private const float PlaceholderMaxCameraDistance = 800f;
+
     /// <summary>
     /// Sets up the singleton instance for camera control.
     /// </summary>
@@ -59,34 +63,22 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     void LateUpdate()
     {
-        if (targetBody == null && targetPlaceholder == null) return;
-        if (mainCamera == null) return;
+        if (mainCamera == null || (targetBody == null && targetPlaceholder == null)) return;
 
         bool usingPlaceholder = (targetBody == null && targetPlaceholder != null);
-        // float radius = usingPlaceholder ? placeholderBodyRadius : targetBody.radius;
         float cameraDistanceRadius = usingPlaceholder ? placeholderBodyRadius : targetBody.cameraDistanceRadius;
 
         transform.position = inEarthCam
             ? tempEarthBody.transform.position
             : (usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position);
 
-        // Determine base min distance based on radius
-        if (inEarthCam)
+
+        if (usingPlaceholder)
         {
-            minCameraDistance = 800f;
+            maxCameraDistance = PlaceholderMaxCameraDistance;
         }
-        else if (cameraDistanceRadius <= 0.5f)
-        {
-            minCameraDistance = Mathf.Max(0.01f, cameraDistanceRadius * 0.7f);
-        }
-        else if (cameraDistanceRadius <= 100f)
-        {
-            minCameraDistance = cameraDistanceRadius * 5f;
-        }
-        else
-        {
-            minCameraDistance = cameraDistanceRadius + 400f;
-        }
+
+        minCameraDistance = CalculateMinCameraDistance(cameraDistanceRadius);
 
         HandleZoom();
 
@@ -208,7 +200,7 @@ public class CameraMovement : MonoBehaviour
         if (planet != null)
         {
             placeholderBodyRadius = planet.localScale.x * 1f;
-            distance = 2f * placeholderBodyRadius;
+            distance = 10f * placeholderBodyRadius;
             height = 0.2f * placeholderBodyRadius;
         }
         else
@@ -232,6 +224,17 @@ public class CameraMovement : MonoBehaviour
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
         }
+    }
+
+    /// <summary>
+    /// Calculates min distance for camera based off object type and raduis.
+    /// </summary>
+    private float CalculateMinCameraDistance(float radius)
+    {
+        if (inEarthCam) return EarthCamMinDistance;
+        if (radius <= 0.5f) return Mathf.Max(0.01f, radius * 0.7f);
+        if (radius <= 100f) return radius * 5f;
+        return radius + 400f;
     }
 
     /// <summary>

@@ -16642,7 +16642,7 @@ MonoBehaviour:
   radius: 0.002
   force: {x: 0, y: 0, z: 0}
   centralBodyMass: 5.972168e+24
-  cameraDistanceRadius: 637
+  cameraDistanceRadius: 0.5
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5

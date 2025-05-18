@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using TMPro;
 using System.Linq;
 
-/**
-* GravityManager class handles the registration, deregistration, and management of celestial bodies.
-* It tracks all NBody objects in the scene and provides access to their states.
-**/
+/// <summary>
+/// Manages the registration, deregistration, and tracking of celestial bodies (NBody objects).
+/// Tracks all NBody instances in the scene and provides access to their states.
+/// </summary>
 public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
@@ -21,9 +21,9 @@ public class GravityManager : MonoBehaviour
 
     public TMP_Dropdown bodyDropdown;
 
-    /**
-    * Initializes the singleton instance of GravityManager.
-    **/
+    /// <summary>
+    /// Initializes the singleton instance of the GravityManager.
+    /// </summary>
     void Awake()
     {
         if (Instance == null)
@@ -38,54 +38,22 @@ public class GravityManager : MonoBehaviour
         bodyDropdown.ClearOptions();
     }
 
-    /**
-    * Registers all pre-existing NBody objects in the scene.
-    **/
+    /// <summary>
+    /// Registers all existing NBody objects in the scene on startup.
+    /// </summary>
     void Start()
     {
-        // NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
-        // foreach (var body in allBodies)
-        // {
-        //     if (!bodies.Contains(body))
-        //     {
-        //         bodies.Add(body);
-
-        //         Debug.Log($"[GRAVITY MANAGER]: Registered pre-existing NBody: {body.gameObject.name}");
-        //     }
-        // }
-        // foreach (var body in allBodies)
-        // {
-        //     Debug.LogError($"BodyName: {body.name} + BodyIsCentral: {body.isCentralBody}");
-        //     if (body.name == "Earth" || body.isCentralBody)
-        //     {
-        //         bodies.Add(body);
-        //         CentralBody = body;
-        //         Debug.Log("[GRAVITY MANAGER]: Registered Central Body: Earth");
-        //         break;
-        //     }
-        // }
-
-        // // Register the rest
-        // foreach (var body in allBodies)
-        // {
-        //     if (!bodies.Contains(body))
-        //     {
-        //         bodies.Add(body);
-        //         Debug.Log($"[GRAVITY MANAGER]: Registered NBody: {body.gameObject.name}");
-        //     }
-        // }
-
         NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
-        foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody)) // optional
+        foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody))
         {
-            RegisterBody(body); // Now handles central and others
+            RegisterBody(body);
         }
     }
 
-    /**
-    * Registers a new NBody object.
-    * @param body - The NBody object to register.
-    **/
+    /// <summary>
+    /// Registers a new NBody object into the simulation.
+    /// </summary>
+    /// <param name="body">The NBody object to register.</param>
     public void RegisterBody(NBody body)
     {
         if (body.isCentralBody) CentralBody = body;
@@ -111,10 +79,10 @@ public class GravityManager : MonoBehaviour
         }
     }
 
-    /**
-    * Deregisters an NBody object.
-    * @param body - The NBody object to deregister.
-    **/
+    /// <summary>
+    /// Deregisters an NBody object from the simulation.
+    /// </summary>
+    /// <param name="body">The NBody object to deregister.</param>
     public void DeregisterBody(NBody body)
     {
         if (body == CentralBody) CentralBody = null;
@@ -132,11 +100,11 @@ public class GravityManager : MonoBehaviour
         }
     }
 
-    /**
-    * Handles a collision between two NBody objects and removes the smaller body.
-    * @param bodyA - The first NBody involved in the collision.
-    * @param bodyB - The second NBody involved in the collision.
-    **/
+    /// <summary>
+    /// Handles a collision between two bodies by removing the one with lesser mass.
+    /// </summary>
+    /// <param name="bodyA">The first body involved in the collision.</param>
+    /// <param name="bodyB">The second body involved in the collision.</param>
     public void HandleCollision(NBody bodyA, NBody bodyB)
     {
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;

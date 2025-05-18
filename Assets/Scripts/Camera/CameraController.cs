@@ -4,11 +4,11 @@ using UnityEngine.EventSystems;
 using System.Collections;
 using TMPro;
 
-/**
-* Handles camera movement, setting current tracked body, and switching between cameras.
-* This script supports switching between tracking celestial bodies and free movement.
-* It also manages trajectory visualization and placeholder tracking for temporary objects.
-**/
+/// <summary>
+/// Handles camera movement, setting the current tracked body, and switching between cameras.
+/// Supports switching between tracking celestial bodies and free movement.
+/// Also manages trajectory visualization and placeholder tracking for temporary objects.
+/// </summary>
 public class CameraController : MonoBehaviour
 {
 
@@ -37,9 +37,9 @@ public class CameraController : MonoBehaviour
     public bool inEarthViewCam = false;
     public NBody previousTrackedBody;
 
-    /**
-    * Used by object placement manager to ensure cam is in FreeCam mode when placing.
-    **/
+    /// <summary>
+    /// Used by object placement manager to ensure camera is in FreeCam mode when placing.
+    /// </summary>
     public bool IsFreeCamMode
     {
         get => isFreeCamMode;
@@ -60,11 +60,10 @@ public class CameraController : MonoBehaviour
         Instance = this;
     }
 
-    /**
-    * Initializes the camera's default position and starts tracking the first celestial body.
-    * Also initializes the trajectory renderer creatomg component, adding text fields for UI
-    *      and setting the TrajectoryRenderer tracked body to follow. 
-    **/
+    /// <summary>
+    /// Initializes the camera's default position and starts tracking the first celestial body.
+    /// Initializes the trajectory renderer and UI text fields.
+    /// </summary>
     void Start()
     {
         if (cameraTransform != null)
@@ -89,10 +88,9 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    /**
-    * Coroutine to initialize the camera after all NBody.Start() methods have executed.
-    * Sets the tracked body for the LineVisibilityManger
-    **/
+    /// <summary>
+    /// Coroutine to initialize the camera after all NBody.Start() methods have executed.
+    /// </summary>
     IEnumerator InitializeCamera()
     {
         yield return null; // Wait for all NBody.Start() to finish
@@ -108,9 +106,9 @@ public class CameraController : MonoBehaviour
         Debug.Log($"[CAMERA CONTROLLER]: Initial camera tracking: {bodies[currentIndex].name}");
     }
 
-    /**
-    * Handles input for camera controls and switching between tracking and free camera mode.
-    **/
+    /// <summary>
+    /// Handles input for camera controls and switching between tracking and free camera mode.
+    /// </summary>
     void Update()
     {
         if (!isFreeCamMode)
@@ -129,10 +127,9 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    /**
-    * Refreshing the dropdown to have the current tracked body selected.
-    * The body is found by name and set as the dropdown value, then refreshed.
-    **/
+    /// <summary>
+    /// Refreshes the dropdown to reflect the currently tracked body.
+    /// </summary>
     public void UpdateDropdownSelection()
     {
         if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
@@ -159,9 +156,9 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    /**
-    * Method used to update the current line render for the tracked body.
-    **/
+    /// <summary>
+    /// Updates the trajectory renderer for the specified body index.
+    /// </summary>
     public void UpdateTrajectoryRender(int index)
     {
         trajectoryRenderer.SetTrackedBody(bodies[index]);
@@ -173,9 +170,9 @@ public class CameraController : MonoBehaviour
         trajectoryRenderer.orbitIsDirty = true;
     }
 
-    /**
-    * Switches the camera to free movement mode, disabling tracking.
-    **/
+    /// <summary>
+    /// Switches the camera to free movement mode, disabling tracking.
+    /// </summary>
     public void BreakToFreeCam()
     {
         if (isSwitchingToFreeCam)
@@ -202,12 +199,9 @@ public class CameraController : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Returns the camera to tracking mode, focusing on a celestial body or placeholder.
-    * If placing planet we set the camera to track the placeholder temporarily using the transform
-    * If not placing planet the camera is set to current bodies[index]  to track 
-    * Target body is set, trajectory render is updated, and camera points to central body direction
-    **/
+    /// <summary>
+    /// Returns the camera to tracking mode, focusing on a celestial body or placeholder.
+    /// </summary>
     public void ReturnToTracking()
     {
         if (cameraMovement != null)
@@ -265,11 +259,11 @@ public class CameraController : MonoBehaviour
         isFreeCamMode = false;
     }
 
-    /**
-    * Points camera at tracked NBody object with Central body as the center background.
-    * @param centralBody - CentralBody of the sim
-    * @param targetPosition - Current object camera is tracking
-    **/
+    /// <summary>
+    /// Points the camera toward the central body with a pitch adjustment.
+    /// </summary>
+    /// <param name="centralBody">The transform of the central body.</param>
+    /// <param name="targetPosition">The position of the currently tracked object.</param>
     private void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
     {
         // Vector pointing from the tracked object to the central body
@@ -285,6 +279,9 @@ public class CameraController : MonoBehaviour
         cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
     }
 
+    /// <summary>
+    /// Toggles the camera between Earth view and the previously tracked body.
+    /// </summary>
     public void SwitchToEarthCam()
     {
         if (!inEarthViewCam)
@@ -316,25 +313,27 @@ public class CameraController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Sets the Earth view tracking state.
+    /// </summary>
     public void SetInEarthView(bool inEarthCam)
     {
         cameraMovement.inEarthCam = inEarthCam;
     }
 
-    /**
-    * Checks if the camera is currently tracking a specific body.
-    * @param body - Current NBody we are tracking
-    **/
+    /// <summary>
+    /// Checks if the camera is currently tracking the specified body.
+    /// </summary>
+    /// <param name="body">The body to check against.</param>
     public bool IsTracking(NBody body)
     {
         return cameraMovement != null && cameraMovement.targetBody == body;
     }
 
-    /**
-    * Called from GravityManager after a body is removed from collision.
-    * Switches the camera to another valid body if the current one is removed.
-    * @param removedBody - Body that has been removed (Collision)
-    **/
+    /// <summary>
+    /// Switches to a new valid celestial body after one is removed (collision).
+    /// </summary>
+    /// <param name="removedBody">The body that was removed.</param>
     public void SwitchToNextValidBody(NBody removedBody)
     {
         RefreshBodiesList();
@@ -365,10 +364,10 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    /**
-    * Called from ObjectPlacementManager to set the track temporarily before setting velocity.
-    * @param radius - Placeholder object to track temporarily
-    **/
+    /// <summary>
+    /// Sets a placeholder target for tracking during object placement.
+    /// </summary>
+    /// <param name="placeholder">The placeholder transform to track.</param>
     public void SetTargetPlaceholder(Transform placeholder)
     {
         if (placeholder == null) return;
@@ -378,10 +377,10 @@ public class CameraController : MonoBehaviour
         cameraMovement.SetTargetBodyPlaceholder(placeholder);
     }
 
-    /**
-    * Called from VelocityDragManager to switch to real body to start tracking.
-    * @param realNBody - Real object being added to sim to track
-    **/
+    /// <summary>
+    /// Switches the camera from tracking a placeholder to tracking the real object.
+    /// </summary>
+    /// <param name="realNBody">The real NBody to track.</param>
     public void SwitchToRealNBody(NBody realNBody)
     {
         if (realNBody == null) return;
@@ -403,9 +402,9 @@ public class CameraController : MonoBehaviour
         UpdateDropdownSelection();
     }
 
-    /**
-    * Refreshes the list of celestial bodies currently in GravityManager
-    **/
+    /// <summary>
+    /// Refreshes the list of celestial bodies from the GravityManager.
+    /// </summary>
     public void RefreshBodiesList()
     {
         bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
