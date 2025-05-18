@@ -1,8 +1,9 @@
 using UnityEngine;
 
-/**
-* 
-**/
+/// <summary>
+/// Provides utility functions for clamping and normalizing angles,
+/// and for calculating camera distance based on object radius.
+/// </summary>
 public class CameraCalculations : MonoBehaviour
 {
 
@@ -19,24 +20,24 @@ public class CameraCalculations : MonoBehaviour
         // DontDestroyOnLoad(gameObject);
     }
 
-    /**
-    * Clamps an angle between a minimum and maximum value.
-    * @param angle The angle to clamp.
-    * @param min The minimum value.
-    * @param max The maximum value.
-    * @return The clamped angle.
-    **/
+    /// <summary>
+    /// Clamps an angle between a minimum and maximum value.
+    /// </summary>
+    /// <param name="angle">The angle to clamp.</param>
+    /// <param name="min">Minimum allowable angle.</param>
+    /// <param name="max">Maximum allowable angle.</param>
+    /// <returns>The clamped angle.</returns>
     public float ClampAngle(float angle, float min, float max)
     {
         angle = NormalizeAngle(angle);
         return Mathf.Clamp(angle, min, max);
     }
 
-    /**
-    * Normalizes an angle to be within -180 to 180 degrees.
-    * @param angle The angle to normalize.
-    * @return The normalized angle.
-    **/
+    /// <summary>
+    /// Normalizes an angle to be within the range -180 to 180 degrees.
+    /// </summary>
+    /// <param name="angle">The angle to normalize.</param>
+    /// <returns>The normalized angle.</returns>
     public float NormalizeAngle(float angle)
     {
         while (angle > 180f) angle -= 360f;
@@ -44,10 +45,11 @@ public class CameraCalculations : MonoBehaviour
         return angle;
     }
 
-    /**
-    * Calculates the minimumcameraDistance based on the radius of the object being tracked.
-    * @param radius - Radius of object being tracked by camera
-    **/
+    /// <summary>
+    /// Calculates the minimum camera distance based on the object's radius.
+    /// </summary>
+    /// <param name="radius">Radius of the object being tracked.</param>
+    /// <returns>The minimum camera distance.</returns>
     public float CalculateMinDistance(float radius)
     {
         if (radius <= 0.5f)
@@ -64,10 +66,11 @@ public class CameraCalculations : MonoBehaviour
         }
     }
 
-    /**
-    * Calculates the maximumcameraDistance based on the radius of the object being tracked.
-    * @param radius - Radius of object being tracked by camera
-    **/
+    /// <summary>
+    /// Calculates the maximum camera distance based on the object's radius.
+    /// </summary>
+    /// <param name="radius">Radius of the object being tracked.</param>
+    /// <returns>The maximum camera distance.</returns>
     public float CalculateMaxDistance(float radius)
     {
         float minimumMaxDistance = 2000f;

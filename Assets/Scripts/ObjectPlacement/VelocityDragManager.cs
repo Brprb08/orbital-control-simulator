@@ -4,10 +4,10 @@ using UnityEngine.EventSystems;
 using UnityEngine.UI;
 using System.Collections;
 
-/**
-* VelocityDragManager handles the user interaction for applying velocity to a selected planet.
-* This script allows the user to click and drag to set the velocity vector and apply it to the planet.
-**/
+/// <summary>
+/// Handles user interaction for applying velocity to a selected planet.
+/// Allows the user to click and drag to set the velocity vector and apply it to the planet.
+/// </summary>
 public class VelocityDragManager : MonoBehaviour
 {
     [Header("References")]
@@ -43,9 +43,9 @@ public class VelocityDragManager : MonoBehaviour
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
 
-    /**
-    * Initializes the drag manager and sets up components.
-    **/
+    /// <summary>
+    /// Initializes the drag manager and sets up required components and UI bindings.
+    /// </summary>
     private void Start()
     {
         if (dragLineRenderer != null)
@@ -88,9 +88,9 @@ public class VelocityDragManager : MonoBehaviour
         StartCoroutine(FindTrajectoryRendererWithDelay());
     }
 
-    /**
-    * Updates the drag process based on user input.
-    **/
+    /// <summary>
+    /// Handles mouse input and updates the velocity drag logic.
+    /// </summary>
     private void Update()
     {
         if (isVelocitySet)
@@ -118,9 +118,9 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Begins the drag process.
-    **/
+    /// <summary>
+    /// Begins the drag process to define a velocity direction.
+    /// </summary>
     private void StartDrag()
     {
         if (planet == null || mainCamera == null) return;
@@ -150,9 +150,9 @@ public class VelocityDragManager : MonoBehaviour
         dragDirection = Vector3.zero;
     }
 
-    /**
-    * Updates the drag line and velocity during the drag.
-    **/
+    /// <summary>
+    /// Continuously updates the drag line and direction while the user is dragging.
+    /// </summary>
     private void UpdateDrag()
     {
         if (!isDragging) return;
@@ -176,9 +176,9 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Small wait to make sure TrajectoryRenderer is found
-    **/
+    /// <summary>
+    /// Delays trajectory renderer search to ensure scene objects are ready.
+    /// </summary>
     private IEnumerator FindTrajectoryRendererWithDelay()
     {
         yield return new WaitForSeconds(0.1f);
@@ -190,12 +190,13 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Gets the intersection point with the far side of the sphere.
-    * @param ray - Ray that points to a locaiton inside of dragSphere
-    * @param sphereCenter - 3D location of the center of dragSphere
-    * @param radius - Radius of the dragSphere
-    **/
+    /// <summary>
+    /// Calculates the intersection point on the far side of a sphere given a ray.
+    /// </summary>
+    /// <param name="ray">Ray that points to a location inside the drag sphere.</param>
+    /// <param name="sphereCenter">Center of the sphere in world space.</param>
+    /// <param name="radius">Radius of the sphere.</param>
+    /// <returns>Intersection point on the sphere's surface.</returns>
     private Vector3 GetFarSideIntersection(Ray ray, Vector3 sphereCenter, float radius)
     {
         Vector3 d = ray.direction.normalized;
@@ -223,18 +224,18 @@ public class VelocityDragManager : MonoBehaviour
         return ray.origin + d * chosenT;
     }
 
-    /**
-    * Ends the drag process and applies the velocity.
-    **/
+    /// <summary>
+    /// Ends the drag process. Velocity will be applied later via confirmation.
+    /// </summary>
     private void EndDrag()
     {
         isDragging = false;
     }
 
-    /**
-    * Updates the slider speed and corresponding velocity.
-    * @param value - Current TimeScale value of the sim
-    **/
+    /// <summary>
+    /// Updates the velocity vector and line based on slider speed.
+    /// </summary>
+    /// <param name="value">Current value of the speed slider.</param>
     public void OnSpeedSliderChanged(float value)
     {
         sliderSpeed = value;
@@ -251,9 +252,10 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Gets the mouse position in 3D space on the sphere surface.
-    **/
+    /// <summary>
+    /// Gets the 3D mouse position projected onto the surface of a unit sphere.
+    /// </summary>
+    /// <returns>World space position on the sphere, or Vector3.zero if invalid.</returns>
     private Vector3 GetMouseWorldPositionOnSphere()
     {
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
@@ -295,19 +297,19 @@ public class VelocityDragManager : MonoBehaviour
         return ray.origin + d * chosenT;
     }
 
-    /**
-    * Applies the computed velocity to the planet's NBody component.
-    **/
+    /// <summary>
+    /// Applies the current velocity to the selected planet when confirmed.
+    /// </summary>
     public void callApplyVelocity()
     {
         ApplyVelocityToPlanet(currentVelocity);
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Applies the specified velocity to the planet.
-    * @param velocityToApply - Velocity the new object will be set to
-    **/
+    /// <summary>
+    /// Applies a specified velocity to the selected planet and finalizes its placement.
+    /// </summary>
+    /// <param name="velocityToApply">The velocity vector to apply to the planet.</param>
     public void ApplyVelocityToPlanet(Vector3 velocityToApply)
     {
         if (planet == null) return;
@@ -370,10 +372,10 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Handles changes in the velocity input field.
-    * @param inputText - Velocity input with manual (x,y,z) setting
-     */
+    /// <summary>
+    /// Called when the velocity input field is manually edited.
+    /// </summary>
+    /// <param name="inputText">The input string in "x,y,z" format.</param>
     private void OnVelocityInputChanged(string inputText)
     {
         if (inputText == "")
@@ -393,27 +395,9 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Parses a Vector3 from a string input.
-    * @param input - String input from input field 
-    * @param result - Vector 3 output from (x,y,z) format
-    **/
-    // private bool TryParseVector3(string input, out Vector3 result)
-    // {
-    //     result = Vector3.zero;
-    //     string[] parts = input.Split(',');
-    //     if (parts.Length != 3) return false;
-
-    //     float x, y, z;
-    //     if (!float.TryParse(parts[0], out x) || !float.TryParse(parts[1], out y) || !float.TryParse(parts[2], out z)) return false;
-
-    //     result = new Vector3(x, y, z);
-    //     return true;
-    // }
-
-    /**
-    * Updates the line renderer to match the current velocity.
-    **/
+    /// <summary>
+    /// Updates the velocity drag line to match the current velocity vector.
+    /// </summary>
     private void UpdateLineRenderer()
     {
         if (dragLineRenderer != null && planet != null)
@@ -439,9 +423,9 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /**
-    * Resets the drag manager for a new planet.
-    **/
+    /// <summary>
+    /// Resets the drag manager to prepare for a new velocity input session.
+    /// </summary>
     public void ResetDragManager()
     {
         isVelocitySet = false;

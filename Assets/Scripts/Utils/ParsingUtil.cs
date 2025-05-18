@@ -1,10 +1,10 @@
 using UnityEngine;
 
-/**
- * A singleton helper for turning string inputs into Unity types.
- * Mainly used to convert comma-separated numbers into Vector3s or validate mass values.
- * Stick this on a GameObject in your scene, and call its static Instance from anywhere.
- */
+/// <summary>
+/// A singleton helper for turning string inputs into Unity types.
+/// Mainly used to convert comma-separated numbers into Vector3s or validate mass values.
+/// Attach this to a GameObject in your scene and access it via <c>ParsingUtils.Instance</c>.
+/// </summary>
 public class ParsingUtils : MonoBehaviour
 {
     public static ParsingUtils Instance { get; private set; }
@@ -19,15 +19,14 @@ public class ParsingUtils : MonoBehaviour
         Instance = this;
     }
 
-    /**
-     * Attempts to parse a string like "1.0, 2.0, 3.0" into a Vector3.
-     * Returns true and sets result if the input has exactly three float values
-     * otherwise returns false and leaves result at Vector3.zero.
-     *
-     * @param input   The comma-separated string to parse.
-     * @param result  Output parameter that receives the parsed Vector3.
-     * @return        True if parse succeeded, false if format was wrong or parse failed.
-     */
+    /// <summary>
+    /// Attempts to parse a string like "1.0, 2.0, 3.0" into a <see cref="Vector3"/>.
+    /// </summary>
+    /// <param name="input">The comma-separated string to parse.</param>
+    /// <param name="result">Output parameter receiving the parsed Vector3.</param>
+    /// <returns>
+    /// True if parsing succeeded and three float values were found; otherwise false.
+    /// </returns>
     public bool TryParseVector3(string input, out Vector3 result)
     {
         result = Vector3.zero;
@@ -49,15 +48,15 @@ public class ParsingUtils : MonoBehaviour
     }
 
 
-    /**
-     * Validates and parses a mass value from a string.
-     * Rejects empty input, non-numeric strings, or values outside the range:
-     * at least 500 (kg) up to about 5.972×10^11 (approximate mass of the universe in kg).
-     *
-     * @param input  The string representing mass.
-     * @param mass   Output parameter that receives the parsed mass if valid.
-     * @return       True if input was a number within the valid mass range, false otherwise.
-     */
+    /// <summary>
+    /// Validates and parses a mass value from a string.
+    /// Only allows numeric values between 500 and 5.972 × 10¹¹ kg.
+    /// </summary>
+    /// <param name="input">The string representing mass.</param>
+    /// <param name="mass">Output parameter receiving the parsed mass if valid.</param>
+    /// <returns>
+    /// True if input is a number within the valid range; false otherwise.
+    /// </returns>
     public bool TryParseMass(string input, out float mass)
     {
         mass = 0f;

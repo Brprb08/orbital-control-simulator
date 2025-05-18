@@ -3,10 +3,10 @@ using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
 
-/**
-* UIManager class manages the user interface for switching between free camera and tracking camera modes.
-* It controls the visibility of UI panels and highlights the active button.
-**/
+/// <summary>
+/// Manages the user interface for switching between Free Cam and Track Cam modes.
+/// Controls the visibility of panels and highlights active buttons.
+/// </summary>
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
@@ -46,9 +46,6 @@ public class UIManager : MonoBehaviour
     private bool isTracking = true;
     public bool earthCamPressed = true;
 
-    /**
-    * Setup the singleton for accessing UIManager
-    **/
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -59,9 +56,9 @@ public class UIManager : MonoBehaviour
         Instance = this;
     }
 
-    /**
-    * Initializes the UI elements and sets the default button states.
-    **/
+    /// <summary>
+    /// Initializes UI elements and sets default button states on startup.
+    /// </summary>
     private void Start()
     {
         instructionText.text =
@@ -96,9 +93,10 @@ public class UIManager : MonoBehaviour
         UpdateButtonText();
     }
 
-    /**
-    * Handles the Free Cam button press event.
-    **/
+    /// <summary>
+    /// Handles the "Free Cam" button press event.
+    /// Switches UI and controls into free camera placement mode.
+    /// </summary>
     public void OnFreeCamPressed()
     {
         instructionText.text =
@@ -148,9 +146,10 @@ public class UIManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Handles the Track Cam button press event.
-    **/
+    /// <summary>
+    /// Handles the "Track Cam" button press event.
+    /// Switches UI and controls into tracking mode.
+    /// </summary>
     public void OnTrackCamPressed()
     {
         instructionText.text =
@@ -208,9 +207,9 @@ public class UIManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Switches the text for the UI Earth Btn/Satellite Btn
-    **/
+    /// <summary>
+    /// Updates the Earth Cam button text when toggled.
+    /// </summary>
     public void OnEarthCamPressed()
     {
         if (earthCamPressed)
@@ -225,13 +224,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /**
-    * Toggles the visibility of the object placement panel.
-    * @param showObjectPlacementPanel - Displays the object placement panel on canvas
-    * @param ShowThrustButtonsPanel - Displays the Thrust buttons panel on canvas
-    * @param showApogeePerigeePanel - Displays the Apogee Perigee panel on canvas
-    * @param showPanel - Displays the Velocity/Altitude panel on canvas
-    **/
+    /// <summary>
+    /// Shows or hides multiple panels depending on placement/tracking mode.
+    /// </summary>
+    /// <param name="showObjectPlacementPanel">Whether to show the object placement panel.</param>
+    /// <param name="showThrustButtonsPanel">Whether to show the thrust buttons panel.</param>
     public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel)
     {
         // If were tracking and any of the booleans are false
@@ -260,42 +257,45 @@ public class UIManager : MonoBehaviour
         ShowThrustButtonsPanel(showThrustButtonsPanel);
     }
 
-    /**
-    * Toggles the visibility of the object placement panel.
-    * @param show - True to show the panel, false to hide it.
-    **/
+    /// <summary>
+    /// Toggles the visibility of the object placement panel.
+    /// </summary>
+    /// <param name="show">True to show, false to hide.</param>
     private void ShowObjectPlacementPanel(bool show)
     {
         objectPlacementPanel.SetActive(show);
     }
 
-    /**
-    * Toggles the visibility of the object placement panel.
-    * @param show - True to show the panel, false to hide it.
-    **/
+    /// <summary>
+    /// Toggles the visibility of the thrust buttons panel.
+    /// </summary>
+    /// <param name="show">True to show, false to hide.</param>
     private void ShowThrustButtonsPanel(bool show)
     {
         thrustButtons.SetActive(show);
     }
 
-    /**
-    * Toggles the visibility of the apogee and perigee panel.
-    * @param show - True to show the panel, false to hide it.
-    **/
+    /// <summary>
+    /// Toggles the visibility of the apogee and perigee panel.
+    /// </summary>
+    /// <param name="show">True to show, false to hide.</param>
     public void ShowApogeePerigeePanel(bool show)
     {
         apogeePerigeePanel.SetActive(show);
     }
 
-    /**
-    * Toggles the visibility of the general UI panel.
-    * @param show - True to show the panel, false to hide it.
-    **/
+    /// <summary>
+    /// Toggles the visibility of the general object info panel.
+    /// </summary>
+    /// <param name="show">True to show, false to hide.</param>
     private void ShowPanel(bool show)
     {
         objectInfoPanel.SetActive(show);
     }
 
+    /// <summary>
+    /// Toggles visibility of the feedback/instructions panel.
+    /// </summary>
     public void ShowFeedbackPanel()
     {
         showInstructionText = !showInstructionText;
@@ -304,6 +304,9 @@ public class UIManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    /// <summary>
+    /// Updates the feedback button's text to reflect visibility state.
+    /// </summary>
     private void UpdateButtonText()
     {
         TMP_Text tmpButtonText = feedbackButton.GetComponentInChildren<TMP_Text>();
@@ -313,11 +316,11 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    /**
-    * Updates the visual state of a button.
-    * @param button - The button to update.
-    * @param isPressed - True if the button is active/pressed, false otherwise.
-    **/
+    /// <summary>
+    /// Updates the visual state (color) of a button.
+    /// </summary>
+    /// <param name="button">The button to modify.</param>
+    /// <param name="isPressed">True if the button is active/selected.</param>
     private void SetButtonState(Button button, bool isPressed)
     {
         ColorBlock colors = button.colors;
@@ -339,8 +342,16 @@ public class UIManager : MonoBehaviour
         button.OnDeselect(null); // Force the button to refresh its visual state.
     }
 
-
-
+    /// <summary>
+    /// Updates orbit-related UI fields like apogee, perigee, and eccentricity.
+    /// </summary>
+    /// <param name="apogee">Apogee in km.</param>
+    /// <param name="perigee">Perigee in km.</param>
+    /// <param name="semiMajorAxis">Semi-major axis in km.</param>
+    /// <param name="eccentricity">Orbital eccentricity (unitless).</param>
+    /// <param name="orbitalPeriod">Orbital period in seconds.</param>
+    /// <param name="inclination">Inclination in degrees.</param>
+    /// <param name="RAAN">Right Ascension of Ascending Node in degrees.</param>
     public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod, float inclination, float RAAN)
     {
         SetText(apogeeText, "Apogee", apogee);
@@ -352,6 +363,14 @@ public class UIManager : MonoBehaviour
         SetText(raanText, "RAAN", RAAN, "°", "F1");
     }
 
+    /// <summary>
+    /// Sets formatted text to a UI element with optional unit and precision.
+    /// </summary>
+    /// <param name="textElement">UI element to update.</param>
+    /// <param name="label">Label for the field ("Apogee").</param>
+    /// <param name="value">Numerical value.</param>
+    /// <param name="unit">Unit of measurement (default: "km").</param>
+    /// <param name="format">String format (default: "F0").</param>
     private void SetText(TextMeshProUGUI textElement, string label, float value, string unit = "km", string format = "F0")
     {
         if (textElement != null)

@@ -3,14 +3,14 @@ using UnityEngine.UI;
 using System.Collections;
 using UnityEngine.EventSystems;
 
-/**
-* Manages the thrust system for a spacecraft or object, allowing for various directional thrusts 
-* including forward, reverse, lateral, and radial directions. It provides visual feedback through
-* particle systems and manages thrust force to the NBody object.
-* 
-* The class also handles UI button input to toggle thrust activation and tracks the duration 
-* for any thrust that is applied.
-**/
+/// <summary>
+/// Manages the thrust system for a spacecraft or object, allowing for various directional thrusts 
+/// including forward, reverse, lateral, and radial directions. It provides visual feedback through
+/// particle systems and manages thrust force to the NBody object.
+/// 
+/// Also handles UI button input to toggle thrust activation and tracks the duration 
+/// for any thrust that is applied.
+/// </summary>
 public class ThrustController : MonoBehaviour
 {
     public static ThrustController Instance { get; private set; }
@@ -40,6 +40,9 @@ public class ThrustController : MonoBehaviour
 
     private bool thrustStopped = false;
 
+    /// <summary>
+    /// Returns true if any thrust is currently active.
+    /// </summary>
     public bool IsThrusting
     {
         get
@@ -63,6 +66,10 @@ public class ThrustController : MonoBehaviour
         Instance = this;
     }
 
+    /// <summary>
+    /// Finds camera and particle references if not assigned.
+    /// Starts particle effects and prepares thrust components.
+    /// </summary>
     void Start()
     {
         if (cameraController == null)
@@ -88,6 +95,10 @@ public class ThrustController : MonoBehaviour
         thrustParticles.Clear();
     }
 
+    /// <summary>
+    /// Applies thrust forces to the tracked body in fixed time intervals.
+    /// Determines direction and activates visual feedback.
+    /// </summary>
     void FixedUpdate()
     {
         if (cameraController == null) return;
@@ -139,13 +150,13 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    /**
-    * Applies a thrust force to the specified NBody object in a given direction and magnitude.
-    * @param targetBody - The NBody to which the force is applied.
-    * @param magnitude - The magnitude of the thrust force.
-    * @param thrustDirection - The direction in which the thrust is applied.
-    * @param rampedThrustFactor - An optional scaling factor for ramping the thrust.
-    **/
+    /// <summary>
+    /// Applies a thrust force to the specified NBody object in a given direction and magnitude.
+    /// </summary>
+    /// <param name="targetBody">The NBody to which the force is applied.</param>
+    /// <param name="magnitude">The magnitude of the thrust force.</param>
+    /// <param name="thrustDirection">The direction in which the thrust is applied.</param>
+    /// <param name="rampedThrustFactor">An optional scaling factor for ramping the thrust.</param>
     private void ApplyThrust(NBody targetBody, float magnitude, Vector3 thrustDirection, float rampedThrustFactor = 1f)
     {
         if (targetBody == null) return;
@@ -155,8 +166,6 @@ public class ThrustController : MonoBehaviour
         // Calculate the actual acceleration, scaled to account for 1 unit = 10 km
         float scaledMagnitude = magnitude / 10f;
 
-        //Debug.Log($"Applying Scaled Force: {scaledMagnitude} N in direction: {adjustedThrustDirection}, Mass: {targetBody.mass}");
-
         targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
@@ -165,6 +174,11 @@ public class ThrustController : MonoBehaviour
         trajectoryRenderer.orbitIsDirty = true;
     }
 
+    /// <summary>
+    /// Updates the particle system position and rotation to match the thrust direction.
+    /// </summary>
+    /// <param name="targetBody">The body the particles should follow.</param>
+    /// <param name="thrustDirection">The direction of applied thrust.</param>
     private void UpdateThrustParticleSystem(NBody targetBody, Vector3 thrustDirection)
     {
         if (thrustParticles == null)
@@ -188,10 +202,10 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    /**
-    * Calculates and returns the current total thrust impulse applied as a Vector3.
-    * @return - The current total thrust force in the form of a Vector3.
-    **/
+    /// <summary>
+    /// Calculates and returns the current total thrust impulse as a Vector3.
+    /// </summary>
+    /// <returns>The current total thrust force vector.</returns>
     public Vector3 GetCurrentThrustImpulse()
     {
         Vector3 totalForce = Vector3.zero;

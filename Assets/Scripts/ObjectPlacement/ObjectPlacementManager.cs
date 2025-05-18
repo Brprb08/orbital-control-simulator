@@ -3,11 +3,11 @@ using TMPro;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/**
-* ObjectPlacementManager manages the placement of celestial bodies in the scene.
-* This script handles user input for specifying the radius, name, and position of planets,
-* as well as transitioning between placement and tracking modes.
-**/
+/// <summary>
+/// Manages the placement of celestial bodies in the scene.
+/// Handles user input for specifying radius, name, and mass of new bodies,
+/// and transitions between placement and tracking modes.
+/// </summary>
 public class ObjectPlacementManager : MonoBehaviour
 {
     public static ObjectPlacementManager Instance { get; private set; }
@@ -42,9 +42,11 @@ public class ObjectPlacementManager : MonoBehaviour
         Instance = this;
     }
 
-    /**
-    * Starts the placement process for a new celestial body.
-    **/
+    /// <summary>
+    /// Starts the placement process for a new celestial body.
+    /// Parses radius and mass input, instantiates a placeholder object,
+    /// and initializes velocity drag UI.
+    /// </summary>
     public void StartPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -148,9 +150,10 @@ public class ObjectPlacementManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /**
-    * Cancels the current placement and removes the placeholder object.
-    **/
+    /// <summary>
+    /// Cancels the current placement process and removes the placeholder object.
+    /// Also resets velocity UI and tracking camera.
+    /// </summary>
     public void CancelPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -168,10 +171,10 @@ public class ObjectPlacementManager : MonoBehaviour
         CameraController.Instance.ReturnToTracking();
     }
 
-    /**
-    * Clears and unfocuses a TMP_InputField.
-    * @param inputField - The input field to clear.
-    **/
+    /// <summary>
+    /// Clears and unfocuses the specified TMP input field.
+    /// </summary>
+    /// <param name="inputField">The input field to clear and unfocus.</param>
     private void ClearAndUnfocusInputField(TMP_InputField inputField)
     {
         if (inputField != null)
@@ -181,19 +184,20 @@ public class ObjectPlacementManager : MonoBehaviour
         }
     }
 
-    /**
-    * Enables FreeCam mode for object placement.
-    * Called from 'Free Cam' button
-    **/
+    /// <summary>
+    /// Enables placement mode (FreeCam) to allow new objects to be added.
+    /// Called by the Free Cam button.
+    /// </summary>
     public void BreakToFreeCam()
     {
         //Debug.Log("Switching to FreeCam...");
         isInPlacementMode = true;
     }
 
-    /**
-    * Disables FreeCam mode and returns to tracking.
-    **/
+    /// <summary>
+    /// Disables FreeCam mode and reverts back to tracking mode.
+    /// Cancels placement if an object was being placed.
+    /// </summary>
     public void ExitFreeCam()
     {
         //Debug.Log("Exiting FreeCam...");
@@ -210,9 +214,10 @@ public class ObjectPlacementManager : MonoBehaviour
         isInPlacementMode = false;
     }
 
-    /**
-    * Resets the reference to the last placed GameObject.
-    **/
+    /// <summary>
+    /// Resets the reference to the last placed placeholder GameObject.
+    /// Clears feedback text.
+    /// </summary>
     public void ResetLastPlacedGameObject()
     {
         feedbackText.text = "";

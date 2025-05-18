@@ -1,12 +1,11 @@
 using UnityEngine;
 
-/**
- * Class responsible for calculating orbital mechanics data for satellites.
- * 
- * This component provides utilities to compute various orbital parameters (such as semi-major axis, 
- * eccentricity, apogee/perigee positions, and orbital period) using classical Newtonian physics.
- *
- **/
+/// <summary>
+/// Responsible for calculating orbital mechanics data for satellites.
+/// Provides utilities to compute various orbital parameters such as
+/// semi-major axis, eccentricity, apogee/perigee positions, and orbital period
+/// using classical Newtonian physics.
+/// </summary>
 public class OrbitalCalculations : MonoBehaviour
 {
     public static OrbitalCalculations Instance { get; private set; }
@@ -24,23 +23,19 @@ public class OrbitalCalculations : MonoBehaviour
     }
 
 
-    /**
-     * Calculates key orbital parameters (semi-major axis, eccentricity, apogee, perigee, and orbital period)
-     * for a satellite in orbit around a central body.
-     *
-     * This method uses classical orbital mechanics equations based on position and velocity vectors,
-     * and returns a structured result containing all the relevant elements.
-     *
-     * @param centralBodyMass       The mass of the central body in kilograms.
-     * @param centralBodyPosition   The world-space position of the central body.
-     * @param bodyTransform         The Transform of the orbiting body.
-     * @param velocity              The velocity vector of the orbiting body in world-space.
-     * 
-     * @return OrbitalParameters    A struct containing calculated orbital elements such as:
-     *                              semi-major axis, eccentricity, orbital period, apogee/perigee positions,
-     *                              and flags indicating whether the orbit is circular or valid.
-     **/
-
+    /// <summary>
+    /// Calculates key orbital parameters for a satellite orbiting a central body.
+    /// Uses classical orbital mechanics based on position and velocity vectors.
+    /// </summary>
+    /// <param name="centralBodyMass">Mass of the central body in kilograms.</param>
+    /// <param name="centralBodyPosition">World-space position of the central body.</param>
+    /// <param name="bodyTransform">Transform of the orbiting body.</param>
+    /// <param name="velocity">Velocity vector of the orbiting body in world-space.</param>
+    /// <returns>
+    /// An <see cref="OrbitalParameters"/> struct containing calculated orbital elements such as:
+    /// semi-major axis, eccentricity, apogee/perigee positions, orbital period,
+    /// inclination, RAAN, and orbit validity flags.
+    /// </returns>
     public OrbitalParameters CalculateOrbitalParameters(float centralBodyMass, Vector3 centralBodyPosition, Transform bodyTransform, Vector3 velocity)
     {
         OrbitalParameters result = new OrbitalParameters(false);
@@ -138,9 +133,9 @@ public class OrbitalCalculations : MonoBehaviour
     }
 }
 
-/**
- * A data structure representing the key elements of an orbit.
-**/
+/// <summary>
+/// A data structure representing the key elements of an orbit.
+/// </summary>
 public struct OrbitalParameters
 {
     public float semiMajorAxis;
@@ -153,6 +148,10 @@ public struct OrbitalParameters
     public bool isCircular;
     public bool isValid;
 
+    /// <summary>
+    /// Constructor for initializing orbital parameters.
+    /// </summary>
+    /// <param name="valid">Whether the calculated orbit is considered valid.</param>
     public OrbitalParameters(bool valid)
     {
         semiMajorAxis = 0;

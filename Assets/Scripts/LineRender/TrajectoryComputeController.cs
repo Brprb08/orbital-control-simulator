@@ -2,12 +2,12 @@ using UnityEngine;
 using UnityEngine.Rendering;
 using System;
 
-/**
-* This class handles the computation of orbital trajectories using a compute shader. 
-* It allows for GPU-accelerated calculations of body trajectories based on initial
-* conditions, masses, and other bodies' positions and masses. 
-* Results can be asynchronously retrieved using callbacks.
-**/
+/// <summary>
+/// Handles the computation of orbital trajectories using a compute shader. 
+/// Enables GPU-accelerated calculations of body trajectories based on initial
+/// conditions, masses, and other bodies' positions and masses. 
+/// Results can be asynchronously retrieved using callbacks.
+/// </summary>
 public class TrajectoryComputeController : MonoBehaviour
 {
     public static TrajectoryComputeController Instance { get; private set; }
@@ -27,9 +27,6 @@ public class TrajectoryComputeController : MonoBehaviour
     private int lodFactor = 1;
     private int outputCount = 0;
 
-    /**
-    * Initializes the singleton instance of TrajectoryComputeController.
-    **/
     void Awake()
     {
         if (Instance == null)
@@ -42,18 +39,20 @@ public class TrajectoryComputeController : MonoBehaviour
         }
     }
 
-    /**
-    * Calculates the trajectory of a body using a GPU compute shader, asynchronously.
-    * @param startPos The initial position of the body.
-    * @param startVel The initial velocity of the body.
-    * @param bodyMass The mass of the body.
-    * @param otherBodyPositions Array of positions of other influencing bodies.
-    * @param otherBodyMasses Array of masses of other influencing bodies.
-    * @param dt The time step for the simulation.
-    * @param steps The total number of simulation steps.
-    * @param onComplete Callback function invoked when the trajectory calculation is complete. 
-    *                   Provides the trajectory as an array of Vector3.
-    **/
+    /// <summary>
+    /// Calculates the trajectory of a body using a GPU compute shader, asynchronously.
+    /// </summary>
+    /// <param name="startPos">The initial position of the body.</param>
+    /// <param name="startVel">The initial velocity of the body.</param>
+    /// <param name="bodyMass">The mass of the body.</param>
+    /// <param name="otherBodyPositions">Array of positions of other influencing bodies.</param>
+    /// <param name="otherBodyMasses">Array of masses of other influencing bodies.</param>
+    /// <param name="dt">The time step for the simulation.</param>
+    /// <param name="steps">The total number of simulation steps.</param>
+    /// <param name="onComplete">
+    /// Callback function invoked when the trajectory calculation is complete. 
+    /// Provides the trajectory as an array of Vector3.
+    /// </param>
     public void CalculateTrajectoryGPU_Async(
         Vector3 startPos,
         Vector3 startVel,
@@ -120,11 +119,11 @@ public class TrajectoryComputeController : MonoBehaviour
         );
     }
 
-    /**
-    * Handles the completion of an asynchronous GPU readback request.
-    * @param request The readback request from the GPU.
-    * @param onComplete Callback function to handle the resulting trajectory data.
-    **/
+    /// <summary>
+    /// Handles the completion of an asynchronous GPU readback request.
+    /// </summary>
+    /// <param name="request">The readback request from the GPU.</param>
+    /// <param name="onComplete">Callback function to handle the resulting trajectory data.</param>
     private void OnAsyncReadbackComplete(AsyncGPUReadbackRequest request, Action<Vector3[]> onComplete)
     {
         if (request.hasError)
@@ -142,9 +141,9 @@ public class TrajectoryComputeController : MonoBehaviour
         }
     }
 
-    /**
-    * Cleans up and releases any GPU buffers that were allocated.
-    **/
+    /// <summary>
+    /// Cleans up and releases any GPU buffers that were allocated.
+    /// </summary>
     private void Cleanup()
     {
         if (initialPositionBuffer != null) initialPositionBuffer.Release();
