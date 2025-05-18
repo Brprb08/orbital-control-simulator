@@ -1,6 +1,6 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics sim built in Unity with a custom C++ physics backend. It models Newtonian multi-body dynamics with a Dormand–Prince 5(4) integrator, supports live thrust, atmospheric drag, and visualizes full orbital paths with GPU-drawn trajectories.
+A real-time orbital mechanics sim built in Unity with a custom C++ physics backend. It models Newtonian orbital motion using a Dormand–Prince 5(4) integrator, supports live thrust, atmospheric drag, and visualizes full orbital paths with GPU-drawn trajectories.
 
 All orbital motion is calculated externally in double-precision native code, no Unity physics involved.
 

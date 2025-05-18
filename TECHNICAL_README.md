@@ -36,7 +36,7 @@ This project began as a personal exploration into orbital dynamics after being i
 
 ## Simulation Core
 
-The simulator models Newtonian multi-body gravitational dynamics using a custom Dormand–Prince 5(4) integrator, implemented in native C++ and interfaced with Unity through platform invoke.
+The simulator models Newtonian central-body gravitational dynamics using a custom Dormand–Prince 5(4) integrator, implemented in native C++ and interfaced with Unity through platform invoke.
 
 Unlike typical Unity-based simulations, all orbital propagation is handled externally for numerical stability and performance, aligning more closely with engineering tools like GMAT than with standard game loops.
 

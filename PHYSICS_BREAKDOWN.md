@@ -97,7 +97,7 @@ Gravity follows Newton’s law:
 F = G * (m1 * m2) / r^2
 ```
 
-Each object computes gravitational acceleration by summing contributions from every other body. A minimum `r` threshold is applied to avoid singularities and floating-point blowups.
+Each object computes gravitational acceleration based only on a central body (e.g., Earth).. A minimum `r` threshold is applied to avoid singularities and floating-point blowups.
 
 Acceleration is fed into the integrator (now DOPRI5) for position and velocity updates.
 

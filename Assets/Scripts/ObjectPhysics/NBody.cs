@@ -123,7 +123,7 @@ public class NBody : MonoBehaviour
         var bodiesFiltered = new List<NBody>();
         foreach (var b in GravityManager.Instance.Bodies)
         {
-            if (b != this)
+            if (b != this && (b.isCentralBody || b.name == "Moon"))
                 bodiesFiltered.Add(b);
         }
         int numBodies = bodiesFiltered.Count;
