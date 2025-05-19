@@ -56,8 +56,8 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 > Simulation ran at **100× time scale** over **50 full LEO orbits (~77.3 hours)** with apogee and perigee sampled once per orbit.
 
-> **Result:** No measurable drift in altitude was observed.  
-> Apogee and perigee remained **exactly constant to within sub-meter precision** across all 50 orbits.
+**Result:** No measurable drift in altitude was observed. 
+Apogee and perigee remained **exactly constant to within sub-meter precision** across all 50 orbits.
 
 | Orbit Range | Apogee (km) | Perigee (km) |
 |-------------|-------------|--------------|
@@ -194,12 +194,14 @@ To ensure stability and correctness in utility logic, unit tests were implemente
 
 - `CameraCalculations`: Angle clamping, normalization, and orbital camera distance computations
 - `ParsingUtils`: Robust vector and mass parsing with support for error handling and validation
+- `OrbitalCalculations`: Apogee/Perigee calculations, eccentricity, raan, etc.
+- `Extensions`: Parsing Vector3 -> Double3 and Double3 -> Vector3
 
 **Testing Strategy:**
 - Isolated via `EditModeTests.asmdef`
 - Runtime logic decoupled from Unity lifecycle methods for testability
 - Covers both valid inputs and invalid edge cases
-- Verified with Unity Test Runner (all 18 tests passing)
+- Verified with Unity Test Runner (all 20+ tests passing)
 
 > These tests are not for physics correctness (which is validated separately), but rather for supporting logic that feeds the simulation pipeline.
 
