@@ -194,9 +194,10 @@ Example structure:
 ```
 
 This setup reduces CPU load and avoids garbage collection overhead.
+
 ---
 
-## ✅ Unit Testing Details
+## Unit Testing Details
 
 To ensure stability and correctness in utility logic, unit tests were implemented for:
 
