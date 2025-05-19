@@ -66,18 +66,17 @@ public class UIManager : MonoBehaviour
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
     "- Dropdown Menu: Select the tracked object.\n" +
+    "- Esc Key: Closes the game.\n" +
     "- Right Mouse Button: Rotate the camera.\n" +
     "- Mousewheel: Zoom in/out.\n" +
     "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
     "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
     "     * Earth Cam: Centers the view on Earth.\n" +
     "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
-    "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
     "<b>THRUST:</b>\n" +
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
     "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
-    "Monitor these values to observe orbital behaviors.\n" +
     "Switch to Free Cam to explore or place satellites.";
 
 
@@ -104,10 +103,11 @@ public class UIManager : MonoBehaviour
         "You can freely move to explore or place satellites.\n\n" +
         "<b>CONTROLS:</b>\n" +
         "- WASD: Move around.\n" +
-        "- Right Mouse Button: Rotate the camera.\n\n" +
+        "- Right Mouse Button: Rotate the camera.\n" +
+        "- Esc Key: Closes the game.\n\n" +
         "<b>PLACING A SATELLITE:</b>\n" +
         "- Naming is optional (defaults to 'Satellite (n)').\n" +
-        "- Set Mass (500 - 5.0e23 kg).\n" +
+        "- Set Mass (500 - 1,000,000 kg).\n" +
         "- Set Radius (1-50).\n" +
         "  * Format: 5,45,3\n" +
         "  * No parentheses, negatives, or non-numeric characters.\n" +
@@ -156,18 +156,17 @@ public class UIManager : MonoBehaviour
     "<b>Track Cam Mode Activated!</b>\n\n" +
     "<b>CONTROLS:</b>\n" +
     "- Dropdown Menu: Select the tracked object.\n" +
+    "- Esc Key: Closes the game.\n" +
     "- Right Mouse Button: Rotate the camera.\n" +
     "- Mousewheel: Zoom in/out.\n" +
     "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
     "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
     "     * Earth Cam: Centers the view on Earth.\n" +
     "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
-    "<b>MONITOR:</b> Altitude, Velocity, Apogee, Perigee\n\n" +
     "<b>THRUST:</b>\n" +
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
     "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
-    "Monitor these values to observe orbital behaviors.\n" +
     "Switch to Free Cam to explore or place satellites.";
 
 
@@ -229,7 +228,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     /// <param name="showObjectPlacementPanel">Whether to show the object placement panel.</param>
     /// <param name="showThrustButtonsPanel">Whether to show the thrust buttons panel.</param>
-    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel)
+    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showDropdownSection)
     {
         // If were tracking and any of the booleans are false
         if (!showObjectPlacementPanel)
@@ -255,6 +254,15 @@ public class UIManager : MonoBehaviour
             ShowObjectPlacementPanel(showObjectPlacementPanel);
         }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
+
+        if (!showDropdownSection)
+        {
+            dropdown.SetActive(false);
+        }
+        else
+        {
+            dropdown.SetActive(true);
+        }
     }
 
     /// <summary>

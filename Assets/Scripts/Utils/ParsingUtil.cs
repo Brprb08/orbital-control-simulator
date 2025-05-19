@@ -144,7 +144,7 @@ public static class ParsingUtils
         if (!float.TryParse(input, out float parsedMass))
             return false;
 
-        if (parsedMass < 500 || parsedMass > 5.972e+11)
+        if (parsedMass < 500 || parsedMass > 1000000)
             return false;
 
         mass = parsedMass;

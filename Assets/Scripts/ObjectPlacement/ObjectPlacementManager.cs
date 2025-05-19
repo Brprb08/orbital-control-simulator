@@ -77,13 +77,13 @@ public class ObjectPlacementManager : MonoBehaviour
         string massText = massInput.text;
         if (string.IsNullOrWhiteSpace(massText))
         {
-            feedbackText.text = "Please enter a numeric mass between 5 and 5.0e23 kg.";
+            feedbackText.text = "Please enter a numeric mass between 5 and 1,000,000 kg.";
             return;
         }
 
         if (!ParsingUtils.TryParseMass(massText, out float mass))
         {
-            feedbackText.text = "Invalid mass. Enter a number between 500 and 5.0e23.";
+            feedbackText.text = "Invalid mass. Enter a number between 500 and 1,000,000.";
             return;
         }
 

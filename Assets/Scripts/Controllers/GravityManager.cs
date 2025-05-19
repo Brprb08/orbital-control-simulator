@@ -59,6 +59,18 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    void Update()
+    {
+        if (Input.GetKeyDown(KeyCode.Escape))
+        {
+#if UNITY_EDITOR
+                UnityEditor.EditorApplication.isPlaying = false;
+#else
+            Application.Quit();
+#endif
+        }
+    }
+
     /// <summary>
     /// Registers a new NBody object into the simulation.
     /// </summary>

@@ -127,7 +127,7 @@ public class TimeController : MonoBehaviour
         {
             if (timeScaleText != null)
             {
-                timeScaleText.text = $"Time Scale: Paused";
+                timeScaleText.text = $"Paused";
             }
             Pause();
         }
@@ -143,7 +143,7 @@ public class TimeController : MonoBehaviour
         timeSlider.interactable = false;
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
-        uIManager.ShowSelectPanels(false, false);
+        uIManager.ShowSelectPanels(false, false, false);
         isPaused = true;
         Debug.Log("[TIME CONTROLLER]: Simulation Paused");
     }
@@ -161,7 +161,7 @@ public class TimeController : MonoBehaviour
         }
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
-        uIManager.ShowSelectPanels(true, true);
+        uIManager.ShowSelectPanels(true, true, true);
         isPaused = false;
         Debug.Log("[TIME CONTROLLER]: Simulation Resumed");
     }
