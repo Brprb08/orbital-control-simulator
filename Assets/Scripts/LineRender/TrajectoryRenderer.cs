@@ -152,7 +152,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 continue;
             }
 
-            var orbitalParams = OrbitalCalculations.Instance.CalculateOrbitalParameters(
+            var orbitalParams = OrbitalCalculations.CalculateOrbitalParameters(
                 trackedBody.state.centralBodyMass,
                 Vector3.zero,
                 trackedBody.transform,

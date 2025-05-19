@@ -6,23 +6,8 @@ using UnityEngine;
 /// semi-major axis, eccentricity, apogee/perigee positions, and orbital period
 /// using classical Newtonian physics.
 /// </summary>
-public class OrbitalCalculations : MonoBehaviour
+public static class OrbitalCalculations
 {
-    public static OrbitalCalculations Instance { get; private set; }
-
-    void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(this);
-        }
-        else
-        {
-            Instance = this;
-        }
-    }
-
-
     /// <summary>
     /// Calculates key orbital parameters for a satellite orbiting a central body.
     /// Uses classical orbital mechanics based on position and velocity vectors.
@@ -36,7 +21,7 @@ public class OrbitalCalculations : MonoBehaviour
     /// semi-major axis, eccentricity, apogee/perigee positions, orbital period,
     /// inclination, RAAN, and orbit validity flags.
     /// </returns>
-    public OrbitalParameters CalculateOrbitalParameters(float centralBodyMass, Vector3 centralBodyPosition, Transform bodyTransform, Vector3 velocity)
+    public static OrbitalParameters CalculateOrbitalParameters(float centralBodyMass, Vector3 centralBodyPosition, Transform bodyTransform, Vector3 velocity)
     {
         OrbitalParameters result = new OrbitalParameters(false);
 
