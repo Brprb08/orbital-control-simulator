@@ -153,7 +153,7 @@ public class TrajectoryRenderer : MonoBehaviour
             }
 
             var orbitalParams = OrbitalCalculations.Instance.CalculateOrbitalParameters(
-                trackedBody.centralBodyMass,
+                trackedBody.state.centralBodyMass,
                 Vector3.zero,
                 trackedBody.transform,
                 trackedBody.velocity
@@ -232,7 +232,7 @@ public class TrajectoryRenderer : MonoBehaviour
             isComputingPrediction = true;
             if (isElliptical)
             {
-                float gravitationalParameter = PhysicsConstants.G * trackedBody.centralBodyMass;
+                float gravitationalParameter = PhysicsConstants.G * trackedBody.state.centralBodyMass;
                 orbitalParams.orbitalPeriod = 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(orbitalParams.semiMajorAxis, 3) / gravitationalParameter);
 
                 // Adjust prediction steps to cover the full orbital loop

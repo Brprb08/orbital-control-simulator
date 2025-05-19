@@ -12,13 +12,12 @@ using Unity.Mathematics;
 public class NBody : MonoBehaviour
 {
     [Header("Celestial Body Properties")]
-    public float mass = 5.0e21f;
     public Vector3 velocity = new Vector3(0, 0, 20);
+    public float mass = 5.0e21f;
     public bool isCentralBody = false;
-    public float radius = 637.8137f;
-    public Vector3 force = Vector3.zero;
-    public float centralBodyMass = 5.972e24f;
+    public float radius = EarthRadiusKm;
     public float cameraDistanceRadius = 637f;
+    public double trueMass = 5.0e21;
 
     [Header("Trajectory Prediction Settings")]
     public float predictionDeltaTime = .5f;
@@ -37,9 +36,14 @@ public class NBody : MonoBehaviour
     [Tooltip("Dimensionless drag coefficient")]
     public float dragCoefficient = 2.2f;
 
-    public double3 truePosition;
-    public double3 trueVelocity;
-    public double trueMass = 5.0e21;
+    [Header("Constants")]
+    private const float EarthRotationRate = 360f / (24f * 60f * 60f);
+    private const float EarthRadiusKm = 637.8137f;
+
+    public OrbitalState state;
+
+    private GravityManager gravityManager;
+    private List<NBody> relevantBodies;
 
     /// <summary>
     /// Initializes trajectory data and sets the body to static if it's the central body.
@@ -52,7 +56,14 @@ public class NBody : MonoBehaviour
             Debug.Log($"[NBODY]: {gameObject.name} is the central body and will not move.");
         }
 
-        thrustController = GravityManager.Instance.GetComponent<ThrustController>();
+        gravityManager = GravityManager.Instance;
+        if (gravityManager == null)
+        {
+            Debug.LogError("[NBody]: GravityManager not found.");
+            return;
+        }
+
+        thrustController = gravityManager.GetComponent<ThrustController>();
         if (thrustController == null)
         {
             Debug.LogError("[NBody]: ThrustController not found on GravityManager.");
@@ -60,8 +71,19 @@ public class NBody : MonoBehaviour
 
         Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
 
-        truePosition = new double3(transform.position.x, transform.position.y, transform.position.z);
-        trueVelocity = new double3(velocity.x, velocity.y, velocity.z);
+        state = new OrbitalState(
+            new double3(transform.position.x, transform.position.y, transform.position.z),
+            new double3(velocity.x, velocity.y, velocity.z),
+            0f,
+            trueMass,
+            radius,
+            dragCoefficient,
+            Vector3.zero
+        );
+
+        relevantBodies = gravityManager.Bodies
+       .Where(b => b != this && (b.isCentralBody || b.name == "Moon"))
+       .ToList();
     }
 
     /// <summary>
@@ -72,12 +94,12 @@ public class NBody : MonoBehaviour
     {
         if (HasNaNPosition())
         {
-            Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={force}");
+            Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={state.force}");
         }
 
         if (mass <= 1e-6f)
         {
-            force = Vector3.zero;
+            state.force = Vector3.zero;
             return;
         }
 
@@ -90,7 +112,7 @@ public class NBody : MonoBehaviour
             SimulateOrbitalMotion();
         }
 
-        force = Vector3.zero;
+        state.force = Vector3.zero;
     }
 
     /// <summary>
@@ -108,8 +130,7 @@ public class NBody : MonoBehaviour
     /// </summary>
     void RotateCentralBody()
     {
-        const float earthRotationRate = 360f / (24f * 60f * 60f);
-        transform.Rotate(Vector3.up, -earthRotationRate * Time.fixedDeltaTime);
+        transform.Rotate(Vector3.up, -EarthRotationRate * Time.fixedDeltaTime);
     }
 
     /// <summary>
@@ -117,52 +138,41 @@ public class NBody : MonoBehaviour
     /// </summary>
     void SimulateOrbitalMotion()
     {
-        List<NBody> bodies = GravityManager.Instance?.Bodies;
-        if (bodies == null || bodies.Count == 0) return;
+        if (relevantBodies == null || relevantBodies.Count == 0) return;
 
-        var bodiesFiltered = new List<NBody>();
-        foreach (var b in GravityManager.Instance.Bodies)
-        {
-            if (b != this && (b.isCentralBody || b.name == "Moon"))
-                bodiesFiltered.Add(b);
-        }
-        int numBodies = bodiesFiltered.Count;
+        int numBodies = relevantBodies.Count;
 
         var positions = new Vector3[numBodies];
         var masses = new double[numBodies];
 
         for (int i = 0; i < numBodies; i++)
         {
-            positions[i] = bodiesFiltered[i].transform.position;
-            masses[i] = bodiesFiltered[i].trueMass;
+            positions[i] = relevantBodies[i].transform.position;
+            masses[i] = relevantBodies[i].trueMass;
         }
 
         const float dtMax = 0.002f;
         int substeps = Mathf.CeilToInt(Time.fixedDeltaTime / dtMax);
         float dt = Time.fixedDeltaTime / substeps;
 
-        float crossSectionArea = Mathf.PI * radius * radius;
-        Vector3 thrustImpulse = force;
-
-
         for (int s = 0; s < substeps; s++)
         {
-            NativePhysics.DormandPrinceSingle(ref truePosition, ref trueVelocity, mass, positions, masses, numBodies, dt, thrustImpulse, dragCoefficient, crossSectionArea);
+            NativePhysics.DormandPrinceSingle(
+                ref state.position,
+                ref state.velocity,
+                state.mass,
+                positions,
+                masses,
+                numBodies,
+                dt,
+                state.force,
+                (float)state.dragCoefficient,
+                (float)state.crossSectionArea
+            );
         }
 
-        transform.position = new Vector3(
-            (float)truePosition.x,
-            (float)truePosition.y,
-            (float)truePosition.z
-        );
-
-        velocity = new Vector3(
-            (float)trueVelocity.x,
-            (float)trueVelocity.y,
-            (float)trueVelocity.z
-        );
-
-
+        transform.position = state.position.ToVector3();
+        velocity = state.velocity.ToVector3();
 
         CheckCollisionWithEarth();
     }
@@ -172,16 +182,16 @@ public class NBody : MonoBehaviour
     /// </summary>
     void CheckCollisionWithEarth()
     {
-        NBody earth = GravityManager.Instance.CentralBody;
+        NBody earth = gravityManager.CentralBody;
         if (earth == null || earth == this) return;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);
-        float collisionThreshold = radius + earth.radius;
+        float collisionThreshold = cameraDistanceRadius + earth.radius;
 
         if (distance < collisionThreshold)
         {
             Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
-            GravityManager.Instance.HandleCollision(this, earth);
+            gravityManager.HandleCollision(this, earth);
         }
     }
 
@@ -208,7 +218,7 @@ public class NBody : MonoBehaviour
         Action<List<Vector3>> onComplete
     )
     {
-        var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
+        var otherBodies = gravityManager.Bodies.Where(b => b != this).ToList();
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
         float[] otherMasses = otherBodies.Select(b => (float)b.mass).ToArray();
 
@@ -249,7 +259,7 @@ public class NBody : MonoBehaviour
     /// <param name="additionalForce">Force vector to apply.</param>
     public void AddForce(Vector3 additionalForce)
     {
-        force += additionalForce;
+        state.force += additionalForce;
     }
 
     /// <summary>
@@ -278,10 +288,9 @@ public class NBody : MonoBehaviour
     {
         get
         {
-
             float distanceFromCenter = transform.position.magnitude;
             float distanceInKm = distanceFromCenter;
-            float earthRadiusKm = 637.8137f;
+            float earthRadiusKm = EarthRadiusKm;
             return distanceInKm - earthRadiusKm;
         }
     }
@@ -292,13 +301,33 @@ public class NBody : MonoBehaviour
     /// </summary>
     public struct OrbitalState
     {
-        public Vector3 position;
-        public Vector3 velocity;
+        public double3 position;         // Position in ECI
+        public double3 velocity;         // Velocity in ECI
+        public float centralBodyMass;    // Earth mass
+        public double mass;              // In kg
+        public double radius;            // For drag & collision (in sim units)
+        public double crossSectionArea;  // Precomputed for drag force
+        public float dragCoefficient;    // Default ~2.2
+        public Vector3 force;            // External impulse (thrust)
 
-        public OrbitalState(Vector3 position, Vector3 velocity)
+        public OrbitalState(
+            double3 position,
+            double3 velocity,
+            float centralBodyMass,
+            double mass,
+            double radius,
+            float dragCoefficient,
+            Vector3 force)
         {
             this.position = position;
             this.velocity = velocity;
+            this.centralBodyMass = 5.972e24f;
+            this.mass = mass;
+            this.radius = radius;
+            this.dragCoefficient = dragCoefficient;
+            this.force = force;
+
+            this.crossSectionArea = Math.PI * radius * radius; // compute once
         }
     }
 }

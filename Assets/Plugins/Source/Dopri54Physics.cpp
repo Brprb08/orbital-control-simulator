@@ -79,7 +79,7 @@ extern "C"
     static const double JR_RHO[JR_N] = {
         1.35e9, 4.56e8, 9.82e7, 2.05e7, 4.46e6,
         1.15e6, 3.48e5, 9.11e4, 2.06e4, 3.81e3,
-        725.0, 267.0, 107.0, 51.0, 24.0,
+        725.0, 267.0, 107.0, 51.0, 10.0,
         1.95, 1.15, 0.68, 0.40, 0.24,
         0.135, 0.090, 0.056, 0.035, 0.022,
         0.187, 0.1459, 0.1136, 0.0885, 0.0689,
@@ -123,6 +123,11 @@ extern "C"
         // pick band
         int idx = std::min(int(altKm / 10.0), JR_N - 2);
         double dH = altKm - JR_ALT[idx];
+        if (altKm < 130)
+        {
+            double rho = JR_RHO[idx] * std::exp(-dH / JR_H[idx]);
+            return std::min(rho, 1e4);
+        }
         return JR_RHO[idx] * std::exp(-dH / JR_H[idx]) * DENSITY_SCALE;
     }
 
@@ -164,6 +169,13 @@ extern "C"
         Vector3d a = {factor * vrel.x * speed,
                       factor * vrel.y * speed,
                       factor * vrel.z * speed};
+
+        // if (alt < 100)
+        // {
+        //     LogDebug(
+        //         "drag @ alt=" + std::to_string(alt) + " km" + "  rho=" + std::to_string(rho) + " kg/km³  a=" + std::to_string(a.x * UNIT_TO_KM) + "," + std::to_string(a.y * UNIT_TO_KM) + "," + std::to_string(a.z * UNIT_TO_KM) + " km/s²");
+        // }
+
         return {a.x / UNIT_TO_KM, a.y / UNIT_TO_KM, a.z / UNIT_TO_KM};
     }
 
