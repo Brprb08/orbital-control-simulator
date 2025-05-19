@@ -384,7 +384,7 @@ public class VelocityDragManager : MonoBehaviour
         }
 
         Vector3 newVelocity;
-        if (ParsingUtils.Instance.TryParseVector3(inputText, out newVelocity))
+        if (ParsingUtils.TryParseVector3(inputText, out newVelocity))
         {
             currentVelocity = newVelocity;
             UpdateLineRenderer();

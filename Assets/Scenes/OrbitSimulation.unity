@@ -6063,6 +6063,7 @@ MonoBehaviour:
   velocityText: {fileID: 1094166147}
   altitudeText: {fileID: 793169699}
   trackingObjectNameText: {fileID: 1300459248}
+  dropdown: {fileID: 0}
 --- !u!1 &828116620
 GameObject:
   m_ObjectHideFlags: 0
@@ -12689,7 +12690,6 @@ GameObject:
   m_Component:
   - component: {fileID: 1119227882}
   - component: {fileID: 1119227881}
-  - component: {fileID: 1119227883}
   m_Layer: 0
   m_Name: VelocityDragManager
   m_TagString: Untagged
@@ -12735,18 +12735,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1803650427}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1119227883
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1119227880}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 1c328abbee2b2e34090ea5167c19e5dc, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1138443353
 GameObject:
   m_ObjectHideFlags: 0
@@ -16043,7 +16031,6 @@ GameObject:
   - component: {fileID: 1586431855}
   - component: {fileID: 1586431856}
   - component: {fileID: 1586431860}
-  - component: {fileID: 1586431861}
   - component: {fileID: 1586431862}
   m_Layer: 0
   m_Name: GameController
@@ -16234,18 +16221,6 @@ MonoBehaviour:
   bodyDropdown: {fileID: 1744299771}
   cameraController: {fileID: 1586431851}
   trajectoryRenderer: {fileID: 0}
---- !u!114 &1586431861
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 58b5e6e948e8c0b43ae6aca7bb57f725, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!114 &1586431862
 MonoBehaviour:
   m_ObjectHideFlags: 0

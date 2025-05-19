@@ -257,10 +257,10 @@ extern "C"
         kv[0].y += thrustAcc.y;
         kv[0].z += thrustAcc.z;
 
-        Vector3d drag1 = ComputeDragAcceleration(vel, {pos.x - bodies[0].x, pos.y - bodies[0].y, pos.z - bodies[0].z}, mass, areaUU, dragCoeff);
-        kv[0].x += drag1.x;
-        kv[0].y += drag1.y;
-        kv[0].z += drag1.z;
+        // Vector3d drag1 = ComputeDragAcceleration(vel, {pos.x - bodies[0].x, pos.y - bodies[0].y, pos.z - bodies[0].z}, mass, areaUU, dragCoeff);
+        // kv[0].x += drag1.x;
+        // kv[0].y += drag1.y;
+        // kv[0].z += drag1.z;
 
         for (int i = 1; i < 7; i++)
         {
@@ -283,10 +283,10 @@ extern "C"
             Vector3d relPos = {pi.x - bodies[0].x,
                                pi.y - bodies[0].y,
                                pi.z - bodies[0].z};
-            Vector3d drag_i = ComputeDragAcceleration(vi, relPos, mass, areaUU, dragCoeff);
-            kv[i].x += drag_i.x;
-            kv[i].y += drag_i.y;
-            kv[i].z += drag_i.z;
+            // Vector3d drag_i = ComputeDragAcceleration(vi, relPos, mass, areaUU, dragCoeff);
+            // kv[i].x += drag_i.x;
+            // kv[i].y += drag_i.y;
+            // kv[i].z += drag_i.z;
         }
 
         for (int i = 0; i < 7; i++)

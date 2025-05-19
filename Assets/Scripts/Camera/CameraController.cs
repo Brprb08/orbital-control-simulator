@@ -20,6 +20,9 @@ public class CameraController : MonoBehaviour
     public Transform cameraTransform;
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
+    private LineVisibilityManager lineVisibilityManager;
+    private GravityManager gravityManager;
+    private BodyDropdownManager bodyDropdownManager;
 
     [Header("Settings")]
     public float sensitivity = 100f;
@@ -71,7 +74,12 @@ public class CameraController : MonoBehaviour
             defaultLocalPosition = cameraTransform.localPosition;
         }
 
-        bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
+        if (gravityManager == null)
+        {
+            gravityManager = GravityManager.Instance;
+        }
+
+        bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
             StartCoroutine(InitializeCamera());
@@ -83,8 +91,25 @@ public class CameraController : MonoBehaviour
             trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
             trajectoryRenderer.apogeeText = this.apogeeText;
             trajectoryRenderer.perigeeText = this.perigeeText;
-            Debug.LogError($"HERE {currentIndex}");
             trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
+        }
+
+        lineVisibilityManager = LineVisibilityManager.Instance;
+        if (lineVisibilityManager == null)
+        {
+            Debug.LogError("LineVisibilityManager instance is not set.");
+        }
+
+        gravityManager = GravityManager.Instance;
+        if (gravityManager == null)
+        {
+            Debug.LogError("LineVisibilityManager instance is not set.");
+        }
+
+        bodyDropdownManager = BodyDropdownManager.Instance;
+        if (bodyDropdownManager == null)
+        {
+            Debug.LogError("LineVisibilityManager instance is not set.");
         }
     }
 
@@ -95,9 +120,9 @@ public class CameraController : MonoBehaviour
     {
         yield return null; // Wait for all NBody.Start() to finish
 
-        if (LineVisibilityManager.Instance != null)
+        if (lineVisibilityManager != null)
         {
-            LineVisibilityManager.Instance.SetTrackedBody(bodies[currentIndex]);
+            lineVisibilityManager.SetTrackedBody(bodies[currentIndex]);
         }
         ReturnToTracking();
 
@@ -121,7 +146,7 @@ public class CameraController : MonoBehaviour
                 cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
 
                 Vector3 currentRotation = cameraPivotTransform.eulerAngles;
-                float clampedX = CameraCalculations.Instance.ClampAngle(currentRotation.x, -80f, 80f);
+                float clampedX = CameraCalculations.ClampAngle(currentRotation.x, -80f, 80f);
                 cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
             }
         }
@@ -132,9 +157,9 @@ public class CameraController : MonoBehaviour
     /// </summary>
     public void UpdateDropdownSelection()
     {
-        if (BodyDropdownManager.Instance.bodyDropdown == null || bodies.Count == 0) return;
+        if (bodyDropdownManager.bodyDropdown == null || bodies.Count == 0) return;
 
-        TMP_Dropdown dropdown = BodyDropdownManager.Instance.bodyDropdown;
+        TMP_Dropdown dropdown = bodyDropdownManager.bodyDropdown;
 
         string currentBodyName = bodies[currentIndex].name;
         int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
@@ -142,12 +167,12 @@ public class CameraController : MonoBehaviour
         // Ensure the index is valid before setting it
         if (dropdownIndex != -1)
         {
-            dropdown.onValueChanged.RemoveListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
+            dropdown.onValueChanged.RemoveListener(bodyDropdownManager.HandleDropdownValueChanged);
 
             dropdown.value = dropdownIndex;
             dropdown.RefreshShownValue();
 
-            dropdown.onValueChanged.AddListener(BodyDropdownManager.Instance.HandleDropdownValueChanged);
+            dropdown.onValueChanged.AddListener(bodyDropdownManager.HandleDropdownValueChanged);
             //Debug.Log($"[CAMERA CONTROLLER]: Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
         }
         else
@@ -162,9 +187,9 @@ public class CameraController : MonoBehaviour
     public void UpdateTrajectoryRender(int index)
     {
         trajectoryRenderer.SetTrackedBody(bodies[index]);
-        if (LineVisibilityManager.Instance != null)
+        if (lineVisibilityManager != null)
         {
-            LineVisibilityManager.Instance.SetTrackedBody(bodies[index]);
+            lineVisibilityManager.SetTrackedBody(bodies[index]);
         }
 
         trajectoryRenderer.orbitIsDirty = true;
@@ -204,10 +229,7 @@ public class CameraController : MonoBehaviour
     /// </summary>
     public void ReturnToTracking()
     {
-        if (cameraMovement != null)
-        {
-            cameraMovement.enabled = true;
-        }
+        cameraMovement.enabled = true;
 
         GameObject centralBody = GameObject.FindWithTag("CentralBody");
 
@@ -315,6 +337,7 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Sets the Earth view tracking state.
+    /// Used in ObjectPlacementManager.
     /// </summary>
     public void SetInEarthView(bool inEarthCam)
     {
@@ -323,6 +346,7 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Checks if the camera is currently tracking the specified body.
+    /// Used in ObjectPlacementManager.
     /// </summary>
     /// <param name="body">The body to check against.</param>
     public bool IsTracking(NBody body)
@@ -332,14 +356,15 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Switches to a new valid celestial body after one is removed (collision).
+    /// Used in GravityManager.
     /// </summary>
     /// <param name="removedBody">The body that was removed.</param>
     public void SwitchToNextValidBody(NBody removedBody)
     {
         RefreshBodiesList();
-        if (LineVisibilityManager.Instance != null)
+        if (lineVisibilityManager != null)
         {
-            LineVisibilityManager.Instance.DeregisterNBody(bodies[currentIndex]);
+            lineVisibilityManager.DeregisterNBody(bodies[currentIndex]);
         }
         bodies.Remove(removedBody);
 
@@ -366,6 +391,7 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Sets a placeholder target for tracking during object placement.
+    /// Used in ObjectPlacementManager.
     /// </summary>
     /// <param name="placeholder">The placeholder transform to track.</param>
     public void SetTargetPlaceholder(Transform placeholder)
@@ -379,6 +405,7 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Switches the camera from tracking a placeholder to tracking the real object.
+    /// Used in VelocityDragManager.
     /// </summary>
     /// <param name="realNBody">The real NBody to track.</param>
     public void SwitchToRealNBody(NBody realNBody)
@@ -404,10 +431,11 @@ public class CameraController : MonoBehaviour
 
     /// <summary>
     /// Refreshes the list of celestial bodies from the GravityManager.
+    /// Used in GravityManager, ObjectPlacementManager, VelocityDragManager
     /// </summary>
     public void RefreshBodiesList()
     {
-        bodies = GravityManager.Instance.Bodies.FindAll(body => body.CompareTag("Planet"));
+        bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
 
         if (bodies.Count > 0 && currentIndex >= bodies.Count)
         {

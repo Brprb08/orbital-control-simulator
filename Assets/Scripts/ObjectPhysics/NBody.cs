@@ -218,7 +218,7 @@ public class NBody : MonoBehaviour
         Action<List<Vector3>> onComplete
     )
     {
-        var otherBodies = gravityManager.Bodies.Where(b => b != this).ToList();
+        var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
         Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
         float[] otherMasses = otherBodies.Select(b => (float)b.mass).ToArray();
 

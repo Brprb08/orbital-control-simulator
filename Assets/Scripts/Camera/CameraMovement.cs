@@ -1,6 +1,9 @@
 using UnityEngine;
 using TMPro;
 using System.Collections;
+using UnityEngine.EventSystems;
+using UnityEngine.UI;
+using System.Collections.Generic;
 
 /// <summary>
 /// Handles camera positioning, zoom, and UI updates while tracking celestial bodies.
@@ -34,8 +37,12 @@ public class CameraMovement : MonoBehaviour
     public TextMeshProUGUI trackingObjectNameText;
 
     [Header("Constants")]
-    private const float EarthCamMinDistance = 500f;
+    private const float EarthCamMinDistance = 750f;
+    private const float EarthCamDefaultDistance = 2000f;
     private const float PlaceholderMaxCameraDistance = 800f;
+
+    public TMP_Dropdown dropdown;
+    private GameObject dropdownList;
 
     /// <summary>
     /// Sets up the singleton instance for camera control.
@@ -117,25 +124,25 @@ public class CameraMovement : MonoBehaviour
             Debug.LogError($"[CAMERA MOVEMENT]: Camera transform is NaN after setting target {body.name}");
         }
 
-        minCameraDistance = CameraCalculations.Instance.CalculateMinDistance(body.radius) * customMinMultiplier;
+        minCameraDistance = CameraCalculations.CalculateMinDistance(body.radius) * customMinMultiplier;
         maxCameraDistance = (customMaxOverride > 0f)
             ? customMaxOverride
-            : CameraCalculations.Instance.CalculateMaxDistance(body.radius);
+            : CameraCalculations.CalculateMaxDistance(body.radius);
 
         float midpointDistance = (minCameraDistance + maxCameraDistance) / 2f;
 
         if (togglingEarth)
         {
-            float defaultDistance = minCameraDistance + (midpointDistance - minCameraDistance) * closerFraction;
+            // float defaultDistance = minCameraDistance + (midpointDistance - minCameraDistance) * closerFraction;
             maxCameraDistance = 30000f;
-            distance = defaultDistance;
+            distance = EarthCamDefaultDistance;
         }
         else
         {
             float defaultDistance;
             if (inEarthCam)
             {
-                defaultDistance = 2500f;
+                defaultDistance = 1000f;
             }
             else
             {
@@ -217,6 +224,8 @@ public class CameraMovement : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
+            if (IsPointerOverDropdown())
+                return;
             float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.cameraDistanceRadius / 20f : .4f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);
             float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
@@ -224,6 +233,27 @@ public class CameraMovement : MonoBehaviour
             distance -= scroll * zoomSpeed;
             distance = Mathf.Clamp(distance, minCameraDistance, maxCameraDistance);
         }
+    }
+
+    /// <summary>
+    /// Makes sure pointer is not over dropdown when zooming, if it is zooming is not allowed.
+    /// </summary>
+    public bool IsPointerOverDropdown()
+    {
+        if (dropdownList == null)
+        {
+            dropdownList = GameObject.Find("Dropdown List"); // uses this name
+        }
+        else
+        {
+            if (!dropdownList.activeInHierarchy)
+                dropdownList = null;
+        }
+
+        if (dropdownList == null) return false;
+
+        RectTransform rect = dropdownList.GetComponent<RectTransform>();
+        return RectTransformUtility.RectangleContainsScreenPoint(rect, Input.mousePosition, null);
     }
 
     /// <summary>

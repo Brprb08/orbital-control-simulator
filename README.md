@@ -51,6 +51,15 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 
 ---
 
+## Unit Testing
+
+- Includes a dedicated Edit Mode unit tests for utility logic
+- All tests written in C# using Unity Test Framework
+- 18/18 tests passing as of latest commit (camera math, parsing, edge cases)
+- Utility classes refactored for testability (static methods, no MonoBehaviours)
+
+---
+
 [See Technical README →](./TECHNICAL_README.md)
 
 ---

@@ -21,6 +21,9 @@ public class GravityManager : MonoBehaviour
 
     public TMP_Dropdown bodyDropdown;
 
+    private CameraController cameraController;
+    private LineVisibilityManager lineVisibilityManager;
+
     /// <summary>
     /// Initializes the singleton instance of the GravityManager.
     /// </summary>
@@ -48,6 +51,12 @@ public class GravityManager : MonoBehaviour
         {
             RegisterBody(body);
         }
+
+        cameraController = CameraController.Instance;
+        if (cameraController == null)
+        {
+            Debug.LogError("CameraController instance is not set.");
+        }
     }
 
     /// <summary>
@@ -68,9 +77,14 @@ public class GravityManager : MonoBehaviour
             }
         }
 
-        if (LineVisibilityManager.Instance != null)
+        if (lineVisibilityManager == null)
         {
-            LineVisibilityManager.Instance.RegisterNBody(body);
+            lineVisibilityManager = LineVisibilityManager.Instance;
+        }
+
+        if (lineVisibilityManager != null)
+        {
+            lineVisibilityManager.RegisterNBody(body);
             Debug.Log($"[GRAVITY MANAGER]: Registered NBody with LineVisibilityManager: {body.gameObject.name}");
         }
         else
@@ -109,7 +123,6 @@ public class GravityManager : MonoBehaviour
     {
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 
-        CameraController cameraController = GravityManager.Instance.GetComponent<CameraController>();
         if (cameraController != null && cameraController.IsTracking(bodyToRemove))
         {
             cameraController.SwitchToNextValidBody(bodyToRemove);

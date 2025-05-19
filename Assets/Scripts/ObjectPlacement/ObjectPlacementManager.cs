@@ -68,7 +68,7 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!ParsingUtils.Instance.TryParseVector3(radiusText, out Vector3 parsedRadius))
+        if (!ParsingUtils.TryParseVector3(radiusText, out Vector3 parsedRadius))
         {
             feedbackText.text = "Invalid radius. Use numeric x,y,z.";
             return;
@@ -81,7 +81,7 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!ParsingUtils.Instance.TryParseMass(massText, out float mass))
+        if (!ParsingUtils.TryParseMass(massText, out float mass))
         {
             feedbackText.text = "Invalid mass. Enter a number between 500 and 5.0e23.";
             return;

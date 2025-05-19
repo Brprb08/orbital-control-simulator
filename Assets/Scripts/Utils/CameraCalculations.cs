@@ -4,21 +4,8 @@ using UnityEngine;
 /// Provides utility functions for clamping and normalizing angles,
 /// and for calculating camera distance based on object radius.
 /// </summary>
-public class CameraCalculations : MonoBehaviour
+public static class CameraCalculations
 {
-
-    public static CameraCalculations Instance { get; private set; }
-
-    void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-        // DontDestroyOnLoad(gameObject);
-    }
 
     /// <summary>
     /// Clamps an angle between a minimum and maximum value.
@@ -27,7 +14,7 @@ public class CameraCalculations : MonoBehaviour
     /// <param name="min">Minimum allowable angle.</param>
     /// <param name="max">Maximum allowable angle.</param>
     /// <returns>The clamped angle.</returns>
-    public float ClampAngle(float angle, float min, float max)
+    public static float ClampAngle(float angle, float min, float max)
     {
         angle = NormalizeAngle(angle);
         return Mathf.Clamp(angle, min, max);
@@ -38,7 +25,7 @@ public class CameraCalculations : MonoBehaviour
     /// </summary>
     /// <param name="angle">The angle to normalize.</param>
     /// <returns>The normalized angle.</returns>
-    public float NormalizeAngle(float angle)
+    public static float NormalizeAngle(float angle)
     {
         while (angle > 180f) angle -= 360f;
         while (angle < -180f) angle += 360f;
@@ -50,7 +37,7 @@ public class CameraCalculations : MonoBehaviour
     /// </summary>
     /// <param name="radius">Radius of the object being tracked.</param>
     /// <returns>The minimum camera distance.</returns>
-    public float CalculateMinDistance(float radius)
+    public static float CalculateMinDistance(float radius)
     {
         if (radius <= 0.5f)
         {
@@ -71,7 +58,7 @@ public class CameraCalculations : MonoBehaviour
     /// </summary>
     /// <param name="radius">Radius of the object being tracked.</param>
     /// <returns>The maximum camera distance.</returns>
-    public float CalculateMaxDistance(float radius)
+    public static float CalculateMaxDistance(float radius)
     {
         float minimumMaxDistance = 2000f;
 

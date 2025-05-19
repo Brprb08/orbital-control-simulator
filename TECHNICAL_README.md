@@ -194,6 +194,22 @@ Example structure:
 ```
 
 This setup reduces CPU load and avoids garbage collection overhead.
+---
+
+## ✅ Unit Testing Details
+
+To ensure stability and correctness in utility logic, unit tests were implemented for:
+
+- `CameraCalculations`: Angle clamping, normalization, and orbital camera distance computations
+- `ParsingUtils`: Robust vector and mass parsing with support for error handling and validation
+
+**Testing Strategy:**
+- Isolated via `EditModeTests.asmdef`
+- Runtime logic decoupled from Unity lifecycle methods for testability
+- Covers both valid inputs and invalid edge cases
+- Verified with Unity Test Runner (all 18 tests passing)
+
+> These tests are not for physics correctness (which is validated separately), but rather for supporting logic that feeds the simulation pipeline.
 
 ---
 
@@ -217,7 +233,14 @@ OrbitalControlSimulator/
 │   │   ├── ObjectPhysics/         # Physics constants, body definitions
 │   │   ├── ObjectPlacement/       # Runtime placement and drag manager
 │   │   ├── UI/                    # UI toggle buttons and HUD controls
-│   │   └── Utils/                 # Shared calculations (orbital math, parsing)
+│   │   ├── Utils/                 # Shared calculations (orbital math, parsing)
+│   │   └── SimulationCore.asmdef  # Defines the core runtime assembly, and enables references in tests
+│   ├── Tests/
+│   │   └── EditMode/              # Unit tests (Edit Mode) using Unity Test Framework
+│   │       ├── CameraCalculationsTests.cs
+│   │       ├── ParsingUtilsTests.cs
+│   │       ├── ExtensionTests.cs
+│   │       └── EditModeTesting.asmdef 
 ├── Packages/                      # Unity package configuration
 ├── Plugins/
 │   ├── Source/                    # Native C++ integrator source (DOPRI5)

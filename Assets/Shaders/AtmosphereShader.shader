@@ -46,7 +46,7 @@ Shader "Custom/Atmosphere"
             fixed4 frag(v2f i) : SV_Target
             {
                 float fresnel = pow(dot(i.normal, i.viewDir), _FresnelPower);
-                fresnel = saturate(fresnel * 1 - 0.3); // Minor tweak for better fade
+                fresnel = saturate(fresnel * 1 - 0.2); // Minor tweak for better fade
 
                 float alpha = fresnel * 0.6; // Maintain transparency strength
                 return float4(_Color.rgb * fresnel, alpha);
