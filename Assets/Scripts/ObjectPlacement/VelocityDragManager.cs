@@ -387,6 +387,9 @@ public class VelocityDragManager : MonoBehaviour
         if (ParsingUtils.TryParseVector3(inputText, out newVelocity))
         {
             currentVelocity = newVelocity;
+
+            setVelocityButton.interactable = true;
+
             UpdateLineRenderer();
         }
         else
@@ -429,5 +432,6 @@ public class VelocityDragManager : MonoBehaviour
     public void ResetDragManager()
     {
         isVelocitySet = false;
+        velocityDisplayText.interactable = true;
     }
 }

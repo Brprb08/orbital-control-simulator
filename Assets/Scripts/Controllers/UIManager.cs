@@ -27,6 +27,7 @@ public class UIManager : MonoBehaviour
 
     [Header("UI")]
     public TMP_InputField nameInputField;
+    public TMP_InputField positionInputField;
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
@@ -133,9 +134,11 @@ public class UIManager : MonoBehaviour
             velocityInputField.interactable = false;
         }
 
-        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        if (nameInputField != null && massInputField != null && radiusInputField != null && positionInputField != null)
         {
             nameInputField.interactable = true;
+
+            positionInputField.interactable = true;
 
             massInputField.interactable = true;
 
@@ -190,10 +193,13 @@ public class UIManager : MonoBehaviour
             velocityInputField.interactable = false;
         }
 
-        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        if (nameInputField != null && massInputField != null && radiusInputField != null && positionInputField != null)
         {
             nameInputField.text = null;
             nameInputField.interactable = false;
+
+            positionInputField.text = null;
+            positionInputField.interactable = false;
 
             massInputField.text = null;
             massInputField.interactable = false;

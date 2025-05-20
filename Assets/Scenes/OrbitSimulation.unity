@@ -16549,6 +16549,7 @@ MonoBehaviour:
   toggleOptionsPanel: {fileID: 1948112842}
   dropdown: {fileID: 1612063109}
   nameInputField: {fileID: 861192241}
+  positionInputField: {fileID: 1784521142}
   massInputField: {fileID: 916841083}
   radiusInputField: {fileID: 770696344}
   placeObjectButton: {fileID: 229281974}
@@ -16563,7 +16564,7 @@ MonoBehaviour:
   inclinationText: {fileID: 1511272215}
   raanText: {fileID: 696612674}
   showInstructionText: 0
-  earthCamPressed: 1
+  earthCamPressed: 0
 --- !u!114 &1586431854
 MonoBehaviour:
   m_ObjectHideFlags: 0

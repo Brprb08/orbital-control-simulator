@@ -155,12 +155,15 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         ClearAndUnfocusInputField(radiusInput);
+        ClearAndUnfocusInputField(positionInput);
         ClearAndUnfocusInputField(objectNameInputField);
         ClearAndUnfocusInputField(massInput);
 
         if (nameInputField != null && massInputField != null && radiusInputField != null)
         {
             nameInputField.interactable = false;
+
+            positionInput.interactable = false;
 
             massInputField.interactable = false;
 
