@@ -286,7 +286,7 @@ public class CameraController : MonoBehaviour
     /// </summary>
     /// <param name="centralBody">The transform of the central body.</param>
     /// <param name="targetPosition">The position of the currently tracked object.</param>
-    private void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
+    public void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
     {
         // Vector pointing from the tracked object to the central body
         Vector3 directionToCentralBody = (centralBody.position - targetPosition).normalized;

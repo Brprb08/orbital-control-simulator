@@ -25,6 +25,11 @@ public class ObjectPlacementManager : MonoBehaviour
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
+    public TMP_InputField positionInput;
+
+    [Header("Ghost Preview")]
+    public GameObject ghostPreviewPrefab;
+    private GameObject ghostInstance;
 
     [Header("Placement State")]
     public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject
@@ -40,6 +45,17 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
         Instance = this;
+    }
+
+    private void Start()
+    {
+        positionInput.onValueChanged.AddListener(OnPositionInputChanged);
+
+        if (ghostPreviewPrefab != null)
+        {
+            ghostInstance = Instantiate(ghostPreviewPrefab);
+            ghostInstance.SetActive(false); // Start hidden
+        }
     }
 
     /// <summary>
@@ -99,7 +115,20 @@ public class ObjectPlacementManager : MonoBehaviour
 
         lastPlacedGameObject = Instantiate(spherePrefab);
         lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 1f, parsedRadius.y * 1f, parsedRadius.z * 1f);
-        lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
+
+        if (ParsingUtils.TryParseVector3(positionInput.text, out Vector3 parsedPosition))
+        {
+            lastPlacedGameObject.transform.position = parsedPosition;
+        }
+        else
+        {
+            lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
+        }
+
+        if (ghostInstance != null)
+        {
+            ghostInstance.SetActive(false);
+        }
 
         satelliteCount++;
         string customName = !string.IsNullOrWhiteSpace(objectNameInputField?.text) ? objectNameInputField.text : $"Satellite {satelliteCount}";
@@ -169,6 +198,38 @@ public class ObjectPlacementManager : MonoBehaviour
         CameraController.Instance.UpdateTrajectoryRender(CameraController.Instance.currentIndex);
         CameraController.Instance.isTrackingPlaceholder = false;
         CameraController.Instance.ReturnToTracking();
+    }
+
+    /// <summary>
+    /// Handles changes to the position input field during object placement.
+    /// Moves the camera so that it faces the desired target position and shows a ghost preview at that position.
+    /// </summary>
+    /// <param name="input">The string input from the user, expected in "x,y,z" format.</param>
+    private void OnPositionInputChanged(string input)
+    {
+        if (mainCamera == null)
+            return;
+
+        if (ParsingUtils.TryParseVector3(input, out Vector3 targetPosition))
+        {
+            ghostInstance.SetActive(true);
+            ghostInstance.transform.position = targetPosition;
+
+            float placementDistance = 10f;
+
+            Vector3 directionToOrigin = (Vector3.zero - targetPosition).normalized;
+
+            // Move camera so the object will be placed at targetPosition
+            Vector3 cameraPosition = targetPosition - directionToOrigin * placementDistance;
+
+            Quaternion rotation = Quaternion.LookRotation(directionToOrigin, Vector3.up);
+
+            mainCamera.transform.SetPositionAndRotation(cameraPosition, rotation);
+        }
+        else
+        {
+            ghostInstance.SetActive(false); // Hide if input is invalid
+        }
     }
 
     /// <summary>

@@ -13,6 +13,9 @@ public class FreeCamera : MonoBehaviour
 
     private bool isFreeMode = false;
 
+    private float yaw = 0f;
+    private float pitch = 0f;
+
     /// <summary>
     /// Handles free camera movement and rotation based on user input.
     /// </summary>
@@ -30,18 +33,29 @@ public class FreeCamera : MonoBehaviour
         }
 
         // Movement input (WASD or arrow keys).
-        float moveX = Input.GetAxis("Horizontal") * speed;
-        float moveZ = Input.GetAxis("Vertical") * speed;
-        transform.Translate(moveX, 0, moveZ, Space.Self);
+        float rawX = Input.GetAxisRaw("Horizontal");
+        float rawZ = Input.GetAxisRaw("Vertical");
+
+        // Deadzone to eliminate drift
+        rawX = Mathf.Abs(rawX) > 0.1f ? rawX : 0f;
+        rawZ = Mathf.Abs(rawZ) > 0.1f ? rawZ : 0f;
+
+        float moveX = rawX * speed * Time.unscaledDeltaTime;
+        float moveZ = rawZ * speed * Time.unscaledDeltaTime;
+
+        if (moveX != 0f || moveZ != 0f)
+        {
+            transform.Translate(moveX, 0, moveZ, Space.Self);
+        }
 
         // Rotation input (hold right mouse button to rotate).
         if (Input.GetMouseButton(1))
         {
-            float rotationX = Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
-            float rotationY = Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
+            yaw += Input.GetAxis("Mouse X") * sensitivity * Time.unscaledDeltaTime;
+            pitch -= Input.GetAxis("Mouse Y") * sensitivity * Time.unscaledDeltaTime;
+            pitch = Mathf.Clamp(pitch, -89f, 89f); // Prevent flipping over
 
-            transform.Rotate(Vector3.up, rotationX, Space.Self); // Horizontal (yaw).
-            transform.Rotate(Vector3.right, -rotationY, Space.Self); // Vertical (pitch).
+            transform.rotation = Quaternion.Euler(pitch, yaw, 0f);
         }
     }
 
@@ -52,5 +66,15 @@ public class FreeCamera : MonoBehaviour
     public void TogglePlacementMode(bool enable)
     {
         isFreeMode = enable;
+
+        if (enable)
+        {
+            Vector3 currentEuler = transform.rotation.eulerAngles;
+            yaw = currentEuler.y;
+            pitch = currentEuler.x;
+            pitch = Mathf.Clamp(pitch, -89f, 89f);
+
+            transform.rotation = Quaternion.Euler(pitch, yaw, 0f); // Normalize it
+        }
     }
 }

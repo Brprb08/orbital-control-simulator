@@ -202,10 +202,6 @@ extern "C"
 
             // double F = std::min(G * masses[i] / r2, maxForce);
             double rawF = G * masses[i] / r2;
-            if (rawF >= maxForce)
-            {
-                LogDebug("Gravity force capped: " + std::to_string(rawF));
-            }
             double F = std::min(rawF, maxForce);
             double r = std::sqrt(r2);
             double f_r = F / r;
