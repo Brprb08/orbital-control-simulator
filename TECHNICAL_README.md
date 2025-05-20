@@ -43,7 +43,7 @@ Unlike typical Unity-based simulations, all orbital propagation is handled exter
 Key elements include:
 - **Integrator:** Dormand–Prince 5(4) (non-adaptive, fixed step, substepped)
 - **Drag:** Atmospheric drag modeled with empirical density interpolation
-- **Thrust:** Discrete and continuous thrust models in multiple orbital directions
+- **Thrust:** Instant and continuous thrust in multiple orbital directions
 - **Rendering:** GPU-drawn trajectories for performant, long-duration visualization
 
 ---
@@ -93,7 +93,7 @@ Different float types are intentional. The sim integrates in high precision, the
 
 ### Integrator Error Controls
 
-The Dormand–Prince 5(4) method is used for orbit integration. Integration is performed in fixed steps to ensure consist>
+The Dormand–Prince 5(4) method is used for orbit integration.
 - Integrator: Dormand–Prince 5(4), implemented in native C++
 - Step size: Fixed
 - Substepping: Enabled, with a max dt of 0.002s per substep
@@ -203,7 +203,7 @@ To ensure stability and correctness in utility logic, unit tests were implemente
 - Covers both valid inputs and invalid edge cases
 - Verified with Unity Test Runner (all 20+ tests passing)
 
-> These tests are not for physics correctness (which is validated separately), but rather for supporting logic that feeds the simulation pipeline.
+> These tests are not for physics correctness (which is validated separately), but rather for supporting logic.
 
 ---
 
