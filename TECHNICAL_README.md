@@ -48,7 +48,7 @@ Key components:
 
 ## Validation Results
 
-Orbital mechanics accuracy was validated against both Keplerian predictions and long term orbital stability. Tests assume simplified Newtonian gravity (no drag, no J2, no higher-order perturbations). Initial development intentionally prioritized numerical accuracy in this idealized case before introducing additional perturbative forces like atmospheric drag, J2 oblateness, or solar pressure.
+Accuracy was validated against both Keplerian predictions and long term orbital stability. Tests assume simplified Newtonian gravity (no drag, no J2, no higher-order perturbations). Initial development intentionally prioritized numerical accuracy in this idealized case before introducing additional perturbative forces like atmospheric drag, J2 oblateness, or solar pressure.
 
 ### Long-Term Orbital Stability (LEO, No Drag)
 
