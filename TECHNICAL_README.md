@@ -45,6 +45,7 @@ Key elements include:
 - **Drag:** Atmospheric drag modeled with empirical density interpolation
 - **Thrust:** Instant and continuous thrust in multiple orbital directions
 - **Rendering:** GPU-drawn trajectories for performant, long-duration visualization
+- **TLE Initialization**: TLE-based satellite creation supported. Both lines required, only Line 2 parsed for orbital elements.
 
 ---
 
