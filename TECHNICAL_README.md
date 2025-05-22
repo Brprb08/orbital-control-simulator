@@ -2,13 +2,11 @@
 
 # Technical Breakdown – Orbital Control Simulator
 
-This is a high-accuracy orbital mechanics simulation prototype using custom numerical integration and real-world physics.
+A high-accuracy orbital mechanics simulation prototype using custom numerical integration and real-world physics.
 
 ## Who This Is For
 
-This document is intended for aerospace engineers, simulation developers, and technical reviewers interested in orbital dynamics, numerical integration strategies, and performance architecture for real-time propagation tools.
-
-If you're assessing physics accuracy, C++/Unity interop, or simulation reliability, this breakdown covers those design choices.
+This document is for aerospace engineers, simulation devs, and technical reviewers interested in orbital dynamics, integration techniques, or real-time performance.
 
 ---
 
@@ -19,6 +17,7 @@ If you're assessing physics accuracy, C++/Unity interop, or simulation reliabili
 - [Numerics & Physics Details](#numerics--physics-details)
 - [Validation Results](#validation-results)
 - [Physics Summary](#physics-summary)
+- [TLE Parsing](#tle-parsing)
 - [Features](#features)
 - [Interop Architecture](#interop-architecture)
 - [Directory Layout](#directory-layout)
@@ -30,22 +29,20 @@ If you're assessing physics accuracy, C++/Unity interop, or simulation reliabili
 
 ## Motivation
 
-This project began as a personal exploration into orbital dynamics after being inspired by real-world launches and missions. It’s now an area for experimenting with numerical methods and optimizing real-time simulation performance using Unity and C++.
+This project started as an exploration into orbital mechanics after watching a few rocket launches. It evolved into a full technical sandbox for real-time, double-precision orbital dynamics using Unity and native C++.
 
 ---
 
 ## Simulation Core
 
-The simulator models Newtonian central-body gravitational dynamics using a custom Dormand–Prince 5(4) integrator, implemented in native C++ and interfaced with Unity through platform invoke.
+The sim uses Newtonian gravitational dynamics with a native C++ Dormand–Prince 5(4) integrator.
 
-Unlike typical Unity-based simulations, all orbital propagation is handled externally for numerical stability and performance, aligning more closely with engineering tools like GMAT than with standard game loops.
-
-Key elements include:
-- **Integrator:** Dormand–Prince 5(4) (non-adaptive, fixed step, substepped)
-- **Drag:** Atmospheric drag modeled with empirical density interpolation
-- **Thrust:** Instant and continuous thrust in multiple orbital directions
-- **Rendering:** GPU-drawn trajectories for performant, long-duration visualization
-- **TLE Initialization**: TLE-based satellite creation supported. Both lines required, only Line 2 parsed for orbital elements.
+Key components:
+- **Integrator:** DOPRI5, fixed-step with substepping
+- **Drag:** Modeled using empirical density interpolation
+- **Thrust:** Instant/continuous vectors in standard orbital directions
+- **Rendering:** GPU-predicted trajectory lines
+- **TLE Support:** Users can initialize satellites using standard TLE format (see section [TLE Parsing](#tle-parsing))
 
 ---
 
@@ -55,35 +52,28 @@ Orbital mechanics accuracy was validated against both Keplerian predictions and 
 
 ### Long-Term Orbital Stability (LEO, No Drag)
 
-> Simulation ran at **100× time scale** over **50 full LEO orbits (~77.3 hours)** with apogee and perigee sampled once per orbit.
-
-**Result:** No measurable drift in altitude was observed. 
-Apogee and perigee remained **exactly constant to within sub-meter precision** across all 50 orbits.
+100× time scale over 50 full orbits (~77 hrs). No drift; apogee/perigee remained stable within sub-meter precision.
 
 | Orbit Range | Apogee (km) | Perigee (km) |
 |-------------|-------------|--------------|
 | All Orbits  | 420.062     | 407.863      |
 
-This confirms that the integrator maintains orbital energy and shape over extended high-speed propagation in idealized conditions (no drag, J2, or other perturbations).
+### Orbital Period Accuracy - Keplerian Calculations
 
-### Orbital Period Comparison
-
-| Orbit Type                  | Reference Tool | Expected Period (avg) | Simulated Period (avg) | Accuracy   |
-|-----------------------------|----------------|-------------------------------|--------------------------------|------------|
-| LEO (408 km circular)       | Keplerian Calc | 92.74 min                     | 92.62 min                      | ~99.87%    |
-| Elliptical (7000–20007 km)  | Keplerian Calc | 7.75 hrs                      | 7.88 hrs                       | ~98.32%    |
+| Orbit Type                  | Expected | Simulated | Accuracy |
+|-----------------------------|----------|-----------|----------|
+| LEO (408 km circular)       | 92.74 min | 92.62 min | ~99.87%  |
+| Elliptical (7000–20007 km)  | 7.75 hrs  | 7.88 hrs  | ~98.32%  |
 
 ---
 
 ## Numerics & Physics Details
 
-This section outlines the numerical precision strategy, units, time step logic, and edge-case handling used in the simulator. It’s meant to help understand the assumptions and tolerances behind the integration process and overall stability.
-
 ### Precision Strategy
 
 The sim uses different numeric precisions depending on where the data is flowing and what level of accuracy is required.
 
-| Quantity                     | Type     | Rationale                                                            |
+| Quantity                     | Type     | Reason                                                            |
 |-----------------------------|----------|----------------------------------------------------------------------|
 | Orbital State (true pos/vel) | double3  | Prevents drift in long simulations, used for integration accuracy    |
 | Unity Transform             | float    | Unity uses float natively, conversion applied for visualization      |
@@ -92,36 +82,23 @@ The sim uses different numeric precisions depending on where the data is flowing
 
 Different float types are intentional. The sim integrates in high precision, then converts to float for rendering or Unity interop. This avoids precision loss over long durations without impacting performance where it’s not critical.
 
-### Integrator Error Controls
+### Integration Settings
 
-The Dormand–Prince 5(4) method is used for orbit integration.
-- Integrator: Dormand–Prince 5(4), implemented in native C++
-- Step size: Fixed
-- Substepping: Enabled, with a max dt of 0.002s per substep
-- Step logic: Unity’s Time.fixedDeltaTime is divided into smaller substeps to stay within dt limits
+- Step Size: Fixed
+- Max Δt per substep: `0.002s`
+- Time slicing based on Unity's `fixedDeltaTime`
 
 No adaptive error controls are enabled yet, but the integrator code supports embedded 4th-order error estimation. This is a planned change.
-
-### Stability Constraints
-
-The integrator is kept stable by enforcing a maximum time step per substep.
-
-| Parameter         | Value        | Reasoning                                       |
-|------------------|--------------|-------------------------------------------------|
-| Max substep Δt   | 0.002 s      | Prevents large integration errors or instability |
-| Substeps         | Variable     | Derived from Time.fixedDeltaTime per frame      |
 
 ### Edge-Case Handling
 
 Several numerical protections are in place to prevent simulation blowups or instability.
 
-- Singularity Avoidance: Minimum distance squared threshold (1e-20) used to prevent division by zero during force calculations
-- Max Force Cap: 1e8 N to avoid extreme accelerations from close approaches
-- Overflow Checks: NaN checks are performed each frame on Unity transform positions
-- Collision Handling: Collisions with Earth are detected based on radius overlap and objects are removed immediately
-- Mass Threshold: Bodies with mass below 1e-6 are ignored from simulation updates
-
-More robust collision modeling and adaptive error controls are planned but not yet implemented.
+- Division by zero guards (1e-20)
+- Max force cap: `1e8 N`
+- NaN checks each frame
+- Earth collision = immediate removal
+- Min mass cutoff = `1e-6 kg`
 
 --- 
 
@@ -163,14 +140,48 @@ Full gravity/thrust formulations and integration details are available in [PHYSI
 
 ---
 
-## Features
+## TLE Parsing
 
-- Custom satellite/object placement with initial velocity and mass
-- Thrust controls (prograde, retrograde, radial, normal, etc.)
-- Dynamic apogee/perigee/orbital period computation
-- Adjustable time scaling (1x to 100x)
-- Two camera modes: Track and Free
-- Unity frontend for visualization and interaction
+The simulator supports runtime creation of satellites using standard Two-Line Elements (TLEs). **Both lines must be entered**, but **only Line 2 is used** to calculate orbital elements.
+
+### Example
+
+ISS (ZARYA):
+```
+1 25544U 98067A   25142.27988196  .00009799  00000+0  18159-3 0  9994
+2 25544  51.6357  75.4283 0002161 135.6229 224.4933 15.49660308511147
+```
+
+### Parsed Fields (Line 2)
+
+| Field                | Columns   | Purpose                      |
+|---------------------|-----------|------------------------------|
+| Inclination (°)      | 9–16      | Orbit plane tilt             |
+| RAAN (°)             | 18–25     | Ascending node longitude     |
+| Eccentricity         | 27–33     | Decimal assumed: `0.xxxxxx`  |
+| Argument of Perigee  | 35–42     | Periapsis angle              |
+| Mean Anomaly (°)     | 44–51     | Start position in orbit      |
+| Mean Motion (rev/day)| 53–63     | Used to derive semi-major axis |
+
+> Line 1 is required only for structural validity. Epoch, B*, and drag terms are ignored.
+
+---
+
+### Conversion Logic
+
+The parser follows this process:
+
+1. **Extract values** from Line 2 (RAAN, inclination, e, ω, M, n)
+2. **Convert mean motion to semi-major axis:**
+```
+a = (μ / (n * 2π / 86400)²)^(1/3)
+```
+
+3. **Solve Kepler’s Equation** to find eccentric anomaly (E)
+4. **Convert orbital elements to Cartesian** coordinates in orbital plane
+5. **Apply 3D transformation** using RAAN, i, and ω
+6. **Adjust for Unity’s coordinate system** (Y/Z swap)
+7. **Convert to sim units** (1 unit = 10 km)
 
 ---
 
@@ -185,7 +196,7 @@ Example structure:
 - Unity receives updated data and visualizes it  
 ```
 
-This setup reduces CPU load and avoids garbage collection overhead.
+This setup reduces CPU load.
 
 ---
 

@@ -20,6 +20,7 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 ## Capabilities & Features
 
 - Runtime placement of satellites with mass, radius, velocity, and direction
+- Add satellites at runtime via TLE input
 - Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)
 - Real-time orbital decay via atmospheric drag modeling
 - Continuously computes apogee, perigee, velocity, altitude, orbital period, inclination, eccentricity, semi-major axis, and RAAN
@@ -28,17 +29,6 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 - Dual camera modes (free roam and tracking)
 - Add satellites via TLE input
 
-### TLE Input Format
-
-Satellites can be added using standard Two-Line Element (TLE) sets. Both lines are required for input validation, but only **Line 2** is currently used for orbital propagation.
-
-Example: 
-ISS (Zarya)
-```
-1 25544U 98067A   25142.27988196  .00009799  00000+0  18159-3 0  9994
-2 25544  51.6357  75.4283 0002161 135.6229 224.4933 15.49660308511147
-```
-> Internally, the sim uses Line 2 values (inclination, RAAN, eccentricity, argument of perigee, mean anomaly, and mean motion) to derive the satellite's orbit. Epoch and drag terms are currently ignored.
 ---
 
 ## Purpose
