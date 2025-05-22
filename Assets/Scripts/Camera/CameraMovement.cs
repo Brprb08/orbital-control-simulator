@@ -160,6 +160,7 @@ public class CameraMovement : MonoBehaviour
     /// <param name="newTarget">The celestial body to track.</param>
     public void SetTargetBody(NBody newTarget)
     {
+
         targetBody = newTarget;
         targetPlaceholder = null;
 

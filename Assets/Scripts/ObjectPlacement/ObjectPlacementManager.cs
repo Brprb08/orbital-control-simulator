@@ -27,6 +27,13 @@ public class ObjectPlacementManager : MonoBehaviour
     public Button placeObjectButton;
     public TMP_InputField positionInput;
 
+    [Header("TLE Placement")]
+    public TMP_InputField tleNameInputField;
+    public TMP_InputField tleMassInputField;
+    public TMP_InputField tleLine1InputField;
+    public TMP_InputField tleLine2InputField;
+    public Button placeTLEObjectButton;
+
     [Header("Ghost Preview")]
     public GameObject ghostPreviewPrefab;
     private GameObject ghostInstance;
@@ -142,17 +149,18 @@ public class ObjectPlacementManager : MonoBehaviour
             velocityDragManager.placeholderMass = placeholderMass;
         }
 
-        CameraController camController = gravityManager.GetComponent<CameraController>();
-        if (camController != null)
-        {
-            camController.RefreshBodiesList();
-            camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
-            if (camController.IsFreeCamMode)
-            {
-                camController.ReturnToTracking();
-            }
-            camController.SetInEarthView(false);
-        }
+        SetupCameraTracking(lastPlacedGameObject);
+        // CameraController camController = gravityManager.GetComponent<CameraController>();
+        // if (camController != null)
+        // {
+        //     camController.RefreshBodiesList();
+        //     camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
+        //     if (camController.IsFreeCamMode)
+        //     {
+        //         camController.ReturnToTracking();
+        //     }
+        //     camController.SetInEarthView(false);
+        // }
 
         ClearAndUnfocusInputField(radiusInput);
         ClearAndUnfocusInputField(positionInput);
@@ -182,6 +190,64 @@ public class ObjectPlacementManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    public void PlaceObjectFromTLE()
+    {
+        if (!TLEParser.TryParseTLE(tleLine1InputField.text, tleLine2InputField.text, out Vector3 position, out Vector3 velocity))
+        {
+            feedbackText.text = "Invalid TLE input. Check formatting.";
+            return;
+        }
+
+        string name = !string.IsNullOrWhiteSpace(tleNameInputField.text) ? tleNameInputField.text : $"TLE Satellite {satelliteCount + 1}";
+        if (!ParsingUtils.TryParseMass(tleMassInputField.text, out float mass))
+        {
+            feedbackText.text = "Invalid mass. Enter a number between 500 and 1,000,000.";
+            return;
+        }
+
+        satelliteCount++;
+        lastPlacedGameObject = Instantiate(spherePrefab);
+        lastPlacedGameObject.name = name;
+        lastPlacedGameObject.tag = "Planet";
+        lastPlacedGameObject.transform.position = position;
+        lastPlacedGameObject.transform.localScale = Vector3.one * 1f;
+
+        objectIsPlaced = true;
+
+        // Apply velocity directly
+        if (velocityDragManager != null)
+        {
+            velocityDragManager.planet = lastPlacedGameObject;
+            velocityDragManager.placeholderMass = mass;
+        }
+
+        SetupCameraTracking(lastPlacedGameObject);
+        // CameraController camController = gravityManager.GetComponent<CameraController>();
+        // if (camController != null)
+        // {
+        //     camController.RefreshBodiesList();
+        //     camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
+        //     if (camController.IsFreeCamMode)
+        //     {
+        //         camController.ReturnToTracking();
+        //     }
+        //     camController.SetInEarthView(false);
+        // }
+
+        // Apply velocity directly
+        if (velocityDragManager != null)
+        {
+            velocityDragManager.planet = lastPlacedGameObject;
+            velocityDragManager.placeholderMass = mass;
+            velocityDragManager.ApplyVelocityToPlanet(velocity);
+        }
+
+        ClearAndUnfocusInputField(tleNameInputField);
+        ClearAndUnfocusInputField(tleMassInputField);
+        ClearAndUnfocusInputField(tleLine1InputField);
+        ClearAndUnfocusInputField(tleLine2InputField);
+    }
+
     /// <summary>
     /// Cancels the current placement process and removes the placeholder object.
     /// Also resets velocity UI and tracking camera.
@@ -201,6 +267,21 @@ public class ObjectPlacementManager : MonoBehaviour
         CameraController.Instance.UpdateTrajectoryRender(CameraController.Instance.currentIndex);
         CameraController.Instance.isTrackingPlaceholder = false;
         CameraController.Instance.ReturnToTracking();
+    }
+
+    private void SetupCameraTracking(GameObject target)
+    {
+        CameraController camController = CameraController.Instance;
+        if (camController != null)
+        {
+            camController.RefreshBodiesList();
+            camController.SetTargetPlaceholder(target.transform);
+            if (camController.IsFreeCamMode)
+            {
+                camController.ReturnToTracking();
+            }
+            camController.SetInEarthView(false);
+        }
     }
 
     /// <summary>

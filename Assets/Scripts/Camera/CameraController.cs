@@ -411,7 +411,6 @@ public class CameraController : MonoBehaviour
     public void SwitchToRealNBody(NBody realNBody)
     {
         if (realNBody == null) return;
-
         isTrackingPlaceholder = false;
         placeholderTarget = null;
         previousTrackedBody = realNBody;

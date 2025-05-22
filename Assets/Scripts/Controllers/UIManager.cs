@@ -24,6 +24,7 @@ public class UIManager : MonoBehaviour
     public GameObject feedbackPanel;
     public GameObject toggleOptionsPanel;
     public GameObject dropdown;
+    public GameObject placeTLEPanel;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -83,6 +84,7 @@ public class UIManager : MonoBehaviour
 
 
         ShowObjectPlacementPanel(false);
+        ShowPlaceTLEPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
@@ -115,6 +117,7 @@ public class UIManager : MonoBehaviour
         "- Click 'Place Satellite' to spawn.";
 
         ShowObjectPlacementPanel(true);
+        ShowPlaceTLEPanel(true);
         ShowPanel(false);
         SetButtonState(freeCamButton, true);
         SetButtonState(trackCamButton, false);
@@ -174,6 +177,7 @@ public class UIManager : MonoBehaviour
 
 
         ShowObjectPlacementPanel(false);
+        ShowPlaceTLEPanel(false);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
@@ -258,6 +262,7 @@ public class UIManager : MonoBehaviour
         if (!freeCamButton.interactable)
         {
             ShowObjectPlacementPanel(showObjectPlacementPanel);
+            ShowPlaceTLEPanel(true);
         }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
 
@@ -278,6 +283,11 @@ public class UIManager : MonoBehaviour
     private void ShowObjectPlacementPanel(bool show)
     {
         objectPlacementPanel.SetActive(show);
+    }
+
+    private void ShowPlaceTLEPanel(bool show)
+    {
+        placeTLEPanel.SetActive(show);
     }
 
     /// <summary>
