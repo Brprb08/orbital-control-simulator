@@ -204,6 +204,7 @@ This setup reduces CPU load.
 
 To ensure stability and correctness in utility logic, unit tests were implemented for:
 
+- `TLEParser`: Valid TLE length, valid parameters and numbers, and valid parsing to cartesian coordinates
 - `CameraCalculations`: Angle clamping, normalization, and orbital camera distance computations
 - `ParsingUtils`: Robust vector and mass parsing with support for error handling and validation
 - `OrbitalCalculations`: Apogee/Perigee calculations, eccentricity, raan, etc.
@@ -213,7 +214,7 @@ To ensure stability and correctness in utility logic, unit tests were implemente
 - Isolated via `EditModeTests.asmdef`
 - Runtime logic decoupled from Unity lifecycle methods for testability
 - Covers both valid inputs and invalid edge cases
-- Verified with Unity Test Runner (all 20+ tests passing)
+- Verified with Unity Test Runner (all 34 tests passing)
 
 > These tests are not for physics correctness (which is validated separately), but rather for supporting logic.
 
