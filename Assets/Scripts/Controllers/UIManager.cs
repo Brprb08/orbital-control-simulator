@@ -25,6 +25,7 @@ public class UIManager : MonoBehaviour
     public GameObject toggleOptionsPanel;
     public GameObject dropdown;
     public GameObject placeTLEPanel;
+    public GameObject placementSelectPanel;
 
     [Header("UI")]
     public TMP_InputField nameInputField;
@@ -32,6 +33,7 @@ public class UIManager : MonoBehaviour
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
+    public Button placementModeButton;
     public TMP_InputField velocityInputField;
     public TMP_Text earthCamButtonText;
     public TextMeshProUGUI instructionText;
@@ -47,6 +49,7 @@ public class UIManager : MonoBehaviour
     public bool showInstructionText = false;
     private bool isTracking = true;
     public bool earthCamPressed = true;
+    private bool inFreePlacementMode = true;
 
     private void Awake()
     {
@@ -90,6 +93,7 @@ public class UIManager : MonoBehaviour
         SetButtonState(trackCamButton, true);
         trackCamButton.Select();
         trackCamButton.interactable = false;
+        placementSelectPanel.SetActive(false);
 
         feedbackPanel.SetActive(showInstructionText);
         UpdateButtonText();
@@ -129,6 +133,7 @@ public class UIManager : MonoBehaviour
 
         freeCamButton.interactable = false;
         trackCamButton.interactable = true;
+        placementSelectPanel.SetActive(true);
 
         isTracking = false;
 
@@ -189,6 +194,7 @@ public class UIManager : MonoBehaviour
 
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;
+        placementSelectPanel.SetActive(false);
 
         isTracking = true;
 
@@ -287,7 +293,25 @@ public class UIManager : MonoBehaviour
 
     private void ShowPlaceTLEPanel(bool show)
     {
-        placeTLEPanel.SetActive(show);
+        if (!show)
+        {
+            placeTLEPanel.SetActive(show);
+            objectPlacementPanel.SetActive(show);
+        }
+        else
+        {
+            if (!inFreePlacementMode)
+            {
+                placeTLEPanel.SetActive(show);
+                objectPlacementPanel.SetActive(!show);
+            }
+            else
+            {
+                placeTLEPanel.SetActive(!show);
+                objectPlacementPanel.SetActive(show);
+            }
+        }
+
     }
 
     /// <summary>
@@ -326,6 +350,19 @@ public class UIManager : MonoBehaviour
         UpdateButtonText(); // Update the button text when toggling
         feedbackPanel.SetActive(showInstructionText);
         EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    public void SwitchPlacementMode()
+    {
+        inFreePlacementMode = !inFreePlacementMode;
+        TMP_Text placementModeButtonText = placementModeButton.GetComponentInChildren<TMP_Text>();
+
+        placementModeButtonText.text = inFreePlacementMode ? "Switch to TLE Input" : "Switch to Manual Input";
+        if (!isTracking)
+        {
+            ShowPlaceTLEPanel(true);
+        }
+
     }
 
     /// <summary>
