@@ -142,7 +142,7 @@ Full gravity/thrust formulations and integration details are available in [PHYSI
 
 ## TLE Parsing
 
-The simulator supports runtime creation of satellites using standard Two-Line Elements (TLEs). **Both lines must be entered**, but **only Line 2 is used** to calculate orbital elements.
+The sim supports runtime creation of satellites using standard Two-Line Element (TLE) sets. Both lines must be entered, but only Line 2 is parsed to extract orbital elements. These are then converted into position/velocity vectors and propagated using the simulation’s physics engine.
 
 ### Example
 
@@ -154,16 +154,16 @@ ISS (ZARYA):
 
 ### Parsed Fields (Line 2)
 
-| Field                | Columns   | Purpose                      |
-|---------------------|-----------|------------------------------|
-| Inclination (°)      | 9–16      | Orbit plane tilt             |
-| RAAN (°)             | 18–25     | Ascending node longitude     |
-| Eccentricity         | 27–33     | Decimal assumed: `0.xxxxxx`  |
-| Argument of Perigee  | 35–42     | Periapsis angle              |
-| Mean Anomaly (°)     | 44–51     | Start position in orbit      |
-| Mean Motion (rev/day)| 53–63     | Used to derive semi-major axis |
+| Field                 | Value        | Purpose                                |
+|----------------------|--------------|----------------------------------------|
+| Inclination (°)      | 51.6357      | Orbit plane tilt                       |
+| RAAN (°)             | 75.4283      | Longitude of ascending node            |
+| Eccentricity         | 0.0002161    | Orbit shape (0 = circular)             |
+| Argument of Perigee  | 135.6229     | Orientation of orbit’s closest point   |
+| Mean Anomaly (°)     | 224.4933     | Position in orbit at epoch             |
+| Mean Motion (rev/day)| 15.49660308  | Revolutions per day (orbital speed)    |
 
-> Line 1 is required only for structural validity. Epoch, B*, and drag terms are ignored.
+> Line 1 is included for structural compliance but ignored during parsing. Epoch and drag-related fields are currently not used. Epoch is intentionally excluded: while the sim does account for Earth’s rotation, it does not currently align satellite initialization to a specific UTC timestamp. The goal is to have accurate orbital geometry and motion without introducing unnecessary complexity. In most cases, visual behavior and orbital correctness are unaffected unless real-time Earth-relative positioning is required. However, I do plan to add this later on.
 
 ---
 
