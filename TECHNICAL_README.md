@@ -163,7 +163,7 @@ ISS (ZARYA):
 | Mean Anomaly (°)     | 224.4933     | Position in orbit at epoch             |
 | Mean Motion (rev/day)| 15.49660308  | Revolutions per day (orbital speed)    |
 
-> Line 1 is included for structural compliance but ignored during parsing. Epoch and drag-related fields are currently not used. Epoch is intentionally excluded: while the sim does account for Earth’s rotation, it does not currently align satellite initialization to a specific UTC timestamp. The goal is to have accurate orbital geometry and motion without introducing unnecessary complexity. In most cases, visual behavior and orbital correctness are unaffected unless real-time Earth-relative positioning is required. However, I do plan to add this later on.
+> Line 1 is included for validations but ignored during parsing. Epoch and drag-related fields are currently not used. Epoch is intentionally excluded: while the sim does account for Earth’s rotation, it does not currently align satellite initialization to a specific UTC timestamp. The goal is to have accurate orbital geometry and motion without introducing unnecessary complexity. In most cases, visual behavior and orbital correctness are unaffected unless real-time Earth-relative positioning is required. However, I do plan to add this later on.
 
 ---
 
