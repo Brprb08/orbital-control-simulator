@@ -13,7 +13,7 @@ All orbital motion is calculated externally in double-precision native code, no 
 
 ## Why I Built This
 
-I got interested in orbital mechanics after watching a few rocket launches and started digging into what happens after liftoff. I wanted a project that touched real-time code, game dev, physics, and low-level systems, so I built one to learn as I went. I don’t have an aerospace background, just a CS degree and a system that got interesting fast. This isn’t just visual, the goal was to simulate real orbital behavior.
+I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal was never just to visualize orbits, it was to understand and simulate them accurately.
 
 ---
 
