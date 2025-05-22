@@ -27,7 +27,6 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 - Time scaling from 1x to 100x for long-term simulations
 - GPU-rendered trajectory paths for smooth orbital visualization
 - Dual camera modes (free roam and tracking)
-- Add satellites via TLE input
 
 ---
 
