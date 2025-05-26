@@ -5,9 +5,9 @@ A real-time orbital mechanics sim built in Unity with a custom C++ physics backe
 **All orbital motion is calculated externally in double-precision native code, no Unity physics involved.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
-![Orbit Mechanics Simulator in Track Cam](./Assets/Images/04-17Track.png)
-![Elliptical Orbit](./Assets/Images/04-17SatelliteUpClose.png)
-![Free Cam](./Assets/Images/05-22Free.png)
+![Orbit Mechanics Simulator in Track Cam](./Assets/Images/05-26Track.png)
+![Elliptical Orbit](./Assets/Images/05-26SatelliteUpClose.png)
+![Free Cam](./Assets/Images/05-26Free.png)
 
 ---
 
@@ -27,6 +27,12 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 - Time scaling from 1x to 100x for long-term simulations
 - GPU-rendered trajectory paths for smooth orbital visualization
 - Dual camera modes (free roam and tracking)
+- Toggle between **Free Thrust** and early **Maneuver Node** system  
+- In Node mode:
+  - Select burn direction (prograde, retrograde, radial, normal, etc.)
+  - Setup a maneuver node and adjust its orbital position
+  - Auto-execute burns when the satellite reaches the node
+  - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)
 
 ---
 
