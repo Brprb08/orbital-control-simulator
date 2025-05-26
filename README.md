@@ -25,7 +25,7 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 - Real-time orbital decay via atmospheric drag modeling
 - Continuously computes apogee, perigee, velocity, altitude, orbital period, inclination, eccentricity, semi-major axis, and RAAN
 - Time scaling from 1x to 100x for long-term simulations
-- GPU-rendered trajectory paths for smooth orbital visualization
+- GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)
 - Dual camera modes (free roam and tracking)
 - Toggle between **Free Thrust** and early **Maneuver Node** system  
 - In Node mode:

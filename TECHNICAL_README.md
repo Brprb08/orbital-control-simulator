@@ -20,6 +20,7 @@ This document is for aerospace engineers, simulation devs, and technical reviewe
 - [TLE Parsing](#tle-parsing)
 - [Features](#features)
 - [Interop Architecture](#interop-architecture)
+- [Trajectory Prediction](#trajectory-prediction)
 - [Directory Layout](#directory-layout)
 - [How To Run It](#how-to-run-it)
 - [Planned Enhancements](#planned-enhancements)
@@ -198,6 +199,24 @@ Example structure:
 ```
 
 This setup reduces CPU load.
+
+---
+
+## Trajectory Prediction
+
+The simulator uses two separate systems for physics simulation and trajectory visualization:
+
+### 🔹 CPU Simulation – Dormand–Prince 5(4)
+All actual orbital motion is computed in double-precision via a custom C++ Dormand–Prince 5(4) integrator. This handles real-time position and velocity updates with thrust and drag.
+
+### 🔹 GPU Prediction – Runge-Kutta 4 (RK4)
+Trajectory prediction (for orbit previews and maneuver node planning) is computed using a GPU-based RK4 integrator. This runs asynchronously in float precision and does **not** affect live physics.
+
+> The GPU version is used solely for rendering future orbital paths in real time. This decouples rendering from simulation and allows smooth path visualization even at high time scales or under thrust.
+
+RK4 was chosen here for its performance and simplicity, while DOPRI5 remains the core of the simulation backend.
+
+
 
 ---
 
