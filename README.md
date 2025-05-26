@@ -2,7 +2,7 @@
 
 A real-time orbital mechanics sim built in Unity with a custom C++ physics backend. It models Newtonian orbital motion using a Dormand–Prince 5(4) integrator, supports live thrust, atmospheric drag, and visualizes full orbital paths with GPU-drawn trajectories.
 
-**All orbital motion is calculated externally in double-precision native code, no Unity physics involved.**
+**All orbital motion is handled externally using double-precision native code. Unity’s built-in physics system is not used.**
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/05-26Track.png)
@@ -13,7 +13,7 @@ A real-time orbital mechanics sim built in Unity with a custom C++ physics backe
 
 ## Why I Built This
 
-I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal was never just to visualize orbits, it was to understand and simulate them accurately.
+I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal wasn’t just to visualize orbits. It was to understand and simulate them as accurately as possible.
 
 ---
 
@@ -44,7 +44,7 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 - Implement numerical integration methods for stable, high-accuracy propagation
 - Handle real-world perturbation forces like drag
 - Work on interoperability between Unity and native C++ (via DLLs)
-- Optimize rendering and in a live physics environment
+- Optimize rendering in a live physics environment
 
 ---
 
@@ -62,7 +62,7 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 
 - Includes Editor Mode unit tests for utility logic
 - All tests written in C# using Unity Test Framework
-- 34/34 tests passing as of latest commit (TLE parsing, camera math, parsing, edge cases)
+- 34/34 tests passing as of latest commit (TLE parsing, camera math, edge cases)
 - Utility classes refactored for testability (static methods, no MonoBehaviours)
 
 ---

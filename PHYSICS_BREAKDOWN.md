@@ -2,7 +2,7 @@
 
 # Orbital Physics Breakdown
 
-This document outlines how the simulation models orbital mechanics, including gravity, integration, and thrust. The goal is accurate, real-time orbital behavior for short to mid-duration maneuvers using purely mathematical systems, no external physics engine.
+This document outlines how the simulation models orbital mechanics, including gravity, integration, and thrust. The goal is to simulate accurate, real-time orbital behavior for short to mid-duration maneuvers using direct numerical methods, without relying on any external physics engine.
 
 > **Note:** The simulation originally used RK4 (Runge-Kutta 4th Order), but has since transitioned to the Dormand–Prince 5(4) integrator (DOPRI5) for better error control and future support for adaptive stepping.
 
@@ -22,7 +22,7 @@ where:
 - $v$ = Satellite velocity relative to Earth’s rotating atmosphere
 - $A$ = Cross-sectional area of the spacecraft
 
-Atmospheric density decreases exponentially with altitude and is computed using a logarithmic interpolation of real atmospheric density data up to 500 km altitude. The Earth's rotation is accounted for to calculate accurate relative velocity, enhancing realism.
+Atmospheric density decreases exponentially with altitude and is computed using a logarithmic interpolation of real atmospheric density data up to 500 km altitude. The Earth’s rotation is included to compute relative velocity accurately, which improves drag modeling, especially at low altitudes.
 
 ---
 
@@ -30,7 +30,7 @@ Atmospheric density decreases exponentially with altitude and is computed using 
 
 The simulation previously used Runge-Kutta 4th Order (RK4) for motion integration. RK4 was selected for its simplicity and high local accuracy, especially during short-duration events like burns and transfers. However, it lacked support for adaptive time stepping and error estimation, which limited its scalability and precision over variable time scales.
 
-The new integrator is a fifth-order method with an embedded fourth-order estimate, often referred to as DOPRI5. This allows the simulation to maintain high accuracy while enabling future improvements like variable timesteps and GPU acceleration.
+The new integrator is a fifth-order Dormand–Prince method with an embedded fourth-order estimate. This enables high accuracy while supporting future features like variable timesteps and GPU acceleration.
 
 #### Why the switch from RK4?
 - RK4 offers good local accuracy but no built-in error control
@@ -97,7 +97,7 @@ Gravity follows Newton’s law:
 F = G * (m1 * m2) / r^2
 ```
 
-Each object computes gravitational acceleration based only on a central body (e.g., Earth).. A minimum `r` threshold is applied to avoid singularities and floating-point blowups.
+Each object computes gravitational acceleration based only on a central body (e.g., Earth). A minimum `r` threshold is applied to avoid singularities and floating-point blowups.
 
 Acceleration is fed into the integrator (now DOPRI5) for position and velocity updates.
 
@@ -117,7 +117,7 @@ Acceleration is calculated using:
 a = F / m
 ```
 
-Thrust does not consume fuel yet, it's unlimited during input. Object mass is configurable, and thrust scales accordingly.
+Thrust currently does not consume fuel. It is unlimited while input is active. Object mass is configurable, and thrust scales accordingly.
 
 ---
 

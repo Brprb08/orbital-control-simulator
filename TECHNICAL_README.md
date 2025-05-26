@@ -30,7 +30,7 @@ This document is for aerospace engineers, simulation devs, and technical reviewe
 
 ## Motivation
 
-This project started as an exploration into orbital mechanics after watching a few rocket launches. It evolved into a full technical sandbox for real-time, double-precision orbital dynamics using Unity and native C++.
+This project started as an exploration into orbital mechanics after watching a few rocket launches. It gradually turned into a way to simulate real orbital mechanics in real time, using Unity for rendering and C++ for the physics.
 
 ---
 
@@ -44,13 +44,13 @@ Key components:
 - **Thrust:** Instant/continuous vectors in standard orbital directions
 - **Rendering:** GPU-predicted trajectory lines
 - **TLE Support:** Users can initialize satellites using standard TLE format (see section [TLE Parsing](#tle-parsing))
-- **Maneuver Nodes (early):** Select from standard burn directions and place maneuver nodes along the orbit. Nodes auto-execute when reached. Burn is fixed (5s @ 1N). Slider-based node positioning is functional but approximate. Visuals show before/after trajectories on burn.
+- **Maneuver Nodes (early):** Select from standard burn directions and place maneuver nodes along the orbit. Nodes automatically execute when the satellite reaches their position in orbit. Burn is fixed (5s @ 1N). Slider-based node positioning is functional but approximate. Visuals show before/after trajectories on burn.
 
 ---
 
 ## Validation Results
 
-Accuracy was validated against both Keplerian predictions and long term orbital stability. Tests assume simplified Newtonian gravity (no drag, no J2, no higher-order perturbations). Initial development intentionally prioritized numerical accuracy in this idealized case before introducing additional perturbative forces like atmospheric drag, J2 oblateness, or solar pressure.
+Accuracy was validated against both Keplerian predictions and long term orbital stability. Tests assume simplified Newtonian gravity (no drag, no J2, no higher-order perturbations). Early development focused on numerical accuracy in this idealized case before introducing perturbative forces like drag, J2 oblateness, or solar pressure.
 
 ### Long-Term Orbital Stability (LEO, No Drag)
 
@@ -165,7 +165,7 @@ ISS (ZARYA):
 | Mean Anomaly (°)     | 224.4933     | Position in orbit at epoch             |
 | Mean Motion (rev/day)| 15.49660308  | Revolutions per day (orbital speed)    |
 
-> Line 1 is included for validations but ignored during parsing. Epoch and drag-related fields are currently not used. Epoch is intentionally excluded: while the sim does account for Earth’s rotation, it does not currently align satellite initialization to a specific UTC timestamp. The goal is to have accurate orbital geometry and motion without introducing unnecessary complexity. In most cases, visual behavior and orbital correctness are unaffected unless real-time Earth-relative positioning is required. However, I do plan to add this later on.
+> Line 1 is included for validation but ignored during parsing. The epoch and drag-related fields are currently unused. While the sim does account for Earth’s rotation, it does not align satellite initialization to a specific UTC timestamp. In most cases, orbital geometry and motion remain accurate without this. Earth-relative alignment will be added in a future version for more realism.
 
 ---
 
