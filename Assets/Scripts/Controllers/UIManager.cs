@@ -20,6 +20,8 @@ public class UIManager : MonoBehaviour
     public GameObject objectPlacementPanel;
     public GameObject objectInfoPanel;
     public GameObject thrustButtons;
+    public GameObject maneuverNodePanel;
+    public GameObject burnControlsPanel;
     public GameObject apogeePerigeePanel;
     public GameObject feedbackPanel;
     public GameObject toggleOptionsPanel;
@@ -34,6 +36,7 @@ public class UIManager : MonoBehaviour
     public TMP_InputField radiusInputField;
     public Button placeObjectButton;
     public Button placementModeButton;
+    public Button burnControlButton;
     public TMP_InputField velocityInputField;
     public TMP_Text earthCamButtonText;
     public TextMeshProUGUI instructionText;
@@ -50,6 +53,7 @@ public class UIManager : MonoBehaviour
     private bool isTracking = true;
     public bool earthCamPressed = true;
     private bool inFreePlacementMode = true;
+    private bool inFreeThrustMode = true;
 
     private void Awake()
     {
@@ -88,13 +92,14 @@ public class UIManager : MonoBehaviour
 
         ShowObjectPlacementPanel(false);
         ShowPlaceTLEPanel(false);
+        ShowManeuverNodes(true);
+        burnControlsPanel.SetActive(true);
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
         trackCamButton.Select();
         trackCamButton.interactable = false;
         placementSelectPanel.SetActive(false);
-
         feedbackPanel.SetActive(showInstructionText);
         UpdateButtonText();
     }
@@ -122,6 +127,9 @@ public class UIManager : MonoBehaviour
 
         ShowObjectPlacementPanel(true);
         ShowPlaceTLEPanel(true);
+        ShowManeuverNodes(false);
+        burnControlsPanel.SetActive(false);
+
         ShowPanel(false);
         SetButtonState(freeCamButton, true);
         SetButtonState(trackCamButton, false);
@@ -183,6 +191,9 @@ public class UIManager : MonoBehaviour
 
         ShowObjectPlacementPanel(false);
         ShowPlaceTLEPanel(false);
+        ShowManeuverNodes(true);
+        burnControlsPanel.SetActive(true);
+
         ShowPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
@@ -269,6 +280,7 @@ public class UIManager : MonoBehaviour
         {
             ShowObjectPlacementPanel(showObjectPlacementPanel);
             ShowPlaceTLEPanel(true);
+            ShowManeuverNodes(false);
         }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
 
@@ -309,6 +321,30 @@ public class UIManager : MonoBehaviour
             {
                 placeTLEPanel.SetActive(!show);
                 objectPlacementPanel.SetActive(show);
+            }
+        }
+
+    }
+
+    private void ShowManeuverNodes(bool show)
+    {
+        if (!show)
+        {
+            thrustButtons.SetActive(show);
+            maneuverNodePanel.SetActive(show);
+        }
+        else
+        {
+            // Show is always true here btw
+            if (!inFreeThrustMode)
+            {
+                thrustButtons.SetActive(!show);
+                maneuverNodePanel.SetActive(show);
+            }
+            else
+            {
+                thrustButtons.SetActive(show);
+                maneuverNodePanel.SetActive(!show);
             }
         }
 
@@ -361,6 +397,19 @@ public class UIManager : MonoBehaviour
         if (!isTracking)
         {
             ShowPlaceTLEPanel(true);
+        }
+
+    }
+
+    public void SwitchBurnMode()
+    {
+        inFreeThrustMode = !inFreeThrustMode;
+        TMP_Text burnControlsText = burnControlButton.GetComponentInChildren<TMP_Text>();
+
+        burnControlsText.text = inFreeThrustMode ? "Use Maneuver Nodes" : "Use Free Thrust";
+        if (isTracking)
+        {
+            ShowManeuverNodes(true);
         }
 
     }

@@ -157,9 +157,10 @@ public class ThrustController : MonoBehaviour
     /// <param name="magnitude">The magnitude of the thrust force.</param>
     /// <param name="thrustDirection">The direction in which the thrust is applied.</param>
     /// <param name="rampedThrustFactor">An optional scaling factor for ramping the thrust.</param>
-    private void ApplyThrust(NBody targetBody, float magnitude, Vector3 thrustDirection, float rampedThrustFactor = 1f)
+    public void ApplyThrust(NBody targetBody, float magnitude, Vector3 thrustDirection, float rampedThrustFactor = 1f)
     {
         if (targetBody == null) return;
+        // Debug.LogError(thrustDirection);
 
         Vector3 adjustedThrustDirection = thrustDirection.normalized;
 
@@ -201,6 +202,61 @@ public class ThrustController : MonoBehaviour
             thrustStopped = false;
         }
     }
+
+    /// <summary>
+    /// Turns on active thrust for particles and correct thrust direction. Used in NBody for nodes.
+    /// </summary>
+    /// <param name="burnDirection"></param>
+    public void SetDirectionalThrust(string burnDirection)
+    {
+        // Reset all first
+        isForwardThrustActive = false;
+        isReverseThrustActive = false;
+        isLeftThrustActive = false;
+        isRightThrustActive = false;
+        isRadialInThrustActive = false;
+        isRadialOutThrustActive = false;
+
+        switch (burnDirection)
+        {
+            case "Prograde":
+                isForwardThrustActive = true;
+                break;
+            case "Retrograde":
+                isReverseThrustActive = true;
+                break;
+            case "Radial In":
+                isRadialInThrustActive = true;
+                break;
+            case "Radial Out":
+                isRadialOutThrustActive = true;
+                break;
+            case "Normal":
+                isRightThrustActive = true;
+                break;
+            case "Anti-Normal":
+                isLeftThrustActive = true;
+                break;
+            default:
+                isForwardThrustActive = true;
+                Debug.LogWarning($"Unknown burn direction: {burnDirection}. Defaulting to Prograde.");
+                break;
+        }
+    }
+
+    /// <summary>
+    /// Turns off all active thrust flags.
+    /// </summary>
+    public void StopAllThrust()
+    {
+        isForwardThrustActive = false;
+        isReverseThrustActive = false;
+        isLeftThrustActive = false;
+        isRightThrustActive = false;
+        isRadialInThrustActive = false;
+        isRadialOutThrustActive = false;
+    }
+
 
     /// <summary>
     /// Calculates and returns the current total thrust impulse as a Vector3.

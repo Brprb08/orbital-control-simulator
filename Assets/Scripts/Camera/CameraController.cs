@@ -417,6 +417,7 @@ public class CameraController : MonoBehaviour
         inEarthViewCam = false;
         if (!UIManager.Instance.earthCamPressed)
         {
+            Debug.LogError("why the fuck are you here");
             UIManager.Instance.OnEarthCamPressed();
         }
         if (cameraMovement != null)

@@ -43,6 +43,7 @@ public class NBody : MonoBehaviour
     public OrbitalState state;
 
     private GravityManager gravityManager;
+    private ManeuverNodeManager maneuverNodeManager;
     private List<NBody> relevantBodies;
 
     /// <summary>
@@ -60,6 +61,13 @@ public class NBody : MonoBehaviour
         if (gravityManager == null)
         {
             Debug.LogError("[NBody]: GravityManager not found.");
+            return;
+        }
+
+        maneuverNodeManager = ManeuverNodeManager.Instance;
+        if (maneuverNodeManager == null)
+        {
+            Debug.LogError("[NBody]: ManeuverNodeManager not found.");
             return;
         }
 
@@ -109,9 +117,10 @@ public class NBody : MonoBehaviour
         }
         else
         {
+            CheckForNodeBurns();
+
             SimulateOrbitalMotion();
         }
-
         state.force = Vector3.zero;
     }
 
@@ -132,6 +141,80 @@ public class NBody : MonoBehaviour
     {
         transform.Rotate(Vector3.up, -EarthRotationRate * Time.fixedDeltaTime);
     }
+
+    /// <summary>
+    /// Iterates through all maneuver nodes and triggers thrust if a burn window is active.
+    /// Finalized nodes that have completed their burn are removed from execution.
+    /// </summary>
+    void CheckForNodeBurns()
+    {
+        if (isCentralBody || maneuverNodeManager == null)
+            return;
+
+        float simTime = gravityManager.simulationTime;
+        var toExecute = new List<ManeuverNode>();
+
+        foreach (var node in maneuverNodeManager.nodes)
+        {
+            if (ShouldSkipNode(node, this, simTime))
+                continue;
+
+            if (IsBurnOngoing(node, simTime))
+            {
+                ExecuteNodeBurn(node, this);
+            }
+            else
+            {
+                thrustController.StopAllThrust();
+                toExecute.Add(node); // burn complete
+            }
+        }
+
+        foreach (var node in toExecute)
+            maneuverNodeManager.RemoveNode(node);
+    }
+
+    /// <summary>
+    /// Determines if a maneuver node should be skipped based on its target, finalization status, or timing.
+    /// </summary>
+    /// <param name="node">The maneuver node being evaluated.</param>
+    /// <param name="body">The NBody this system is currently processing.</param>
+    /// <param name="simTime">The current simulation time.</param>
+    /// <returns>True if the node should be skipped; otherwise, false.</returns>
+
+    bool ShouldSkipNode(ManeuverNode node, NBody body, float simTime)
+    {
+        return node.targetBody != body || !node.isFinalized || simTime < node.burnTime;
+    }
+
+    /// <summary>
+    /// Checks if the current simulation time falls within the active burn window of the node.
+    /// </summary>
+    /// <param name="node">The maneuver node being evaluated.</param>
+    /// <param name="simTime">The current simulation time.</param>
+    /// <returns>True if the burn is still ongoing; otherwise, false.</returns>
+
+    bool IsBurnOngoing(ManeuverNode node, float simTime)
+    {
+        float timeSinceStart = simTime - node.burnTime;
+        return timeSinceStart < node.duration;
+    }
+
+    /// <summary>
+    /// Applies thrust in the correct direction for a maneuver node burn,
+    /// using the node’s assigned burn type and the associated thrust system.
+    /// </summary>
+    /// <param name="node">The active maneuver node.</param>
+    /// <param name="body">The NBody receiving thrust.</param>
+
+    void ExecuteNodeBurn(ManeuverNode node, NBody body)
+    {
+        Vector3 burnDirection = maneuverNodeManager.GetBurnDirectionFromDropdown(body);
+
+        thrustController.ApplyThrust(body, 10f, burnDirection);
+        thrustController.SetDirectionalThrust(node.burnType);
+    }
+
 
     /// <summary>
     /// Applies gravity using Dormand-Prince integration and updates position/velocity.
@@ -215,12 +298,14 @@ public class NBody : MonoBehaviour
     public void CalculatePredictedTrajectoryGPU_Async(
         int steps,
         float deltaTime,
-        Action<List<Vector3>> onComplete
+        Action<List<Vector3>> onComplete,
+        Vector3? overrideStartPosition = null,
+        Vector3? overrideStartVelocity = null
     )
     {
-        var otherBodies = GravityManager.Instance.Bodies.Where(b => b != this).ToList();
-        Vector3[] otherPositions = otherBodies.Select(b => b.transform.position).ToArray();
-        float[] otherMasses = otherBodies.Select(b => (float)b.mass).ToArray();
+        if (relevantBodies == null || relevantBodies.Count == 0) return;
+        Vector3[] otherPositions = relevantBodies.Select(b => b.transform.position).ToArray();
+        float[] otherMasses = relevantBodies.Select(b => (float)b.mass).ToArray();
 
         if (tcc == null && (tcc = TrajectoryComputeController.Instance) == null)
         {
@@ -230,8 +315,8 @@ public class NBody : MonoBehaviour
         }
 
         tcc.CalculateTrajectoryGPU_Async(
-            startPos: transform.position,
-            startVel: velocity,
+            startPos: overrideStartPosition ?? transform.position,
+            startVel: overrideStartVelocity ?? velocity,
             bodyMass: mass,
             otherBodyPositions: otherPositions,
             otherBodyMasses: otherMasses,
@@ -259,7 +344,17 @@ public class NBody : MonoBehaviour
     /// <param name="additionalForce">Force vector to apply.</param>
     public void AddForce(Vector3 additionalForce)
     {
+        // Debug.LogError(additionalForce);
         state.force += additionalForce;
+    }
+
+    public void ApplyDeltaV(Vector3 deltaV_kmPerSec)
+    {
+        // Convert to Unity units/s (1 km/s = 0.1 unit/s)
+        Vector3 deltaV_unitsPerSec = deltaV_kmPerSec * 0.1f;
+
+        velocity += deltaV_unitsPerSec;
+        state.velocity = velocity.ToDouble3();
     }
 
     /// <summary>

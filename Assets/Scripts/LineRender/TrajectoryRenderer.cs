@@ -25,7 +25,7 @@ public class TrajectoryRenderer : MonoBehaviour
     [SerializeField]
     public CameraMovement cameraMovement;
     private Camera mainCamera;
-    private NBody trackedBody;
+    public NBody trackedBody;
 
     private UIManager uIManager;
 
@@ -42,6 +42,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public ProceduralLineRenderer originProceduralLine;
     public ProceduralLineRenderer apogeeProceduralLine;
     public ProceduralLineRenderer perigeeProceduralLine;
+    public ProceduralLineRenderer preManeuverLine;
 
     [Header("Line Colors")]
     public string predictionLineColor = "#2978FF"; // Blue
@@ -52,8 +53,14 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private bool isComputingPrediction = false;
 
+    private bool savedOriginalOrbit = false;
+
     float nextTime = 0f;
     float interval = .5f;
+
+    public List<Vector3> latestPrediction = new List<Vector3>();
+    public float latestPredictionDeltaTime;
+    public float latestPredictionStartTime;
 
     /// <summary>
     /// Initializes trajectory line renderers and singleton references.
@@ -69,6 +76,7 @@ public class TrajectoryRenderer : MonoBehaviour
         originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
         apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
         perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
+        preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC"); // light grey for contrast
 
         cameraMovement = CameraMovement.Instance;
         thrustController = ThrustController.Instance;
@@ -83,6 +91,16 @@ public class TrajectoryRenderer : MonoBehaviour
         if (thrustController != null)
         {
             isThrusting = thrustController.IsThrusting;
+
+            if (isThrusting && !savedOriginalOrbit)
+            {
+                SaveCurrentTrajectoryAsOriginal();
+                savedOriginalOrbit = true;
+            }
+            else if (!isThrusting)
+            {
+                savedOriginalOrbit = false;
+            }
         }
     }
 
@@ -122,12 +140,27 @@ public class TrajectoryRenderer : MonoBehaviour
     /// <param name="body">The NBody to track.</param>
     public void SetTrackedBody(NBody body)
     {
+        ClearPreManeuverLine();
         trackedBody = body;
 
         if (trackedBody != null)
         {
             predictionCoroutine = StartCoroutine(RecomputeTrajectory());
         }
+    }
+
+    private void SaveCurrentTrajectoryAsOriginal()
+    {
+        trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
+        {
+            var clipped = ClipTrajectory(resultList.ToArray());
+            preManeuverLine.UpdateLine(clipped);
+        });
+    }
+
+    public void ClearPreManeuverLine()
+    {
+        preManeuverLine.Clear();
     }
 
     /// <summary>
@@ -148,6 +181,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 originProceduralLine.Clear();
                 apogeeProceduralLine.Clear();
                 perigeeProceduralLine.Clear();
+                preManeuverLine.Clear();
                 yield return new WaitForSeconds(0.1f);
                 continue;
             }
@@ -239,7 +273,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 predictionSteps = Mathf.Clamp(
                     Mathf.CeilToInt(orbitalParams.orbitalPeriod / predictionDeltaTime),
                     1,
-                    70000
+                    100000
                 );
             }
             else
@@ -256,6 +290,13 @@ public class TrajectoryRenderer : MonoBehaviour
             trackedBody.CalculatePredictedTrajectoryGPU_Async(predictionSteps, predictionDeltaTime, (resultList) =>
             {
                 var fullTrajectory = resultList.ToArray();
+                latestPrediction = new List<Vector3>(resultList);
+
+                float totalSimTime = predictionSteps * predictionDeltaTime;
+                float actualDeltaTime = totalSimTime / latestPrediction.Count;
+
+                latestPredictionDeltaTime = actualDeltaTime;
+                latestPredictionStartTime = GravityManager.Instance.simulationTime;
 
                 var clippedPoints = ClipTrajectory(fullTrajectory);
 
@@ -349,6 +390,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 originProceduralLine.SetVisibility(false);
                 apogeeProceduralLine.SetVisibility(false);
                 perigeeProceduralLine.SetVisibility(false);
+                preManeuverLine.SetVisibility(false);
             }
             else
             {
@@ -356,6 +398,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 originProceduralLine.SetVisibility(true);
                 apogeeProceduralLine.SetVisibility(true);
                 perigeeProceduralLine.SetVisibility(true);
+                preManeuverLine.SetVisibility(true);
             }
         }
     }

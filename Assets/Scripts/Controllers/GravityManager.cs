@@ -24,6 +24,8 @@ public class GravityManager : MonoBehaviour
     private CameraController cameraController;
     private LineVisibilityManager lineVisibilityManager;
 
+    public float simulationTime = 0f;
+
     /// <summary>
     /// Initializes the singleton instance of the GravityManager.
     /// </summary>
@@ -69,6 +71,11 @@ public class GravityManager : MonoBehaviour
             Application.Quit();
 #endif
         }
+    }
+
+    void FixedUpdate()
+    {
+        simulationTime += Time.fixedDeltaTime;
     }
 
     /// <summary>
