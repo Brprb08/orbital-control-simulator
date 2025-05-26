@@ -44,7 +44,7 @@ Key components:
 - **Thrust:** Instant/continuous vectors in standard orbital directions
 - **Rendering:** GPU-predicted trajectory lines
 - **TLE Support:** Users can initialize satellites using standard TLE format (see section [TLE Parsing](#tle-parsing))
-- **Maneuver Nodes (early):** Select from standard burn directions and place maneuver nodes along the orbit. Nodes automatically execute when the satellite reaches their position in orbit. Burn is fixed (5s @ 1N). Slider-based node positioning is functional but approximate. Visuals show before/after trajectories on burn.
+- **Maneuver Nodes (early):** Select from standard burn directions and place maneuver nodes along the orbit. Nodes automatically execute when the satellite reaches the specified point in its orbit. Each burn currently applies a fixed impulse: 5 seconds at 1 newton. Slider-based node positioning is functional but approximate. Visuals show before/after trajectories on burn.
 
 ---
 
@@ -314,7 +314,7 @@ Controls:
 - Enhanced performance and scaling via Barnes-Hut algorithm for increased object counts
 - Trajectory preview before burn while moving maneuver node
 - Delta-v targeting and fuel budgeting
-- Better burn direction control and variable thrust duration
+- Improved burn direction control and support for variable thrust duration
 
 ---
 
