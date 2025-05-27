@@ -7,13 +7,21 @@ using TMPro;
 public class ManeuverNodeManager : MonoBehaviour
 {
     public static ManeuverNodeManager Instance { get; private set; }
+
+    [Header("Maneuver Nodes")]
     public List<ManeuverNode> nodes = new();
+    public List<Vector3> cachedTrajectory;
+
+    [Header("Trajectory Rendering")]
     public ProceduralLineRenderer maneuverTrajectoryLine;
     public TrajectoryRenderer trajectoryRenderer;
-    public List<Vector3> cachedTrajectory;
+
+    [Header("References - UI")]
     public Slider maneuverTimeSlider;
-    public bool isSliderActive = false;
     public TMP_Dropdown burnDropdown;
+
+    [Header("UI Controls")]
+    public bool isSliderActive = false;
 
     private void Awake()
     {

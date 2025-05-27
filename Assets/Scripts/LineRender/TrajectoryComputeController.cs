@@ -12,10 +12,10 @@ public class TrajectoryComputeController : MonoBehaviour
 {
     public static TrajectoryComputeController Instance { get; private set; }
 
-
-    [Header("Compute Shader/Buffers")]
+    [Header("Compute Shader")]
     public ComputeShader trajectoryComputeShader;
 
+    [Header("Compute Buffers")]
     private ComputeBuffer initialPositionBuffer;
     private ComputeBuffer initialVelocityBuffer;
     private ComputeBuffer massBuffer;

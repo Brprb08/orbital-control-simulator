@@ -11,20 +11,21 @@ public class GravityManager : MonoBehaviour
 {
     public static GravityManager Instance { get; private set; }
 
+    [Header("References - Scripts")]
     public NBody CentralBody { get; private set; }
-
-    private List<NBody> bodies = new List<NBody>();
-
-    public float minCollisionDistance = 0.5f;
-
-    public List<NBody> Bodies => bodies;
-
-    public TMP_Dropdown bodyDropdown;
-
     private CameraController cameraController;
     private LineVisibilityManager lineVisibilityManager;
 
+    [Header("Body Tracking")]
+    private List<NBody> bodies = new List<NBody>();
+    public List<NBody> Bodies => bodies;
+
+    [Header("Simulation Settings")]
     public float simulationTime = 0f;
+    public float minCollisionDistance = 0.5f;
+
+    [Header("References - UI")]
+    public TMP_Dropdown bodyDropdown;
 
     /// <summary>
     /// Initializes the singleton instance of the GravityManager.

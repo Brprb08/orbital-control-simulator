@@ -14,19 +14,23 @@ public class NBody : MonoBehaviour
     [Header("Celestial Body Properties")]
     public Vector3 velocity = new Vector3(0, 0, 20);
     public float mass = 5.0e21f;
-    public bool isCentralBody = false;
+    public double trueMass = 5.0e21;
     public float radius = EarthRadiusKm;
     public float cameraDistanceRadius = 637f;
-    public double trueMass = 5.0e21;
+    public bool isCentralBody = false;
+    public OrbitalState state;
 
     [Header("Trajectory Prediction Settings")]
-    public float predictionDeltaTime = .5f;
+    public float predictionDeltaTime = 0.5f;
 
-    [Header("Thrust Feedback")]
+    [Header("References - Scripts")]
+    private TrajectoryComputeController tcc;
+    private GravityManager gravityManager;
+    private ManeuverNodeManager maneuverNodeManager;
     private ThrustController thrustController;
 
-    [Header("References")]
-    private TrajectoryComputeController tcc;
+    [Header("References - Relevant Bodies")]
+    private List<NBody> relevantBodies;
 
     [Header("Atmosphere & Drag")]
     [Tooltip("Sea-level density (kg/km³)")]
@@ -39,12 +43,6 @@ public class NBody : MonoBehaviour
     [Header("Constants")]
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
     private const float EarthRadiusKm = 637.8137f;
-
-    public OrbitalState state;
-
-    private GravityManager gravityManager;
-    private ManeuverNodeManager maneuverNodeManager;
-    private List<NBody> relevantBodies;
 
     /// <summary>
     /// Initializes trajectory data and sets the body to static if it's the central body.

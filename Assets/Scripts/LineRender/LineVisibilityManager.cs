@@ -8,6 +8,8 @@ using System.Collections.Generic;
 public class LineVisibilityManager : MonoBehaviour
 {
     public static LineVisibilityManager Instance { get; private set; }
+
+    [Header("References - UI")]
     private NBody trackedBody;
     public TrajectoryRenderer centralTrajectoryRenderer;
 

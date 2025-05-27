@@ -14,17 +14,21 @@ public class CameraController : MonoBehaviour
 
     public static CameraController Instance { get; private set; }
 
-    [Header("References")]
+    [Header("References - UI")]
     public CameraMovement cameraMovement;
     public Transform cameraPivotTransform;
     public Transform cameraTransform;
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
+
+    [Header("References - Scripts")]
     private LineVisibilityManager lineVisibilityManager;
     private GravityManager gravityManager;
     private BodyDropdownManager bodyDropdownManager;
+    public TrajectoryRenderer trajectoryRenderer;
+    public NBody previousTrackedBody;
 
-    [Header("Settings")]
+    [Header("Camera Settings")]
     public float sensitivity = 100f;
 
     [Header("Tracking State")]
@@ -32,13 +36,11 @@ public class CameraController : MonoBehaviour
     public List<NBody> Bodies => bodies;
     public int currentIndex = 0;
     private bool isFreeCamMode = false;
-    private Vector3 defaultLocalPosition;
     private bool isSwitchingToFreeCam = false;
-    private Transform placeholderTarget;
     public bool isTrackingPlaceholder = false;
-    public TrajectoryRenderer trajectoryRenderer;
     public bool inEarthViewCam = false;
-    public NBody previousTrackedBody;
+    private Vector3 defaultLocalPosition;
+    private Transform placeholderTarget;
 
     /// <summary>
     /// Used by object placement manager to ensure camera is in FreeCam mode when placing.
@@ -69,15 +71,16 @@ public class CameraController : MonoBehaviour
     /// </summary>
     void Start()
     {
-        if (cameraTransform != null)
-        {
-            defaultLocalPosition = cameraTransform.localPosition;
-        }
 
-        if (gravityManager == null)
-        {
-            gravityManager = GravityManager.Instance;
-        }
+        defaultLocalPosition = cameraTransform.localPosition;
+
+        gravityManager = GravityManager.Instance;
+        lineVisibilityManager = LineVisibilityManager.Instance;
+        bodyDropdownManager = BodyDropdownManager.Instance;
+
+        if (gravityManager == null) Debug.LogError("GravityManager instance is not set.");
+        if (lineVisibilityManager == null) Debug.LogError("LineVisibilityManager instance is not set.");
+        if (bodyDropdownManager == null) Debug.LogError("BodyDropdownManager instance is not set.");
 
         bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
@@ -92,24 +95,6 @@ public class CameraController : MonoBehaviour
             trajectoryRenderer.apogeeText = this.apogeeText;
             trajectoryRenderer.perigeeText = this.perigeeText;
             trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
-        }
-
-        lineVisibilityManager = LineVisibilityManager.Instance;
-        if (lineVisibilityManager == null)
-        {
-            Debug.LogError("LineVisibilityManager instance is not set.");
-        }
-
-        gravityManager = GravityManager.Instance;
-        if (gravityManager == null)
-        {
-            Debug.LogError("LineVisibilityManager instance is not set.");
-        }
-
-        bodyDropdownManager = BodyDropdownManager.Instance;
-        if (bodyDropdownManager == null)
-        {
-            Debug.LogError("LineVisibilityManager instance is not set.");
         }
     }
 
@@ -329,7 +314,6 @@ public class CameraController : MonoBehaviour
         }
         else
         {
-            Debug.LogError(previousTrackedBody);
             cameraMovement.SetTargetEarth(previousTrackedBody);
             inEarthViewCam = false;
         }
@@ -417,7 +401,6 @@ public class CameraController : MonoBehaviour
         inEarthViewCam = false;
         if (!UIManager.Instance.earthCamPressed)
         {
-            Debug.LogError("why the fuck are you here");
             UIManager.Instance.OnEarthCamPressed();
         }
         if (cameraMovement != null)

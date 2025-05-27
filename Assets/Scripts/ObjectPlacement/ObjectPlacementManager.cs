@@ -12,20 +12,22 @@ public class ObjectPlacementManager : MonoBehaviour
 {
     public static ObjectPlacementManager Instance { get; private set; }
 
-    [Header("References")]
+    [Header("References - Core")]
     public Camera mainCamera;
     public GameObject spherePrefab; // Placeholder GameObject without NBody script
     public GravityManager gravityManager;
-    public TMP_InputField radiusInput;
-    public TMP_InputField objectNameInputField;
-    public TMP_InputField massInput;
-    public TextMeshProUGUI feedbackText;
     public VelocityDragManager velocityDragManager;
+
+    [Header("References - UI")]
+    public TMP_InputField objectNameInputField;
     public TMP_InputField nameInputField;
+    public TMP_InputField massInput;
     public TMP_InputField massInputField;
+    public TMP_InputField radiusInput;
     public TMP_InputField radiusInputField;
-    public Button placeObjectButton;
     public TMP_InputField positionInput;
+    public TextMeshProUGUI feedbackText;
+    public Button placeObjectButton;
 
     [Header("TLE Placement")]
     public TMP_InputField tleNameInputField;

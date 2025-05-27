@@ -29,15 +29,19 @@ public class UIManager : MonoBehaviour
     public GameObject placeTLEPanel;
     public GameObject placementSelectPanel;
 
-    [Header("UI")]
+    [Header("UI - Input Fields")]
     public TMP_InputField nameInputField;
     public TMP_InputField positionInputField;
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
+    public TMP_InputField velocityInputField;
+
+    [Header("UI - Buttons")]
     public Button placeObjectButton;
     public Button placementModeButton;
     public Button burnControlButton;
-    public TMP_InputField velocityInputField;
+
+    [Header("UI - Text Displays")]
     public TMP_Text earthCamButtonText;
     public TextMeshProUGUI instructionText;
     public TextMeshProUGUI apogeeText;

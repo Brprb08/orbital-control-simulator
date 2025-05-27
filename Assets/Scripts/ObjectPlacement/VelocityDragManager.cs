@@ -10,20 +10,24 @@ using System.Collections;
 /// </summary>
 public class VelocityDragManager : MonoBehaviour
 {
-    [Header("References")]
+    [Header("References - Components")]
     public Camera mainCamera;
     public LineRenderer dragLineRenderer;
+    public GravityManager gravityManager;
+    public TrajectoryRenderer trajectoryRenderer;
+
+    [Header("References - UI")]
     public TMP_InputField velocityDisplayText;
     public Slider velocitySpeedSlider;
     public Button setVelocityButton;
-    public GravityManager gravityManager;
-    public TrajectoryRenderer trajectoryRenderer;
+    public Slider speedSlider;
+
+    [Header("References - Scripts")]
     private ObjectPlacementManager objectPlacementManager;
     private UIManager uIManager;
-    private GameObject dragSphereObject;
 
-    [Header("UI Elements")]
-    public Slider speedSlider;
+    [Header("References - Internal Objects")]
+    private GameObject dragSphereObject;
 
     [Header("Planet to Apply Velocity To")]
     public GameObject planet;
@@ -32,16 +36,18 @@ public class VelocityDragManager : MonoBehaviour
     [Header("Mass Handling")]
     public float placeholderMass;
 
-    [Header("Dragging Elements")]
+    [Header("Dragging State")]
     private bool isDragging = false;
     private bool isVelocitySet = false;
     private Vector3 dragStartPos;
     private Vector3 currentVelocity;
-    private SphereCollider dragSphereCollider;
     private Vector3 dragDirection = Vector3.zero;
     private float sliderSpeed = 0f;
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
+
+    private SphereCollider dragSphereCollider;
+
 
     /// <summary>
     /// Initializes the drag manager and sets up required components and UI bindings.

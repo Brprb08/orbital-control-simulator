@@ -6,12 +6,11 @@ public class BodyDropdownManager : MonoBehaviour
 {
     public static BodyDropdownManager Instance { get; private set; }
 
-    [Header("UI References")]
+    [Header("References - UI")]
     public TMP_Dropdown bodyDropdown;
 
-    [Header("Scene References")]
+    [Header("References - Scripts")]
     public CameraController cameraController;
-
     public TrajectoryRenderer trajectoryRenderer;
 
     void Awake()

@@ -18,16 +18,16 @@ public class TrajectoryRenderer : MonoBehaviour
     public bool orbitIsDirty = true;
     private bool isThrusting = false;
 
-    [Header("References")]
+    [Header("References - UI & Scripts")]
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
-    [SerializeField]
-    public CameraMovement cameraMovement;
+    [SerializeField] public CameraMovement cameraMovement;
+    private UIManager uIManager;
+
+    [Header("References - Camera & Body")]
     private Camera mainCamera;
     public NBody trackedBody;
-
-    private UIManager uIManager;
 
     [Header("Line Display Flags")]
     private bool showPredictionLines;
@@ -51,13 +51,15 @@ public class TrajectoryRenderer : MonoBehaviour
     public string perigeeLineColor = "#009B4D";    // Green
     private float lineDisableDistance = 20f;
 
+    [Header("Prediction State")]
     private bool isComputingPrediction = false;
-
     private bool savedOriginalOrbit = false;
 
+    [Header("Prediction Timing")]
     float nextTime = 0f;
-    float interval = .5f;
+    float interval = 0.5f;
 
+    [Header("Prediction Output")]
     public List<Vector3> latestPrediction = new List<Vector3>();
     public float latestPredictionDeltaTime;
     public float latestPredictionStartTime;

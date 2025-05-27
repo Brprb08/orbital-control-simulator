@@ -17,32 +17,29 @@ public class CameraMovement : MonoBehaviour
     public NBody targetBody;
     public Transform targetPlaceholder;
 
-    [Header("Camera Settings")]
+    [Header("Camera Distance + Zoom")]
     public float distance = 100f;
     public float height = 30f;
     public float baseZoomSpeed = 40f;
     public float maxCameraDistance = 50000f;
     private float minCameraDistance = 0.1f;
-
-    // Placeholders are used when placing a body before it becomes an NBody
     private float placeholderBodyRadius = 0f;
-    private Camera mainCamera;
+
+    [Header("Camera State")]
     public bool inEarthCam = false;
     public NBody tempEarthBody;
+    private Camera mainCamera;
 
-
-    [Header("UI References")]
+    [Header("References - UI")]
     public TextMeshProUGUI velocityText;
     public TextMeshProUGUI altitudeText;
     public TextMeshProUGUI trackingObjectNameText;
+    private GameObject dropdownList;
 
     [Header("Constants")]
     private const float EarthCamMinDistance = 750f;
     private const float EarthCamDefaultDistance = 2000f;
     private const float PlaceholderMaxCameraDistance = 800f;
-
-    public TMP_Dropdown dropdown;
-    private GameObject dropdownList;
 
     /// <summary>
     /// Sets up the singleton instance for camera control.

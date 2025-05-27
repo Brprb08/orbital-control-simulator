@@ -7,8 +7,10 @@ public class FreeCamera : MonoBehaviour
     public float movementSpeed = 1000f;
     public float rotationSensitivity = 120f;
 
+    [Header("Free Camera State")]
     private bool isFreeMode = false;
 
+    [Header("Camera Rotation")]
     private float yaw = 0f;
     private float pitch = 0f;
 

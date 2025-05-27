@@ -991,7 +991,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 0
+  m_IsActive: 1
 --- !u!135 &73661010
 SphereCollider:
   m_ObjectHideFlags: 0
@@ -3705,7 +3705,6 @@ Transform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 73661013}
-  - {fileID: 8726035017084424461}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &330585543
@@ -8682,7 +8681,6 @@ MonoBehaviour:
   velocityText: {fileID: 1094166147}
   altitudeText: {fileID: 793169699}
   trackingObjectNameText: {fileID: 1300459248}
-  dropdown: {fileID: 0}
 --- !u!1 &828116620
 GameObject:
   m_ObjectHideFlags: 0
@@ -15991,11 +15989,11 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainCamera: {fileID: 330585545}
   dragLineRenderer: {fileID: 1744725512}
+  gravityManager: {fileID: 1586431850}
+  trajectoryRenderer: {fileID: 0}
   velocityDisplayText: {fileID: 151038885}
   velocitySpeedSlider: {fileID: 42808061}
   setVelocityButton: {fileID: 1461049984}
-  gravityManager: {fileID: 1586431850}
-  trajectoryRenderer: {fileID: 0}
   speedSlider: {fileID: 42808061}
   planet: {fileID: 0}
   sphereRadiusMultiplier: 10
@@ -17881,10 +17879,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0, z: 0.30775}
   mass: 500
-  isCentralBody: 0
+  trueMass: 500
   radius: 1
   cameraDistanceRadius: 1
-  trueMass: 500
+  isCentralBody: 0
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -18747,10 +18745,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0.6009, z: 0.47627}
   mass: 120000
-  isCentralBody: 0
+  trueMass: 420000
   radius: 0.002
   cameraDistanceRadius: 0.5
-  trueMass: 420000
+  isCentralBody: 0
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -19876,9 +19874,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 0531bfd4ab6827449b9a3120e00a19cb, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  simulationTime: 0
   minCollisionDistance: 0.5
   bodyDropdown: {fileID: 1744299771}
-  simulationTime: 0
 --- !u!114 &1586431851
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19896,13 +19894,13 @@ MonoBehaviour:
   cameraTransform: {fileID: 330585546}
   apogeeText: {fileID: 1715665085}
   perigeeText: {fileID: 288121592}
+  trajectoryRenderer: {fileID: 0}
+  previousTrackedBody: {fileID: 0}
   sensitivity: 100
   bodies: []
   currentIndex: 0
   isTrackingPlaceholder: 0
-  trajectoryRenderer: {fileID: 0}
   inEarthViewCam: 0
-  previousTrackedBody: {fileID: 0}
 --- !u!114 &1586431852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19918,16 +19916,16 @@ MonoBehaviour:
   mainCamera: {fileID: 330585545}
   spherePrefab: {fileID: 8138528938423591098, guid: 739c2da935a11ac43a6ee56e5cef1dbb, type: 3}
   gravityManager: {fileID: 1586431850}
-  radiusInput: {fileID: 770696344}
-  objectNameInputField: {fileID: 861192241}
-  massInput: {fileID: 916841083}
-  feedbackText: {fileID: 885149437}
   velocityDragManager: {fileID: 1119227881}
+  objectNameInputField: {fileID: 861192241}
   nameInputField: {fileID: 861192241}
+  massInput: {fileID: 916841083}
   massInputField: {fileID: 916841083}
+  radiusInput: {fileID: 770696344}
   radiusInputField: {fileID: 770696344}
-  placeObjectButton: {fileID: 229281974}
   positionInput: {fileID: 1784521142}
+  feedbackText: {fileID: 885149437}
+  placeObjectButton: {fileID: 229281974}
   tleNameInputField: {fileID: 687411727}
   tleMassInputField: {fileID: 2004575630}
   tleLine1InputField: {fileID: 706326777}
@@ -19965,10 +19963,10 @@ MonoBehaviour:
   positionInputField: {fileID: 1784521142}
   massInputField: {fileID: 916841083}
   radiusInputField: {fileID: 770696344}
+  velocityInputField: {fileID: 0}
   placeObjectButton: {fileID: 229281974}
   placementModeButton: {fileID: 1746140638}
   burnControlButton: {fileID: 844738191}
-  velocityInputField: {fileID: 0}
   earthCamButtonText: {fileID: 26694654}
   instructionText: {fileID: 1138443355}
   apogeeText: {fileID: 1715665085}
@@ -20058,12 +20056,12 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20071fad0500f634987422dda57b02d3, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  cachedTrajectory: []
   maneuverTrajectoryLine: {fileID: 0}
   trajectoryRenderer: {fileID: 0}
-  cachedTrajectory: []
   maneuverTimeSlider: {fileID: 1250303462}
-  isSliderActive: 0
   burnDropdown: {fileID: 279922321}
+  isSliderActive: 0
 --- !u!1 &1590649024
 GameObject:
   m_ObjectHideFlags: 0
@@ -20113,10 +20111,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: -0.779, y: 0, z: 0}
   mass: 100001
-  isCentralBody: 0
+  trueMass: 420000
   radius: 0.002
   cameraDistanceRadius: 0.5
-  trueMass: 420000
+  isCentralBody: 0
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -20720,10 +20718,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: -0.1018, y: 0.0091, z: 0}
   mass: 7.348e+22
-  isCentralBody: 0
+  trueMass: 7.348e+22
   radius: 86.85
   cameraDistanceRadius: 637
-  trueMass: 7.348e+22
+  isCentralBody: 0
   predictionDeltaTime: 0.12
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -22897,10 +22895,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0, z: 0.7508329}
   mass: 100001
-  isCentralBody: 0
+  trueMass: 100001
   radius: 0.002
   cameraDistanceRadius: 1
-  trueMass: 100001
+  isCentralBody: 0
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -25016,10 +25014,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0.629, z: 0}
   mass: 1000
-  isCentralBody: 0
+  trueMass: 1000
   radius: 0.6
   cameraDistanceRadius: 0.6
-  trueMass: 1000
+  isCentralBody: 0
   predictionDeltaTime: 0
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -25391,10 +25389,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0, z: 0}
   mass: 5.972168e+24
-  isCentralBody: 1
+  trueMass: 5.972168e+24
   radius: 637.81
   cameraDistanceRadius: 637.81
-  trueMass: 5.972168e+24
+  isCentralBody: 1
   predictionDeltaTime: 0.1
   atmosphericDensity0: 1.225e+9
   atmosphericScaleHeight: 8.5
@@ -25506,105 +25504,6 @@ LineRenderer:
   m_UseWorldSpace: 1
   m_Loop: 0
   m_ApplyActiveColorSpace: 1
---- !u!33 &5671933024395124392
-MeshFilter:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8237868980356746167}
-  m_Mesh: {fileID: 4711208715938537054, guid: efbe31cf830f07e48a4f053d6b24b6ff, type: 3}
---- !u!23 &7589187975929408098
-MeshRenderer:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8237868980356746167}
-  m_Enabled: 1
-  m_CastShadows: 1
-  m_ReceiveShadows: 1
-  m_DynamicOccludee: 1
-  m_StaticShadowCaster: 0
-  m_MotionVectors: 1
-  m_LightProbeUsage: 1
-  m_ReflectionProbeUsage: 1
-  m_RayTracingMode: 2
-  m_RayTraceProcedural: 0
-  m_RayTracingAccelStructBuildFlagsOverride: 0
-  m_RayTracingAccelStructBuildFlags: 1
-  m_SmallMeshCulling: 1
-  m_RenderingLayerMask: 1
-  m_RendererPriority: 0
-  m_Materials:
-  - {fileID: 2100000, guid: c6fb99cb89fabd84bafefcaaec349ab1, type: 2}
-  m_StaticBatchInfo:
-    firstSubMesh: 0
-    subMeshCount: 0
-  m_StaticBatchRoot: {fileID: 0}
-  m_ProbeAnchor: {fileID: 0}
-  m_LightProbeVolumeOverride: {fileID: 0}
-  m_ScaleInLightmap: 1
-  m_ReceiveGI: 1
-  m_PreserveUVs: 0
-  m_IgnoreNormalsForChartDetection: 0
-  m_ImportantGI: 0
-  m_StitchLightmapSeams: 1
-  m_SelectedEditorRenderState: 3
-  m_MinimumChartSize: 4
-  m_AutoUVMaxDistance: 0.5
-  m_AutoUVMaxAngle: 89
-  m_LightmapParameters: {fileID: 0}
-  m_SortingLayerID: 0
-  m_SortingLayer: 0
-  m_SortingOrder: 0
-  m_AdditionalVertexStreams: {fileID: 0}
---- !u!1 &8237868980356746167
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 8726035017084424461}
-  - component: {fileID: 5671933024395124392}
-  - component: {fileID: 7589187975929408098}
-  - component: {fileID: 8726035017084424462}
-  m_Layer: 0
-  m_Name: Clouds
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &8726035017084424461
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8237868980356746167}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1295.62, y: 1295.62, z: 1295.62}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 329075557}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &8726035017084424462
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 8237868980356746167}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9ad06f40149a4fa459a0da6c81b2b415, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -9,6 +9,7 @@ using System;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralLineRenderer : MonoBehaviour
 {
+    [Header("Mesh Settings")]
     private Mesh lineMesh;
     private MeshFilter meshFilter;
     private MeshRenderer meshRenderer;
@@ -17,7 +18,6 @@ public class ProceduralLineRenderer : MonoBehaviour
     public float lineWidth = 0.5f;
 
     private Vector3[] lastDrawnPoints;
-
     public bool HasPoints => lastDrawnPoints != null && lastDrawnPoints.Length > 1;
 
     /// <summary>

@@ -9,13 +9,19 @@ using UnityEngine.EventSystems;
 /// </summary>
 public class TimeController : MonoBehaviour
 {
+    [Header("References - UI")]
     public Slider timeSlider;
     public TextMeshProUGUI timeScaleText;
     public Button pauseButton;
     public TextMeshProUGUI pauseButtonText;
+
+    [Header("References - Scripts")]
     public UIManager uIManager;
+
+    [Header("Pause State")]
     private bool isPaused = false;
-    private float previousTimeScale = 1.0f; // Store the previous time scale before pausing.
+    private float previousTimeScale = 1.0f; // Stores the previous time scale before pausing
+
 
 
     /// <summary>

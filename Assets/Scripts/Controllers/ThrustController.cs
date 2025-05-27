@@ -25,6 +25,7 @@ public class ThrustController : MonoBehaviour
     [Header("Visual Feedback")]
     public ParticleSystem thrustParticles;
 
+    [Header("Thrust Flags")]
     public bool isForwardThrustActive = false;
     public bool isReverseThrustActive = false;
     public bool isLeftThrustActive = false;
@@ -32,12 +33,12 @@ public class ThrustController : MonoBehaviour
     public bool isRadialInThrustActive = false;
     public bool isRadialOutThrustActive = false;
 
-    [Header("References")]
+    [Header("References - Scripts")]
     public CameraController cameraController;
     public TrajectoryRenderer trajectoryRenderer;
 
+    [Header("Thrust Configs")]
     private float thrustFactor = 1f;
-
     private bool thrustStopped = false;
 
     /// <summary>
