@@ -9,7 +9,7 @@ This document outlines how the simulation models orbital mechanics, including gr
 ---
 
 ## Table of Contents
-- [Integration Method: Dormand–Prince 5(4)](#integration-method-dormand–prince-54)
+- [Integration Method: Dormand–Prince 5(4)](#integration-method-dormandprince-54)
 - [Numerics & Physics Details](#numerics--physics-details)
 - [Units and Reference Frames](#units-and-reference-frames)
 - [Atmospheric Drag Model](#atmospheric-drag-model)

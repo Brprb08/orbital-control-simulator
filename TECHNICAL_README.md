@@ -71,10 +71,11 @@ Accuracy was validated against both Keplerian predictions and long term orbital 
 ## Physics Summary
 
 Full gravity/thrust formulations and integration details are available in [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md). Key modeling elements:
-
-- Newtonian gravity (multi-body)
-- Thrust-based accelerations (impulse and continuous)
-- Dormand–Prince 5(4) integrator (double precision)
+- Full Dormand–Prince 5(4) integrator breakdown with frame-by-frame flow
+- Detailed numeric precision strategy (double vs float handling)
+- Scaled Earth-Centered Inertial (ECI) reference frame and unit system
+- Atmospheric drag model using real density interpolation
+- Newtonian gravity and thrust formulations with edge-case protections
 
 ---
 
