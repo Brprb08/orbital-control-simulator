@@ -15,23 +15,23 @@ Built in Unity but driven by a custom double-precision C++ backend, it handles m
 I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal wasn’t just to visualize orbits. It was to understand and simulate them as accurately as possible.
 
 ---
+## Capabilities & Features  
+*All functionality operates live in runtime — no reloads or pre-processing.*
 
-## Capabilities & Features
-
-- Runtime placement of satellites with mass, radius, velocity, and direction
-- Add satellites at runtime via TLE input
-- Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)
-- Real-time orbital decay via atmospheric drag modeling
-- Continuously computes apogee, perigee, velocity, altitude, orbital period, inclination, eccentricity, semi-major axis, and RAAN
-- Time scaling from 1x to 100x for long-term simulations
-- GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)
-- Dual camera modes (free roam and tracking)
-- Toggle between **Free Thrust** and early **Maneuver Node** system  
-- In Node mode:
-  - Select burn direction (prograde, retrograde, radial, normal, etc.)
-  - Setup a maneuver node and adjust its orbital position
-  - Auto-execute burns when the satellite reaches the node
-  - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)
+1. Live computation of orbital parameters including apogee, perigee, velocity, altitude, period, inclination, eccentricity, semi-major axis, and RAAN
+2. Real-time orbital decay via atmospheric drag modeling  
+3. Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)  
+4. Toggle between Free Thrust and early Maneuver Node system  
+5. In Node mode:  
+   - Select burn direction (prograde, retrograde, radial, normal, etc.)  
+   - Setup a maneuver node and adjust its orbital position  
+   - Auto-execute burns when the satellite reaches the node  
+   - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)  
+6. GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)  
+7. Runtime placement of satellites with mass, radius, velocity, and direction  
+8. Add satellites at runtime via TLE input  
+9. Time scaling from 1x to 100x for long-term simulations  
+10. Dual camera modes (free roam and tracking)
 
 ---
 
