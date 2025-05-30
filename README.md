@@ -16,8 +16,7 @@ I got interested in orbital mechanics after watching a few rocket launches and s
 
 ---
 ## Capabilities & Features  
-*All functionality operates live in runtime — no reloads or pre-processing.*
-
+*All functionality is live in runtime.*
 1. Live computation of orbital parameters including apogee, perigee, velocity, altitude, period, inclination, eccentricity, semi-major axis, and RAAN
 2. Real-time orbital decay via atmospheric drag modeling  
 3. Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)  
