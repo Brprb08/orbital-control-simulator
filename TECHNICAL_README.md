@@ -14,17 +14,16 @@ This document is for aerospace engineers, simulation devs, and technical reviewe
 
 - [Motivation](#motivation)
 - [Simulation Core](#simulation-core)
-- [Numerics & Physics Details](#numerics--physics-details)
 - [Validation Results](#validation-results)
 - [Physics Summary](#physics-summary)
 - [TLE Parsing](#tle-parsing)
-- [Features](#features)
 - [Interop Architecture](#interop-architecture)
 - [Trajectory Prediction](#trajectory-prediction)
-- [Directory Layout](#directory-layout)
-- [How To Run It](#how-to-run-it)
+- [Unit Testing Details](#unit-testing-details)
 - [Planned Enhancements](#planned-enhancements)
 - [Limitations](#limitations)
+- [Directory Layout](#directory-layout)
+- [How To Run It](#how-to-run-it)
 
 ---
 
@@ -69,69 +68,6 @@ Accuracy was validated against both Keplerian predictions and long term orbital 
 
 ---
 
-## Numerics & Physics Details
-
-### Precision Strategy
-
-The sim uses different numeric precisions depending on where the data is flowing and what level of accuracy is required.
-
-| Quantity                     | Type     | Reason                                                            |
-|-----------------------------|----------|----------------------------------------------------------------------|
-| Orbital State (true pos/vel) | double3  | Prevents drift in long simulations, used for integration accuracy    |
-| Unity Transform             | float    | Unity uses float natively, conversion applied for visualization      |
-| GPU Trajectory Prediction   | float    | Optimized for performance, used for visual prediction only           |
-| Integrator Internals        | double   | Dormand–Prince operates fully in double precision for stability      |
-
-Different float types are intentional. The sim integrates in high precision, then converts to float for rendering or Unity interop. This avoids precision loss over long durations without impacting performance where it’s not critical.
-
-### Integration Settings
-
-- Step Size: Fixed
-- Max Δt per substep: `0.002s`
-- Time slicing based on Unity's `fixedDeltaTime`
-
-No adaptive error controls are enabled yet, but the integrator code supports embedded 4th-order error estimation. This is a planned change.
-
-### Edge-Case Handling
-
-Several numerical protections are in place to prevent simulation blowups or instability.
-
-- Division by zero guards (1e-20)
-- Max force cap: `1e8 N`
-- NaN checks each frame
-- Earth collision = immediate removal
-- Min mass cutoff = `1e-6 kg`
-
---- 
-
-## Units and Reference Frames
-
-The simulator assumes a consistent unit system and reference frame throughout.
-
-| Dimension | Unit             | Reference Frame        |
-|----------|------------------|------------------------|
-| Length   | Kilometers (km)  | Earth-Centered Inertial (ECI) |
-| Velocity | Kilometers/second (km/s) | ECI                        |
-| Time     | Seconds (s)      | Unity time (scaled)    |
-| Mass     | Kilograms (kg)   | Body mass (used in thrust and gravity) |
-
-### Core Physical Constants and Body Parameters
-
-These are the key physical constants and simulation parameters used in the orbital model. The simulation operates in a scaled unit system where **1 unit = 10 km**, and all internal physics calculations are performed in double precision.
-
-| Parameter                   | Symbol        | Value              | Units (Sim / Real)    | Description                                                  |
-|----------------------------|---------------|--------------------|------------------------|--------------------------------------------------------------|
-| Gravitational Constant     | G             | ~6.674e-23         | units³·kg⁻¹·s⁻²        | Scaled for sim units (1 unit = 10 km); matches Newton’s law |
-| Earth Mass                 | Mₑ            | 5.972e24           | kg                     | Real Earth mass                                              |
-| Earth Radius               | Rₑ            | 637.8137 units (≈6378 km)                   | Used for collision detection and reference altitude          |
-| Atmosphere Top             | —             | 50 units           | ~500 km                | Above this altitude, atmospheric drag is assumed negligible |
-| Satellite Mass Range       | m_sat         | 500 – 500,000       | kg                     | Typical user-set mass for satellites                         |
-| Satellite Radius Range     | r_sat         | 0.0001 – 0.1        | units (1m – 1 km)      | Used to compute cross-sectional area                        |
-| Drag Coefficient           | C_d           | 2.2                 | unitless               | Standard default for bodies like satellites           |
-| Cross-sectional Area       | A             | π·r² (derived)      | units²                 | Used in drag computation: A = πr²                            |
-
----
-
 ## Physics Summary
 
 Full gravity/thrust formulations and integration details are available in [PHYSICS_BREAKDOWN.md](./PHYSICS_BREAKDOWN.md). Key modeling elements:
@@ -166,8 +102,6 @@ ISS (ZARYA):
 | Mean Motion (rev/day)| 15.49660308  | Revolutions per day (orbital speed)    |
 
 > Line 1 is included for validation but ignored during parsing. The epoch and drag-related fields are currently unused. While the sim does account for Earth’s rotation, it does not align satellite initialization to a specific UTC timestamp. In most cases, orbital geometry and motion remain accurate without this. Earth-relative alignment will be added in a future version for more realism.
-
----
 
 ### Conversion Logic
 
@@ -216,8 +150,6 @@ Trajectory prediction (for orbit previews and maneuver node planning) is compute
 
 RK4 was chosen here for its performance and simplicity, while DOPRI5 remains the core of the simulation backend.
 
-
-
 ---
 
 ## Unit Testing Details
@@ -237,6 +169,24 @@ To ensure stability and correctness in utility logic, unit tests were implemente
 - Verified with Unity Test Runner (all 34 tests passing)
 
 > These tests are not for physics correctness (which is validated separately), but rather for supporting logic.
+
+---
+
+## Planned Enhancements
+
+- Additional perturbation forces including J2 oblateness and solar radiation pressure.
+- Enhanced performance and scaling via Barnes-Hut algorithm for increased object counts
+- Trajectory preview before burn while moving maneuver node
+- Delta-v targeting and fuel budgeting
+- Improved burn direction control and support for variable thrust duration
+
+---
+
+## Limitations
+
+- Earth is fixed; no back-reaction from satellite mass
+- No relativistic corrections
+- Simplified collision handling (objects removed on collision without detailed physical interaction).
 
 ---
 
@@ -305,24 +255,6 @@ Controls:
 - Arrow keys: Apply thrust (prograde/retrograde/etc.)  
 - R: Reset time scaling  
 ```
-
----
-
-## Planned Enhancements
-
-- Additional perturbation forces including J2 oblateness and solar radiation pressure.
-- Enhanced performance and scaling via Barnes-Hut algorithm for increased object counts
-- Trajectory preview before burn while moving maneuver node
-- Delta-v targeting and fuel budgeting
-- Improved burn direction control and support for variable thrust duration
-
----
-
-## Limitations
-
-- Earth is fixed; no back-reaction from satellite mass
-- No relativistic corrections
-- Simplified collision handling (objects removed on collision without detailed physical interaction).
 
 ---
 

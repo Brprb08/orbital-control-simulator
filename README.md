@@ -1,8 +1,7 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics sim built in Unity with a custom C++ physics backend. It models Newtonian orbital motion using a Dormand–Prince 5(4) integrator. The simulation supports live thrust, atmospheric drag, and visualizes full orbital paths with GPU-drawn trajectories.
-
-**All orbital motion is handled externally using double-precision native code. Unity’s built-in physics system is not used.**
+Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn't a display tool, it's a physics-based simulation using a native integrator and GPU-predicted trajectories to model real-world orbital mechanics with precision.
+Built in Unity but driven by a custom double-precision C++ backend, it handles maneuver nodes, atmospheric drag, and orbital propagation entirely outside Unity’s physics system. The built-in Unity physics engine is not used in this simulation.
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/05-27Track.png)
