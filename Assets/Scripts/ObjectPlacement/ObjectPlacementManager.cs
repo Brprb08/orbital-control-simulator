@@ -10,12 +10,11 @@ using UnityEngine.UI;
 /// </summary>
 public class ObjectPlacementManager : MonoBehaviour
 {
-    public static ObjectPlacementManager Instance { get; private set; }
-
     [Header("References - Core")]
     public Camera mainCamera;
     public GameObject spherePrefab; // Placeholder GameObject without NBody script
     public GravityManager gravityManager;
+    public CameraController cameraController;
     public VelocityDragManager velocityDragManager;
 
     [Header("References - UI")]
@@ -46,18 +45,13 @@ public class ObjectPlacementManager : MonoBehaviour
     private int satelliteCount = 0;
     private bool objectIsPlaced = false;
 
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
+    private SimContext ctx;
 
-    private void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+        this.cameraController = ctx.CameraController;
+
         positionInput.onValueChanged.AddListener(OnPositionInputChanged);
 
         if (ghostPreviewPrefab != null)
@@ -266,23 +260,23 @@ public class ObjectPlacementManager : MonoBehaviour
 
         velocityDragManager.dragLineRenderer.positionCount = 0;
 
-        CameraController.Instance.UpdateTrajectoryRender(CameraController.Instance.currentIndex);
-        CameraController.Instance.isTrackingPlaceholder = false;
-        CameraController.Instance.ReturnToTracking();
+        cameraController.UpdateTrajectoryRender(cameraController.currentIndex);
+        cameraController.isTrackingPlaceholder = false;
+        cameraController.ReturnToTracking();
     }
 
     private void SetupCameraTracking(GameObject target)
     {
-        CameraController camController = CameraController.Instance;
-        if (camController != null)
+        // CameraController camController = CameraController.Instance;
+        if (cameraController != null)
         {
-            camController.RefreshBodiesList();
-            camController.SetTargetPlaceholder(target.transform);
-            if (camController.IsFreeCamMode)
+            cameraController.RefreshBodiesList();
+            cameraController.SetTargetPlaceholder(target.transform);
+            if (cameraController.IsFreeCamMode)
             {
-                camController.ReturnToTracking();
+                cameraController.ReturnToTracking();
             }
-            camController.SetInEarthView(false);
+            cameraController.SetInEarthView(false);
         }
     }
 
@@ -356,7 +350,7 @@ public class ObjectPlacementManager : MonoBehaviour
         }
         else
         {
-            CameraController.Instance.ReturnToTracking();
+            cameraController.ReturnToTracking();
         }
         isInPlacementMode = false;
     }

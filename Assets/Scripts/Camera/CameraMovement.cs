@@ -11,8 +11,6 @@ using System.Collections.Generic;
 /// </summary>
 public class CameraMovement : MonoBehaviour
 {
-    public static CameraMovement Instance { get; private set; }
-
     [Header("Tracking Target")]
     public NBody targetBody;
     public Transform targetPlaceholder;
@@ -41,24 +39,11 @@ public class CameraMovement : MonoBehaviour
     private const float EarthCamDefaultDistance = 2000f;
     private const float PlaceholderMaxCameraDistance = 800f;
 
-    /// <summary>
-    /// Sets up the singleton instance for camera control.
-    /// </summary>
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
+    private SimContext ctx;
 
-    /// <summary>
-    /// Initializes the main camera reference.
-    /// </summary>
-    void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
         mainCamera = GetComponentInChildren<Camera>();
     }
 

@@ -11,11 +11,7 @@ using TMPro;
 /// </summary>
 public class CameraController : MonoBehaviour
 {
-
-    public static CameraController Instance { get; private set; }
-
     [Header("References - UI")]
-    public CameraMovement cameraMovement;
     public Transform cameraPivotTransform;
     public Transform cameraTransform;
     public TextMeshProUGUI apogeeText;
@@ -42,6 +38,10 @@ public class CameraController : MonoBehaviour
     private Vector3 defaultLocalPosition;
     private Transform placeholderTarget;
 
+    public CameraMovement cameraMovement;
+    public UIManager uIManager;
+    private SimContext ctx;
+
     /// <summary>
     /// Used by object placement manager to ensure camera is in FreeCam mode when placing.
     /// </summary>
@@ -55,46 +55,25 @@ public class CameraController : MonoBehaviour
         }
     }
 
-    private void Awake()
+    public void Initialize(SimContext ctx)
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    /// <summary>
-    /// Initializes the camera's default position and starts tracking the first celestial body.
-    /// Initializes the trajectory renderer and UI text fields.
-    /// </summary>
-    void Start()
-    {
-
-        defaultLocalPosition = cameraTransform.localPosition;
-
-        gravityManager = GravityManager.Instance;
-        lineVisibilityManager = LineVisibilityManager.Instance;
-        bodyDropdownManager = BodyDropdownManager.Instance;
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.lineVisibilityManager = ctx.LineVisibilityManager;
+        this.bodyDropdownManager = ctx.BodyDropdownManager;
+        this.uIManager = ctx.UIManager;
+        this.trajectoryRenderer = ctx.TrajectoryRenderer;
 
         if (gravityManager == null) Debug.LogError("GravityManager instance is not set.");
         if (lineVisibilityManager == null) Debug.LogError("LineVisibilityManager instance is not set.");
         if (bodyDropdownManager == null) Debug.LogError("BodyDropdownManager instance is not set.");
 
+        defaultLocalPosition = cameraTransform.localPosition;
+
         bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
         if (bodies.Count > 0 && cameraMovement != null)
         {
             StartCoroutine(InitializeCamera());
-        }
-
-        if (trajectoryRenderer == null)
-        {
-            GameObject trajectoryObj = new GameObject($"{gameObject.name}_TrajectoryRenderer");
-            trajectoryRenderer = trajectoryObj.AddComponent<TrajectoryRenderer>();
-            trajectoryRenderer.apogeeText = this.apogeeText;
-            trajectoryRenderer.perigeeText = this.perigeeText;
-            trajectoryRenderer.SetTrackedBody(bodies[currentIndex]);
         }
     }
 
@@ -399,9 +378,9 @@ public class CameraController : MonoBehaviour
         placeholderTarget = null;
         previousTrackedBody = realNBody;
         inEarthViewCam = false;
-        if (!UIManager.Instance.earthCamPressed)
+        if (!uIManager.earthCamPressed)
         {
-            UIManager.Instance.OnEarthCamPressed();
+            uIManager.OnEarthCamPressed();
         }
         if (cameraMovement != null)
         {

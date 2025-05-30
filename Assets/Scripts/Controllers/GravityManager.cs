@@ -9,12 +9,11 @@ using System.Linq;
 /// </summary>
 public class GravityManager : MonoBehaviour
 {
-    public static GravityManager Instance { get; private set; }
-
     [Header("References - Scripts")]
     public NBody CentralBody { get; private set; }
     private CameraController cameraController;
     private LineVisibilityManager lineVisibilityManager;
+    private SimContext ctx;
 
     [Header("Body Tracking")]
     private List<NBody> bodies = new List<NBody>();
@@ -28,38 +27,19 @@ public class GravityManager : MonoBehaviour
     public TMP_Dropdown bodyDropdown;
 
     /// <summary>
-    /// Initializes the singleton instance of the GravityManager.
+    /// Called by SimulationBootstrap once all public refs are set.
     /// </summary>
-    void Awake()
+    public void Initialize(SimContext ctx)
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-
+        this.ctx = ctx;
+        this.lineVisibilityManager = ctx.LineVisibilityManager;
         bodyDropdown.ClearOptions();
-    }
-
-    /// <summary>
-    /// Registers all existing NBody objects in the scene on startup.
-    /// </summary>
-    void Start()
-    {
-        NBody[] allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
+        var allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
         foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody))
-        {
             RegisterBody(body);
-        }
 
-        cameraController = CameraController.Instance;
-        if (cameraController == null)
-        {
-            Debug.LogError("CameraController instance is not set.");
-        }
+        if (ctx.CameraController == null)
+            Debug.LogError("GravityManager: CameraController missing from context!");
     }
 
     void Update()
@@ -95,11 +75,6 @@ public class GravityManager : MonoBehaviour
                 bodyDropdown.options.Add(new TMP_Dropdown.OptionData(body.name));
                 bodyDropdown.RefreshShownValue();
             }
-        }
-
-        if (lineVisibilityManager == null)
-        {
-            lineVisibilityManager = LineVisibilityManager.Instance;
         }
 
         if (lineVisibilityManager != null)

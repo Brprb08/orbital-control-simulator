@@ -23,6 +23,14 @@ public class ToggleButton : MonoBehaviour
     [Header("Line Type")]
     public LineVisibilityManager.LineType lineType;
 
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
+    {
+        this.ctx = ctx;
+        this.manager = ctx.LineVisibilityManager;
+    }
+
     void Awake()
     {
         button = GetComponent<Button>();
@@ -49,7 +57,7 @@ public class ToggleButton : MonoBehaviour
             inactiveColor = Color.white;
         }
 
-        manager = LineVisibilityManager.Instance;
+        // manager = LineVisibilityManager.Instance;
         if (manager == null)
         {
             GameObject gravityManager = GameObject.Find("GameController"); // Ensure name matches in the hierarchy
@@ -58,11 +66,6 @@ public class ToggleButton : MonoBehaviour
 
             if (manager == null)
                 Debug.LogError("ToggleButton: No LineVisibilityManager found in the scene.");
-        }
-
-        if (manager == null)
-        {
-            Debug.LogError("ToggleButton: No LineVisibilityManager instance found in the scene.");
         }
 
         UpdateButtonColor();
@@ -79,7 +82,8 @@ public class ToggleButton : MonoBehaviour
         }
         else
         {
-            isOn = true;  // Default to on state if manager is missing
+            Debug.LogError("ToggleButton: manager is null during Initialize");
+            isOn = true;
         }
 
         UpdateButtonColor();

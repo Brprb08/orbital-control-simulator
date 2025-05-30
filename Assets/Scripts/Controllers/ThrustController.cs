@@ -13,8 +13,6 @@ using UnityEngine.EventSystems;
 /// </summary>
 public class ThrustController : MonoBehaviour
 {
-    public static ThrustController Instance { get; private set; }
-
     [Header("Thrust Settings")]
     public float maxForwardThrustMagnitude = 10f;
     public float maxReverseThrustMagnitude = 10f;
@@ -36,10 +34,13 @@ public class ThrustController : MonoBehaviour
     [Header("References - Scripts")]
     public CameraController cameraController;
     public TrajectoryRenderer trajectoryRenderer;
+    public GravityManager gravityManager;
 
     [Header("Thrust Configs")]
     private float thrustFactor = 1f;
     private bool thrustStopped = false;
+
+    private SimContext ctx;
 
     /// <summary>
     /// Returns true if any thrust is currently active.
@@ -57,30 +58,12 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    private void Awake()
+    public void Initialize(SimContext ctx)
     {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
-
-    /// <summary>
-    /// Finds camera and particle references if not assigned.
-    /// Starts particle effects and prepares thrust components.
-    /// </summary>
-    void Start()
-    {
-        if (cameraController == null)
-        {
-            cameraController = GravityManager.Instance.GetComponent<CameraController>();
-            if (cameraController == null)
-            {
-                Debug.LogError("ThrustController: CameraController reference not set and not found on GravityManager.");
-            }
-        }
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.cameraController = ctx.CameraController;
+        this.trajectoryRenderer = ctx.TrajectoryRenderer;
 
         if (thrustParticles == null)
         {
@@ -172,7 +155,6 @@ public class ThrustController : MonoBehaviour
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
 
-        trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         trajectoryRenderer.orbitIsDirty = true;
     }
 

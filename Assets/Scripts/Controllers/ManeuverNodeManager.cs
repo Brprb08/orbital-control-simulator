@@ -6,8 +6,6 @@ using TMPro;
 
 public class ManeuverNodeManager : MonoBehaviour
 {
-    public static ManeuverNodeManager Instance { get; private set; }
-
     [Header("Maneuver Nodes")]
     public List<ManeuverNode> nodes = new();
     public List<Vector3> cachedTrajectory;
@@ -23,25 +21,16 @@ public class ManeuverNodeManager : MonoBehaviour
     [Header("UI Controls")]
     public bool isSliderActive = false;
 
-    private void Awake()
+    public GravityManager gravityManager;
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
     {
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.trajectoryRenderer = ctx.TrajectoryRenderer;
 
         burnDropdown.ClearOptions();
-    }
-
-    /// <summary>
-    /// Initializes the maneuver node system, sets up trajectory references,
-    /// and populates the burn direction dropdown with standard maneuver options.
-    /// </summary>
-    private void Start()
-    {
-        if (trajectoryRenderer == null)
-        {
-            trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
-        }
-
         List<string> burnOptions = new List<string>
         {
             "Prograde",
@@ -65,7 +54,7 @@ public class ManeuverNodeManager : MonoBehaviour
     /// </summary>
     public void OnAddManeuverNode()
     {
-        TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
+        // TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         var body = trajectoryRenderer.trackedBody;
         if (body == null) return;
 
@@ -76,7 +65,7 @@ public class ManeuverNodeManager : MonoBehaviour
         }
 
         float initialOffsetTime = 20f;
-        float burnTime = GravityManager.Instance.simulationTime + initialOffsetTime;
+        float burnTime = gravityManager.simulationTime + initialOffsetTime;
         float deltaT = trajectoryRenderer.latestPredictionDeltaTime;
 
         float timeFromPredictionStart = burnTime - trajectoryRenderer.latestPredictionStartTime;
@@ -121,9 +110,9 @@ public class ManeuverNodeManager : MonoBehaviour
         isSliderActive = false;
 
         // Wrap burn time if it's in the past
-        float simTime = GravityManager.Instance.simulationTime;
+        float simTime = gravityManager.simulationTime;
         var trackedBody = trajectoryRenderer.trackedBody;
-        var centralBody = GravityManager.Instance.CentralBody;
+        var centralBody = gravityManager.CentralBody;
 
         // Use your orbital parameter calculation
         OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(

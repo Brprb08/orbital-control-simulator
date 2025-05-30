@@ -28,6 +28,7 @@ public class NBody : MonoBehaviour
     private GravityManager gravityManager;
     private ManeuverNodeManager maneuverNodeManager;
     private ThrustController thrustController;
+    private LineVisibilityManager lineVisibilityManager;
 
     [Header("References - Relevant Bodies")]
     private List<NBody> relevantBodies;
@@ -44,6 +45,18 @@ public class NBody : MonoBehaviour
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
     private const float EarthRadiusKm = 637.8137f;
 
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
+    {
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.maneuverNodeManager = ctx.ManeuverNodeManager;
+        this.lineVisibilityManager = ctx.LineVisibilityManager;
+        this.tcc = ctx.TrajectoryComputeController;
+        this.thrustController = ctx.ThrustController;
+    }
+
     /// <summary>
     /// Initializes trajectory data and sets the body to static if it's the central body.
     /// </summary>
@@ -53,26 +66,6 @@ public class NBody : MonoBehaviour
         {
             velocity = Vector3.zero;
             Debug.Log($"[NBODY]: {gameObject.name} is the central body and will not move.");
-        }
-
-        gravityManager = GravityManager.Instance;
-        if (gravityManager == null)
-        {
-            Debug.LogError("[NBody]: GravityManager not found.");
-            return;
-        }
-
-        maneuverNodeManager = ManeuverNodeManager.Instance;
-        if (maneuverNodeManager == null)
-        {
-            Debug.LogError("[NBody]: ManeuverNodeManager not found.");
-            return;
-        }
-
-        thrustController = gravityManager.GetComponent<ThrustController>();
-        if (thrustController == null)
-        {
-            Debug.LogError("[NBody]: ThrustController not found on GravityManager.");
         }
 
         Debug.Log($"[NBODY]: {gameObject.name} Start Pos: {transform.position}, Vel: {velocity}");
@@ -281,9 +274,9 @@ public class NBody : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        if (LineVisibilityManager.Instance != null)
+        if (lineVisibilityManager != null)
         {
-            LineVisibilityManager.Instance.DeregisterNBody(this);
+            lineVisibilityManager.DeregisterNBody(this);
         }
     }
 
@@ -305,7 +298,7 @@ public class NBody : MonoBehaviour
         Vector3[] otherPositions = relevantBodies.Select(b => b.transform.position).ToArray();
         float[] otherMasses = relevantBodies.Select(b => (float)b.mass).ToArray();
 
-        if (tcc == null && (tcc = TrajectoryComputeController.Instance) == null)
+        if (tcc == null)
         {
             Debug.LogError("[NBODY]: TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
             onComplete?.Invoke(null);

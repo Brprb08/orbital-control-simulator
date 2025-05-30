@@ -10,7 +10,7 @@ using Unity.Mathematics;
 /// </summary>
 public class TrajectoryRenderer : MonoBehaviour
 {
-    public static TrajectoryRenderer Instance { get; private set; }
+    // public static TrajectoryRenderer Instance { get; private set; }
 
     [Header("Trajectory Prediction Settings")]
     public int predictionSteps = 5000;
@@ -23,6 +23,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
     [SerializeField] public CameraMovement cameraMovement;
+    public GravityManager gravityManager;
     private UIManager uIManager;
 
     [Header("References - Camera & Body")]
@@ -64,26 +65,48 @@ public class TrajectoryRenderer : MonoBehaviour
     public float latestPredictionDeltaTime;
     public float latestPredictionStartTime;
 
-    /// <summary>
-    /// Initializes trajectory line renderers and singleton references.
-    /// </summary>
-    void Awake()
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.cameraMovement = ctx.CameraMovement;
+        this.thrustController = ctx.ThrustController;
+        this.uIManager = ctx.UIManager;
 
         mainCamera = Camera.main;
         showPredictionLines = true;
         showOriginLines = true;
         showApogeePerigeeLines = true;
+
         predictionProceduralLine = CreateProceduralLineRenderer("Prediction1Line", predictionLineColor);
         originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
         apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
         perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
-        preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC"); // light grey for contrast
+        preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC");
 
-        cameraMovement = CameraMovement.Instance;
-        thrustController = ThrustController.Instance;
-        uIManager = UIManager.Instance;
+        if (gravityManager == null) Debug.LogError("[TrajectoryRenderer] missing GravityManager");
+        if (cameraMovement == null) Debug.LogError("[TrajectoryRenderer] missing CameraMovement");
+        if (thrustController == null) Debug.LogError("[TrajectoryRenderer] missing ThrustController");
+        if (uIManager == null) Debug.LogError("[TrajectoryRenderer] missing UIManager");
     }
+
+    /// <summary>
+    /// Initializes trajectory line renderers and singleton references.
+    /// </summary>
+    // void Awake()
+    // {
+    //     mainCamera = Camera.main;
+    //     showPredictionLines = true;
+    //     showOriginLines = true;
+    //     showApogeePerigeeLines = true;
+    //     predictionProceduralLine = CreateProceduralLineRenderer("Prediction1Line", predictionLineColor);
+    //     originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
+    //     apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
+    //     perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
+    //     preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC"); // light grey for contrast
+    // }
 
     /// <summary>
     /// Updates internal state, including thrust status, each frame.
@@ -298,7 +321,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 float actualDeltaTime = totalSimTime / latestPrediction.Count;
 
                 latestPredictionDeltaTime = actualDeltaTime;
-                latestPredictionStartTime = GravityManager.Instance.simulationTime;
+                latestPredictionStartTime = gravityManager.simulationTime;
 
                 var clippedPoints = ClipTrajectory(fullTrajectory);
 
@@ -370,7 +393,7 @@ public class TrajectoryRenderer : MonoBehaviour
                     float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
                     float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
 
-                    UIManager.Instance.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
+                    uIManager.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
                         orbitalParams.orbitalPeriod, orbitalParams.inclination, orbitalParams.RAAN);
                 }
             }

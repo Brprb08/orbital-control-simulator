@@ -9,8 +9,6 @@ using UnityEngine.EventSystems;
 /// </summary>
 public class UIManager : MonoBehaviour
 {
-    public static UIManager Instance { get; private set; }
-
     [Header("Buttons")]
     public Button freeCamButton;
     public Button trackCamButton;
@@ -28,6 +26,7 @@ public class UIManager : MonoBehaviour
     public GameObject dropdown;
     public GameObject placeTLEPanel;
     public GameObject placementSelectPanel;
+    public GameObject cameraControls;
 
     [Header("UI - Input Fields")]
     public TMP_InputField nameInputField;
@@ -54,57 +53,47 @@ public class UIManager : MonoBehaviour
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
-    private bool isTracking = true;
+    public bool isTracking = true;
     public bool earthCamPressed = true;
     private bool inFreePlacementMode = true;
     private bool inFreeThrustMode = true;
 
-    private void Awake()
-    {
-        if (Instance != null && Instance != this)
-        {
-            Destroy(gameObject);
-            return;
-        }
-        Instance = this;
-    }
+    private SimContext ctx;
 
-    /// <summary>
-    /// Initializes UI elements and sets default button states on startup.
-    /// </summary>
-    private void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+
         instructionText.text =
-    "<b>Welcome to the Orbit Simulator!</b>\n" +
-    "<b>Track Cam Mode Activated!</b>\n\n" +
-    "<b>CONTROLS:</b>\n" +
-    "- Dropdown Menu: Select the tracked object.\n" +
-    "- Esc Key: Closes the game.\n" +
-    "- Right Mouse Button: Rotate the camera.\n" +
-    "- Mousewheel: Zoom in/out.\n" +
-    "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
-    "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
-    "     * Earth Cam: Centers the view on Earth.\n" +
-    "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
-    "<b>THRUST:</b>\n" +
-    "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
-    "- Left / Right: Adjust lateral movement (changes inclination).\n" +
-    "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
-    "Switch to Free Cam to explore or place satellites.";
-
-
+   "<b>Welcome to the Orbit Simulator!</b>\n" +
+   "<b>Track Cam Mode Activated!</b>\n\n" +
+   "<b>CONTROLS:</b>\n" +
+   "- Dropdown Menu: Select the tracked object.\n" +
+   "- Esc Key: Closes the game.\n" +
+   "- Right Mouse Button: Rotate the camera.\n" +
+   "- Mousewheel: Zoom in/out.\n" +
+   "- Time Scaler: Adjust time speed (Reset: 'R').\n" +
+   "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
+   "     * Earth Cam: Centers the view on Earth.\n" +
+   "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
+   "<b>THRUST:</b>\n" +
+   "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
+   "- Left / Right: Adjust lateral movement (changes inclination).\n" +
+   "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
+   "Switch to Free Cam to explore or place satellites.";
 
         ShowObjectPlacementPanel(false);
-        ShowPlaceTLEPanel(false);
+        ShowPlaceTLEPanel(false, false);
         ShowManeuverNodes(true);
         burnControlsPanel.SetActive(true);
-        ShowPanel(true);
+        ShowOrbitInfoPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
         trackCamButton.Select();
         trackCamButton.interactable = false;
         placementSelectPanel.SetActive(false);
         feedbackPanel.SetActive(showInstructionText);
+        cameraControls.SetActive(true);
         UpdateButtonText();
     }
 
@@ -128,13 +117,13 @@ public class UIManager : MonoBehaviour
         "  * Format: 5,45,3\n" +
         "  * No parentheses, negatives, or non-numeric characters.\n" +
         "- Click 'Place Satellite' to spawn.";
-
+        isTracking = false;
         ShowObjectPlacementPanel(true);
-        ShowPlaceTLEPanel(true);
+        ShowPlaceTLEPanel(true, false);
         ShowManeuverNodes(false);
         burnControlsPanel.SetActive(false);
 
-        ShowPanel(false);
+        ShowOrbitInfoPanel(false);
         SetButtonState(freeCamButton, true);
         SetButtonState(trackCamButton, false);
         ShowThrustButtonsPanel(false);
@@ -146,8 +135,6 @@ public class UIManager : MonoBehaviour
         freeCamButton.interactable = false;
         trackCamButton.interactable = true;
         placementSelectPanel.SetActive(true);
-
-        isTracking = false;
 
         if (velocityInputField != null)
         {
@@ -191,14 +178,14 @@ public class UIManager : MonoBehaviour
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
     "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
     "Switch to Free Cam to explore or place satellites.";
-
+        isTracking = true;
 
         ShowObjectPlacementPanel(false);
-        ShowPlaceTLEPanel(false);
+        ShowPlaceTLEPanel(false, false);
         ShowManeuverNodes(true);
         burnControlsPanel.SetActive(true);
 
-        ShowPanel(true);
+        ShowOrbitInfoPanel(true);
         SetButtonState(freeCamButton, false);
         SetButtonState(trackCamButton, true);
         ShowThrustButtonsPanel(true);
@@ -210,8 +197,6 @@ public class UIManager : MonoBehaviour
         trackCamButton.interactable = false;
         freeCamButton.interactable = true;
         placementSelectPanel.SetActive(false);
-
-        isTracking = true;
 
         if (velocityInputField != null)
         {
@@ -259,7 +244,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     /// <param name="showObjectPlacementPanel">Whether to show the object placement panel.</param>
     /// <param name="showThrustButtonsPanel">Whether to show the thrust buttons panel.</param>
-    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showDropdownSection)
+    public void ShowSelectPanels(bool showObjectPlacementPanel, bool showThrustButtonsPanel, bool showDropdownSection, bool pauseFlag)
     {
         // If were tracking and any of the booleans are false
         if (!showObjectPlacementPanel)
@@ -283,7 +268,7 @@ public class UIManager : MonoBehaviour
         if (!freeCamButton.interactable)
         {
             ShowObjectPlacementPanel(showObjectPlacementPanel);
-            ShowPlaceTLEPanel(true);
+            ShowPlaceTLEPanel(true, pauseFlag);
             ShowManeuverNodes(false);
         }
         ShowThrustButtonsPanel(showThrustButtonsPanel);
@@ -307,25 +292,35 @@ public class UIManager : MonoBehaviour
         objectPlacementPanel.SetActive(show);
     }
 
-    private void ShowPlaceTLEPanel(bool show)
+    private void ShowPlaceTLEPanel(bool show, bool pauseFlag)
     {
         if (!show)
         {
             placeTLEPanel.SetActive(show);
             objectPlacementPanel.SetActive(show);
         }
+        // show is always true here
         else
         {
-            if (!inFreePlacementMode)
+            if (pauseFlag)
             {
-                placeTLEPanel.SetActive(show);
+                placeTLEPanel.SetActive(!show);
                 objectPlacementPanel.SetActive(!show);
             }
             else
             {
-                placeTLEPanel.SetActive(!show);
-                objectPlacementPanel.SetActive(show);
+                if (!inFreePlacementMode)
+                {
+                    placeTLEPanel.SetActive(show);
+                    objectPlacementPanel.SetActive(!show);
+                }
+                else
+                {
+                    placeTLEPanel.SetActive(!show);
+                    objectPlacementPanel.SetActive(show);
+                }
             }
+
         }
 
     }
@@ -360,7 +355,15 @@ public class UIManager : MonoBehaviour
     /// <param name="show">True to show, false to hide.</param>
     private void ShowThrustButtonsPanel(bool show)
     {
-        thrustButtons.SetActive(show);
+        if (inFreeThrustMode)
+        {
+            thrustButtons.SetActive(show);
+        }
+        else
+        {
+            maneuverNodePanel.SetActive(show);
+        }
+
     }
 
     /// <summary>
@@ -376,7 +379,7 @@ public class UIManager : MonoBehaviour
     /// Toggles the visibility of the general object info panel.
     /// </summary>
     /// <param name="show">True to show, false to hide.</param>
-    private void ShowPanel(bool show)
+    private void ShowOrbitInfoPanel(bool show)
     {
         objectInfoPanel.SetActive(show);
     }
@@ -400,7 +403,7 @@ public class UIManager : MonoBehaviour
         placementModeButtonText.text = inFreePlacementMode ? "Switch to TLE Input" : "Switch to Manual Input";
         if (!isTracking)
         {
-            ShowPlaceTLEPanel(true);
+            ShowPlaceTLEPanel(true, false);
         }
 
     }

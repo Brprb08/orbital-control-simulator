@@ -10,7 +10,7 @@ using System;
 /// </summary>
 public class TrajectoryComputeController : MonoBehaviour
 {
-    public static TrajectoryComputeController Instance { get; private set; }
+    // public static TrajectoryComputeController Instance { get; private set; }
 
     [Header("Compute Shader")]
     public ComputeShader trajectoryComputeShader;
@@ -27,17 +27,24 @@ public class TrajectoryComputeController : MonoBehaviour
     private int lodFactor = 1;
     private int outputCount = 0;
 
-    void Awake()
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
+        this.ctx = ctx;
     }
+
+    // void Awake()
+    // {
+    //     if (Instance == null)
+    //     {
+    //         Instance = this;
+    //     }
+    //     else
+    //     {
+    //         Destroy(gameObject);
+    //     }
+    // }
 
     /// <summary>
     /// Calculates the trajectory of a body using a GPU compute shader, asynchronously.

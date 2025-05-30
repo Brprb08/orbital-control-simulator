@@ -7,8 +7,6 @@ using System.Collections.Generic;
 /// </summary>
 public class LineVisibilityManager : MonoBehaviour
 {
-    public static LineVisibilityManager Instance { get; private set; }
-
     [Header("References - UI")]
     private NBody trackedBody;
     public TrajectoryRenderer centralTrajectoryRenderer;
@@ -32,18 +30,14 @@ public class LineVisibilityManager : MonoBehaviour
 
     private List<NBody> nBodyInstances = new List<NBody>();
 
-    void Awake()
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
     {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-            return;
-        }
+        this.ctx = ctx;
+        this.centralTrajectoryRenderer = ctx.TrajectoryRenderer;
     }
+
 
     /// <summary>
     /// Registers an NBody instance with the manager.
@@ -84,7 +78,7 @@ public class LineVisibilityManager : MonoBehaviour
         {
             lineVisibilityStates[lineType] = isVisible;
 
-            centralTrajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
+            // centralTrajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
             if (centralTrajectoryRenderer != null)
             {
                 bool currentPredictionState = lineVisibilityStates[LineType.Prediction];

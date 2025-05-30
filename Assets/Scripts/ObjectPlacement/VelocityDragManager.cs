@@ -48,12 +48,15 @@ public class VelocityDragManager : MonoBehaviour
 
     private SphereCollider dragSphereCollider;
 
+    private SimContext ctx;
 
-    /// <summary>
-    /// Initializes the drag manager and sets up required components and UI bindings.
-    /// </summary>
-    private void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+        this.uIManager = ctx.UIManager;
+        this.trajectoryRenderer = ctx.TrajectoryRenderer;
+        this.objectPlacementManager = ctx.ObjectPlacementManager;
+
         if (dragLineRenderer != null)
         {
             dragLineRenderer.positionCount = 0;
@@ -87,11 +90,6 @@ public class VelocityDragManager : MonoBehaviour
             dragSphereCollider.isTrigger = true;
             dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
         }
-
-        objectPlacementManager = ObjectPlacementManager.Instance;
-        uIManager = UIManager.Instance;
-
-        StartCoroutine(FindTrajectoryRendererWithDelay());
     }
 
     /// <summary>
@@ -179,20 +177,6 @@ public class VelocityDragManager : MonoBehaviour
             dragLineRenderer.SetPosition(1, intersectionPoint);
             dragDirection = (intersectionPoint - sphereCenter).normalized;
             currentVelocity = dragDirection * sliderSpeed;
-        }
-    }
-
-    /// <summary>
-    /// Delays trajectory renderer search to ensure scene objects are ready.
-    /// </summary>
-    private IEnumerator FindTrajectoryRendererWithDelay()
-    {
-        yield return new WaitForSeconds(0.1f);
-        trajectoryRenderer = Object.FindFirstObjectByType<TrajectoryRenderer>();
-
-        if (trajectoryRenderer == null)
-        {
-            Debug.LogError("TrajectoryRenderer not found after delay!");
         }
     }
 
@@ -335,6 +319,8 @@ public class VelocityDragManager : MonoBehaviour
             // DONT HARDCODE THIS EVENTUALLY
             planetNBody.radius = .002f;
             planetNBody.cameraDistanceRadius = 1f;
+
+            planetNBody.Initialize(ctx);
         }
 
         planetNBody.velocity = velocityToApply;

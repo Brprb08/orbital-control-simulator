@@ -4,42 +4,27 @@ using UnityEngine;
 
 public class BodyDropdownManager : MonoBehaviour
 {
-    public static BodyDropdownManager Instance { get; private set; }
-
     [Header("References - UI")]
     public TMP_Dropdown bodyDropdown;
 
     [Header("References - Scripts")]
     public CameraController cameraController;
-    public TrajectoryRenderer trajectoryRenderer;
 
-    void Awake()
-    {
-        if (Instance == null)
-        {
-            Instance = this;
-        }
-        else
-        {
-            Destroy(gameObject);
-        }
-    }
+    private SimContext ctx;
 
-    void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+        this.cameraController = ctx.CameraController;
+
         if (bodyDropdown == null)
         {
             Debug.LogError("BodyDropdownManager: Missing reference to TMP_Dropdown.");
             return;
         }
 
-        if (cameraController == null)
-        {
-            Debug.LogError("BodyDropdownManager: Could not find CameraController in the scene.");
-            return;
-        }
-
         bodyDropdown.onValueChanged.AddListener(HandleDropdownValueChanged);
+
     }
 
     public void HandleDropdownValueChanged(int index)

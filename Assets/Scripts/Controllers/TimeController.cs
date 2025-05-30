@@ -22,13 +22,15 @@ public class TimeController : MonoBehaviour
     private bool isPaused = false;
     private float previousTimeScale = 1.0f; // Stores the previous time scale before pausing
 
+    private GravityManager gravityManager;
+    private SimContext ctx;
 
-
-    /// <summary>
-    /// Initializes the time controller, sets default time scale, and configures UI.
-    /// </summary>
-    void Start()
+    public void Initialize(SimContext ctx)
     {
+        this.ctx = ctx;
+        this.gravityManager = ctx.GravityManager;
+        this.uIManager = ctx.UIManager;
+
         Time.timeScale = 1.0f;
         Time.fixedDeltaTime = 0.02f;
         Application.targetFrameRate = 60;
@@ -40,17 +42,6 @@ public class TimeController : MonoBehaviour
             timeSlider.value = Time.timeScale;
             timeSlider.onValueChanged.AddListener(OnTimeScaleChanged);
         }
-
-        if (uIManager == null)
-        {
-            uIManager = GravityManager.Instance.GetComponent<UIManager>();
-            if (uIManager == null)
-            {
-                Debug.LogError("[TIME CONTROLLER]: UIManager reference not set and not found on GravityManager.");
-            }
-        }
-
-        Debug.Log($"[TIME CONTROLLER]: Time scale set to {Time.timeScale}, fixedDeltaTime = {Time.fixedDeltaTime}");
     }
 
     /// <summary>
@@ -102,7 +93,6 @@ public class TimeController : MonoBehaviour
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
-        GravityManager gravityManager = GravityManager.Instance;
         if (gravityManager != null)
         {
             foreach (NBody nBody in gravityManager.Bodies)
@@ -149,7 +139,18 @@ public class TimeController : MonoBehaviour
         timeSlider.interactable = false;
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
-        uIManager.ShowSelectPanels(false, false, false);
+
+        // FIX
+        uIManager.objectPlacementPanel.SetActive(false);
+        uIManager.thrustButtons.SetActive(false);
+        uIManager.maneuverNodePanel.SetActive(false);
+        uIManager.burnControlsPanel.SetActive(false);
+        uIManager.cameraControls.SetActive(false);
+        uIManager.toggleOptionsPanel.SetActive(false);
+        uIManager.dropdown.SetActive(false);
+        uIManager.placeTLEPanel.SetActive(false);
+        uIManager.placementSelectPanel.SetActive(false);
+
         isPaused = true;
         Debug.Log("[TIME CONTROLLER]: Simulation Paused");
     }
@@ -167,7 +168,16 @@ public class TimeController : MonoBehaviour
         }
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
 
-        uIManager.ShowSelectPanels(true, true, true);
+        if (uIManager.isTracking)
+        {
+            uIManager.OnTrackCamPressed();
+        }
+        else
+        {
+            uIManager.OnFreeCamPressed();
+        }
+        uIManager.cameraControls.SetActive(true);
+
         isPaused = false;
         Debug.Log("[TIME CONTROLLER]: Simulation Resumed");
     }
