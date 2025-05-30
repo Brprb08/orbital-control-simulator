@@ -93,22 +93,6 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /// <summary>
-    /// Initializes trajectory line renderers and singleton references.
-    /// </summary>
-    // void Awake()
-    // {
-    //     mainCamera = Camera.main;
-    //     showPredictionLines = true;
-    //     showOriginLines = true;
-    //     showApogeePerigeeLines = true;
-    //     predictionProceduralLine = CreateProceduralLineRenderer("Prediction1Line", predictionLineColor);
-    //     originProceduralLine = CreateProceduralLineRenderer("OriginLine", originLineColor);
-    //     apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
-    //     perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
-    //     preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC"); // light grey for contrast
-    // }
-
-    /// <summary>
     /// Updates internal state, including thrust status, each frame.
     /// </summary>
     void Update()

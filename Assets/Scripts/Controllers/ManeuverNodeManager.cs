@@ -13,6 +13,7 @@ public class ManeuverNodeManager : MonoBehaviour
     [Header("Trajectory Rendering")]
     public ProceduralLineRenderer maneuverTrajectoryLine;
     public TrajectoryRenderer trajectoryRenderer;
+    public TimeController timeController;
 
     [Header("References - UI")]
     public Slider maneuverTimeSlider;
@@ -20,6 +21,9 @@ public class ManeuverNodeManager : MonoBehaviour
 
     [Header("UI Controls")]
     public bool isSliderActive = false;
+
+    [SerializeField] Material green;
+    [SerializeField] Material red;
 
     public GravityManager gravityManager;
     private SimContext ctx;
@@ -29,6 +33,7 @@ public class ManeuverNodeManager : MonoBehaviour
         this.ctx = ctx;
         this.gravityManager = ctx.GravityManager;
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
+        this.timeController = ctx.TimeController;
 
         burnDropdown.ClearOptions();
         List<string> burnOptions = new List<string>
@@ -55,6 +60,7 @@ public class ManeuverNodeManager : MonoBehaviour
     public void OnAddManeuverNode()
     {
         // TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
+        timeController.SetTimeScale(1f);
         var body = trajectoryRenderer.trackedBody;
         if (body == null) return;
 
@@ -105,7 +111,8 @@ public class ManeuverNodeManager : MonoBehaviour
         var node = nodes[0];
         node.isFinalized = true;
         node.marker.name = "ManeuverNode";
-        node.marker.GetComponent<Renderer>().material.color = Color.green;
+        node.marker.GetComponent<Renderer>().material = new Material(red);
+        node.marker.GetComponent<Renderer>().material.SetColor("_BaseColor", red.GetColor("_BaseColor"));
 
         isSliderActive = false;
 
@@ -122,7 +129,7 @@ public class ManeuverNodeManager : MonoBehaviour
             trackedBody.velocity
         );
 
-        if (!orbit.isValid)
+        if (!orbit.isCircular)
         {
             Debug.LogWarning("Invalid orbit — burn time will not be wrapped.");
             return;
@@ -261,7 +268,8 @@ public class ManeuverNodeManager : MonoBehaviour
         node.marker.transform.position = position;
         node.marker.transform.localScale = Vector3.one * 5f;
         node.marker.name = "ManeuverNodePreview";
-        node.marker.GetComponent<Renderer>().material.color = Color.red;
+        node.marker.GetComponent<Renderer>().material = new Material(green);
+        node.marker.GetComponent<Renderer>().material.SetColor("_BaseColor", green.GetColor("_BaseColor"));
 
         nodes.Add(node);
         cachedTrajectory = trajectoryRenderer.latestPrediction;

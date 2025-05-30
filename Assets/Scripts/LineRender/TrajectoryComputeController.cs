@@ -34,18 +34,6 @@ public class TrajectoryComputeController : MonoBehaviour
         this.ctx = ctx;
     }
 
-    // void Awake()
-    // {
-    //     if (Instance == null)
-    //     {
-    //         Instance = this;
-    //     }
-    //     else
-    //     {
-    //         Destroy(gameObject);
-    //     }
-    // }
-
     /// <summary>
     /// Calculates the trajectory of a body using a GPU compute shader, asynchronously.
     /// </summary>

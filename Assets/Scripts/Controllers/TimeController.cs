@@ -88,7 +88,7 @@ public class TimeController : MonoBehaviour
     /// Sets the simulation time scale and updates related physics settings.
     /// </summary>
     /// <param name="scale">The new time scale to apply.</param>
-    private void SetTimeScale(float scale)
+    public void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;

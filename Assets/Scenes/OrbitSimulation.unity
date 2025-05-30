@@ -20120,9 +20120,12 @@ MonoBehaviour:
   cachedTrajectory: []
   maneuverTrajectoryLine: {fileID: 0}
   trajectoryRenderer: {fileID: 0}
+  timeController: {fileID: 0}
   maneuverTimeSlider: {fileID: 1250303462}
   burnDropdown: {fileID: 279922321}
   isSliderActive: 0
+  green: {fileID: 2100000, guid: 5ba0d4a738126dc45bab53822e13e1d0, type: 2}
+  red: {fileID: 2100000, guid: bd324aa9b60fca74aad1a596425e789b, type: 2}
   gravityManager: {fileID: 0}
 --- !u!1 &1590649024
 GameObject:

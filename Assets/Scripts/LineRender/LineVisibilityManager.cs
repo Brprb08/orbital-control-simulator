@@ -41,7 +41,6 @@ public class LineVisibilityManager : MonoBehaviour
 
     /// <summary>
     /// Registers an NBody instance with the manager.
-    /// Call this method from NBody.Awake().
     /// </summary>
     /// <param name="body">The NBody instance to register.</param>
     public void RegisterNBody(NBody body)

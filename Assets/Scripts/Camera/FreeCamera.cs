@@ -4,7 +4,7 @@ using UnityEngine.EventSystems;
 public class FreeCamera : MonoBehaviour
 {
     [Header("Movement Settings")]
-    public float movementSpeed = 1000f;
+    public float movementSpeed = 3000f;
     public float rotationSensitivity = 120f;
 
     [Header("Free Camera State")]
