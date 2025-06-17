@@ -128,8 +128,12 @@ public class CameraController : MonoBehaviour
             {
                 // First frame of right mouse click — sync to current rotation
                 Vector3 currentEuler = cameraPivotTransform.rotation.eulerAngles;
+
                 yaw = currentEuler.y;
+
                 pitch = currentEuler.x;
+                if (pitch > 180f) pitch -= 360f; // Normalize pitch once
+
                 isRightMouseHeld = true;
             }
 
@@ -142,6 +146,7 @@ public class CameraController : MonoBehaviour
             {
                 yaw += Input.GetAxis("Mouse X") * sensitivity * 0.01f;
                 pitch -= Input.GetAxis("Mouse Y") * sensitivity * 0.01f;
+
                 pitch = Mathf.Clamp(pitch, -80f, 80f);
 
                 Quaternion targetRotation = Quaternion.Euler(pitch, yaw, 0f);
