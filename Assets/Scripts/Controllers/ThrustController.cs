@@ -75,6 +75,9 @@ public class ThrustController : MonoBehaviour
             }
         }
 
+        var main = thrustParticles.main;
+        main.useUnscaledTime = true;
+
         thrustParticles.Stop();
         thrustParticles.Clear();
     }

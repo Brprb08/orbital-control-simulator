@@ -33,6 +33,7 @@ public class GravityManager : MonoBehaviour
     {
         this.ctx = ctx;
         this.lineVisibilityManager = ctx.LineVisibilityManager;
+        this.cameraController = ctx.CameraController;
         bodyDropdown.ClearOptions();
         var allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
         foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody))

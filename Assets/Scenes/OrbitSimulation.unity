@@ -2130,6 +2130,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431861}
         m_TargetAssemblyTypeName: ManeuverNodeManager, CoreRuntime
         m_MethodName: FinalizeManeuver
@@ -2689,6 +2701,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431852}
         m_TargetAssemblyTypeName: ObjectPlacementManager, Assembly-CSharp
         m_MethodName: StartPlacement
@@ -2754,6 +2778,68 @@ MonoBehaviour:
   m_EffectColor: {r: 1, g: 1, b: 1, a: 0.5019608}
   m_EffectDistance: {x: 1, y: 1}
   m_UseGraphicAlpha: 1
+--- !u!1 &237235844
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 237235846}
+  - component: {fileID: 237235845}
+  - component: {fileID: 237235847}
+  m_Layer: 0
+  m_Name: AudioController
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &237235845
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237235844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d006eaa97b5ba45449725314af53647a, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  clickSound: {fileID: 8300000, guid: 1dc2f2287b118ff45939a91b08a2244e, type: 3}
+  volume: 0.15
+--- !u!4 &237235846
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237235844}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &237235847
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237235844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 651e51f54c25b2c488345e0e8eab158b, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  thrustSound: {fileID: 8300000, guid: 09ee053c88fcf1040bdbe617a140e1c5, type: 3}
+  maxVolume: 0.25
+  fadeDuration: 0.4
 --- !u!1 &238508526
 GameObject:
   m_ObjectHideFlags: 0
@@ -2812,6 +2898,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartLeftThrust
@@ -2828,6 +2926,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopLeftThrust
@@ -3092,7 +3202,19 @@ MonoBehaviour:
       m_Color: {r: 1, g: 1, b: 1, a: 1}
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_AlphaFadeSpeed: 0.15
 --- !u!114 &279922322
 MonoBehaviour:
@@ -5196,6 +5318,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431853}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
         m_MethodName: ShowFeedbackPanel
@@ -5345,8 +5479,8 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 22
-  m_fontSizeBase: 22
+  m_fontSize: 18
+  m_fontSizeBase: 18
   m_fontWeight: 400
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
@@ -5383,7 +5517,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: -6.107483, y: 0, z: -21.610313, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   m_hasFontAssetChanged: 0
@@ -5627,6 +5761,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartReverseThrust
@@ -5643,6 +5789,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopReverseThrust
@@ -6478,6 +6636,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartRadialInThrust
@@ -6494,6 +6664,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopRadialInThrust
@@ -6637,6 +6819,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431852}
         m_TargetAssemblyTypeName: ObjectPlacementManager, CoreRuntime
         m_MethodName: PlaceObjectFromTLE
@@ -7116,6 +7310,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartForwardThrust
@@ -7132,6 +7338,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopForwardThrust
@@ -8217,6 +8435,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartRadialOutThrust
@@ -8233,6 +8463,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopRadialOutThrust
@@ -8900,6 +9142,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431853}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: SwitchBurnMode
@@ -16426,6 +16680,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431851}
         m_TargetAssemblyTypeName: CameraController, Assembly-CSharp
         m_MethodName: BreakToFreeCam
@@ -16578,6 +16844,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StartThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StartRightThrust
@@ -16594,6 +16872,18 @@ MonoBehaviour:
     callback:
       m_PersistentCalls:
         m_Calls:
+        - m_Target: {fileID: 237235847}
+          m_TargetAssemblyTypeName: RocketThrustAudio, CoreRuntime
+          m_MethodName: StopThrust
+          m_Mode: 1
+          m_Arguments:
+            m_ObjectArgument: {fileID: 0}
+            m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+            m_IntArgument: 0
+            m_FloatArgument: 0
+            m_StringArgument: 
+            m_BoolArgument: 0
+          m_CallState: 2
         - m_Target: {fileID: 1586431855}
           m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
           m_MethodName: StopRightThrust
@@ -17133,13 +17423,13 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 0}
-        m_TargetAssemblyTypeName: 
-        m_MethodName: 
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: 
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
           m_IntArgument: 0
           m_FloatArgument: 0
           m_StringArgument: 
@@ -18346,6 +18636,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431853}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
         m_MethodName: OnTrackCamPressed
@@ -18630,7 +18932,7 @@ GameObject:
   - component: {fileID: 1455420384}
   - component: {fileID: 1455420385}
   m_Layer: 0
-  m_Name: LEO
+  m_Name: ISS
   m_TagString: Planet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -18909,7 +19211,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1455678696}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1455678696
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -19047,6 +19361,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1119227881}
         m_TargetAssemblyTypeName: VelocityDragManager, Assembly-CSharp
         m_MethodName: callApplyVelocity
@@ -19200,6 +19526,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431851}
         m_TargetAssemblyTypeName: CameraController, Assembly-CSharp
         m_MethodName: SwitchToEarthCam
@@ -19750,7 +20088,19 @@ MonoBehaviour:
   m_TargetGraphic: {fileID: 1577461626}
   m_OnClick:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
 --- !u!114 &1577461626
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -20140,7 +20490,7 @@ GameObject:
   - component: {fileID: 1590649026}
   - component: {fileID: 1590649028}
   m_Layer: 0
-  m_Name: GameObject
+  m_Name: Sat2
   m_TagString: Planet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20175,8 +20525,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   velocity: {x: -0.779, y: 0, z: 0}
-  mass: 100001
-  trueMass: 420000
+  mass: 2000
+  trueMass: 2000
   radius: 0.002
   cameraDistanceRadius: 0.5
   isCentralBody: 0
@@ -20767,7 +21117,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!114 &1713781785
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21360,7 +21710,19 @@ MonoBehaviour:
     m_Options: []
   m_OnValueChanged:
     m_PersistentCalls:
-      m_Calls: []
+      m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
   m_AlphaFadeSpeed: 0.15
 --- !u!114 &1744299772
 MonoBehaviour:
@@ -21622,6 +21984,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431853}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: SwitchPlacementMode
@@ -22097,6 +22471,7 @@ Transform:
   - {fileID: 954413489}
   - {fileID: 534088644}
   - {fileID: 2109498699}
+  - {fileID: 237235846}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1835204575
@@ -22818,7 +23193,7 @@ GameObject:
   - component: {fileID: 1895435198}
   - component: {fileID: 1895435199}
   m_Layer: 0
-  m_Name: GameObject (1)
+  m_Name: Sat1
   m_TagString: Planet
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -22853,8 +23228,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   velocity: {x: 0, y: 0, z: 0.7508329}
-  mass: 100001
-  trueMass: 100001
+  mass: 2000
+  trueMass: 2000
   radius: 0.002
   cameraDistanceRadius: 1
   isCentralBody: 0
@@ -23883,6 +24258,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 1586431861}
         m_TargetAssemblyTypeName: ManeuverNodeManager, CoreRuntime
         m_MethodName: OnAddManeuverNode
@@ -24540,6 +24927,18 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
       - m_Target: {fileID: 932853253}
         m_TargetAssemblyTypeName: TimeController, Assembly-CSharp
         m_MethodName: TogglePause
