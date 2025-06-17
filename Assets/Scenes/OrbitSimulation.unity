@@ -2789,6 +2789,7 @@ GameObject:
   - component: {fileID: 237235846}
   - component: {fileID: 237235845}
   - component: {fileID: 237235847}
+  - component: {fileID: 237235848}
   m_Layer: 0
   m_Name: AudioController
   m_TagString: Untagged
@@ -2838,8 +2839,27 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   thrustSound: {fileID: 8300000, guid: 09ee053c88fcf1040bdbe617a140e1c5, type: 3}
-  maxVolume: 0.25
+  maxVolume: 0.18
   fadeDuration: 0.4
+--- !u!114 &237235848
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 237235844}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7c926edc78b72954bb99be92d0a7ce29, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  ambientClips:
+  - {fileID: 8300000, guid: cf0e34c6ad369ec4ca13e19156c5534f, type: 3}
+  - {fileID: 8300000, guid: 423914f40399ef043a5e4df56d889ebb, type: 3}
+  - {fileID: 8300000, guid: a2ffcd4d32035824c97287e860b80c62, type: 3}
+  - {fileID: 8300000, guid: 3a2c27daba7d6da45b68cf544f01606b, type: 3}
+  fadeDuration: 2
+  masterVolume: 0.032
 --- !u!1 &238508526
 GameObject:
   m_ObjectHideFlags: 0
