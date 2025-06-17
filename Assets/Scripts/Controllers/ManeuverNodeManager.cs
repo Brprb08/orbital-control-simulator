@@ -61,6 +61,7 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         // TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         timeController.SetTimeScale(1f);
+        timeController.timeSlider.value = Time.timeScale;
         var body = trajectoryRenderer.trackedBody;
         if (body == null) return;
 

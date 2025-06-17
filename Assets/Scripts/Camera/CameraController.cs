@@ -42,6 +42,10 @@ public class CameraController : MonoBehaviour
     public UIManager uIManager;
     private SimContext ctx;
 
+    private float yaw = 0f;
+    private float pitch = 20f;
+    private bool isRightMouseHeld = false;
+
     /// <summary>
     /// Used by object placement manager to ensure camera is in FreeCam mode when placing.
     /// </summary>
@@ -98,20 +102,50 @@ public class CameraController : MonoBehaviour
     /// <summary>
     /// Handles input for camera controls and switching between tracking and free camera mode.
     /// </summary>
+    // void Update()
+    // {
+    //     if (!isFreeCamMode)
+    //     {
+    //         if (Input.GetMouseButton(1) && cameraPivotTransform != null)
+    //         {
+    //             float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
+    //             float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
+    //             cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
+    //             cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
+
+    //             Vector3 currentRotation = cameraPivotTransform.eulerAngles;
+    //             float clampedX = CameraCalculations.ClampAngle(currentRotation.x, -80f, 80f);
+    //             cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
+    //         }
+    //     }
+    // }
+
     void Update()
     {
         if (!isFreeCamMode)
         {
-            if (Input.GetMouseButton(1) && cameraPivotTransform != null)
+            if (Input.GetMouseButtonDown(1))
             {
-                float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
-                float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
-                cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
-                cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
+                // First frame of right mouse click — sync to current rotation
+                Vector3 currentEuler = cameraPivotTransform.rotation.eulerAngles;
+                yaw = currentEuler.y;
+                pitch = currentEuler.x;
+                isRightMouseHeld = true;
+            }
 
-                Vector3 currentRotation = cameraPivotTransform.eulerAngles;
-                float clampedX = CameraCalculations.ClampAngle(currentRotation.x, -80f, 80f);
-                cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
+            if (Input.GetMouseButtonUp(1))
+            {
+                isRightMouseHeld = false;
+            }
+
+            if (isRightMouseHeld)
+            {
+                yaw += Input.GetAxis("Mouse X") * sensitivity * 0.01f;
+                pitch -= Input.GetAxis("Mouse Y") * sensitivity * 0.01f;
+                pitch = Mathf.Clamp(pitch, -80f, 80f);
+
+                Quaternion targetRotation = Quaternion.Euler(pitch, yaw, 0f);
+                cameraPivotTransform.rotation = targetRotation;
             }
         }
     }

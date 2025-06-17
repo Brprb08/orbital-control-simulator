@@ -45,6 +45,8 @@ public class NBody : MonoBehaviour
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
     private const float EarthRadiusKm = 637.8137f;
 
+    private const float MaxDistanceFromEarth = 40000f;
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -249,6 +251,23 @@ public class NBody : MonoBehaviour
         velocity = state.velocity.ToVector3();
 
         CheckCollisionWithEarth();
+        CheckEscapeFromEarth();
+    }
+
+    /// <summary>
+    /// Checks if the object has escaped the Earth's sphere of influence and removes it if so.
+    /// </summary>
+    void CheckEscapeFromEarth()
+    {
+        NBody earth = gravityManager.CentralBody;
+        if (earth == null || earth == this) return;
+
+        float distance = Vector3.Distance(transform.position, earth.transform.position);
+        if (distance > MaxDistanceFromEarth)
+        {
+            Debug.Log($"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed.");
+            gravityManager.HandleCollision(this, earth); // You can replace this with a new handler like HandleEscape()
+        }
     }
 
     /// <summary>

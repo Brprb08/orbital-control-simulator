@@ -45,6 +45,9 @@ public class ObjectPlacementManager : MonoBehaviour
     private int satelliteCount = 0;
     private bool objectIsPlaced = false;
 
+    private const float MaxSatelliteDistance = 50000f; // in sim units (adjust as needed)
+    private const int MaxSatelliteNameLength = 15;
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -79,6 +82,36 @@ public class ObjectPlacementManager : MonoBehaviour
             feedbackText.text = "You must be in FreeCam mode to place planets.";
             return;
         }
+
+        Vector3 parsedPosition;
+
+        // If no input, use fallback camera-based position
+        if (string.IsNullOrWhiteSpace(positionInput.text))
+        {
+            parsedPosition = mainCamera.transform.position + mainCamera.transform.forward * 10f;
+        }
+        else
+        {
+            // Try to parse the input
+            if (!ParsingUtils.TryParseVector3(positionInput.text, out parsedPosition))
+            {
+                feedbackText.text = "Invalid position input. Please use numeric x,y,z format.";
+                return;
+            }
+
+            // Validate distance
+            float distanceFromEarth = Vector3.Distance(Vector3.zero, parsedPosition);
+            float minDistance = 638f;
+            float maxDistance = 5000f;
+
+            if (distanceFromEarth < minDistance || distanceFromEarth > maxDistance)
+            {
+                feedbackText.text = $"Invalid position: must be between {minDistance * 10f:N0} km and {maxDistance * 10f:N0} km from Earth's center.";
+                return;
+            }
+        }
+
+
 
         string radiusText = radiusInput.text;
         if (string.IsNullOrWhiteSpace(radiusText))
@@ -118,15 +151,17 @@ public class ObjectPlacementManager : MonoBehaviour
 
         lastPlacedGameObject = Instantiate(spherePrefab);
         lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 1f, parsedRadius.y * 1f, parsedRadius.z * 1f);
+        lastPlacedGameObject.transform.position = parsedPosition;
 
-        if (ParsingUtils.TryParseVector3(positionInput.text, out Vector3 parsedPosition))
-        {
-            lastPlacedGameObject.transform.position = parsedPosition;
-        }
-        else
-        {
-            lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
-        }
+        // if (ParsingUtils.TryParseVector3(positionInput.text, out Vector3 parsedPosition))
+        // {
+        //     lastPlacedGameObject.transform.position = parsedPosition;
+        // }
+        // else
+        // {
+        //     lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
+        // }
+
 
         if (ghostInstance != null)
         {
@@ -134,7 +169,20 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         satelliteCount++;
-        string customName = !string.IsNullOrWhiteSpace(objectNameInputField?.text) ? objectNameInputField.text : $"Satellite {satelliteCount}";
+
+        string customName = objectNameInputField?.text;
+
+        if (!string.IsNullOrWhiteSpace(customName) && customName.Length > MaxSatelliteNameLength)
+        {
+            feedbackText.text = $"Satellite name too long. Max {MaxSatelliteNameLength} characters.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(customName))
+        {
+            customName = $"Satellite {satelliteCount}";
+        }
+
         lastPlacedGameObject.name = customName;
         lastPlacedGameObject.tag = "Planet";
 
@@ -285,32 +333,80 @@ public class ObjectPlacementManager : MonoBehaviour
     /// Moves the camera so that it faces the desired target position and shows a ghost preview at that position.
     /// </summary>
     /// <param name="input">The string input from the user, expected in "x,y,z" format.</param>
+    // private void OnPositionInputChanged(string input)
+    // {
+    //     if (mainCamera == null)
+    //         return;
+
+    //     if (ParsingUtils.TryParseVector3(input, out Vector3 targetPosition))
+    //     {
+    //         ghostInstance.SetActive(true);
+    //         ghostInstance.transform.position = targetPosition;
+
+    //         float placementDistance = 10f;
+
+    //         Vector3 directionToOrigin = (Vector3.zero - targetPosition).normalized;
+
+    //         // Move camera so the object will be placed at targetPosition
+    //         Vector3 cameraPosition = targetPosition - directionToOrigin * placementDistance;
+
+    //         Quaternion rotation = Quaternion.LookRotation(directionToOrigin, Vector3.up);
+
+    //         mainCamera.transform.SetPositionAndRotation(cameraPosition, rotation);
+    //     }
+    //     else
+    //     {
+    //         ghostInstance.SetActive(false); // Hide if input is invalid
+    //     }
+    // }
+
+
     private void OnPositionInputChanged(string input)
     {
         if (mainCamera == null)
             return;
 
+        // Hide and clear feedback on empty input
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            ghostInstance.SetActive(false);
+            feedbackText.text = "";
+            return;
+        }
+
         if (ParsingUtils.TryParseVector3(input, out Vector3 targetPosition))
         {
+            float distanceFromEarth = Vector3.Distance(Vector3.zero, targetPosition);
+            float minDistance = 638f;
+            float maxDistance = 5000f;
+
+            if (distanceFromEarth < minDistance || distanceFromEarth > maxDistance)
+            {
+                ghostInstance.SetActive(false);
+                feedbackText.text = $"Distance must be between {minDistance * 10f:N0} km and {maxDistance * 10f:N0} km from Earth.";
+                return;
+            }
+
+            // Valid position and distance
             ghostInstance.SetActive(true);
             ghostInstance.transform.position = targetPosition;
 
             float placementDistance = 10f;
-
             Vector3 directionToOrigin = (Vector3.zero - targetPosition).normalized;
 
-            // Move camera so the object will be placed at targetPosition
             Vector3 cameraPosition = targetPosition - directionToOrigin * placementDistance;
-
             Quaternion rotation = Quaternion.LookRotation(directionToOrigin, Vector3.up);
 
             mainCamera.transform.SetPositionAndRotation(cameraPosition, rotation);
+            feedbackText.text = ""; // Clear any previous messages
         }
         else
         {
-            ghostInstance.SetActive(false); // Hide if input is invalid
+            ghostInstance.SetActive(false);
+            feedbackText.text = "Invalid format. Use numeric x,y,z values.";
         }
     }
+
 
     /// <summary>
     /// Clears and unfocuses the specified TMP input field.

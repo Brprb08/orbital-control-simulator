@@ -21,6 +21,7 @@ public class VelocityDragManager : MonoBehaviour
     public Slider velocitySpeedSlider;
     public Button setVelocityButton;
     public Slider speedSlider;
+    public TextMeshProUGUI feedbackText;
 
     [Header("References - Scripts")]
     private ObjectPlacementManager objectPlacementManager;
@@ -45,6 +46,8 @@ public class VelocityDragManager : MonoBehaviour
     private float sliderSpeed = 0f;
     private float lastLineUpdateTime = 0f;
     private float lineUpdateInterval = 0.05f;
+
+    private const float MaxVelocityMagnitude = 5.0f;
 
     private SphereCollider dragSphereCollider;
 
@@ -303,6 +306,18 @@ public class VelocityDragManager : MonoBehaviour
     public void ApplyVelocityToPlanet(Vector3 velocityToApply)
     {
         if (planet == null) return;
+
+        if (Mathf.Abs(velocityToApply.x) > 5f ||
+            Mathf.Abs(velocityToApply.y) > 5f ||
+            Mathf.Abs(velocityToApply.z) > 5f)
+        {
+            Debug.LogWarning($"Velocity too high ({velocityToApply.magnitude:F2}). Limit is {MaxVelocityMagnitude:F2}.");
+
+            if (feedbackText != null)
+                feedbackText.text = $"Max velocity is {MaxVelocityMagnitude} (20 km/s)";
+
+            return;
+        }
 
         NBody planetNBody = planet.GetComponent<NBody>();
         if (planetNBody == null)

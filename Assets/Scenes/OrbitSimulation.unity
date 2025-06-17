@@ -16326,6 +16326,7 @@ MonoBehaviour:
   velocitySpeedSlider: {fileID: 42808061}
   setVelocityButton: {fileID: 1461049984}
   speedSlider: {fileID: 42808061}
+  feedbackText: {fileID: 885149437}
   planet: {fileID: 0}
   sphereRadiusMultiplier: 10
   placeholderMass: 0
