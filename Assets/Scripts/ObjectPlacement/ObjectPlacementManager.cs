@@ -83,6 +83,19 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
+        string customName = objectNameInputField?.text;
+
+        if (!string.IsNullOrWhiteSpace(customName) && customName.Length > MaxSatelliteNameLength)
+        {
+            feedbackText.text = $"Satellite name too long. Max {MaxSatelliteNameLength} characters.";
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(customName))
+        {
+            customName = $"Satellite {satelliteCount}";
+        }
+
         Vector3 parsedPosition;
 
         // If no input, use fallback camera-based position
@@ -170,19 +183,6 @@ public class ObjectPlacementManager : MonoBehaviour
 
         satelliteCount++;
 
-        string customName = objectNameInputField?.text;
-
-        if (!string.IsNullOrWhiteSpace(customName) && customName.Length > MaxSatelliteNameLength)
-        {
-            feedbackText.text = $"Satellite name too long. Max {MaxSatelliteNameLength} characters.";
-            return;
-        }
-
-        if (string.IsNullOrWhiteSpace(customName))
-        {
-            customName = $"Satellite {satelliteCount}";
-        }
-
         lastPlacedGameObject.name = customName;
         lastPlacedGameObject.tag = "Planet";
 
@@ -226,11 +226,9 @@ public class ObjectPlacementManager : MonoBehaviour
 
         feedbackText.text =
     "Setting Satellite Velocity:\n\n" +
-"• Click the satellite to activate the direction line.\n" +
-"• Drag the line to set the desired direction.\n" +
-"• Use the velocity input field to adjust speed.\n" +
-"• The line updates to reflect direction and speed.\n" +
-"• Click \"Set Velocity\" to apply the changes.";
+"• Click the satellite and drag.\n" +
+"• Set the desired direction.\n" +
+"• Use input field to adjust speed.";
         EventSystem.current.SetSelectedGameObject(null);
     }
 

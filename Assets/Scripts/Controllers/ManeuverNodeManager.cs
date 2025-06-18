@@ -18,6 +18,9 @@ public class ManeuverNodeManager : MonoBehaviour
     [Header("References - UI")]
     public Slider maneuverTimeSlider;
     public TMP_Dropdown burnDropdown;
+    public Button setupButton;
+    public Slider adjustNodeSlider;
+    public Button placeNodeButton;
 
     [Header("UI Controls")]
     public bool isSliderActive = false;
@@ -51,6 +54,9 @@ public class ManeuverNodeManager : MonoBehaviour
             .ToList();
 
         burnDropdown.AddOptions(optionData);
+
+        adjustNodeSlider.interactable = false;
+        placeNodeButton.interactable = false;
     }
 
     /// <summary>
@@ -98,6 +104,10 @@ public class ManeuverNodeManager : MonoBehaviour
 
         // Setup the slider so the user can move the node around
         SetupSlider(trajectoryRenderer.latestPrediction, burnTime, deltaT);
+
+        setupButton.interactable = false;
+        adjustNodeSlider.interactable = true;
+        placeNodeButton.interactable = true;
     }
 
 

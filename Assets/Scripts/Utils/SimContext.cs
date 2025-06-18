@@ -13,4 +13,5 @@ public class SimContext
     public TrajectoryRenderer TrajectoryRenderer { get; set; }
     public ObjectPlacementManager ObjectPlacementManager { get; set; }
     public VelocityDragManager VelocityDragManager { get; set; }
+    public RocketThrustAudio RocketThrustAudio { get; set; }
 }

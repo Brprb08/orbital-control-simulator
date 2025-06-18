@@ -240,7 +240,9 @@ public class VelocityDragManager : MonoBehaviour
         if (velocityDisplayText != null && x != 0 && y != 0 && z != 0)
         {
             velocityDisplayText.onValueChanged.RemoveListener(OnVelocityInputChanged);
-            velocityDisplayText.text = $"{currentVelocity.x:F2}, {currentVelocity.y:F2}, {currentVelocity.z:F2}";
+
+            // Switched for real coordinates to display
+            velocityDisplayText.text = $"{(currentVelocity.x * 10):F2}, {(currentVelocity.z * 10):F2}, {(currentVelocity.y * 10):F2}";
             velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
         }
     }

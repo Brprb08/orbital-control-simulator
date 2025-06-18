@@ -29,6 +29,7 @@ public class NBody : MonoBehaviour
     private ManeuverNodeManager maneuverNodeManager;
     private ThrustController thrustController;
     private LineVisibilityManager lineVisibilityManager;
+    private RocketThrustAudio rocketThrustAudio;
 
     [Header("References - Relevant Bodies")]
     private List<NBody> relevantBodies;
@@ -40,6 +41,8 @@ public class NBody : MonoBehaviour
     public float atmosphericScaleHeight = 8.5f;
     [Tooltip("Dimensionless drag coefficient")]
     public float dragCoefficient = 2.2f;
+
+    private bool isThrusting = false;
 
     [Header("Constants")]
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
@@ -57,6 +60,7 @@ public class NBody : MonoBehaviour
         this.lineVisibilityManager = ctx.LineVisibilityManager;
         this.tcc = ctx.TrajectoryComputeController;
         this.thrustController = ctx.ThrustController;
+        this.rocketThrustAudio = ctx.RocketThrustAudio;
     }
 
     /// <summary>
@@ -145,6 +149,7 @@ public class NBody : MonoBehaviour
             return;
 
         float simTime = gravityManager.simulationTime;
+        bool burnInProgress = false;
         var toExecute = new List<ManeuverNode>();
 
         foreach (var node in maneuverNodeManager.nodes)
@@ -155,11 +160,30 @@ public class NBody : MonoBehaviour
             if (IsBurnOngoing(node, simTime))
             {
                 ExecuteNodeBurn(node, this);
+                burnInProgress = true;
             }
             else
             {
                 thrustController.StopAllThrust();
                 toExecute.Add(node); // burn complete
+            }
+        }
+
+        if (burnInProgress)
+        {
+            if (!isThrusting)
+            {
+                rocketThrustAudio.StartThrust();
+                isThrusting = true;
+            }
+        }
+        else
+        {
+            if (isThrusting)
+            {
+                rocketThrustAudio.StopThrust();
+                thrustController.StopAllThrust();
+                isThrusting = false;
             }
         }
 

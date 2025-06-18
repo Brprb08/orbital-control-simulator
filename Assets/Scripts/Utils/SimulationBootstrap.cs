@@ -21,6 +21,7 @@ public class SimulationBootstrap : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
     public ObjectPlacementManager objectPlacementManager;
     public VelocityDragManager velocityDragManager;
+    public RocketThrustAudio rocketThrustAudio;
 
     private SimContext ctx;
 
@@ -41,7 +42,8 @@ public class SimulationBootstrap : MonoBehaviour
             TrajectoryComputeController = trajectoryComputeController,
             TrajectoryRenderer = trajectoryRenderer,
             ObjectPlacementManager = objectPlacementManager,
-            VelocityDragManager = velocityDragManager
+            VelocityDragManager = velocityDragManager,
+            RocketThrustAudio = rocketThrustAudio
         };
 
         // 2) initialize in dependency order
@@ -59,6 +61,7 @@ public class SimulationBootstrap : MonoBehaviour
 
         objectPlacementManager.Initialize(ctx);
         velocityDragManager.Initialize(ctx);
+        rocketThrustAudio.Initialize(ctx);
 
         foreach (var nbody in FindObjectsByType<NBody>(FindObjectsSortMode.None))
             nbody.Initialize(ctx);

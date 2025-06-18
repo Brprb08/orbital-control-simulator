@@ -12,7 +12,7 @@ public class UIManager : MonoBehaviour
     [Header("Buttons")]
     public Button freeCamButton;
     public Button trackCamButton;
-    public Button feedbackButton;
+    public Button instructionsButton;
 
     [Header("Panels")]
     public GameObject objectPlacementPanel;
@@ -21,7 +21,7 @@ public class UIManager : MonoBehaviour
     public GameObject maneuverNodePanel;
     public GameObject burnControlsPanel;
     public GameObject apogeePerigeePanel;
-    public GameObject feedbackPanel;
+    public GameObject instructionsPanel;
     public GameObject toggleOptionsPanel;
     public GameObject dropdown;
     public GameObject placeTLEPanel;
@@ -52,7 +52,7 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI raanText;
 
     [Header("UI Flags")]
-    public bool showInstructionText = false;
+    public bool showInstructionText = true;
     public bool isTracking = true;
     public bool earthCamPressed = true;
     private bool inFreePlacementMode = true;
@@ -80,6 +80,11 @@ public class UIManager : MonoBehaviour
    "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
    "- Left / Right: Adjust lateral movement (changes inclination).\n" +
    "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
+   "</b>MANEUVER NODES:</b>\n" +
+    "- Select a burn type from the dropdown.\n" +
+    "- Click 'Setup' to create a node.\n" +
+    "- Use the slider to adjust burn timing.\n" +
+    "- Click 'Place' to finalize the maneuver.\n\n" +
    "Switch to Free Cam to explore or place satellites.";
 
         ShowObjectPlacementPanel(false);
@@ -92,7 +97,7 @@ public class UIManager : MonoBehaviour
         trackCamButton.Select();
         trackCamButton.interactable = false;
         placementSelectPanel.SetActive(false);
-        feedbackPanel.SetActive(showInstructionText);
+        instructionsPanel.SetActive(showInstructionText);
         cameraControls.SetActive(true);
         UpdateButtonText();
     }
@@ -177,6 +182,11 @@ public class UIManager : MonoBehaviour
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
     "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
+    "</b>MANEUVER NODES:</b>\n" +
+    "- Select a burn type from the dropdown.\n" +
+    "- Click 'Setup' to create a node.\n" +
+    "- Use the slider to adjust burn timing.\n" +
+    "- Click 'Place' to finalize the maneuver.\n\n" +
     "Switch to Free Cam to explore or place satellites.";
         isTracking = true;
 
@@ -391,7 +401,7 @@ public class UIManager : MonoBehaviour
     {
         showInstructionText = !showInstructionText;
         UpdateButtonText(); // Update the button text when toggling
-        feedbackPanel.SetActive(showInstructionText);
+        instructionsPanel.SetActive(showInstructionText);
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -426,7 +436,7 @@ public class UIManager : MonoBehaviour
     /// </summary>
     private void UpdateButtonText()
     {
-        TMP_Text tmpButtonText = feedbackButton.GetComponentInChildren<TMP_Text>();
+        TMP_Text tmpButtonText = instructionsButton.GetComponentInChildren<TMP_Text>();
         if (tmpButtonText != null)
         {
             tmpButtonText.text = showInstructionText ? "Hide Instructions" : "Show Instructions";

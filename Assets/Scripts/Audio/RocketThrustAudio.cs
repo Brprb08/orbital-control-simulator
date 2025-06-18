@@ -10,6 +10,13 @@ public class RocketThrustAudio : MonoBehaviour
     private AudioSource thrustSource;
     private Coroutine fadeCoroutine;
 
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
+    {
+        this.ctx = ctx;
+    }
+
     void Awake()
     {
         thrustSource = gameObject.AddComponent<AudioSource>();
