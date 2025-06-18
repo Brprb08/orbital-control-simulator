@@ -67,7 +67,7 @@ public class UIManager : MonoBehaviour
         instructionText.text =
    "<b>Welcome to the Orbit Simulator!</b>\n" +
    "<b>Track Cam Mode Activated!</b>\n\n" +
-   "<b>CONTROLS:</b>\n" +
+   "\u00A0\u00A0\u00A0\u00A0<b>──────── CONTROLS ────────</b>\n" +
    "- Dropdown Menu: Select the tracked object.\n" +
    "- Esc Key: Closes the game.\n" +
    "- Right Mouse Button: Rotate the camera.\n" +
@@ -76,11 +76,11 @@ public class UIManager : MonoBehaviour
    "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
    "     * Earth Cam: Centers the view on Earth.\n" +
    "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
-   "<b>THRUST:</b>\n" +
+   "\u00A0\u00A0\u00A0\u00A0<b>──────── THRUST ────────</b>\n" +
    "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
    "- Left / Right: Adjust lateral movement (changes inclination).\n" +
    "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
-   "</b>MANEUVER NODES:</b>\n" +
+   "\u00A0\u00A0\u00A0\u00A0</b>──────── MANEUVER NODES ────────</b>\n" +
     "- Select a burn type from the dropdown.\n" +
     "- Click 'Setup' to create a node.\n" +
     "- Use the slider to adjust burn timing.\n" +
@@ -111,11 +111,11 @@ public class UIManager : MonoBehaviour
         instructionText.text =
         "<b>Free Cam Mode Activated!</b>\n\n" +
         "You can freely move to explore or place satellites.\n\n" +
-        "<b>CONTROLS:</b>\n" +
+        "\u00A0\u00A0\u00A0\u00A0<b>──────── CONTROLS ────────</b>\n" +
         "- WASD: Move around.\n" +
         "- Right Mouse Button: Rotate the camera.\n" +
         "- Esc Key: Closes the game.\n\n" +
-        "<b>PLACING A SATELLITE:</b>\n" +
+        "\u00A0\u00A0\u00A0\u00A0<b>──────── PLACING A SATELLITE ────────</b>\n" +
         "- Naming is optional (defaults to 'Satellite (n)').\n" +
         "- Set Mass (500 - 1,000,000 kg).\n" +
         "- Set Radius (1-50).\n" +
@@ -169,7 +169,7 @@ public class UIManager : MonoBehaviour
     {
         instructionText.text =
     "<b>Track Cam Mode Activated!</b>\n\n" +
-    "<b>CONTROLS:</b>\n" +
+    "\u00A0\u00A0\u00A0\u00A0<b>──────── CONTROLS ────────</b>\n" +
     "- Dropdown Menu: Select the tracked object.\n" +
     "- Esc Key: Closes the game.\n" +
     "- Right Mouse Button: Rotate the camera.\n" +
@@ -178,11 +178,11 @@ public class UIManager : MonoBehaviour
     "- Earth Cam Button: Toggle 'Earth Cam' or 'Satellite Cam'.\n" +
     "     * Earth Cam: Centers the view on Earth.\n" +
     "     * Satellite Cam: Centers the view on the selected satellite.\n\n" +
-    "<b>THRUST:</b>\n" +
+    "\u00A0\u00A0\u00A0\u00A0<b>──────── THRUST ────────</b>\n" +
     "- Prograde / Retrograde: Speed up or slow down in orbit.\n" +
     "- Left / Right: Adjust lateral movement (changes inclination).\n" +
     "- Radial In / Radial Out: Thrust toward or away from the planet you're orbiting.\n\n" +
-    "</b>MANEUVER NODES:</b>\n" +
+    "\u00A0\u00A0\u00A0\u00A0<b>──────── MANEUVER NODES ──────────</b>\n" +
     "- Select a burn type from the dropdown.\n" +
     "- Click 'Setup' to create a node.\n" +
     "- Use the slider to adjust burn timing.\n" +
