@@ -94,7 +94,7 @@ To build and run the simulator as a standalone Windows application:
    - **Build and Run on**: `Local Machine`
    - Make sure `Scenes/OrbitSimulation` is checked in the Scene List
 
-4. Click **Build**, then select an output folder (This is where the full game will be saved)
+4. Click **Build**, then select a folder to save the build output.
 5. After the build completes, open the output folder and run the `SpaceOrbit.exe` file
 
 All required DLLs (including the native physics plugin and its runtime dependencies) will be included automatically, as long as they are in `Assets/Plugins/x86_64/`.
