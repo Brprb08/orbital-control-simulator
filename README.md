@@ -54,38 +54,50 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 - **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
 
 ---
-## How to Run It
+## How to Run
 
 ### Requirements
 - Unity 2020.3 or later (tested on LTS versions)
 - Windows 64-bit (required for native C++ DLL support)
 
-### Getting Started
+### Run from the Unity Editor
+
 1. Clone the repo:
    ```bash
    git clone https://github.com/Brprb08/space-orbit-simulation.git
    ```
 2. Open the project in Unity Hub  
 3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`  
-4. Press `Play`
+4. Press `Play` in the Unity Editor
 
-The native physics backend is provided as a precompiled 64-bit DLL and is already included at `Assets/Plugins/x86_64/`.  
+The native physics backend is provided as a precompiled 64-bit DLL in `Assets/Plugins/x86_64/`.  
 You do not need to compile the DLL yourself.
 
-Three runtime dependencies are also included:
+The following runtime dependencies are also included to support the C++ plugin:
 - `libgcc_s_seh-1.dll`
 - `libstdc++-6.dll`
 - `libwinpthread-1.dll`
 
-These are required for the C++ plugin to run correctly on systems that do not have the GCC runtime installed.
+These are required on systems that do not have the GCC runtime installed.
 
-**Controls:**
-```
-- WASD / Right Mouse: Free camera navigation  
-- Object Dropdown: Switch tracked body  
-- Arrow keys: Apply thrust (prograde/retrograde/etc.)  
-- R: Reset time scaling  
-```
+### Build and Run (Standalone Executable)
+
+To build and run the simulator as a standalone Windows application:
+
+1. In Unity, open the menu:
+   ```
+   File → Build Profiles
+   ```
+2. Select **Windows** as the target platform
+3. Ensure the following settings:
+   - **Architecture**: `Intel 64-bit`
+   - **Build and Run on**: `Local Machine`
+   - Make sure `Scenes/OrbitSimulation` is checked in the Scene List
+
+4. Click **Build**, then select an output folder (This is where the full game will be saved)
+5. After the build completes, open the output folder and run the `SpaceOrbit.exe` file
+
+All required DLLs (including the native physics plugin and its runtime dependencies) will be included automatically, as long as they are in `Assets/Plugins/x86_64/`.
 
 ---
 
