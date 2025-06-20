@@ -94,7 +94,8 @@ public class ThrustController : MonoBehaviour
         if (currentTargetBody == null) return;
 
         Vector3 planetUp = currentTargetBody.transform.position.normalized;
-        Vector3 rightThrust = Vector3.Cross(planetUp, currentTargetBody.velocity.normalized);
+        Vector3 prograde = currentTargetBody.velocity.normalized;
+        Vector3 rightThrust = Vector3.Cross(planetUp, prograde).normalized;
         Vector3 leftThrust = -rightThrust;
 
         bool isThrusting = false;
@@ -150,6 +151,12 @@ public class ThrustController : MonoBehaviour
         // Debug.LogError(thrustDirection);
 
         Vector3 adjustedThrustDirection = thrustDirection.normalized;
+
+        if (float.IsNaN(adjustedThrustDirection.x) || adjustedThrustDirection == Vector3.zero)
+        {
+            Debug.LogWarning($"[ThrustController] Invalid thrust direction: {thrustDirection}");
+            return;
+        }
 
         // Calculate the actual acceleration, scaled to account for 1 unit = 10 km
         float scaledMagnitude = magnitude / 10f;

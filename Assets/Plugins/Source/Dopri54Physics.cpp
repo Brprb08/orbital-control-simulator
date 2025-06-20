@@ -123,7 +123,7 @@ extern "C"
         // pick band
         int idx = std::min(int(altKm / 10.0), JR_N - 2);
         double dH = altKm - JR_ALT[idx];
-        if (altKm < 130)
+        if (altKm < 150)
         {
             double rho = JR_RHO[idx] * std::exp(-dH / JR_H[idx]);
             return std::min(rho, 1e4);

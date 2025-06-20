@@ -1,7 +1,6 @@
 # Orbital Control Simulator
 
-Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn't a display tool, it's a physics-based simulation using a native integrator and GPU-predicted trajectories to model real-world orbital mechanics with precision.
-Built in Unity but driven by a custom double-precision C++ backend, it handles maneuver nodes, atmospheric drag, and orbital propagation entirely outside Unity’s physics system. The built-in Unity physics engine is not used in this simulation.
+Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn’t just a visualization tool. It’s a physics-based simulator that uses a native integrator and GPU-predicted trajectories to model orbital mechanics with precision. Built in Unity and powered by a custom double-precision C++ backend, it handles maneuver nodes, atmospheric drag, and orbital propagation entirely outside Unity’s physics system.
 
 [🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/06-17Track.png)
@@ -53,6 +52,40 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 - **Thrust Model:** Instantaneous impulse-based velocity change (scaled by body mass)
 - **Atmospheric Drag:** Empirical model using interpolated density tables and cross-sectional area
 - **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
+
+---
+## How to Run It
+
+### Requirements
+- Unity 2020.3 or later (tested on LTS versions)
+- Windows 64-bit (required for native C++ DLL support)
+
+### Getting Started
+1. Clone the repo:
+   ```bash
+   git clone https://github.com/Brprb08/space-orbit-simulation.git
+   ```
+2. Open the project in Unity Hub  
+3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`  
+4. Press `Play`
+
+The native physics backend is provided as a precompiled 64-bit DLL and is already included at `Assets/Plugins/x86_64/`.  
+You do not need to compile the DLL yourself.
+
+Three runtime dependencies are also included:
+- `libgcc_s_seh-1.dll`
+- `libstdc++-6.dll`
+- `libwinpthread-1.dll`
+
+These are required for the C++ plugin to run correctly on systems that do not have the GCC runtime installed.
+
+**Controls:**
+```
+- WASD / Right Mouse: Free camera navigation  
+- Object Dropdown: Switch tracked body  
+- Arrow keys: Apply thrust (prograde/retrograde/etc.)  
+- R: Reset time scaling  
+```
 
 ---
 

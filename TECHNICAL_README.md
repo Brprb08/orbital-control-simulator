@@ -23,7 +23,6 @@ This document is for aerospace engineers, simulation devs, and technical reviewe
 - [Planned Enhancements](#planned-enhancements)
 - [Limitations](#limitations)
 - [Directory Layout](#directory-layout)
-- [How To Run It](#how-to-run-it)
 
 ---
 
@@ -231,31 +230,6 @@ OrbitalControlSimulator/
 └── PHYSICS_BREAKDOWN.md           # Gravity, thrust, and integrator math
 ```
 </details>
-
----
-
-## How to Run It
-
-### Requirements
-- Unity 2020.3 or later (tested on LTS versions)
-- Windows OS (for C++ DLL compatibility)
-
-### Getting Started
-1. Clone the repo:
-```
-git clone https://github.com/Brprb08/space-orbit-simulation.git
-```
-2. Open the project in Unity Hub
-3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`
-4. Press `Play`
-
-Controls:
-```
-- WASD / Right Mouse: Free camera navigation  
-- Object Dropdown: Switch tracked body  
-- Arrow keys: Apply thrust (prograde/retrograde/etc.)  
-- R: Reset time scaling  
-```
 
 ---
 

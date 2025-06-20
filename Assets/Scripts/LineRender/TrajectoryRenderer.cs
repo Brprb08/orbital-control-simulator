@@ -111,6 +111,11 @@ public class TrajectoryRenderer : MonoBehaviour
                 savedOriginalOrbit = false;
             }
         }
+
+        if (trackedBody.cumulativeDeltaVUsed != 0f)
+        {
+            ShowDeltaV();
+        }
     }
 
     /// <summary>
@@ -382,6 +387,11 @@ public class TrajectoryRenderer : MonoBehaviour
                 }
             }
         }
+    }
+
+    private void ShowDeltaV()
+    {
+        uIManager.UpdateDeltaV(trackedBody.cumulativeDeltaVUsed);
     }
 
     /// <summary>

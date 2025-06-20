@@ -50,6 +50,7 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI orbitalPeriodText;
     public TextMeshProUGUI inclinationText;
     public TextMeshProUGUI raanText;
+    public TextMeshProUGUI deltaVText;
 
     [Header("UI Flags")]
     public bool showInstructionText = true;
@@ -100,6 +101,7 @@ public class UIManager : MonoBehaviour
         instructionsPanel.SetActive(showInstructionText);
         cameraControls.SetActive(true);
         UpdateButtonText();
+        deltaVText.text = "";
     }
 
     /// <summary>
@@ -488,6 +490,19 @@ public class UIManager : MonoBehaviour
         SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
         SetText(inclinationText, "Inclination", inclination, "°");
         SetText(raanText, "RAAN", RAAN, "°", "F1");
+    }
+
+    public void UpdateDeltaV(float deltaV)
+    {
+        if (deltaV != 0f)
+        {
+            SetText(deltaVText, "DeltaV", deltaV, "km/s", "F3");
+        }
+        else
+        {
+            deltaVText.text = "";
+        }
+
     }
 
     /// <summary>

@@ -50,6 +50,11 @@ public class NBody : MonoBehaviour
 
     private const float MaxDistanceFromEarth = 40000f;
 
+    public float cumulativeDeltaVUsed = 0f;
+    private bool wasThrustingLastFrame = false;
+    private Vector3 burnStartVelocity;
+    private Vector3 burnEndVelocity;
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -116,7 +121,41 @@ public class NBody : MonoBehaviour
         {
             CheckForNodeBurns();
 
+            Vector3 thrustForceThisFrame = state.force;
+
             SimulateOrbitalMotion();
+
+            Vector3 acceleration = thrustForceThisFrame / (float)mass;
+            float deltaVThisFrame = acceleration.magnitude * Time.fixedDeltaTime;
+
+            bool isThrustingNow = thrustForceThisFrame != Vector3.zero;
+
+            if (isThrustingNow)
+            {
+                if (!wasThrustingLastFrame)
+                {
+                    // Just started burning
+                    burnStartVelocity = velocity;
+                }
+                cumulativeDeltaVUsed += deltaVThisFrame * 10f; // Unity units → km/s
+            }
+            else if (wasThrustingLastFrame && !isThrustingNow)
+            {
+                // Just stopped burning
+                burnEndVelocity = velocity;
+
+                float deltaVVectorMagnitude = (burnEndVelocity - burnStartVelocity).magnitude * 10f;
+                Debug.Log(
+                    $"Delta-V used in burn: {cumulativeDeltaVUsed:F3} km/s\n" +
+                    $"Start Velocity: {burnStartVelocity.magnitude * 10f:F3} km/s\n" +
+                    $"End Velocity:   {burnEndVelocity.magnitude * 10f:F3} km/s\n" +
+                    $"Vector Δv:      {deltaVVectorMagnitude:F3} km/s"
+                );
+
+                cumulativeDeltaVUsed = 0f;
+            }
+
+            wasThrustingLastFrame = isThrustingNow;
         }
         state.force = Vector3.zero;
     }
