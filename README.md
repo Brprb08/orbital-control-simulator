@@ -85,9 +85,8 @@ These are required on systems that do not have the GCC runtime installed.
 To build and run the simulator as a standalone Windows application:
 
 1. In Unity, open the menu:
-   ```
-    File → Build Settings (or Build Profiles, depending on your version)  
-   ```
+   - File → Build Settings (or Build Profiles, depending on your version)  
+
 2. Select **Windows** as the target platform
 3. Ensure the following settings:
    - **Architecture**: `Intel 64-bit`
