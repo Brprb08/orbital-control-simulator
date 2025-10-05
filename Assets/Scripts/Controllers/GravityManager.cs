@@ -1,6 +1,7 @@
 using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
+using System;
 using System.Linq;
 
 /// <summary>
@@ -12,6 +13,7 @@ public class GravityManager : MonoBehaviour
     [Header("References - Scripts")]
     public NBody CentralBody { get; private set; }
     private CameraController cameraController;
+    private BodyDropdownManager bodyDropdownManager;
     private LineVisibilityManager lineVisibilityManager;
     private SimContext ctx;
 
@@ -33,11 +35,18 @@ public class GravityManager : MonoBehaviour
     {
         this.ctx = ctx;
         this.lineVisibilityManager = ctx.LineVisibilityManager;
-        this.cameraController = ctx.CameraController;
+        this.bodyDropdownManager = ctx.BodyDropdownManager;
+
         bodyDropdown.ClearOptions();
         var allBodies = FindObjectsByType<NBody>(FindObjectsSortMode.None);
-        foreach (var body in allBodies.OrderByDescending(b => b.isCentralBody))
+
+        foreach (var body in allBodies
+        .OrderByDescending(b => b.isCentralBody)
+        .ThenBy(b => b.name, StringComparer.OrdinalIgnoreCase)
+        .ThenBy(b => b.GetInstanceID()))
+        {
             RegisterBody(body);
+        }
 
         if (ctx.CameraController == null)
             Debug.LogError("GravityManager: CameraController missing from context!");
@@ -110,30 +119,39 @@ public class GravityManager : MonoBehaviour
         }
     }
 
+    public List<NBody> GetAllSatellites()
+    {
+        return bodies.FindAll(body => body.CompareTag("Satellite"));
+    }
+
     /// <summary>
     /// Handles a collision between two bodies by removing the one with lesser mass.
+    /// If the camera is tracking the removed one, hand off to another body or FreeCam.
     /// </summary>
-    /// <param name="bodyA">The first body involved in the collision.</param>
-    /// <param name="bodyB">The second body involved in the collision.</param>
     public void HandleCollision(NBody bodyA, NBody bodyB)
     {
         NBody bodyToRemove = (bodyA.mass < bodyB.mass) ? bodyA : bodyB;
 
-        if (cameraController != null && cameraController.IsTracking(bodyToRemove))
+        var tracker = ctx.CameraTracker; // Phase 3: use interface
+        if (tracker != null && tracker.CurrentBody == bodyToRemove)
         {
-            cameraController.SwitchToNextValidBody(bodyToRemove);
+            var remaining = GetAllSatellites();
+            remaining.Remove(bodyToRemove);
+            if (remaining.Count > 0)
+            {
+                tracker.TrackBody(remaining[0]);
+            }
+            else
+            {
+                tracker.BreakToFreeCam();
+            }
         }
 
         DeregisterBody(bodyToRemove);
-        Debug.Log(bodyToRemove.gameObject);
         Destroy(bodyToRemove.gameObject);
 
-        if (cameraController != null)
-        {
-            cameraController.RefreshBodiesList();
-        }
-
-        cameraController.UpdateDropdownSelection();
+        if (bodyDropdownManager != null)
+            bodyDropdownManager.UpdateDropdownSelection();
 
         Debug.Log($"[GRAVITY MANAGER]: Removed {bodyToRemove.name} due to collision.");
     }

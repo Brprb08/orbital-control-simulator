@@ -33,11 +33,12 @@ public class ThrustController : MonoBehaviour
 
     [Header("References - Scripts")]
     public CameraController cameraController;
+    public CameraMovement cameraMovement;
     public TrajectoryRenderer trajectoryRenderer;
     public GravityManager gravityManager;
+    private TutorialController tutorialController;
 
     [Header("Thrust Configs")]
-    private float thrustFactor = 1f;
     private bool thrustStopped = false;
 
     private SimContext ctx;
@@ -63,7 +64,9 @@ public class ThrustController : MonoBehaviour
         this.ctx = ctx;
         this.gravityManager = ctx.GravityManager;
         this.cameraController = ctx.CameraController;
+        this.cameraMovement = ctx.CameraMovement;
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
+        this.tutorialController = ctx.TutorialController;
 
         if (thrustParticles == null)
         {
@@ -82,52 +85,51 @@ public class ThrustController : MonoBehaviour
         thrustParticles.Clear();
     }
 
-    /// <summary>
-    /// Applies thrust forces to the tracked body in fixed time intervals.
-    /// Determines direction and activates visual feedback.
-    /// </summary>
     void FixedUpdate()
     {
-        if (cameraController == null) return;
+        if (cameraMovement == null) return;
 
-        NBody currentTargetBody = cameraController.cameraMovement.targetBody;
-        if (currentTargetBody == null) return;
+        NBody ship = cameraMovement.targetBody;
+        if (ship == null) return;
 
-        Vector3 planetUp = currentTargetBody.transform.position.normalized;
-        Vector3 prograde = currentTargetBody.velocity.normalized;
-        Vector3 rightThrust = Vector3.Cross(planetUp, prograde).normalized;
-        Vector3 leftThrust = -rightThrust;
+        // Correct orbital basis (all in SAME inertial frame)
+        Vector3 r = ship.transform.position - Vector3.zero;
+        Vector3 v = ship.velocity - Vector3.zero;
+
+        Vector3 rHat = r.normalized;                             // radial-out
+        Vector3 vHat = v.normalized;                             // (prograde)
+        Vector3 nHat = Vector3.Cross(rHat, vHat).normalized;     // Normal (orbit normal)
 
         bool isThrusting = false;
 
         if (isForwardThrustActive)
         {
-            ApplyThrust(currentTargetBody, maxForwardThrustMagnitude, currentTargetBody.velocity.normalized);
+            ApplyThrust(ship, maxForwardThrustMagnitude, vHat);
             isThrusting = true;
         }
         else if (isReverseThrustActive)
         {
-            ApplyThrust(currentTargetBody, maxReverseThrustMagnitude, -currentTargetBody.velocity.normalized);
+            ApplyThrust(ship, maxReverseThrustMagnitude, -vHat);
             isThrusting = true;
         }
-        else if (isRightThrustActive)
+        else if (isRightThrustActive)   // Normal
         {
-            ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, rightThrust);
+            ApplyThrust(ship, maxLateralThrustMagnitude, nHat);
             isThrusting = true;
         }
-        else if (isLeftThrustActive)
+        else if (isLeftThrustActive)    // Anti-Normal
         {
-            ApplyThrust(currentTargetBody, maxLateralThrustMagnitude, leftThrust);
+            ApplyThrust(ship, maxLateralThrustMagnitude, -nHat);
             isThrusting = true;
         }
         else if (isRadialInThrustActive)
         {
-            ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, -planetUp);
+            ApplyThrust(ship, maxRadialThrustMagnitude, -rHat);
             isThrusting = true;
         }
         else if (isRadialOutThrustActive)
         {
-            ApplyThrust(currentTargetBody, maxRadialThrustMagnitude, planetUp);
+            ApplyThrust(ship, maxRadialThrustMagnitude, rHat);
             isThrusting = true;
         }
 
@@ -138,35 +140,51 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Applies a thrust force to the specified NBody object in a given direction and magnitude.
-    /// </summary>
-    /// <param name="targetBody">The NBody to which the force is applied.</param>
-    /// <param name="magnitude">The magnitude of the thrust force.</param>
-    /// <param name="thrustDirection">The direction in which the thrust is applied.</param>
-    /// <param name="rampedThrustFactor">An optional scaling factor for ramping the thrust.</param>
     public void ApplyThrust(NBody targetBody, float magnitude, Vector3 thrustDirection, float rampedThrustFactor = 1f)
     {
         if (targetBody == null) return;
-        // Debug.LogError(thrustDirection);
 
         Vector3 adjustedThrustDirection = thrustDirection.normalized;
-
         if (float.IsNaN(adjustedThrustDirection.x) || adjustedThrustDirection == Vector3.zero)
         {
             Debug.LogWarning($"[ThrustController] Invalid thrust direction: {thrustDirection}");
             return;
         }
 
-        // Calculate the actual acceleration, scaled to account for 1 unit = 10 km
+        // scale (world is 1 unit = 10 km)
         float scaledMagnitude = magnitude / 10f;
 
-        targetBody.AddForce(adjustedThrustDirection * scaledMagnitude);
+        // build force in world frame
+        Vector3 F = adjustedThrustDirection * scaledMagnitude;
+
+        Vector3 r = targetBody.transform.position - Vector3.zero;
+        Vector3 v = targetBody.velocity - Vector3.zero;
+
+        // unit basis
+        Vector3 rHat = r.normalized;
+        Vector3 vHat = v.normalized;
+        Vector3 nHat = Vector3.Cross(rHat, vHat).normalized;
+
+        float Fr = Vector3.Dot(F, rHat);
+        float Fp = Vector3.Dot(F, vHat);
+        float Fn = Vector3.Dot(F, nHat);
+
+        // (for a pure Normal burn want Fn ≈ |F|, Fr ≈ 0, Fp ≈ 0, power ≈ 0)
+        float cos_n_v = Vector3.Dot(nHat, vHat);              // should be ~0
+        float power = Vector3.Dot(v, F);                   // work rate; ~0 for pure normal
+
+        // apply force
+        targetBody.AddForce(F);
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
-
         trajectoryRenderer.orbitIsDirty = true;
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasAppliedThrust = true;
+        }
     }
+
 
     /// <summary>
     /// Updates the particle system position and rotation to match the thrust direction.
@@ -248,42 +266,6 @@ public class ThrustController : MonoBehaviour
         isRightThrustActive = false;
         isRadialInThrustActive = false;
         isRadialOutThrustActive = false;
-    }
-
-
-    /// <summary>
-    /// Calculates and returns the current total thrust impulse as a Vector3.
-    /// </summary>
-    /// <returns>The current total thrust force vector.</returns>
-    public Vector3 GetCurrentThrustImpulse()
-    {
-        Vector3 totalForce = Vector3.zero;
-
-        NBody currentTargetBody = cameraController.cameraMovement.targetBody;
-        if (currentTargetBody == null) return Vector3.zero;
-
-        Vector3 planetUp = currentTargetBody.transform.position.normalized;
-        Vector3 rightThrust = Vector3.Cross(planetUp, currentTargetBody.velocity.normalized).normalized;
-        Vector3 leftThrust = -rightThrust;
-
-        if (isForwardThrustActive)
-            totalForce += currentTargetBody.velocity.normalized * maxForwardThrustMagnitude * thrustFactor;
-
-        if (isReverseThrustActive)
-            totalForce += -currentTargetBody.velocity.normalized * maxReverseThrustMagnitude * thrustFactor;
-
-        if (isRightThrustActive)
-            totalForce += rightThrust * maxLateralThrustMagnitude * thrustFactor;
-
-        if (isLeftThrustActive)
-            totalForce += leftThrust * maxLateralThrustMagnitude * thrustFactor;
-
-        if (isRadialInThrustActive)
-            totalForce += -planetUp * maxRadialThrustMagnitude * thrustFactor;
-
-        if (isRadialOutThrustActive)
-            totalForce += planetUp * maxRadialThrustMagnitude * thrustFactor;
-        return totalForce;
     }
 
     // UI Button Handlers

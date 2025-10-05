@@ -22,7 +22,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
-    [SerializeField] public CameraMovement cameraMovement;
+    public CameraMovement cameraMovement;
     public GravityManager gravityManager;
     private UIManager uIManager;
 
@@ -65,6 +65,14 @@ public class TrajectoryRenderer : MonoBehaviour
     public float latestPredictionDeltaTime;
     public float latestPredictionStartTime;
 
+    [Header("Preview (while dragging)")]
+    public ProceduralLineRenderer previewLine;
+    private Coroutine previewRoutine;
+    private Vector3 previewPos, previewVel;
+    private float previewMass;
+    private bool previewDirty;
+
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -85,6 +93,7 @@ public class TrajectoryRenderer : MonoBehaviour
         apogeeProceduralLine = CreateProceduralLineRenderer("ApogeeLine", apogeeLineColor);
         perigeeProceduralLine = CreateProceduralLineRenderer("PerigeeLine", perigeeLineColor);
         preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC");
+        previewLine = CreateProceduralLineRenderer("PreviewLine", "#FFD166"); // soft yellow
 
         if (gravityManager == null) Debug.LogError("[TrajectoryRenderer] missing GravityManager");
         if (cameraMovement == null) Debug.LogError("[TrajectoryRenderer] missing CameraMovement");
@@ -97,6 +106,20 @@ public class TrajectoryRenderer : MonoBehaviour
     /// </summary>
     void Update()
     {
+        if (trackedBody == null)
+        {
+            // ensure lines are not lingering
+            if (predictionProceduralLine != null) predictionProceduralLine.Clear();
+            if (originProceduralLine != null) originProceduralLine.Clear();
+            if (apogeeProceduralLine != null) apogeeProceduralLine.Clear();
+            if (perigeeProceduralLine != null) perigeeProceduralLine.Clear();
+            if (preManeuverLine != null) preManeuverLine.Clear();
+
+            // hide the apogee/perigee panel if you want it gone in FreeCam
+            if (uIManager != null) uIManager.ShowApogeePerigeePanel(false);
+            return;
+        }
+
         if (thrustController != null)
         {
             isThrusting = thrustController.IsThrusting;
@@ -154,13 +177,44 @@ public class TrajectoryRenderer : MonoBehaviour
     /// <param name="body">The NBody to track.</param>
     public void SetTrackedBody(NBody body)
     {
-        ClearPreManeuverLine();
+        // 1) Stop any previous prediction loop right away
+        if (predictionCoroutine != null)
+        {
+            StopCoroutine(predictionCoroutine);
+            predictionCoroutine = null;
+        }
+
+        // 2) IMMEDIATE visual clear so no lingering geometry can show
+        if (predictionProceduralLine != null) predictionProceduralLine.Clear();
+        if (originProceduralLine != null) originProceduralLine.Clear();
+        if (apogeeProceduralLine != null) apogeeProceduralLine.Clear();
+        if (perigeeProceduralLine != null) perigeeProceduralLine.Clear();
+        if (preManeuverLine != null) preManeuverLine.Clear();
+
+        // 3) Assign new tracked body
         trackedBody = body;
 
-        if (trackedBody != null)
+        // 4) If going to FreeCam/placeholder etc., keep UI hidden and bail
+        if (trackedBody == null)
         {
-            predictionCoroutine = StartCoroutine(RecomputeTrajectory());
+            if (uIManager != null) uIManager.ShowApogeePerigeePanel(false);
+            orbitIsDirty = false;
+            isComputingPrediction = false;
+            return;
         }
+
+        // 5) We have a real target: show UI and recompute next frame
+        if (uIManager != null) uIManager.ShowApogeePerigeePanel(true);
+
+        orbitIsDirty = true;            // force a fresh prediction
+        isComputingPrediction = false;  // reset guard just in case
+        predictionCoroutine = StartCoroutine(RecomputeTrajectory());
+    }
+
+
+    public void ClearAllLinesAndUI()
+    {
+        SetTrackedBody(null); // the logic above already clears visuals + UI and stops coroutines
     }
 
     private void SaveCurrentTrajectoryAsOriginal()
@@ -420,6 +474,143 @@ public class TrajectoryRenderer : MonoBehaviour
                 preManeuverLine.SetVisibility(true);
             }
         }
+    }
+
+    /// <summary>
+    /// Request a cheap, throttled preview from an arbitrary state (used while dragging).
+    /// </summary>
+    public void QuickPreviewFromState(Vector3 startPos, Vector3 startVel, float bodyMass)
+    {
+        // stash latest and mark dirty; a single coroutine will service updates
+        previewPos = startPos;
+        previewVel = startVel;
+        previewMass = Mathf.Max(1f, bodyMass);
+        previewDirty = true;
+
+        if (previewRoutine == null)
+            previewRoutine = StartCoroutine(QuickPreviewLoop());
+    }
+
+    /// <summary>Clear the transient preview line.</summary>
+    public void ClearPreview()
+    {
+        previewDirty = false;
+        if (previewLine != null) previewLine.Clear();
+        if (previewRoutine != null)
+        {
+            StopCoroutine(previewRoutine);
+            previewRoutine = null;
+        }
+    }
+
+    private IEnumerator QuickPreviewLoop()
+    {
+        // Throttle to ~10 Hz so we don't spam the GPU while the slider changes every frame.
+        const float tick = 0.1f;
+
+        while (true)
+        {
+            if (!previewDirty)
+            {
+                yield return new WaitForSeconds(tick);
+                continue;
+            }
+            previewDirty = false;
+
+            // Build "other bodies" arrays (influence field). Keep it tiny for speed.
+            var others = gravityManager.Bodies;
+            var posList = new List<Vector3>(others.Count);
+            var massList = new List<float>(others.Count);
+            for (int i = 0; i < others.Count; i++)
+            {
+                var b = others[i];
+                // optional: skip the preview body itself if it already has an NBody
+                posList.Add(b.transform.position);
+                massList.Add((float)b.mass);
+            }
+
+            // Cheap settings — fast and smooth enough for a preview
+            int steps = 1500;          // not huge
+            float dt = 2f;             // small-ish timestep
+            ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
+                previewPos,
+                previewVel,
+                previewMass,
+                posList.ToArray(),
+                massList.ToArray(),
+                dt,
+                steps,
+                (points) =>
+                {
+                    if (points == null || points.Length < 2)
+                    {
+                        previewLine.Clear();
+                        return;
+                    }
+                    // Clip to impacts like your main path does (optional)
+                    var clipped = ClipTrajectory(points);
+                    previewLine.UpdateLine(clipped);
+                });
+
+            yield return new WaitForSeconds(tick);
+        }
+    }
+
+    // === In TrajectoryRenderer ===
+    private List<Vector3> BuildOtherPositions()
+    {
+        var others = gravityManager.Bodies;
+        var pos = new List<Vector3>(others.Count);
+        for (int i = 0; i < others.Count; i++) pos.Add(others[i].transform.position);
+        return pos;
+    }
+
+    private List<float> BuildOtherMasses()
+    {
+        var others = gravityManager.Bodies;
+        var m = new List<float>(others.Count);
+        for (int i = 0; i < others.Count; i++) m.Add((float)others[i].mass);
+        return m;
+    }
+
+    /// <summary>
+    /// Do a single higher-quality preview pass (used on drag end).
+    /// Temporarily pauses the throttled loop so the long preview isn't overwritten.
+    /// </summary>
+    public void QuickPreviewOnceLong(Vector3 startPos, Vector3 startVel, float bodyMass, int steps = 8000, float dt = 2f)
+    {
+        // Pause the throttled loop so it doesn't overwrite this longer pass
+        if (previewRoutine != null)
+        {
+            StopCoroutine(previewRoutine);
+            previewRoutine = null;
+        }
+
+        var posList = BuildOtherPositions();
+        var massList = BuildOtherMasses();
+
+        ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
+            startPos,
+            startVel,
+            Mathf.Max(1f, bodyMass),
+            posList.ToArray(),
+            massList.ToArray(),
+            dt,
+            steps,
+            (points) =>
+            {
+                if (points == null || points.Length < 2)
+                {
+                    previewLine.Clear();
+                    return;
+                }
+                var clipped = ClipTrajectory(points);
+                previewLine.UpdateLine(clipped);
+
+                // After we’ve drawn the long pass, resume the light, throttled loop
+                if (previewRoutine == null)
+                    previewRoutine = StartCoroutine(QuickPreviewLoop());
+            });
     }
 
     /// <summary>

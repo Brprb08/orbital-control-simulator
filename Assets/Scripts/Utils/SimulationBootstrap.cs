@@ -11,6 +11,8 @@ public class SimulationBootstrap : MonoBehaviour
     public GravityManager gravityManager;
     public CameraController cameraController;
     public CameraMovement cameraMovement;
+    // public CameraMode cameraMode;
+    public FreeCamera freeCamera;
     public BodyDropdownManager bodyDropdownManager;
     public ManeuverNodeManager maneuverNodeManager;
     public ThrustController thrustController;
@@ -22,6 +24,8 @@ public class SimulationBootstrap : MonoBehaviour
     public ObjectPlacementManager objectPlacementManager;
     public VelocityDragManager velocityDragManager;
     public RocketThrustAudio rocketThrustAudio;
+    public TutorialController tutorialController;
+    public CameraButtonProxy cameraButtonProxy;
 
     private SimContext ctx;
 
@@ -34,6 +38,8 @@ public class SimulationBootstrap : MonoBehaviour
             GravityManager = gravityManager,
             CameraController = cameraController,
             CameraMovement = cameraMovement,
+            // CameraMode = cameraMode,
+            FreeCamera = freeCamera,
             BodyDropdownManager = bodyDropdownManager,
             ManeuverNodeManager = maneuverNodeManager,
             ThrustController = thrustController,
@@ -43,12 +49,16 @@ public class SimulationBootstrap : MonoBehaviour
             TrajectoryRenderer = trajectoryRenderer,
             ObjectPlacementManager = objectPlacementManager,
             VelocityDragManager = velocityDragManager,
-            RocketThrustAudio = rocketThrustAudio
+            RocketThrustAudio = rocketThrustAudio,
+            TutorialController = tutorialController,
+            CameraButtonProxy = cameraButtonProxy
         };
 
         // 2) initialize in dependency order
         lineVisibilityManager.Initialize(ctx);
         cameraMovement.Initialize(ctx);
+        cameraButtonProxy.Initialize(ctx);
+        freeCamera.Initialize(ctx);
         trajectoryRenderer.Initialize(ctx);
         gravityManager.Initialize(ctx);
         cameraController.Initialize(ctx);
@@ -62,6 +72,7 @@ public class SimulationBootstrap : MonoBehaviour
         objectPlacementManager.Initialize(ctx);
         velocityDragManager.Initialize(ctx);
         rocketThrustAudio.Initialize(ctx);
+        tutorialController.Initialize(ctx);
 
         foreach (var nbody in FindObjectsByType<NBody>(FindObjectsSortMode.None))
             nbody.Initialize(ctx);

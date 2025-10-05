@@ -11,9 +11,14 @@ using System.Collections.Generic;
 /// </summary>
 public class CameraMovement : MonoBehaviour
 {
+    public TutorialController tutorialController;
+    // public BodyDropdownManager bodyDropdownManager;
+
     [Header("Tracking Target")]
     public NBody targetBody;
     public Transform targetPlaceholder;
+    public Transform cameraPivotTransform;
+    public Transform cameraTransform;
 
     [Header("Camera Distance + Zoom")]
     public float distance = 100f;
@@ -25,6 +30,7 @@ public class CameraMovement : MonoBehaviour
 
     [Header("Camera State")]
     public bool inEarthCam = false;
+    public bool isFreeCamMode = false;
     public NBody tempEarthBody;
     private Camera mainCamera;
 
@@ -38,13 +44,65 @@ public class CameraMovement : MonoBehaviour
     private const float EarthCamMinDistance = 750f;
     private const float EarthCamDefaultDistance = 2000f;
     private const float PlaceholderMaxCameraDistance = 800f;
+    private float yaw = 0f;
+    private float pitch = 20f;
+    public float sensitivity = 100f;
+
+    private bool isRightMouseHeld = false;
 
     private SimContext ctx;
+
+    public bool IsFreeCamMode
+    {
+        get => isFreeCamMode;
+        private set
+        {
+            Debug.Log($"isFreeCamMode changed to {value}. Call stack:\n{System.Environment.StackTrace}");
+            isFreeCamMode = value;
+        }
+    }
 
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
+        this.tutorialController = ctx.TutorialController;
+        // this.bodyDropdownManager = ctx.BodyDropdownManager;
         mainCamera = GetComponentInChildren<Camera>();
+    }
+
+    void Update()
+    {
+        if (!isFreeCamMode)
+        {
+            if (Input.GetMouseButtonDown(1))
+            {
+                // First frame of right mouse click — sync to current rotation
+                Vector3 currentEuler = cameraPivotTransform.rotation.eulerAngles;
+
+                yaw = currentEuler.y;
+
+                pitch = currentEuler.x;
+                if (pitch > 180f) pitch -= 360f; // Normalize pitch once
+
+                isRightMouseHeld = true;
+            }
+
+            if (Input.GetMouseButtonUp(1))
+            {
+                isRightMouseHeld = false;
+            }
+
+            if (isRightMouseHeld)
+            {
+                yaw += Input.GetAxis("Mouse X") * sensitivity * 0.01f;
+                pitch -= Input.GetAxis("Mouse Y") * sensitivity * 0.01f;
+
+                pitch = Mathf.Clamp(pitch, -80f, 80f);
+
+                Quaternion targetRotation = Quaternion.Euler(pitch, yaw, 0f);
+                cameraPivotTransform.rotation = targetRotation;
+            }
+        }
     }
 
     /// <summary>
@@ -154,6 +212,7 @@ public class CameraMovement : MonoBehaviour
             ConfigureCameraForBody(targetBody, false, closerFraction, 1f, earthViewOverride > 0 ? 10000f : -1f);
             if (earthViewOverride > 0) distance = earthViewOverride;
         }
+
     }
 
     /// <summary>
@@ -175,6 +234,11 @@ public class CameraMovement : MonoBehaviour
             float customMaxOverride = 30000f;
 
             ConfigureCameraForBody(earth, true, closerFraction, customMinMultiplier, customMaxOverride);
+        }
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasSwitchedToEarthCam = true;
         }
     }
 
@@ -200,6 +264,31 @@ public class CameraMovement : MonoBehaviour
     }
 
     /// <summary>
+    /// Points the camera toward the central body with a pitch adjustment.
+    /// </summary>
+    /// <param name="centralBody">The transform of the central body.</param>
+    /// <param name="targetPosition">The position of the currently tracked object.</param>
+    public void PointCameraTowardCentralBody(Vector3 centralBodyPos, Vector3 targetPosition)
+    {
+
+        Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
+        cameraTransform.position = targetPosition - directionToTarget;
+
+        // Vector pointing from the tracked object to the central body
+        Vector3 directionToCentralBody = (centralBodyPos - targetPosition).normalized;
+
+        Vector3 forwardDirection = -(targetPosition - centralBodyPos).normalized;
+
+        Quaternion targetRotation = Quaternion.LookRotation(forwardDirection, Vector3.up);
+
+        float pitchAngle = 10f;
+        Quaternion pitchAdjustment = Quaternion.Euler(pitchAngle, 0f, 0f);
+
+        cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
+    }
+
+
+    /// <summary>
     /// Handles scroll-wheel zooming and enforces camera distance constraints.
     /// </summary>
     void HandleZoom()
@@ -207,7 +296,7 @@ public class CameraMovement : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 0.01f)
         {
-            if (IsPointerOverDropdown())
+            if (UIHelpers.IsPointerOverTMPDropdown())
                 return;
             float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.cameraDistanceRadius / 20f : .4f, 1f, 20f);
             float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * .1f, .5f, 100f);

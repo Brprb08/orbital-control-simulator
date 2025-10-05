@@ -1,13 +1,9 @@
 using UnityEngine;
+using UnityEngine.UI;
 using TMPro;
 using UnityEngine.EventSystems;
-using UnityEngine.UI;
 using System.Collections;
 
-/// <summary>
-/// Handles user interaction for applying velocity to a selected planet.
-/// Allows the user to click and drag to set the velocity vector and apply it to the planet.
-/// </summary>
 public class VelocityDragManager : MonoBehaviour
 {
     [Header("References - Components")]
@@ -15,20 +11,19 @@ public class VelocityDragManager : MonoBehaviour
     public LineRenderer dragLineRenderer;
     public GravityManager gravityManager;
     public TrajectoryRenderer trajectoryRenderer;
+    public CameraController cameraController;
+    private ICameraTracker cameraTracker;
+    public TutorialController tutorialController;
 
     [Header("References - UI")]
     public TMP_InputField velocityDisplayText;
-    public Slider velocitySpeedSlider;
+    public Slider speedSlider;           // preferred
     public Button setVelocityButton;
-    public Slider speedSlider;
     public TextMeshProUGUI feedbackText;
 
     [Header("References - Scripts")]
     private ObjectPlacementManager objectPlacementManager;
     private UIManager uIManager;
-
-    [Header("References - Internal Objects")]
-    private GameObject dragSphereObject;
 
     [Header("Planet to Apply Velocity To")]
     public GameObject planet;
@@ -37,37 +32,45 @@ public class VelocityDragManager : MonoBehaviour
     [Header("Mass Handling")]
     public float placeholderMass;
 
-    [Header("Dragging State")]
-    private bool isDragging = false;
-    private bool isVelocitySet = false;
-    private Vector3 dragStartPos;
+    private bool isDragging;
+    private bool isVelocitySet;
     private Vector3 currentVelocity;
     private Vector3 dragDirection = Vector3.zero;
-    private float sliderSpeed = 0f;
-    private float lastLineUpdateTime = 0f;
-    private float lineUpdateInterval = 0.05f;
+    private float sliderSpeed;
+    private float lastLineUpdateTime;
+    [SerializeField] private float lineUpdateInterval = 0.05f;
 
     private const float MaxVelocityMagnitude = 5.0f;
 
+    private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;
+
+    [SerializeField] private float longPreviewDelay = 0.6f;
+    [SerializeField] private int longPreviewSteps = 3000;
+    [SerializeField] private float longPreviewDt = 60f;
+
+    private Coroutine longPreviewCo;
+    private int previewGeneration;
 
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
-        this.uIManager = ctx.UIManager;
-        this.trajectoryRenderer = ctx.TrajectoryRenderer;
-        this.objectPlacementManager = ctx.ObjectPlacementManager;
+        uIManager = ctx.UIManager;
+        trajectoryRenderer = ctx.TrajectoryRenderer;
+        objectPlacementManager = ctx.ObjectPlacementManager;
+        cameraController = ctx.CameraController;
+        cameraTracker = ctx.CameraTracker;
+        tutorialController = ctx.TutorialController;
 
-        if (dragLineRenderer != null)
-        {
-            dragLineRenderer.positionCount = 0;
-        }
+        if (dragLineRenderer) dragLineRenderer.positionCount = 0;
 
+        // Use either slider; drive both through the same handler if both are assigned
         if (speedSlider != null)
         {
             speedSlider.onValueChanged.AddListener(OnSpeedSliderChanged);
+            speedSlider.interactable = false;
         }
 
         if (velocityDisplayText != null)
@@ -76,41 +79,23 @@ public class VelocityDragManager : MonoBehaviour
             velocityDisplayText.interactable = false;
         }
 
-        if (velocitySpeedSlider != null)
-        {
-            velocitySpeedSlider.interactable = false;
-        }
+        if (setVelocityButton != null) setVelocityButton.interactable = false;
 
-        if (setVelocityButton != null)
-        {
-            setVelocityButton.interactable = false;
-        }
-
-        if (dragSphereObject == null)
-        {
-            dragSphereObject = new GameObject("DragSphereTemp");
-            dragSphereCollider = dragSphereObject.AddComponent<SphereCollider>();
-            dragSphereCollider.isTrigger = true;
-            dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
-        }
+        // Drag sphere for ray/surface math
+        dragSphereObject = new GameObject("DragSphereTemp");
+        dragSphereCollider = dragSphereObject.AddComponent<SphereCollider>();
+        dragSphereCollider.isTrigger = true;
+        dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
+        dragSphereObject.SetActive(false);
     }
 
-    /// <summary>
-    /// Handles mouse input and updates the velocity drag logic.
-    /// </summary>
     private void Update()
     {
-        if (isVelocitySet)
-        {
-            return;
-        }
+        if (isVelocitySet) return;
 
         if (Input.GetMouseButtonDown(0))
         {
-            if (EventSystem.current.IsPointerOverGameObject())
-            {
-                return;
-            }
+            if (EventSystem.current.IsPointerOverGameObject()) return;
             StartDrag();
         }
 
@@ -125,71 +110,179 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Begins the drag process to define a velocity direction.
-    /// </summary>
     private void StartDrag()
     {
         if (planet == null || mainCamera == null) return;
+
+        speedSlider.interactable = false;
+
+        CancelLongPreviewDebounce();
+
         isDragging = true;
-        dragStartPos = planet.transform.position;
-
-        dragSphereObject.transform.position = planet.transform.position;
-        dragSphereObject.transform.rotation = Quaternion.identity;
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasClickAndDrag = true;
+        }
+        // Prepare drag sphere
+        dragSphereObject.transform.SetPositionAndRotation(planet.transform.position, Quaternion.identity);
         dragSphereObject.transform.localScale = Vector3.one;
+        dragSphereCollider.radius = Mathf.Max(1f, planet.transform.localScale.x * sphereRadiusMultiplier);
+        dragSphereObject.SetActive(true);
 
-        float planetScale = planet.transform.localScale.x;
-        float sphereRadius = Mathf.Max(1f, planetScale * sphereRadiusMultiplier);
-        dragSphereCollider.radius = sphereRadius;
-
+        // Init line
         if (dragLineRenderer != null)
         {
             dragLineRenderer.positionCount = 2;
-            dragLineRenderer.SetPosition(0, dragStartPos);
-            dragLineRenderer.SetPosition(1, dragStartPos);
+            dragLineRenderer.SetPosition(0, planet.transform.position);
+            dragLineRenderer.SetPosition(1, planet.transform.position);
             dragLineRenderer.widthMultiplier = 0.25f;
         }
-        velocityDisplayText.interactable = true;
-        velocitySpeedSlider.interactable = true;
-        setVelocityButton.interactable = true;
-        Canvas.ForceUpdateCanvases();  // Force UI to update
 
+        // Enable UI
+        SetUIInteractable(true);
         dragDirection = Vector3.zero;
     }
 
-    /// <summary>
-    /// Continuously updates the drag line and direction while the user is dragging.
-    /// </summary>
     private void UpdateDrag()
     {
-        if (!isDragging) return;
-
-        if (Time.time - lastLineUpdateTime < lineUpdateInterval)
-        {
-            return;
-        }
+        if (Time.time - lastLineUpdateTime < lineUpdateInterval) return;
         lastLineUpdateTime = Time.time;
 
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         Vector3 sphereCenter = planet.transform.position;
         float radius = planet.transform.localScale.x * sphereRadiusMultiplier;
-        Vector3 intersectionPoint = GetFarSideIntersection(ray, sphereCenter, radius);
+        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
+        Vector3 intersection = GetFarSideIntersection(ray, sphereCenter, radius);
 
-        if (intersectionPoint != Vector3.zero && dragLineRenderer != null)
+        if (intersection == Vector3.zero || dragLineRenderer == null) return;
+
+        dragLineRenderer.SetPosition(1, intersection);
+        dragDirection = (intersection - sphereCenter).normalized;
+        currentVelocity = dragDirection * sliderSpeed;
+
+        // live short preview
+        if (trajectoryRenderer != null)
         {
-            dragLineRenderer.SetPosition(1, intersectionPoint);
-            dragDirection = (intersectionPoint - sphereCenter).normalized;
-            currentVelocity = dragDirection * sliderSpeed;
+            float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
+            trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
+        }
+
+        // queue longer pass
+        ScheduleLongPreviewForGhost();
+    }
+
+    private void EndDrag()
+    {
+        isDragging = false;
+        dragSphereObject.SetActive(false);
+        ScheduleLongPreviewForGhost();
+    }
+
+    public void OnSpeedSliderChanged(float value)
+    {
+        sliderSpeed = value;
+        currentVelocity = dragDirection * sliderSpeed;
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasAddVelocity = true;
+        }
+        tutorialController.hasAddVelocity = true;
+
+        if (velocityDisplayText != null && currentVelocity != Vector3.zero)
+        {
+            velocityDisplayText.onValueChanged.RemoveListener(OnVelocityInputChanged);
+            // display in “real” coordinates (x,z,y) * 10
+            velocityDisplayText.text = $"{(currentVelocity.x * 10f):F2}, {(currentVelocity.z * 10f):F2}, {(currentVelocity.y * 10f):F2}";
+            velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
+        }
+
+        // live update + debounce long pass
+        if (trajectoryRenderer != null && planet != null)
+        {
+            float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
+            trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
+        }
+        ScheduleLongPreviewForGhost();
+    }
+
+    private void OnVelocityInputChanged(string inputText)
+    {
+        if (string.IsNullOrWhiteSpace(inputText)) return;
+
+        if (ParsingUtils.TryParseVector3(inputText, out var newVelocity))
+        {
+            currentVelocity = newVelocity;
+            setVelocityButton.interactable = true;
+            UpdateLineRenderer();
+            ScheduleLongPreviewForGhost();
+        }
+        else
+        {
+            Debug.LogWarning("Invalid velocity format. Expected 'x,y,z'.");
         }
     }
 
-    /// <summary>
-    /// Calculates the intersection point on the far side of a sphere given a ray.
-    /// </summary>
-    /// <param name="ray">Ray that points to a location inside the drag sphere.</param>
-    /// <param name="sphereCenter">Center of the sphere in world space.</param>
-    /// <param name="radius">Radius of the sphere.</param>
-    /// <returns>Intersection point on the sphere's surface.</returns>
+    public void callApplyVelocity()
+    {
+        trajectoryRenderer?.ClearPreview();
+        ApplyVelocityToPlanet(currentVelocity);
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    public void ApplyVelocityToPlanet(Vector3 velocityToApply)
+    {
+        if (planet == null) return;
+
+        // simple clamp
+        if (Mathf.Abs(velocityToApply.x) > MaxVelocityMagnitude ||
+            Mathf.Abs(velocityToApply.y) > MaxVelocityMagnitude ||
+            Mathf.Abs(velocityToApply.z) > MaxVelocityMagnitude)
+        {
+            var msg = $"Max velocity is {MaxVelocityMagnitude} (20 km/s)";
+            Debug.LogWarning($"Velocity too high ({velocityToApply.magnitude:F2}). {msg}");
+            if (feedbackText != null) feedbackText.text = msg;
+            return;
+        }
+
+        var nbody = planet.GetComponent<NBody>();
+        if (nbody == null)
+        {
+            nbody = planet.AddComponent<NBody>();
+            nbody.mass = (placeholderMass > 0f) ? placeholderMass : 400000f;
+            nbody.trueMass = (placeholderMass > 0f) ? (double)placeholderMass : 400000d;
+            nbody.radius = .002f;
+            nbody.cameraDistanceRadius = 1f;
+            nbody.Initialize(ctx);
+        }
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasSetVelocity = true;
+        }
+
+        nbody.velocity = velocityToApply;
+        gravityManager.RegisterBody(nbody);
+
+        (cameraTracker ?? ctx.CameraTracker)?.TrackBody(nbody);
+
+        planet = null;
+        isVelocitySet = true;
+
+        if (dragLineRenderer != null) dragLineRenderer.positionCount = 0;
+
+        objectPlacementManager.ResetLastPlacedGameObject();
+        uIManager.OnTrackCamPressed();
+
+        // reset UI
+        if (velocityDisplayText != null)
+        {
+            velocityDisplayText.text = "";
+            velocityDisplayText.interactable = false;
+        }
+        if (speedSlider != null) { speedSlider.interactable = false; speedSlider.value = 0f; }
+        if (setVelocityButton != null) setVelocityButton.interactable = false;
+    }
+
     private Vector3 GetFarSideIntersection(Ray ray, Vector3 sphereCenter, float radius)
     {
         Vector3 d = ray.direction.normalized;
@@ -197,250 +290,112 @@ public class VelocityDragManager : MonoBehaviour
 
         float b = 2f * Vector3.Dot(oc, d);
         float c = oc.sqrMagnitude - (radius * radius);
-        float discriminant = b * b - 4f * c;
+        float disc = b * b - 4f * c;
 
-        if (discriminant < 0f)
-        {
-            return sphereCenter + (d * radius);
-        }
+        if (disc < 0f) return sphereCenter + (d * radius);
 
-        float sqrtDisc = Mathf.Sqrt(discriminant);
+        float sqrtDisc = Mathf.Sqrt(disc);
         float t1 = (-b - sqrtDisc) / 2f;
         float t2 = (-b + sqrtDisc) / 2f;
 
         float chosenT = (t2 >= 0f) ? t2 : t1;
-        if (chosenT < 0f)
-        {
-            return sphereCenter + (d * radius);
-        }
+        if (chosenT < 0f) return sphereCenter + (d * radius);
 
         return ray.origin + d * chosenT;
     }
 
-    /// <summary>
-    /// Ends the drag process. Velocity will be applied later via confirmation.
-    /// </summary>
-    private void EndDrag()
+    private void UpdateLineRenderer()
     {
-        isDragging = false;
-    }
+        if (dragLineRenderer == null || planet == null) return;
 
-    /// <summary>
-    /// Updates the velocity vector and line based on slider speed.
-    /// </summary>
-    /// <param name="value">Current value of the speed slider.</param>
-    public void OnSpeedSliderChanged(float value)
-    {
-        sliderSpeed = value;
-        currentVelocity = dragDirection * sliderSpeed;
+        Vector3 startPos = planet.transform.position;
+        float radius = planet.transform.localScale.x * sphereRadiusMultiplier;
+        Vector3 dir = currentVelocity.sqrMagnitude > 0f ? currentVelocity.normalized : Vector3.forward;
 
-        float x = currentVelocity.x;
-        float y = currentVelocity.y;
-        float z = currentVelocity.z;
-        if (velocityDisplayText != null && x != 0 && y != 0 && z != 0)
+        Ray r = new Ray(startPos, dir);
+        Vector3 intersection = GetFarSideIntersection(r, startPos, radius);
+
+        if (intersection != Vector3.zero)
         {
-            velocityDisplayText.onValueChanged.RemoveListener(OnVelocityInputChanged);
-
-            // Switched for real coordinates to display
-            velocityDisplayText.text = $"{(currentVelocity.x * 10):F2}, {(currentVelocity.z * 10):F2}, {(currentVelocity.y * 10):F2}";
-            velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
-        }
-    }
-
-    /// <summary>
-    /// Gets the 3D mouse position projected onto the surface of a unit sphere.
-    /// </summary>
-    /// <returns>World space position on the sphere, or Vector3.zero if invalid.</returns>
-    private Vector3 GetMouseWorldPositionOnSphere()
-    {
-        Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
-        Vector3 d = ray.direction.normalized;
-        Vector3 sphereCenter = planet.transform.position;
-        float radius = 1f;
-
-        Vector3 oc = ray.origin - sphereCenter;
-        bool isInsideSphere = (oc.sqrMagnitude < radius * radius);
-
-        float b = 2f * Vector3.Dot(oc, d);
-        float c = oc.sqrMagnitude - (radius * radius);
-        float discriminant = b * b - 4f * c;
-
-        if (discriminant < 0f)
-        {
-            return Vector3.zero;
-        }
-
-        float sqrtDisc = Mathf.Sqrt(discriminant);
-        float t1 = (-b - sqrtDisc) / 2f;
-        float t2 = (-b + sqrtDisc) / 2f;
-
-        float tMin = Mathf.Min(t1, t2);
-        float tMax = Mathf.Max(t1, t2);
-
-        if (tMax < 0f)
-        {
-            return Vector3.zero;
-        }
-
-        float chosenT = isInsideSphere ? tMax : (tMin < 0f ? tMax : tMin);
-
-        if (chosenT < 0f)
-        {
-            return Vector3.zero;
-        }
-
-        return ray.origin + d * chosenT;
-    }
-
-    /// <summary>
-    /// Applies the current velocity to the selected planet when confirmed.
-    /// </summary>
-    public void callApplyVelocity()
-    {
-        ApplyVelocityToPlanet(currentVelocity);
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    /// <summary>
-    /// Applies a specified velocity to the selected planet and finalizes its placement.
-    /// </summary>
-    /// <param name="velocityToApply">The velocity vector to apply to the planet.</param>
-    public void ApplyVelocityToPlanet(Vector3 velocityToApply)
-    {
-        if (planet == null) return;
-
-        if (Mathf.Abs(velocityToApply.x) > 5f ||
-            Mathf.Abs(velocityToApply.y) > 5f ||
-            Mathf.Abs(velocityToApply.z) > 5f)
-        {
-            Debug.LogWarning($"Velocity too high ({velocityToApply.magnitude:F2}). Limit is {MaxVelocityMagnitude:F2}.");
-
-            if (feedbackText != null)
-                feedbackText.text = $"Max velocity is {MaxVelocityMagnitude} (20 km/s)";
-
-            return;
-        }
-
-        NBody planetNBody = planet.GetComponent<NBody>();
-        if (planetNBody == null)
-        {
-            planetNBody = planet.AddComponent<NBody>();
-            if (planetNBody == null)
-            {
-                Debug.LogError($"Failed to add NBody to {planet.name}!");
-                return;
-            }
-
-            planetNBody.mass = placeholderMass > 0f ? placeholderMass : 400000f;
-            planetNBody.trueMass = placeholderMass > 0f ? (double)placeholderMass : 400000;
-            // DONT HARDCODE THIS EVENTUALLY
-            planetNBody.radius = .002f;
-            planetNBody.cameraDistanceRadius = 1f;
-
-            planetNBody.Initialize(ctx);
-        }
-
-        planetNBody.velocity = velocityToApply;
-        gravityManager.RegisterBody(planetNBody);
-
-        trajectoryRenderer.SetTrackedBody(planetNBody);
-        trajectoryRenderer.orbitIsDirty = true;
-
-        CameraController cameraController = gravityManager.GetComponent<CameraController>();
-        if (cameraController != null)
-        {
-            cameraController.RefreshBodiesList();
-            int newIndex = cameraController.Bodies.IndexOf(planetNBody);
-            if (newIndex >= 0)
-            {
-                cameraController.currentIndex = newIndex;
-                cameraController.SwitchToRealNBody(planetNBody);
-            }
-        }
-
-        //Debug.Log($"Applied velocity {velocityToApply} to {planet.name} via drag.");
-        planet = null;
-        isVelocitySet = true;
-
-        if (dragLineRenderer != null)
-        {
-            dragLineRenderer.positionCount = 0;
-        }
-
-        objectPlacementManager.ResetLastPlacedGameObject();
-        uIManager.OnTrackCamPressed();
-
-        if (velocityDisplayText != null)
-        {
-            velocityDisplayText.text = "";
-            velocityDisplayText.interactable = false;
-            velocitySpeedSlider.interactable = false;
-            velocitySpeedSlider.value = 0f;
-            setVelocityButton.interactable = false;
-
-        }
-    }
-
-    /// <summary>
-    /// Called when the velocity input field is manually edited.
-    /// </summary>
-    /// <param name="inputText">The input string in "x,y,z" format.</param>
-    private void OnVelocityInputChanged(string inputText)
-    {
-        if (inputText == "")
-        {
-            return;
-        }
-
-        Vector3 newVelocity;
-        if (ParsingUtils.TryParseVector3(inputText, out newVelocity))
-        {
-            currentVelocity = newVelocity;
-
-            setVelocityButton.interactable = true;
-
-            UpdateLineRenderer();
+            dragLineRenderer.positionCount = 2;
+            dragLineRenderer.SetPosition(0, startPos);
+            dragLineRenderer.SetPosition(1, intersection);
+            if (velocityDisplayText != null) velocityDisplayText.interactable = true;
         }
         else
         {
-            Debug.LogWarning("Invalid velocity format. Please use 'x,y,z'.");
+            dragLineRenderer.positionCount = 0;
+            if (velocityDisplayText != null) velocityDisplayText.interactable = false;
         }
     }
 
-    /// <summary>
-    /// Updates the velocity drag line to match the current velocity vector.
-    /// </summary>
-    private void UpdateLineRenderer()
+    private void SetUIInteractable(bool enable)
     {
-        if (dragLineRenderer != null && planet != null)
-        {
-            Vector3 startPos = planet.transform.position;
-            float radius = planet.transform.localScale.x * sphereRadiusMultiplier;
-            Vector3 velocityDirection = currentVelocity.normalized;
-            Ray velocityRay = new Ray(startPos, velocityDirection);
-            Vector3 intersectionPoint = GetFarSideIntersection(velocityRay, startPos, radius);
-
-            if (intersectionPoint != Vector3.zero)
-            {
-                dragLineRenderer.positionCount = 2;
-                dragLineRenderer.SetPosition(0, startPos);
-                dragLineRenderer.SetPosition(1, intersectionPoint);
-                velocityDisplayText.interactable = true;
-            }
-            else
-            {
-                dragLineRenderer.positionCount = 0;
-                velocityDisplayText.interactable = false;
-            }
-        }
+        if (velocityDisplayText != null) velocityDisplayText.interactable = enable;
+        if (speedSlider != null) speedSlider.interactable = enable;
+        if (setVelocityButton != null) setVelocityButton.interactable = enable;
     }
 
-    /// <summary>
-    /// Resets the drag manager to prepare for a new velocity input session.
-    /// </summary>
+    private void ScheduleLongPreviewForGhost()
+    {
+        if (planet == null || trajectoryRenderer == null) return;
+
+        if (longPreviewCo != null) StopCoroutine(longPreviewCo);
+        int thisGen = ++previewGeneration;
+        longPreviewCo = StartCoroutine(LongPreviewAfterIdle_Ghost(thisGen));
+    }
+
+    private IEnumerator LongPreviewAfterIdle_Ghost(int gen)
+    {
+        yield return new WaitForSeconds(longPreviewDelay);
+        if (gen != previewGeneration || planet == null) yield break;
+
+        float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
+        trajectoryRenderer.QuickPreviewOnceLong(
+            planet.transform.position,
+            currentVelocity,
+            massForPreview,
+            longPreviewSteps,
+            longPreviewDt
+        );
+        longPreviewCo = null;
+    }
+
+    private void CancelLongPreviewDebounce()
+    {
+        if (longPreviewCo != null) StopCoroutine(longPreviewCo);
+        longPreviewCo = null;
+        previewGeneration++; // invalidate pending runs
+    }
+
+    public void ClearManualArtifacts()
+    {
+        CancelLongPreviewDebounce();
+
+        isDragging = false;
+        isVelocitySet = false;
+
+        if (dragLineRenderer != null) dragLineRenderer.positionCount = 0;
+
+        if (velocityDisplayText != null) { velocityDisplayText.text = ""; velocityDisplayText.interactable = false; }
+        if (speedSlider != null) { speedSlider.interactable = false; speedSlider.value = 0f; }
+        if (setVelocityButton != null) setVelocityButton.interactable = false;
+
+        // ensure drag sphere/collider are disabled
+        if (dragSphereObject != null) dragSphereObject.SetActive(false);
+
+        planet = null;
+
+        trajectoryRenderer?.ClearPreview();
+        trajectoryRenderer?.ClearPreManeuverLine();
+    }
+
+
+
     public void ResetDragManager()
     {
         isVelocitySet = false;
-        velocityDisplayText.interactable = true;
+        if (velocityDisplayText != null) velocityDisplayText.interactable = true;
+        trajectoryRenderer?.ClearPreview();
     }
 }

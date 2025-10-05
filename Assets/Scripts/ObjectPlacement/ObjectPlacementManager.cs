@@ -3,19 +3,20 @@ using TMPro;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-/// <summary>
-/// Manages the placement of celestial bodies in the scene.
-/// Handles user input for specifying radius, name, and mass of new bodies,
-/// and transitions between placement and tracking modes.
-/// </summary>
 public class ObjectPlacementManager : MonoBehaviour
 {
     [Header("References - Core")]
     public Camera mainCamera;
-    public GameObject spherePrefab; // Placeholder GameObject without NBody script
-    public GravityManager gravityManager;
+    public GameObject spherePrefab; // placeholder without NBody
+    public TrajectoryRenderer trajectoryRenderer;
     public CameraController cameraController;
+    private ICameraTracker cameraTracker;
+    public CameraMovement cameraMovement;
     public VelocityDragManager velocityDragManager;
+    public TutorialController tutorialController;
+    private GravityManager gravityManager;
+    private UIManager uIManager;
+    private NBody lastManualNBody;
 
     [Header("References - UI")]
     public TMP_InputField objectNameInputField;
@@ -23,7 +24,7 @@ public class ObjectPlacementManager : MonoBehaviour
     public TMP_InputField massInput;
     public TMP_InputField massInputField;
     public TMP_InputField radiusInput;
-    public TMP_InputField radiusInputField;
+    // public TMP_InputField radiusInputField;
     public TMP_InputField positionInput;
     public TextMeshProUGUI feedbackText;
     public Button placeObjectButton;
@@ -38,14 +39,13 @@ public class ObjectPlacementManager : MonoBehaviour
     [Header("Ghost Preview")]
     public GameObject ghostPreviewPrefab;
     private GameObject ghostInstance;
+    private bool ghostObjectPlaced = false;
+    private bool clearingPosition = false;
 
     [Header("Placement State")]
-    public GameObject lastPlacedGameObject; // Reference to the last placed placeholder GameObject
-    private bool isInPlacementMode = false;
+    public GameObject lastPlacedGameObject; // last placeholder
     private int satelliteCount = 0;
-    private bool objectIsPlaced = false;
 
-    private const float MaxSatelliteDistance = 50000f; // in sim units (adjust as needed)
     private const int MaxSatelliteNameLength = 15;
 
     private SimContext ctx;
@@ -53,22 +53,27 @@ public class ObjectPlacementManager : MonoBehaviour
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
-        this.cameraController = ctx.CameraController;
-
+        trajectoryRenderer = ctx.TrajectoryRenderer;
+        cameraController = ctx.CameraController;
+        cameraMovement = ctx.CameraMovement;
+        tutorialController = ctx.TutorialController;
+        cameraTracker = ctx.CameraTracker; // make sure this is set
+        uIManager = ctx.UIManager;
+        gravityManager = ctx.GravityManager;
+        if (tutorialController.inTutorialMode)
+        {
+            massInput.onValueChanged.AddListener(OnMassInputChanged);
+            radiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
+        }
         positionInput.onValueChanged.AddListener(OnPositionInputChanged);
 
         if (ghostPreviewPrefab != null)
         {
             ghostInstance = Instantiate(ghostPreviewPrefab);
-            ghostInstance.SetActive(false); // Start hidden
+            ghostInstance.SetActive(false);
         }
     }
 
-    /// <summary>
-    /// Starts the placement process for a new celestial body.
-    /// Parses radius and mass input, instantiates a placeholder object,
-    /// and initializes velocity drag UI.
-    /// </summary>
     public void StartPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -77,46 +82,36 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!isInPlacementMode)
+        if (!cameraTracker.IsFree)
         {
             feedbackText.text = "You must be in FreeCam mode to place planets.";
             return;
         }
 
         string customName = objectNameInputField?.text;
-
         if (!string.IsNullOrWhiteSpace(customName) && customName.Length > MaxSatelliteNameLength)
         {
             feedbackText.text = $"Satellite name too long. Max {MaxSatelliteNameLength} characters.";
             return;
         }
-
-        if (string.IsNullOrWhiteSpace(customName))
-        {
-            customName = $"Satellite {satelliteCount}";
-        }
+        if (string.IsNullOrWhiteSpace(customName)) customName = $"Satellite {satelliteCount}";
 
         Vector3 parsedPosition;
-
-        // If no input, use fallback camera-based position
         if (string.IsNullOrWhiteSpace(positionInput.text))
         {
             parsedPosition = mainCamera.transform.position + mainCamera.transform.forward * 10f;
         }
         else
         {
-            // Try to parse the input
             if (!ParsingUtils.TryParseVector3(positionInput.text, out parsedPosition))
             {
                 feedbackText.text = "Invalid position input. Please use numeric x,y,z format.";
                 return;
             }
 
-            // Validate distance
             float distanceFromEarth = Vector3.Distance(Vector3.zero, parsedPosition);
             float minDistance = 638f;
             float maxDistance = 5000f;
-
             if (distanceFromEarth < minDistance || distanceFromEarth > maxDistance)
             {
                 feedbackText.text = $"Invalid position: must be between {minDistance * 10f:N0} km and {maxDistance * 10f:N0} km from Earth's center.";
@@ -124,65 +119,42 @@ public class ObjectPlacementManager : MonoBehaviour
             }
         }
 
-
-
-        string radiusText = radiusInput.text;
-        if (string.IsNullOrWhiteSpace(radiusText))
+        if (string.IsNullOrWhiteSpace(radiusInput.text))
         {
             feedbackText.text = "Please enter a radius in the format x,y,z. Numbers only.";
             return;
         }
-
-        if (!ParsingUtils.TryParseVector3(radiusText, out Vector3 parsedRadius))
+        if (!ParsingUtils.TryParseVector3(radiusInput.text, out Vector3 parsedRadius))
         {
             feedbackText.text = "Invalid radius. Use numeric x,y,z.";
             return;
         }
 
-        string massText = massInput.text;
-        if (string.IsNullOrWhiteSpace(massText))
+        if (string.IsNullOrWhiteSpace(massInput.text))
         {
-            feedbackText.text = "Please enter a numeric mass between 5 and 1,000,000 kg.";
+            feedbackText.text = "Please enter a numeric mass between 500 and 1,000,000 kg.";
             return;
         }
-
-        if (!ParsingUtils.TryParseMass(massText, out float mass))
+        if (!ParsingUtils.TryParseMass(massInput.text, out float mass))
         {
             feedbackText.text = "Invalid mass. Enter a number between 500 and 1,000,000.";
             return;
         }
 
         float placeholderMass = mass;
-
         parsedRadius = new Vector3(
             Mathf.Clamp(parsedRadius.x, .5f, 1f),
             Mathf.Clamp(parsedRadius.y, .5f, 1f),
             Mathf.Clamp(parsedRadius.z, .5f, 1f)
         );
 
-        objectIsPlaced = true;
-
         lastPlacedGameObject = Instantiate(spherePrefab);
-        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x * 1f, parsedRadius.y * 1f, parsedRadius.z * 1f);
+        lastPlacedGameObject.transform.localScale = new Vector3(parsedRadius.x, parsedRadius.y, parsedRadius.z);
         lastPlacedGameObject.transform.position = parsedPosition;
 
-        // if (ParsingUtils.TryParseVector3(positionInput.text, out Vector3 parsedPosition))
-        // {
-        //     lastPlacedGameObject.transform.position = parsedPosition;
-        // }
-        // else
-        // {
-        //     lastPlacedGameObject.transform.position = mainCamera.transform.position + mainCamera.transform.forward * 10f;
-        // }
-
-
-        if (ghostInstance != null)
-        {
-            ghostInstance.SetActive(false);
-        }
+        if (ghostInstance != null) ghostInstance.SetActive(false);
 
         satelliteCount++;
-
         lastPlacedGameObject.name = customName;
         lastPlacedGameObject.tag = "Planet";
 
@@ -193,42 +165,31 @@ public class ObjectPlacementManager : MonoBehaviour
             velocityDragManager.placeholderMass = placeholderMass;
         }
 
-        SetupCameraTracking(lastPlacedGameObject);
-        // CameraController camController = gravityManager.GetComponent<CameraController>();
-        // if (camController != null)
-        // {
-        //     camController.RefreshBodiesList();
-        //     camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
-        //     if (camController.IsFreeCamMode)
-        //     {
-        //         camController.ReturnToTracking();
-        //     }
-        //     camController.SetInEarthView(false);
-        // }
+        TrackSilently(lastPlacedGameObject.transform);
+        uIManager.trackCamButton.interactable = false;
+        uIManager.placementModeButton.interactable = false;
 
         ClearAndUnfocusInputField(radiusInput);
         ClearAndUnfocusInputField(positionInput);
         ClearAndUnfocusInputField(objectNameInputField);
         ClearAndUnfocusInputField(massInput);
 
-        if (nameInputField != null && massInputField != null && radiusInputField != null)
+        if (nameInputField != null && massInputField != null && radiusInput != null)
         {
             nameInputField.interactable = false;
-
             positionInput.interactable = false;
-
             massInputField.interactable = false;
-
-            radiusInputField.interactable = false;
-
+            radiusInput.interactable = false;
             placeObjectButton.interactable = false;
         }
 
+        tutorialController.hasSatelliteBeenPlaced = true;
+
         feedbackText.text =
-    "Setting Satellite Velocity:\n\n" +
-"• Click the satellite and drag.\n" +
-"• Set the desired direction.\n" +
-"• Use input field to adjust speed.";
+            "Setting Satellite Velocity:\n\n" +
+            "• Click the satellite and drag.\n" +
+            "• Set the desired direction.\n" +
+            "• Use input field to adjust speed.";
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -247,36 +208,24 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
+        // Clear any lines that might have been left from manual placement mode
+        velocityDragManager.trajectoryRenderer.preManeuverLine.Clear();
+
         satelliteCount++;
         lastPlacedGameObject = Instantiate(spherePrefab);
         lastPlacedGameObject.name = name;
-        lastPlacedGameObject.tag = "Planet";
+        lastPlacedGameObject.tag = "Satellite";
         lastPlacedGameObject.transform.position = position;
-        lastPlacedGameObject.transform.localScale = Vector3.one * 1f;
+        lastPlacedGameObject.transform.localScale = Vector3.one;
 
-        objectIsPlaced = true;
-
-        // Apply velocity directly
         if (velocityDragManager != null)
         {
             velocityDragManager.planet = lastPlacedGameObject;
             velocityDragManager.placeholderMass = mass;
         }
 
-        SetupCameraTracking(lastPlacedGameObject);
-        // CameraController camController = gravityManager.GetComponent<CameraController>();
-        // if (camController != null)
-        // {
-        //     camController.RefreshBodiesList();
-        //     camController.SetTargetPlaceholder(lastPlacedGameObject.transform);
-        //     if (camController.IsFreeCamMode)
-        //     {
-        //         camController.ReturnToTracking();
-        //     }
-        //     camController.SetInEarthView(false);
-        // }
+        cameraTracker.RefreshBodiesList();
 
-        // Apply velocity directly
         if (velocityDragManager != null)
         {
             velocityDragManager.planet = lastPlacedGameObject;
@@ -290,10 +239,19 @@ public class ObjectPlacementManager : MonoBehaviour
         ClearAndUnfocusInputField(tleLine2InputField);
     }
 
-    /// <summary>
-    /// Cancels the current placement process and removes the placeholder object.
-    /// Also resets velocity UI and tracking camera.
-    /// </summary>
+    public void ClearFields()
+    {
+        if (ghostInstance != null)
+        {
+            if (ghostInstance != null) ghostInstance.SetActive(false);
+            nameInputField.text = "";
+            positionInput.text = "";
+            massInput.text = "";
+            radiusInput.text = "";
+            cameraTracker.BreakToFreeCam();
+        }
+    }
+
     public void CancelPlacement()
     {
         if (lastPlacedGameObject != null)
@@ -304,71 +262,76 @@ public class ObjectPlacementManager : MonoBehaviour
 
         feedbackText.text = "";
 
-        velocityDragManager.dragLineRenderer.positionCount = 0;
+        if (velocityDragManager != null && velocityDragManager.dragLineRenderer != null)
+            velocityDragManager.dragLineRenderer.positionCount = 0;
 
-        cameraController.UpdateTrajectoryRender(cameraController.currentIndex);
-        cameraController.isTrackingPlaceholder = false;
-        cameraController.ReturnToTracking();
+        if (cameraTracker != null) cameraTracker.ReturnToTracking();
     }
 
-    private void SetupCameraTracking(GameObject target)
+    private void TrackSilently(Transform transform)
     {
-        // CameraController camController = CameraController.Instance;
-        if (cameraController != null)
+        if (cameraTracker == null || transform == null) return;
+        cameraTracker.BeginUiSuppress();
+        cameraTracker.TrackPlaceholder(transform);
+        cameraTracker.EndUiSuppress();
+    }
+
+    private void OnMassInputChanged(string input)
+    {
+        if (mainCamera == null) return;
+
+        if (string.IsNullOrWhiteSpace(input))
         {
-            cameraController.RefreshBodiesList();
-            cameraController.SetTargetPlaceholder(target.transform);
-            if (cameraController.IsFreeCamMode)
-            {
-                cameraController.ReturnToTracking();
-            }
-            cameraController.SetInEarthView(false);
+            feedbackText.text = "";
+            return;
+        }
+
+        if (ParsingUtils.TryParseMass(input, out _))
+        {
+            tutorialController.hasMassBeenEnteredForSatellite = true;
+            feedbackText.text = "";
+        }
+        else
+        {
+            feedbackText.text = "Invalid. Mass should be 500-1,000,000 kg.";
         }
     }
 
-    /// <summary>
-    /// Handles changes to the position input field during object placement.
-    /// Moves the camera so that it faces the desired target position and shows a ghost preview at that position.
-    /// </summary>
-    /// <param name="input">The string input from the user, expected in "x,y,z" format.</param>
-    // private void OnPositionInputChanged(string input)
-    // {
-    //     if (mainCamera == null)
-    //         return;
+    private void OnRadiusInputChanged(string input)
+    {
+        if (mainCamera == null) return;
 
-    //     if (ParsingUtils.TryParseVector3(input, out Vector3 targetPosition))
-    //     {
-    //         ghostInstance.SetActive(true);
-    //         ghostInstance.transform.position = targetPosition;
+        if (string.IsNullOrWhiteSpace(input))
+        {
+            feedbackText.text = "";
+            return;
+        }
 
-    //         float placementDistance = 10f;
-
-    //         Vector3 directionToOrigin = (Vector3.zero - targetPosition).normalized;
-
-    //         // Move camera so the object will be placed at targetPosition
-    //         Vector3 cameraPosition = targetPosition - directionToOrigin * placementDistance;
-
-    //         Quaternion rotation = Quaternion.LookRotation(directionToOrigin, Vector3.up);
-
-    //         mainCamera.transform.SetPositionAndRotation(cameraPosition, rotation);
-    //     }
-    //     else
-    //     {
-    //         ghostInstance.SetActive(false); // Hide if input is invalid
-    //     }
-    // }
-
+        if (ParsingUtils.TryParseVector3(input, out _))
+        {
+            tutorialController.hasRadiusBeenEnteredForSatellite = true;
+            feedbackText.text = "";
+        }
+        else
+        {
+            feedbackText.text = "Invalid format. Use numeric x,y,z values.";
+        }
+    }
 
     private void OnPositionInputChanged(string input)
     {
-        if (mainCamera == null)
-            return;
+        if (mainCamera == null) return;
 
-        // Hide and clear feedback on empty input
+        if (ghostObjectPlaced && !clearingPosition && positionInput != null && positionInput.isFocused)
+        {
+            cameraTracker.BreakToFreeCam();
+        }
+
         if (string.IsNullOrWhiteSpace(input))
         {
-            ghostInstance.SetActive(false);
+            if (ghostInstance != null) ghostInstance.SetActive(false);
             feedbackText.text = "";
+            ghostObjectPlaced = false;
             return;
         }
 
@@ -380,79 +343,60 @@ public class ObjectPlacementManager : MonoBehaviour
 
             if (distanceFromEarth < minDistance || distanceFromEarth > maxDistance)
             {
-                ghostInstance.SetActive(false);
+                ghostObjectPlaced = false;
+                if (ghostInstance != null) ghostInstance.SetActive(false);
                 feedbackText.text = $"Distance must be between {minDistance * 10f:N0} km and {maxDistance * 10f:N0} km from Earth.";
                 return;
             }
 
-            // Valid position and distance
-            ghostInstance.SetActive(true);
-            ghostInstance.transform.position = targetPosition;
+            tutorialController.hasPositionBeenEnteredForSatellite = true;
 
-            float placementDistance = 10f;
-            Vector3 directionToOrigin = (Vector3.zero - targetPosition).normalized;
-
-            Vector3 cameraPosition = targetPosition - directionToOrigin * placementDistance;
-            Quaternion rotation = Quaternion.LookRotation(directionToOrigin, Vector3.up);
-
-            mainCamera.transform.SetPositionAndRotation(cameraPosition, rotation);
-            feedbackText.text = ""; // Clear any previous messages
+            if (ghostInstance != null)
+            {
+                ghostInstance.SetActive(true);
+                ghostInstance.transform.position = targetPosition;
+            }
+            TrackSilently(ghostInstance.transform);
+            // Change this ghost object placed after TrackSilently call to make sure it doesnt conflict with ReturnToTracking
+            ghostObjectPlaced = true;
+            feedbackText.text = "";
         }
         else
         {
-            ghostInstance.SetActive(false);
+            ghostObjectPlaced = false;
+            if (ghostInstance != null) ghostInstance.SetActive(false);
             feedbackText.text = "Invalid format. Use numeric x,y,z values.";
         }
     }
 
+    public void ClearManualPlacementCompletely()
+    {
+        // 1) clear drag & preview artifacts
+        velocityDragManager?.ClearManualArtifacts();
+        trajectoryRenderer?.ClearPreview();
+        trajectoryRenderer?.ClearPreManeuverLine();
 
-    /// <summary>
-    /// Clears and unfocuses the specified TMP input field.
-    /// </summary>
-    /// <param name="inputField">The input field to clear and unfocus.</param>
+        // 2) kill any placeholder sphere (pre-velocity object)
+        if (lastPlacedGameObject != null)
+        {
+            Destroy(lastPlacedGameObject);
+            lastPlacedGameObject = null;
+        }
+
+        // 4) ghost
+        if (ghostInstance != null) ghostInstance.SetActive(false);
+    }
+
+
     private void ClearAndUnfocusInputField(TMP_InputField inputField)
     {
-        if (inputField != null)
-        {
-            inputField.text = "";
-            EventSystem.current.SetSelectedGameObject(null);
-        }
+        if (inputField == null) return;
+        clearingPosition = true;
+        inputField.text = "";
+        EventSystem.current.SetSelectedGameObject(null);
+        clearingPosition = false;
     }
 
-    /// <summary>
-    /// Enables placement mode (FreeCam) to allow new objects to be added.
-    /// Called by the Free Cam button.
-    /// </summary>
-    public void BreakToFreeCam()
-    {
-        //Debug.Log("Switching to FreeCam...");
-        isInPlacementMode = true;
-    }
-
-    /// <summary>
-    /// Disables FreeCam mode and reverts back to tracking mode.
-    /// Cancels placement if an object was being placed.
-    /// </summary>
-    public void ExitFreeCam()
-    {
-        //Debug.Log("Exiting FreeCam...");
-
-        if (objectIsPlaced)
-        {
-            objectIsPlaced = false;
-            CancelPlacement();
-        }
-        else
-        {
-            cameraController.ReturnToTracking();
-        }
-        isInPlacementMode = false;
-    }
-
-    /// <summary>
-    /// Resets the reference to the last placed placeholder GameObject.
-    /// Clears feedback text.
-    /// </summary>
     public void ResetLastPlacedGameObject()
     {
         feedbackText.text = "";

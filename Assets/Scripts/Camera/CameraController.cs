@@ -9,438 +9,276 @@ using TMPro;
 /// Supports switching between tracking celestial bodies and free movement.
 /// Also manages trajectory visualization and placeholder tracking for temporary objects.
 /// </summary>
-public class CameraController : MonoBehaviour
+public class CameraController : MonoBehaviour, ICameraTracker
 {
-    [Header("References - UI")]
-    public Transform cameraPivotTransform;
-    public Transform cameraTransform;
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
-
-    [Header("References - Scripts")]
-    private LineVisibilityManager lineVisibilityManager;
+    [Header("Core References")]
     private GravityManager gravityManager;
+    private LineVisibilityManager lineVisibilityManager;
     private BodyDropdownManager bodyDropdownManager;
     public TrajectoryRenderer trajectoryRenderer;
-    public NBody previousTrackedBody;
+    public UIManager uIManager;
+    private SimContext ctx;
 
-    [Header("Camera Settings")]
-    public float sensitivity = 100f;
+    [Header("Camera Components")]
+    private CameraMovement cameraMovement;
+    private FreeCamera freeCamera;
 
     [Header("Tracking State")]
     public List<NBody> bodies;
     public List<NBody> Bodies => bodies;
     public int currentIndex = 0;
-    private bool isFreeCamMode = false;
-    private bool isSwitchingToFreeCam = false;
     public bool isTrackingPlaceholder = false;
     public bool inEarthViewCam = false;
-    private Vector3 defaultLocalPosition;
-    private Transform placeholderTarget;
+    public bool inFreeCam = false;
 
-    public CameraMovement cameraMovement;
-    public UIManager uIManager;
-    private SimContext ctx;
+    private NBody lastTrackedBeforePlaceholder;
+    private NBody _currentBody;
+    private Transform _currentPlaceholder;
+    private NBody _lastTrackedBeforeEarth;
 
-    private float yaw = 0f;
-    private float pitch = 20f;
-    private bool isRightMouseHeld = false;
+    // ICameraTracker events
+    public event System.Action<NBody> OnTrackedBodyChanged;
+    public event System.Action<Transform> OnTrackedPlaceholderChanged;
+    public event System.Action<bool> OnFreeModeChanged;
+    public event System.Action<bool> OnEarthViewChanged;
 
-    /// <summary>
-    /// Used by object placement manager to ensure camera is in FreeCam mode when placing.
-    /// </summary>
-    public bool IsFreeCamMode
-    {
-        get => isFreeCamMode;
-        private set
-        {
-            Debug.Log($"isFreeCamMode changed to {value}. Call stack:\n{System.Environment.StackTrace}");
-            isFreeCamMode = value;
-        }
-    }
+    // UI suppression (for ghost preview, etc.)
+    private bool _suppressUiSignals = false;
+    public void BeginUiSuppress() => _suppressUiSignals = true;
+    public void EndUiSuppress() => _suppressUiSignals = false;
+
+    private void EmitTrackedBody(NBody b) { if (!_suppressUiSignals) OnTrackedBodyChanged?.Invoke(b); }
+    private void EmitTrackedPlaceholder(Transform t) { if (!_suppressUiSignals) OnTrackedPlaceholderChanged?.Invoke(t); }
+    private void EmitFreeModeChanged(bool v) { if (!_suppressUiSignals) OnFreeModeChanged?.Invoke(v); }
+    private void EmitEarthViewChanged(bool v) { if (!_suppressUiSignals) OnEarthViewChanged?.Invoke(v); }
+
+    // ICameraTracker state
+    public bool IsFree => inFreeCam;
+    public bool IsEarthView => inEarthViewCam;
+    public NBody CurrentBody => _currentBody;
+    public Transform CurrentPlaceholder => _currentPlaceholder;
 
     public void Initialize(SimContext ctx)
     {
-        this.ctx = ctx;
-        this.gravityManager = ctx.GravityManager;
-        this.lineVisibilityManager = ctx.LineVisibilityManager;
-        this.bodyDropdownManager = ctx.BodyDropdownManager;
-        this.uIManager = ctx.UIManager;
-        this.trajectoryRenderer = ctx.TrajectoryRenderer;
+        gravityManager = ctx.GravityManager;
+        lineVisibilityManager = ctx.LineVisibilityManager;
+        bodyDropdownManager = ctx.BodyDropdownManager;
+        cameraMovement = ctx.CameraMovement;
+        uIManager = ctx.UIManager;
+        freeCamera = ctx.FreeCamera;
 
         if (gravityManager == null) Debug.LogError("GravityManager instance is not set.");
         if (lineVisibilityManager == null) Debug.LogError("LineVisibilityManager instance is not set.");
         if (bodyDropdownManager == null) Debug.LogError("BodyDropdownManager instance is not set.");
 
-        defaultLocalPosition = cameraTransform.localPosition;
-
-        bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
+        bodies = gravityManager.GetAllSatellites();
         if (bodies.Count > 0 && cameraMovement != null)
-        {
             StartCoroutine(InitializeCamera());
-        }
     }
 
-    /// <summary>
-    /// Coroutine to initialize the camera after all NBody.Start() methods have executed.
-    /// </summary>
     IEnumerator InitializeCamera()
     {
-        yield return null; // Wait for all NBody.Start() to finish
-
+        yield return null; // wait for NBody.Start()
         if (lineVisibilityManager != null)
-        {
             lineVisibilityManager.SetTrackedBody(bodies[currentIndex]);
-        }
-        ReturnToTracking();
 
-        UpdateDropdownSelection();
+        ReturnToTracking();
+        bodyDropdownManager.UpdateDropdownSelection();
 
         Debug.Log($"[CAMERA CONTROLLER]: Initial camera tracking: {bodies[currentIndex].name}");
     }
 
-    /// <summary>
-    /// Handles input for camera controls and switching between tracking and free camera mode.
-    /// </summary>
-    // void Update()
-    // {
-    //     if (!isFreeCamMode)
-    //     {
-    //         if (Input.GetMouseButton(1) && cameraPivotTransform != null)
-    //         {
-    //             float rotationX = Input.GetAxis("Mouse X") * sensitivity * .01f;
-    //             float rotationY = Input.GetAxis("Mouse Y") * sensitivity * .01f;
-    //             cameraPivotTransform.Rotate(Vector3.up, rotationX, Space.World);
-    //             cameraPivotTransform.Rotate(Vector3.right, -rotationY, Space.Self);
-
-    //             Vector3 currentRotation = cameraPivotTransform.eulerAngles;
-    //             float clampedX = CameraCalculations.ClampAngle(currentRotation.x, -80f, 80f);
-    //             cameraPivotTransform.eulerAngles = new Vector3(currentRotation.x, currentRotation.y, 0);
-    //         }
-    //     }
-    // }
-
-    void Update()
-    {
-        if (!isFreeCamMode)
-        {
-            if (Input.GetMouseButtonDown(1))
-            {
-                // First frame of right mouse click — sync to current rotation
-                Vector3 currentEuler = cameraPivotTransform.rotation.eulerAngles;
-
-                yaw = currentEuler.y;
-
-                pitch = currentEuler.x;
-                if (pitch > 180f) pitch -= 360f; // Normalize pitch once
-
-                isRightMouseHeld = true;
-            }
-
-            if (Input.GetMouseButtonUp(1))
-            {
-                isRightMouseHeld = false;
-            }
-
-            if (isRightMouseHeld)
-            {
-                yaw += Input.GetAxis("Mouse X") * sensitivity * 0.01f;
-                pitch -= Input.GetAxis("Mouse Y") * sensitivity * 0.01f;
-
-                pitch = Mathf.Clamp(pitch, -80f, 80f);
-
-                Quaternion targetRotation = Quaternion.Euler(pitch, yaw, 0f);
-                cameraPivotTransform.rotation = targetRotation;
-            }
-        }
-    }
-
-    /// <summary>
-    /// Refreshes the dropdown to reflect the currently tracked body.
-    /// </summary>
-    public void UpdateDropdownSelection()
-    {
-        if (bodyDropdownManager.bodyDropdown == null || bodies.Count == 0) return;
-
-        TMP_Dropdown dropdown = bodyDropdownManager.bodyDropdown;
-
-        string currentBodyName = bodies[currentIndex].name;
-        int dropdownIndex = dropdown.options.FindIndex(option => option.text == currentBodyName);
-
-        // Ensure the index is valid before setting it
-        if (dropdownIndex != -1)
-        {
-            dropdown.onValueChanged.RemoveListener(bodyDropdownManager.HandleDropdownValueChanged);
-
-            dropdown.value = dropdownIndex;
-            dropdown.RefreshShownValue();
-
-            dropdown.onValueChanged.AddListener(bodyDropdownManager.HandleDropdownValueChanged);
-            //Debug.Log($"[CAMERA CONTROLLER]: Dropdown selection updated to: {dropdown.options[dropdown.value].text}");
-        }
-        else
-        {
-            Debug.LogError($"[CAMERA CONTROLLER]: No matching dropdown entry found for body: {currentBodyName}");
-        }
-    }
-
-    /// <summary>
-    /// Updates the trajectory renderer for the specified body index.
-    /// </summary>
-    public void UpdateTrajectoryRender(int index)
-    {
-        trajectoryRenderer.SetTrackedBody(bodies[index]);
-        if (lineVisibilityManager != null)
-        {
-            lineVisibilityManager.SetTrackedBody(bodies[index]);
-        }
-
-        trajectoryRenderer.orbitIsDirty = true;
-    }
-
-    /// <summary>
-    /// Switches the camera to free movement mode, disabling tracking.
-    /// </summary>
     public void BreakToFreeCam()
     {
-        if (isSwitchingToFreeCam)
-        {
-            return;
-        }
-
-        isSwitchingToFreeCam = true;
         if (cameraMovement != null)
         {
             cameraMovement.SetTargetBody(null);
             cameraMovement.enabled = false;
+            cameraMovement.isFreeCamMode = true;
+            cameraMovement.inEarthCam = false;
         }
 
-        FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
-        if (freeCam != null)
-        {
-            freeCam.TogglePlacementMode(true);
-        }
+        uIManager.placementModeButton.interactable = true;
 
-        isFreeCamMode = true;
-        isSwitchingToFreeCam = false;
+        inFreeCam = true;
+        inEarthViewCam = false;
+        if (freeCamera != null) freeCamera.TogglePlacementMode(true);
 
-        EventSystem.current.SetSelectedGameObject(null);
+        EmitEarthViewChanged(false);
+        EmitFreeModeChanged(true);
     }
 
-    /// <summary>
-    /// Returns the camera to tracking mode, focusing on a celestial body or placeholder.
-    /// </summary>
     public void ReturnToTracking()
     {
-        cameraMovement.enabled = true;
+        if (cameraMovement == null) return;
 
-        GameObject centralBody = GameObject.FindWithTag("CentralBody");
-
-        if (centralBody == null)
+        if (lastTrackedBeforePlaceholder != null)
         {
-            Debug.LogError("[CAMERA CONTROLLER]: Central body not found. Ensure it has the correct tag.");
+            _currentBody = lastTrackedBeforePlaceholder;
+            lastTrackedBeforePlaceholder = null;
+        }
+
+        if (_currentBody != null) { TrackBody(_currentBody); return; }
+
+        if (_lastTrackedBeforeEarth != null)
+        {
+            var b = _lastTrackedBeforeEarth;
+            _lastTrackedBeforeEarth = null;
+            TrackBody(b);
             return;
         }
 
-        NBody targetBody = null;
-        Vector3 targetPosition;
-
-        if (isTrackingPlaceholder && placeholderTarget != null)
+        if (bodies != null && bodies.Count > 0)
         {
-            cameraMovement.SetTargetBodyPlaceholder(placeholderTarget);
-            targetPosition = placeholderTarget.position;
-            targetBody = placeholderTarget.GetComponent<NBody>();
-        }
-        else if (bodies.Count > 0)
-        {
-            cameraMovement.SetTargetBody(bodies[currentIndex]);
-            targetPosition = bodies[currentIndex].transform.position;
-            targetBody = bodies[currentIndex];
-            trajectoryRenderer.orbitIsDirty = true;
-        }
-        else
-        {
-            Debug.LogWarning("[CAMERA CONTROLLER]: No valid bodies to track.");
+            currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
+            TrackBody(bodies[currentIndex]);
             return;
         }
 
-        previousTrackedBody = targetBody;
+        inFreeCam = true;
 
-        float distanceMultiplier = 100.0f;  // Adjust for how far back the camera should be
-        float radius = (targetBody != null) ? targetBody.radius : 3f;  // Use the body's radius or a default
-        float desiredDistance = radius * distanceMultiplier;
-
-        Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
-        cameraTransform.position = targetPosition - directionToTarget;
-
-        PointCameraTowardCentralBody(centralBody.transform, targetPosition);
-
-        FreeCamera freeCam = cameraTransform.GetComponent<FreeCamera>();
-        if (freeCam != null)
-        {
-            freeCam.TogglePlacementMode(false);
-        }
-
-        isFreeCamMode = false;
+        Debug.LogWarning("[CAMERA CONTROLLER]: No valid bodies to track.");
     }
 
-    /// <summary>
-    /// Points the camera toward the central body with a pitch adjustment.
-    /// </summary>
-    /// <param name="centralBody">The transform of the central body.</param>
-    /// <param name="targetPosition">The position of the currently tracked object.</param>
-    public void PointCameraTowardCentralBody(Transform centralBody, Vector3 targetPosition)
-    {
-        // Vector pointing from the tracked object to the central body
-        Vector3 directionToCentralBody = (centralBody.position - targetPosition).normalized;
-
-        Vector3 forwardDirection = -(targetPosition - centralBody.position).normalized;
-
-        Quaternion targetRotation = Quaternion.LookRotation(forwardDirection, Vector3.up);
-
-        float pitchAngle = 10f;
-        Quaternion pitchAdjustment = Quaternion.Euler(pitchAngle, 0f, 0f);
-
-        cameraPivotTransform.rotation = targetRotation * pitchAdjustment;
-    }
-
-    /// <summary>
-    /// Toggles the camera between Earth view and the previously tracked body.
-    /// </summary>
     public void SwitchToEarthCam()
     {
         if (!inEarthViewCam)
         {
-            GameObject centralBody = GameObject.FindWithTag("CentralBody");
-
-            if (centralBody == null)
-            {
-                Debug.LogError("[CAMERA CONTROLLER]: Central body not found. Ensure it has the correct tag.");
-                return;
-            }
-
-            NBody nBodyComponent = centralBody.GetComponent<NBody>();
-
-            if (nBodyComponent == null)
-            {
-                Debug.LogError("[CAMERA CONTROLLER]: NBody component not found on the central body.");
-                return;
-            }
-
-            cameraMovement.SetTargetEarth(nBodyComponent);
-            inEarthViewCam = true;
+            var earth = gravityManager.CentralBody;
+            TrackEarth(earth);
         }
         else
         {
-            cameraMovement.SetTargetEarth(previousTrackedBody);
-            inEarthViewCam = false;
+            ExitEarthView();
         }
     }
 
-    /// <summary>
-    /// Sets the Earth view tracking state.
-    /// Used in ObjectPlacementManager.
-    /// </summary>
     public void SetInEarthView(bool inEarthCam)
     {
-        cameraMovement.inEarthCam = inEarthCam;
+        if (cameraMovement != null) cameraMovement.inEarthCam = inEarthCam;
     }
 
-    /// <summary>
-    /// Checks if the camera is currently tracking the specified body.
-    /// Used in ObjectPlacementManager.
-    /// </summary>
-    /// <param name="body">The body to check against.</param>
     public bool IsTracking(NBody body)
     {
         return cameraMovement != null && cameraMovement.targetBody == body;
     }
 
-    /// <summary>
-    /// Switches to a new valid celestial body after one is removed (collision).
-    /// Used in GravityManager.
-    /// </summary>
-    /// <param name="removedBody">The body that was removed.</param>
-    public void SwitchToNextValidBody(NBody removedBody)
+    public void RefreshBodiesList()
     {
-        RefreshBodiesList();
-        if (lineVisibilityManager != null)
+        bodies = gravityManager.GetAllSatellites();
+
+        if (_currentBody != null)
         {
-            lineVisibilityManager.DeregisterNBody(bodies[currentIndex]);
+            int idx = bodies.IndexOf(_currentBody);
+            if (idx >= 0) currentIndex = idx;
+            else if (bodies.Count > 0) currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
         }
-        bodies.Remove(removedBody);
-
-
-        if (bodies.Count > 0)
+        else if (bodies.Count > 0 && currentIndex >= bodies.Count)
         {
-            currentIndex = Mathf.Clamp(currentIndex, 0, bodies.Count - 1);
+            currentIndex = bodies.Count - 1;
+        }
+    }
 
-            NBody nextBody = bodies[currentIndex];
+    // ===== ICameraTracker commands
 
-            cameraMovement.SetTargetBody(nextBody);
+    public void TrackBody(NBody body)
+    {
+        if (body == null) { BreakToFreeCam(); return; }
 
-            UpdateTrajectoryRender(currentIndex);
+        lastTrackedBeforePlaceholder = null;
+        isTrackingPlaceholder = false;
+        _currentPlaceholder = null;
+        _currentBody = body;
+        inEarthViewCam = false;
+        inFreeCam = false;
 
-            ReturnToTracking();
-            Debug.Log($"[CAMERA CONTROLLER]: Camera switched to track: {nextBody.name}");
+        int idx = bodies != null ? bodies.IndexOf(body) : -1;
+        if (idx >= 0) currentIndex = idx;
+
+        if (cameraMovement != null)
+        {
+            cameraMovement.enabled = true;
+            cameraMovement.SetTargetBody(body);
+            cameraMovement.isFreeCamMode = false;
+            cameraMovement.inEarthCam = false;
+            cameraMovement.PointCameraTowardCentralBody(Vector3.zero, body.transform.position);
+        }
+        if (freeCamera != null) freeCamera.TogglePlacementMode(false);
+
+        EmitTrackedBody(body);
+        EmitFreeModeChanged(false);
+        EmitEarthViewChanged(false);
+    }
+
+    public void TrackPlaceholder(Transform placeholder)
+    {
+        if (placeholder == null) { BreakToFreeCam(); return; }
+
+        isTrackingPlaceholder = true;
+        _currentPlaceholder = placeholder;
+        Debug.Log("Current BoDy Placeholder: " + _currentBody);
+        lastTrackedBeforePlaceholder = _currentBody;
+        _currentBody = null;
+        inEarthViewCam = false;
+
+        if (cameraMovement != null)
+        {
+            cameraMovement.enabled = true;
+            cameraMovement.SetTargetBodyPlaceholder(placeholder);
+            cameraMovement.isFreeCamMode = false;
+            cameraMovement.PointCameraTowardCentralBody(Vector3.zero, placeholder.position);
+        }
+        if (freeCamera != null) freeCamera.TogglePlacementMode(false);
+
+        EmitTrackedPlaceholder(placeholder);
+        EmitFreeModeChanged(false);
+        EmitEarthViewChanged(false);
+    }
+
+    public void TrackEarth(NBody earth)
+    {
+        if (earth == null || cameraMovement == null) { BreakToFreeCam(); return; }
+
+        if (cameraMovement.inEarthCam && cameraMovement.targetBody == earth) return;
+
+        Debug.Log(_currentBody);
+        if (_currentBody != null) _lastTrackedBeforeEarth = _currentBody;
+
+        cameraMovement.SetTargetEarth(earth);
+        cameraMovement.isFreeCamMode = false;
+        cameraMovement.inEarthCam = true;
+
+        if (freeCamera != null) freeCamera.TogglePlacementMode(false);
+
+        inEarthViewCam = true;
+        EmitEarthViewChanged(true);
+        EmitFreeModeChanged(false);
+    }
+
+    public void ExitEarthView()
+    {
+        if (cameraMovement != null) cameraMovement.inEarthCam = false;
+        inEarthViewCam = false;
+
+        if (_lastTrackedBeforeEarth != null)
+        {
+            var b = _lastTrackedBeforeEarth;
+            _lastTrackedBeforeEarth = null;
+            TrackBody(b);
+        }
+        else if (_currentBody != null)
+        {
+            TrackBody(_currentBody);
+        }
+        else if (_currentPlaceholder)
+        {
+            TrackPlaceholder(_currentPlaceholder);
         }
         else
         {
             BreakToFreeCam();
-            Debug.Log("[CAMERA CONTROLLER]: No valid bodies to track. Switched to FreeCam.");
-        }
-    }
-
-    /// <summary>
-    /// Sets a placeholder target for tracking during object placement.
-    /// Used in ObjectPlacementManager.
-    /// </summary>
-    /// <param name="placeholder">The placeholder transform to track.</param>
-    public void SetTargetPlaceholder(Transform placeholder)
-    {
-        if (placeholder == null) return;
-
-        placeholderTarget = placeholder;
-        isTrackingPlaceholder = true;
-        cameraMovement.SetTargetBodyPlaceholder(placeholder);
-    }
-
-    /// <summary>
-    /// Switches the camera from tracking a placeholder to tracking the real object.
-    /// Used in VelocityDragManager.
-    /// </summary>
-    /// <param name="realNBody">The real NBody to track.</param>
-    public void SwitchToRealNBody(NBody realNBody)
-    {
-        if (realNBody == null) return;
-        isTrackingPlaceholder = false;
-        placeholderTarget = null;
-        previousTrackedBody = realNBody;
-        inEarthViewCam = false;
-        if (!uIManager.earthCamPressed)
-        {
-            uIManager.OnEarthCamPressed();
-        }
-        if (cameraMovement != null)
-        {
-            cameraMovement.inEarthCam = false;
-            cameraMovement.SetTargetBody(realNBody);
         }
 
-        UpdateDropdownSelection();
-    }
-
-    /// <summary>
-    /// Refreshes the list of celestial bodies from the GravityManager.
-    /// Used in GravityManager, ObjectPlacementManager, VelocityDragManager
-    /// </summary>
-    public void RefreshBodiesList()
-    {
-        bodies = gravityManager.Bodies.FindAll(body => body.CompareTag("Planet"));
-
-        if (bodies.Count > 0 && currentIndex >= bodies.Count)
-        {
-            currentIndex = bodies.Count - 1;
-        }
+        EmitEarthViewChanged(false);
     }
 }

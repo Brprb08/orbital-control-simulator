@@ -23,12 +23,14 @@ public class TimeController : MonoBehaviour
     private float previousTimeScale = 1.0f; // Stores the previous time scale before pausing
 
     private GravityManager gravityManager;
+    private TutorialController tutorialController;
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
         this.gravityManager = ctx.GravityManager;
+        this.tutorialController = ctx.TutorialController;
         this.uIManager = ctx.UIManager;
 
         Time.timeScale = 1.0f;
@@ -82,6 +84,11 @@ public class TimeController : MonoBehaviour
         {
             timeScaleText.text = $"{newTimeScale:F1}x";
         }
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasChangedTimeScale = true;
+        }
     }
 
     /// <summary>
@@ -92,21 +99,6 @@ public class TimeController : MonoBehaviour
     {
         Time.timeScale = scale;
         Time.fixedDeltaTime = 0.02f * Time.timeScale;
-
-        if (gravityManager != null)
-        {
-            foreach (NBody nBody in gravityManager.Bodies)
-            {
-                if (nBody != null)
-                {
-                    nBody.AdjustPredictionSettings(scale);
-                }
-            }
-        }
-        else
-        {
-            Debug.LogWarning("[TIME CONTROLLER]: GravityManager instance not found.");
-        }
     }
 
     /// <summary>

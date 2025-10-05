@@ -68,7 +68,7 @@ public static class OrbitalCalculations
         Vector3 eVec = (Vector3.Cross(v, hVec) / mu) - (r / r.magnitude);
         Vector3 eUnit = eVec.magnitude > 1e-6f ? eVec.normalized : r.normalized;
 
-        if (result.eccentricity < 1e-6f)
+        if (result.eccentricity < 1e-2f)
         {
             result.isCircular = true;
             float orbitRadius = r.magnitude;

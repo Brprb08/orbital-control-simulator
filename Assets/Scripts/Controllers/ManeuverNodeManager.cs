@@ -29,6 +29,7 @@ public class ManeuverNodeManager : MonoBehaviour
     [SerializeField] Material red;
 
     public GravityManager gravityManager;
+    private TutorialController tutorialController;
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -37,6 +38,7 @@ public class ManeuverNodeManager : MonoBehaviour
         this.gravityManager = ctx.GravityManager;
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
         this.timeController = ctx.TimeController;
+        this.tutorialController = ctx.TutorialController;
 
         burnDropdown.ClearOptions();
         List<string> burnOptions = new List<string>
@@ -65,7 +67,6 @@ public class ManeuverNodeManager : MonoBehaviour
     /// </summary>
     public void OnAddManeuverNode()
     {
-        // TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
         timeController.SetTimeScale(1f);
         timeController.timeSlider.value = Time.timeScale;
         var body = trajectoryRenderer.trackedBody;
@@ -108,6 +109,11 @@ public class ManeuverNodeManager : MonoBehaviour
         setupButton.interactable = false;
         adjustNodeSlider.interactable = true;
         placeNodeButton.interactable = true;
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasSetupNode = true;
+        }
     }
 
 
@@ -118,6 +124,11 @@ public class ManeuverNodeManager : MonoBehaviour
     public void FinalizeManeuver()
     {
         if (nodes.Count == 0) return;
+
+        if (tutorialController.inTutorialMode)
+        {
+            tutorialController.hasPlacedNode = true;
+        }
 
         var node = nodes[0];
         node.isFinalized = true;
@@ -131,6 +142,10 @@ public class ManeuverNodeManager : MonoBehaviour
         float simTime = gravityManager.simulationTime;
         var trackedBody = trajectoryRenderer.trackedBody;
         var centralBody = gravityManager.CentralBody;
+
+        setupButton.interactable = true;
+        adjustNodeSlider.interactable = false;
+        placeNodeButton.interactable = false;
 
         // Use your orbital parameter calculation
         OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
@@ -154,38 +169,6 @@ public class ManeuverNodeManager : MonoBehaviour
 
         Debug.Log($"Finalized maneuver burn time: {node.burnTime:F2} (Simulation time: {simTime:F2})");
     }
-
-    // /// <summary>
-    // /// Adds a finalized maneuver node to the tracked body with specified parameters.
-    // /// </summary>
-    // /// <param name="position">World-space position of the node marker.</param>
-    // /// <param name="burnTime">The simulation time at which the burn begins.</param>
-    // /// <param name="deltaV">The intended change in velocity for the burn.</param>
-    // /// <param name="duration">The duration of the burn in simulation seconds.</param>
-
-    // public void AddNode(Vector3 position, float burnTime, Vector3 deltaV, float duration)
-    // {
-    //     // TrajectoryRenderer trajectoryRenderer = FindFirstObjectByType<TrajectoryRenderer>();
-    //     var trackedBody = trajectoryRenderer.trackedBody;
-    //     var node = new ManeuverNode
-    //     {
-    //         position = position,
-    //         burnTime = burnTime,
-    //         deltaV = deltaV,
-    //         marker = GameObject.CreatePrimitive(PrimitiveType.Sphere),
-    //         targetBody = trackedBody,
-    //         duration = duration,
-    //         burnType = GetBurnChoice()
-    //     };
-
-    //     node.marker.transform.position = position;
-    //     node.marker.transform.localScale = Vector3.one * 5f;
-    //     node.marker.name = "ManeuverNode";
-    //     node.marker.GetComponent<Renderer>().material.color = Color.cyan;
-
-    //     nodes.Add(node);
-    //     UpdateManeuverPrediction();
-    // }
 
     /// <summary>
     /// Removes the given maneuver node and its associated marker from the system.

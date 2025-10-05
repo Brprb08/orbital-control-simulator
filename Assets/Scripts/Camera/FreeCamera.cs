@@ -14,6 +14,13 @@ public class FreeCamera : MonoBehaviour
     private float yaw = 0f;
     private float pitch = 0f;
 
+    private SimContext ctx;
+
+    public void Initialize(SimContext ctx)
+    {
+        this.ctx = ctx;
+    }
+
     void Update()
     {
         if (!isFreeMode)

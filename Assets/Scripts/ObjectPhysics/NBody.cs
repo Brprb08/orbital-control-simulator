@@ -55,6 +55,10 @@ public class NBody : MonoBehaviour
     private Vector3 burnStartVelocity;
     private Vector3 burnEndVelocity;
 
+    // public LineRenderer progradeLine;
+    // public LineRenderer normalLine;
+    // public LineRenderer radialInLine;
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -318,22 +322,6 @@ public class NBody : MonoBehaviour
     }
 
     /// <summary>
-    /// Checks if the object has escaped the Earth's sphere of influence and removes it if so.
-    /// </summary>
-    void CheckEscapeFromEarth()
-    {
-        NBody earth = gravityManager.CentralBody;
-        if (earth == null || earth == this) return;
-
-        float distance = Vector3.Distance(transform.position, earth.transform.position);
-        if (distance > MaxDistanceFromEarth)
-        {
-            Debug.Log($"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed.");
-            gravityManager.HandleCollision(this, earth); // You can replace this with a new handler like HandleEscape()
-        }
-    }
-
-    /// <summary>
     /// Checks for collision with the central body and triggers a removal event if detected.
     /// </summary>
     void CheckCollisionWithEarth()
@@ -348,6 +336,22 @@ public class NBody : MonoBehaviour
         {
             Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
             gravityManager.HandleCollision(this, earth);
+        }
+    }
+
+    /// <summary>
+    /// Checks if the object has escaped the Earth's sphere of influence and removes it if so.
+    /// </summary>
+    void CheckEscapeFromEarth()
+    {
+        NBody earth = gravityManager.CentralBody;
+        if (earth == null || earth == this) return;
+
+        float distance = Vector3.Distance(transform.position, earth.transform.position);
+        if (distance > MaxDistanceFromEarth)
+        {
+            Debug.Log($"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed.");
+            gravityManager.HandleCollision(this, earth); // You can replace this with a new handler like HandleEscape()
         }
     }
 
@@ -417,36 +421,7 @@ public class NBody : MonoBehaviour
     /// <param name="additionalForce">Force vector to apply.</param>
     public void AddForce(Vector3 additionalForce)
     {
-        // Debug.LogError(additionalForce);
         state.force += additionalForce;
-    }
-
-    public void ApplyDeltaV(Vector3 deltaV_kmPerSec)
-    {
-        // Convert to Unity units/s (1 km/s = 0.1 unit/s)
-        Vector3 deltaV_unitsPerSec = deltaV_kmPerSec * 0.1f;
-
-        velocity += deltaV_unitsPerSec;
-        state.velocity = velocity.ToDouble3();
-    }
-
-    /// <summary>
-    /// Dynamically adjusts the trajectory prediction delta time based on position and simulation time scale.
-    /// </summary>
-    /// <param name="timeScale">Current simulation time scale.</param>
-    public void AdjustPredictionSettings(float timeScale)
-    {
-        float distance = transform.position.magnitude;
-        float speed = 300f;
-
-        float baseDeltaTime = 0.5f;
-        float minDeltaTime = 0.5f;
-        float maxDeltaTime = 1f;
-
-        float adjustedDelta = baseDeltaTime * (1 + distance / 1000f) / (1 + speed / 10f);
-        adjustedDelta = Mathf.Clamp(adjustedDelta, minDeltaTime, maxDeltaTime);
-
-        predictionDeltaTime = adjustedDelta;
     }
 
     /// <summary>
@@ -499,3 +474,4 @@ public class NBody : MonoBehaviour
         }
     }
 }
+
