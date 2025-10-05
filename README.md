@@ -14,21 +14,24 @@ Drop in real satellite data, apply thrust, and watch orbital paths shift in real
 I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal wasn’t just to visualize orbits. It was to understand and simulate them as accurately as possible.
 
 ---
-## Capabilities & Features  
-*All functionality is live in runtime.*
+
+## Capabilities & Features
+
+_All functionality is live in runtime._
+
 1. Live computation of orbital parameters including apogee, perigee, velocity, altitude, period, inclination, eccentricity, semi-major axis, and RAAN
-2. Real-time orbital decay via atmospheric drag modeling  
-3. Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)  
-4. Toggle between Free Thrust and early Maneuver Node system  
-5. In Node mode:  
-   - Select burn direction (prograde, retrograde, radial, normal, etc.)  
-   - Setup a maneuver node and adjust its orbital position  
-   - Auto-execute burns when the satellite reaches the node  
-   - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)  
-6. GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)  
-7. Runtime placement of satellites with mass, radius, velocity, and direction  
-8. Add satellites at runtime via TLE input  
-9. Time scaling from 1x to 100x for long-term simulations  
+2. Real-time orbital decay via atmospheric drag modeling
+3. Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)
+4. Toggle between Free Thrust and early Maneuver Node system
+5. In Node mode:
+   - Select burn direction (prograde, retrograde, radial, normal, etc.)
+   - Setup a maneuver node and adjust its orbital position
+   - Auto-execute burns when the satellite reaches the node
+   - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)
+6. GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)
+7. Runtime placement of satellites with mass, radius, velocity, and direction
+8. Add satellites at runtime via TLE input
+9. Time scaling from 1x to 100x for long-term simulations
 10. Dual camera modes (free roam and tracking)
 
 ---
@@ -54,9 +57,11 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 - **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
 
 ---
+
 ## How to Run
 
 ### Requirements
+
 - Unity 2020.3 or later (tested on LTS versions)
 - Windows 64-bit (required for native C++ DLL support)
 
@@ -66,14 +71,15 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
    ```bash
    git clone https://github.com/Brprb08/space-orbit-simulation.git
    ```
-2. Open the project in Unity Hub  
-3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`  
+2. Open the project in Unity Hub
+3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`
 4. Press `Play` in the Unity Editor
 
 The native physics backend is provided as a precompiled 64-bit DLL in `Assets/Plugins/x86_64/`.  
 You do not need to compile the DLL yourself.
 
 The following runtime dependencies are also included to support the C++ plugin:
+
 - `libgcc_s_seh-1.dll`
 - `libstdc++-6.dll`
 - `libwinpthread-1.dll`
@@ -85,10 +91,12 @@ These are required on systems that do not have the GCC runtime installed.
 To build and run the simulator as a standalone Windows application:
 
 1. In Unity, open the menu:
-   - File → Build Settings (or Build Profiles, depending on your version)  
+
+   - File → Build Settings (or Build Profiles, depending on your version)
 
 2. Select **Windows** as the target platform
 3. Ensure the following settings:
+
    - **Architecture**: `Intel 64-bit`
    - **Build and Run on**: `Local Machine`
    - Make sure `Scenes/OrbitSimulation` is checked in the Scene List
@@ -97,6 +105,19 @@ To build and run the simulator as a standalone Windows application:
 5. After the build completes, open the output folder and run the `SpaceOrbit.exe` file
 
 All required DLLs (including the native physics plugin and its runtime dependencies) will be included automatically, as long as they are in `Assets/Plugins/x86_64/`.
+
+---
+
+## Interactive Tutorial (Built-In)
+
+When you first press **Play** in Unity or run the built executable, an **interactive tutorial** automatically starts to guide you through the basics. Camera controls, satellite placement, time scaling, and orbital maneuvers.
+
+- **Starts automatically** on first launch
+- **Fully interactive** — perform real actions (rotate camera, place satellites, apply thrust, etc.) to progress
+- **Auto-progresses** when all step requirements are met
+- **Manual control** — use **Next**, **Back**, or **Skip Tutorial** anytime
+
+If you’d rather use freely, just click **Skip Tutorial** when it appears.
 
 ---
 
@@ -113,6 +134,6 @@ All required DLLs (including the native physics plugin and its runtime dependenc
 
 ---
 
-*This project was designed as a technical demonstration of my abilities in simulation engineering, physics programming, and real-time system development.*
+_This project was designed as a technical demonstration of my abilities in simulation engineering, physics programming, and real-time system development._
 
 [⬆ Back to Top](#orbital-control-simulator)
