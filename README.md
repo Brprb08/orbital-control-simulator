@@ -113,9 +113,9 @@ All required DLLs (including the native physics plugin and its runtime dependenc
 When you first press **Play** in Unity or run the built executable, an **interactive tutorial** automatically starts to guide you through the basics. Camera controls, satellite placement, time scaling, and orbital maneuvers.
 
 - **Starts automatically** on first launch
-- **Fully interactive** — perform real actions (rotate camera, place satellites, apply thrust, etc.) to progress
+- **Fully interactive**: Perform real actions (rotate camera, place satellites, apply thrust, etc.) to progress
 - **Auto-progresses** when all step requirements are met
-- **Manual control** — use **Next**, **Back**, or **Skip Tutorial** anytime
+- **Manual control**: Use **Next**, **Back**, or **Skip Tutorial** anytime
 
 If you’d rather use freely, just click **Skip Tutorial** when it appears.
 
@@ -123,22 +123,30 @@ If you’d rather use freely, just click **Skip Tutorial** when it appears.
 
 ## Unit Testing Overview
 
-**Total:** 50 Edit-Mode Tests — **All Passing**  
+**Total:** 50 Edit-Mode Tests **All Passing**  
 **Framework:** Unity Test Framework (NUnit-style)  
-**Scope:** Real component interaction (no mocks, real `MonoBehaviour` wiring)
+**Type:** Edit-Mode (runs directly on compiled assemblies)
 
-| System                   | Tests | Coverage                                                        |
-| :----------------------- | :---: | :-------------------------------------------------------------- |
-| **CameraCalculations**   |   4   | Angle clamping, normalization, min/max distance logic           |
-| **CameraController**     |   5   | Mode switching (Track/Free/Earth), tracking bodies/placeholders |
-| **CameraMovement**       |   3   | Target distance, EarthCam handling, movement state              |
-| **NBody**                |   2   | Initialization and central-body velocity reset                  |
-| **Orbital Calculations** |   3   | Apogee/perigee computation, orbital period, eccentricity        |
-| **BodyService**          |   3   | Register/deregister, central body events, satellite filtering   |
-| **UIManager**            |   3   | Mode-based UI states, EarthCam label updates, interactivity     |
-| **ExtensionTests**       |   2   | Vector3↔double3 conversions and precision checks                |
-| **ParsingUtils**         |   6   | String parsing, numeric extraction, TLE line validation         |
-| **TLE Parser**           |  13   | Field parsing, checksum validation, orbital element extraction  |
+- **CameraCalculations** – 4 tests  
+  Angle clamping, normalization, min/max distance logic
+- **CameraController** – 5 tests  
+  Mode switching (Track/Free/Earth), tracking bodies/placeholders
+- **CameraMovement** – 3 tests  
+  Target distance, EarthCam handling, movement state
+- **NBody** – 2 tests  
+  Initialization and central-body velocity reset
+- **Orbital Calculations** – 3 tests  
+  Apogee/perigee computation, orbital period, eccentricity
+- **BodyService** – 3 tests  
+  Register/deregister, central body events, satellite filtering
+- **UIManager** – 3 tests  
+  Mode-based UI states, EarthCam label updates, interactivity
+- **ExtensionTests** – 2 tests  
+  Vector3↔double3 conversions and precision checks
+- **ParsingUtils** – 6 tests  
+  String parsing, numeric extraction, TLE line validation
+- **TLE Parser** – 13 tests  
+  Field parsing, checksum validation, orbital element extraction
 
 ---
 
