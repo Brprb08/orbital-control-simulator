@@ -127,26 +127,22 @@ If you’d rather use freely, just click **Skip Tutorial** when it appears.
 **Framework:** Unity Test Framework (NUnit-style)  
 **Type:** Edit-Mode (runs directly on compiled assemblies)
 
-- **CameraCalculations** – 4 tests  
-  Angle clamping, normalization, min/max distance logic
-- **CameraController** – 5 tests  
-  Mode switching (Track/Free/Earth), tracking bodies/placeholders
-- **CameraMovement** – 3 tests  
-  Target distance, EarthCam handling, movement state
-- **NBody** – 2 tests  
-  Initialization and central-body velocity reset
-- **Orbital Calculations** – 3 tests  
-  Apogee/perigee computation, orbital period, eccentricity
-- **BodyService** – 3 tests  
-  Register/deregister, central body events, satellite filtering
-- **UIManager** – 3 tests  
-  Mode-based UI states, EarthCam label updates, interactivity
-- **ExtensionTests** – 2 tests  
-  Vector3↔double3 conversions and precision checks
-- **ParsingUtils** – 6 tests  
-  String parsing, numeric extraction, TLE line validation
-- **TLE Parser** – 13 tests  
-  Field parsing, checksum validation, orbital element extraction
+## Unit Testing Overview
+
+**Total:** 46 Edit-Mode Tests — All Passing  
+**Framework:** Unity Test Framework (NUnit-style)  
+**Type:** Edit-Mode (runs directly on compiled assemblies)
+
+- **CameraCalculations** – Angle clamping, normalization, min/max distance logic
+- **CameraController** – Mode switching (Track/Free/Earth), tracking bodies/placeholders
+- **CameraMovement** – Target distance, EarthCam handling, movement state
+- **NBody** – Initialization and central-body velocity reset
+- **Orbital Calculations** – Apogee/perigee computation, orbital period, eccentricity
+- **BodyService** – Register/deregister, central body events, satellite filtering
+- **UIManager** – Mode-based UI states, EarthCam label updates, interactivity
+- **ExtensionTests** – Vector3↔double3 conversions and precision checks
+- **ParsingUtils** – String parsing, numeric extraction, TLE line validation
+- **TLE Parser** – Field parsing, checksum validation, orbital element extraction
 
 ---
 
