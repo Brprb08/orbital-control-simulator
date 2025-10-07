@@ -110,14 +110,21 @@ All required DLLs (including the native physics plugin and its runtime dependenc
 
 ## Interactive Tutorial (Built-In)
 
-When you first press **Play** in Unity or run the built executable, an **interactive tutorial** automatically starts to guide you through the basics. Camera controls, satellite placement, time scaling, and orbital maneuvers.
+When you first press **Play** in Unity or run the built executable, an **interactive tutorial** automatically starts to guide you through the basics. Camera controls, satellite placement, and orbital maneuvers.
 
 - **Starts automatically** on first launch
-- **Fully interactive**: Perform real actions (rotate camera, place satellites, apply thrust, etc.) to progress
-- **Auto-progresses** when all step requirements are met
-- **Manual control**: Use **Next**, **Back**, or **Skip Tutorial** anytime
+- **Fully interactive**: perform real actions to progress
+- **Manual control**: use **Next**, **Back**, or **Skip Tutorial** anytime
 
-If you’d rather use freely, just click **Skip Tutorial** when it appears.
+**Sequence:**
+
+- Learn camera controls and zoom with Track, Earth, and Free Cam
+- Move freely with WASD and mouse look
+- Place satellites by entering mass and radius
+- Set velocity and apply thrust to form stable orbits
+- Adjust time scale and plan burns or use maneuver nodes
+
+If you’d rather explore freely, just click **Skip Tutorial** when it appears.
 
 ---
 
