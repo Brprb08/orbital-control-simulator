@@ -12,7 +12,6 @@ using System.Collections.Generic;
 public class CameraMovement : MonoBehaviour
 {
     public TutorialController tutorialController;
-    // public BodyDropdownManager bodyDropdownManager;
 
     [Header("Tracking Target")]
     public NBody targetBody;
@@ -66,7 +65,6 @@ public class CameraMovement : MonoBehaviour
     {
         this.ctx = ctx;
         this.tutorialController = ctx.TutorialController;
-        // this.bodyDropdownManager = ctx.BodyDropdownManager;
         mainCamera = GetComponentInChildren<Camera>();
     }
 

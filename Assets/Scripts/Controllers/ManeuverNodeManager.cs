@@ -14,6 +14,7 @@ public class ManeuverNodeManager : MonoBehaviour
     public ProceduralLineRenderer maneuverTrajectoryLine;
     public TrajectoryRenderer trajectoryRenderer;
     public TimeController timeController;
+    private BodyService bodyService;
 
     [Header("References - UI")]
     public Slider maneuverTimeSlider;
@@ -39,6 +40,7 @@ public class ManeuverNodeManager : MonoBehaviour
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
         this.timeController = ctx.TimeController;
         this.tutorialController = ctx.TutorialController;
+        this.bodyService = ctx.BodyService;                   // <-- use service
 
         burnDropdown.ClearOptions();
         List<string> burnOptions = new List<string>
@@ -141,7 +143,7 @@ public class ManeuverNodeManager : MonoBehaviour
         // Wrap burn time if it's in the past
         float simTime = gravityManager.simulationTime;
         var trackedBody = trajectoryRenderer.trackedBody;
-        var centralBody = gravityManager.CentralBody;
+        var centralBody = bodyService.CentralBody;
 
         setupButton.interactable = true;
         adjustNodeSlider.interactable = false;

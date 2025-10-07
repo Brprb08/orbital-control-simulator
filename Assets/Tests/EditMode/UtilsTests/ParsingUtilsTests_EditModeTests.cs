@@ -1,7 +1,7 @@
 using NUnit.Framework;
 using UnityEngine;
 
-public class ParsingUtilsTests
+public class ParsingUtilsTests_EditModeTests
 {
     [Test]
     public void TryParseVector3_ValidInput_ReturnsTrue()

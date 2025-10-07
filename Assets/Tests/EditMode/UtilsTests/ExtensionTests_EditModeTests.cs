@@ -6,7 +6,7 @@ using UnityEngine;
 /// Unit tests for the Extensions utility class.
 /// Validates conversions from Double3 -> Vector3 and Vector3 -> Double3.
 /// </summary>
-public class ExtensionTests
+public class ExtensionTests_EditModeTests
 {
     /// <summary>
     /// Tests that converting a double3 to Vector3 returns correct float values.

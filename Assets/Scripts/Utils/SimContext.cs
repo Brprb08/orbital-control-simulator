@@ -1,5 +1,6 @@
 public class SimContext
 {
+    public BodyService BodyService { get; set; }
     public GravityManager GravityManager { get; set; }
     public CameraController CameraController { get; set; }
     public CameraMovement CameraMovement { get; set; }
@@ -20,4 +21,5 @@ public class SimContext
     public ICameraTracker CameraTracker => CameraController;
     // public IBodyRegistry BodyRegistry => GravityManager;
     public CameraButtonProxy CameraButtonProxy { get; set; }
+
 }

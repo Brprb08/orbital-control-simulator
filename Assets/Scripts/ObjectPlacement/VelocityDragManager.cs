@@ -14,6 +14,7 @@ public class VelocityDragManager : MonoBehaviour
     public CameraController cameraController;
     private ICameraTracker cameraTracker;
     public TutorialController tutorialController;
+    private BodyService bodyService;
 
     [Header("References - UI")]
     public TMP_InputField velocityDisplayText;
@@ -60,9 +61,9 @@ public class VelocityDragManager : MonoBehaviour
         uIManager = ctx.UIManager;
         trajectoryRenderer = ctx.TrajectoryRenderer;
         objectPlacementManager = ctx.ObjectPlacementManager;
-        cameraController = ctx.CameraController;
         cameraTracker = ctx.CameraTracker;
         tutorialController = ctx.TutorialController;
+        bodyService = ctx.BodyService;
 
         if (dragLineRenderer) dragLineRenderer.positionCount = 0;
 
@@ -261,7 +262,7 @@ public class VelocityDragManager : MonoBehaviour
         }
 
         nbody.velocity = velocityToApply;
-        gravityManager.RegisterBody(nbody);
+        bodyService.Register(nbody);
 
         (cameraTracker ?? ctx.CameraTracker)?.TrackBody(nbody);
 

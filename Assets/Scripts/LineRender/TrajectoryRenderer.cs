@@ -518,9 +518,18 @@ public class TrajectoryRenderer : MonoBehaviour
             previewDirty = false;
 
             // Build "other bodies" arrays (influence field). Keep it tiny for speed.
-            var others = gravityManager.Bodies;
-            var posList = new List<Vector3>(others.Count);
-            var massList = new List<float>(others.Count);
+            var others = ctx.BodyService.Bodies;
+            var posList = BuildOtherPositions();
+            var massList = BuildOtherMasses();
+
+            if (posList.Count == 0 || massList.Count == 0)
+            {
+                // Nothing to simulate against; clear preview and wait for next tick
+                if (previewLine != null) previewLine.Clear();
+                yield return new WaitForSeconds(tick);
+                continue;
+            }
+
             for (int i = 0; i < others.Count; i++)
             {
                 var b = others[i];
@@ -556,21 +565,42 @@ public class TrajectoryRenderer : MonoBehaviour
         }
     }
 
-    // === In TrajectoryRenderer ===
     private List<Vector3> BuildOtherPositions()
     {
-        var others = gravityManager.Bodies;
-        var pos = new List<Vector3>(others.Count);
-        for (int i = 0; i < others.Count; i++) pos.Add(others[i].transform.position);
-        return pos;
+        var svc = ctx.BodyService;
+        var list = new List<Vector3>();
+        if (svc != null && svc.Bodies != null)
+        {
+            for (int i = 0; i < svc.Bodies.Count; i++)
+            {
+                var b = svc.Bodies[i];
+                if (b != null) list.Add(b.transform.position);
+            }
+        }
+        // Fallback: at least include Earth so count > 0
+        if (list.Count == 0 && svc != null && svc.CentralBody != null)
+            list.Add(svc.CentralBody.transform.position);
+
+        return list;
     }
 
     private List<float> BuildOtherMasses()
     {
-        var others = gravityManager.Bodies;
-        var m = new List<float>(others.Count);
-        for (int i = 0; i < others.Count; i++) m.Add((float)others[i].mass);
-        return m;
+        var svc = ctx.BodyService;
+        var list = new List<float>();
+        if (svc != null && svc.Bodies != null)
+        {
+            for (int i = 0; i < svc.Bodies.Count; i++)
+            {
+                var b = svc.Bodies[i];
+                if (b != null) list.Add((float)b.mass);
+            }
+        }
+        // Fallback: central body mass
+        if (list.Count == 0 && svc != null && svc.CentralBody != null)
+            list.Add((float)svc.CentralBody.mass);
+
+        return list;
     }
 
     /// <summary>

@@ -6,7 +6,7 @@ using UnityEngine.TestTools;
 /// Unit tests for the TLEParser class.
 /// Verifies correct parsing of valid TLE strings and appropriate handling of invalid inputs.
 /// </summary>
-public class TLEParserTests
+public class TLEParserTests_EditModeTests
 {
     // Sample valid TLE (ISS)
     private const string Line1_Valid = "1 25544U 98067A   20029.54791435  .00001264  00000-0  29621-4 0  9993";

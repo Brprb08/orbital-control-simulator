@@ -26,7 +26,7 @@ public class SimulationBootstrap : MonoBehaviour
     public RocketThrustAudio rocketThrustAudio;
     public TutorialController tutorialController;
     public CameraButtonProxy cameraButtonProxy;
-
+    public BodyService bodyService;
     private SimContext ctx;
 
     void Awake()
@@ -51,16 +51,18 @@ public class SimulationBootstrap : MonoBehaviour
             VelocityDragManager = velocityDragManager,
             RocketThrustAudio = rocketThrustAudio,
             TutorialController = tutorialController,
-            CameraButtonProxy = cameraButtonProxy
+            CameraButtonProxy = cameraButtonProxy,
+            BodyService = bodyService
         };
 
         // 2) initialize in dependency order
+        bodyService.Initialize(ctx);
+        gravityManager.Initialize(ctx);
         lineVisibilityManager.Initialize(ctx);
         cameraMovement.Initialize(ctx);
         cameraButtonProxy.Initialize(ctx);
         freeCamera.Initialize(ctx);
         trajectoryRenderer.Initialize(ctx);
-        gravityManager.Initialize(ctx);
         cameraController.Initialize(ctx);
         bodyDropdownManager.Initialize(ctx);
         maneuverNodeManager.Initialize(ctx);
@@ -73,6 +75,8 @@ public class SimulationBootstrap : MonoBehaviour
         velocityDragManager.Initialize(ctx);
         rocketThrustAudio.Initialize(ctx);
         tutorialController.Initialize(ctx);
+
+
 
         foreach (var nbody in FindObjectsByType<NBody>(FindObjectsSortMode.None))
             nbody.Initialize(ctx);

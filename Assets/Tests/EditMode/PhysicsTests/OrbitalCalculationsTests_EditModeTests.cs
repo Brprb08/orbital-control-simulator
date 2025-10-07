@@ -6,7 +6,7 @@ using UnityEngine.TestTools;
 /// Unit tests for the OrbitalCalculations static class.
 /// Validates orbital element calculations using scaled units (1 unit = 10 km).
 /// </summary>
-public class OrbitalCalculationsTests
+public class OrbitalCalculationsTests_EditModeTests
 {
     private GameObject testObject;
     private Transform bodyTransform;

@@ -72,6 +72,10 @@ public class UIManager : MonoBehaviour
     private PlacementMode placementMode = PlacementMode.Manual;
     private ThrustUiMode thrustUiMode = ThrustUiMode.FreeThrust;
 
+    private System.Action<CameraMode> _onModeChangedHandler;
+    private System.Action<NBody> _onTrackedBodyHandler;
+    private System.Action<Transform> _onTrackedPlaceholderHandler;
+
     private SimContext ctx;
 
     public void Initialize(SimContext ctx)
@@ -81,21 +85,25 @@ public class UIManager : MonoBehaviour
         cameraTracker = ctx.CameraTracker;
         objectPlacementManager = ctx.ObjectPlacementManager;
 
-        // Subscribe to camera state – single source of truth
         if (cameraTracker != null)
         {
-            cameraTracker.OnEarthViewChanged += HandleEarthViewChanged;
-            cameraTracker.OnFreeModeChanged += HandleFreeModeChanged;
-            cameraTracker.OnTrackedBodyChanged += _ => EnsureTrackUiConsistency();
-            cameraTracker.OnTrackedPlaceholderChanged += _ => EnsureTrackUiConsistency();
+            // subscribe to the single authoritative mode event
+            _onModeChangedHandler = HandleModeChanged;
+            cameraTracker.OnModeChanged += _onModeChangedHandler;
+
+            // keep button coherence when tracking target changes
+            _onTrackedBodyHandler = _ => EnsureTrackUiConsistency();
+            _onTrackedPlaceholderHandler = _ => EnsureTrackUiConsistency();
+            cameraTracker.OnTrackedBodyChanged += _onTrackedBodyHandler;
+            cameraTracker.OnTrackedPlaceholderChanged += _onTrackedPlaceholderHandler;
+
+            // initial paint based on current mode
+            HandleModeChanged(cameraTracker.Mode);
         }
 
-        // Base UI state (assume starting in Track Cam)
-        ApplyModeUi(isFreeCam: cameraTracker?.IsFree == true, inEarthCam: cameraTracker?.IsEarthView == true);
-
-        instructionsPanel.SetActive(showInstructionText);
-        cameraControls.SetActive(true);
-        deltaVText.text = "";
+        if (instructionsPanel) instructionsPanel.SetActive(showInstructionText);
+        if (cameraControls) cameraControls.SetActive(true);
+        if (deltaVText) deltaVText.text = "";
 
         UpdateInstructionToggleButton();
     }
@@ -104,10 +112,9 @@ public class UIManager : MonoBehaviour
     {
         if (cameraTracker != null)
         {
-            cameraTracker.OnEarthViewChanged -= HandleEarthViewChanged;
-            cameraTracker.OnFreeModeChanged -= HandleFreeModeChanged;
-            cameraTracker.OnTrackedBodyChanged -= _ => EnsureTrackUiConsistency();
-            cameraTracker.OnTrackedPlaceholderChanged -= _ => EnsureTrackUiConsistency();
+            if (_onModeChangedHandler != null) cameraTracker.OnModeChanged -= _onModeChangedHandler;
+            if (_onTrackedBodyHandler != null) cameraTracker.OnTrackedBodyChanged -= _onTrackedBodyHandler;
+            if (_onTrackedPlaceholderHandler != null) cameraTracker.OnTrackedPlaceholderChanged -= _onTrackedPlaceholderHandler;
         }
     }
 
@@ -116,17 +123,14 @@ public class UIManager : MonoBehaviour
     /// <summary>Free Cam button</summary>
     public void OnFreeCamPressed()
     {
-        // Tell camera to switch; UI updates will come from events
-        cameraTracker?.BreakToFreeCam();
-        // The rest of the UI (panels) is controlled by HandleFreeModeChanged
+        cameraTracker?.BreakToFreeCam(); // UI will update via OnModeChanged
         EventSystem.current.SetSelectedGameObject(null);
     }
 
     /// <summary>Track Cam button</summary>
     public void OnTrackCamPressed()
     {
-        // Return to tracking prior target (body/placeholder)
-        cameraTracker?.ReturnToTracking();
+        cameraTracker?.ReturnToTracking(); // UI will update via OnModeChanged
         EventSystem.current.SetSelectedGameObject(null);
     }
 
@@ -134,35 +138,21 @@ public class UIManager : MonoBehaviour
     {
         showInstructionText = !showInstructionText;
         UpdateInstructionToggleButton();
-        instructionsPanel.SetActive(showInstructionText);
+        if (instructionsPanel) instructionsPanel.SetActive(showInstructionText);
         EventSystem.current.SetSelectedGameObject(null);
     }
-
-    // public void SwitchPlacementMode()
-    // {
-    //     placementMode = (placementMode == PlacementMode.Manual) ? PlacementMode.TLE : PlacementMode.Manual;
-    //     var placementModeButtonText = placementModeButton.GetComponentInChildren<TMP_Text>();
-    //     if (placementModeButtonText != null)
-    //         placementModeButtonText.text = placementMode == PlacementMode.Manual ? "Switch to TLE Input" : "Switch to Manual Input";
-
-    //     // Only visible in FreeCam
-    //     if (cameraTracker != null && cameraTracker.IsFree)
-    //         ShowPlacePanels(true);
-    // }
 
     public void SwitchPlacementMode()
     {
         placementMode = (placementMode == PlacementMode.Manual) ? PlacementMode.TLE : PlacementMode.Manual;
 
-        var placementModeButtonText = placementModeButton.GetComponentInChildren<TMP_Text>();
+        var placementModeButtonText = placementModeButton ? placementModeButton.GetComponentInChildren<TMP_Text>() : null;
         if (placementModeButtonText != null)
             placementModeButtonText.text = placementMode == PlacementMode.Manual ? "Switch to TLE Input" : "Switch to Manual Input";
 
-        // Only visible in FreeCam
-        if (cameraTracker != null && cameraTracker.IsFree)
+        if (cameraTracker != null && cameraTracker.Mode == CameraMode.Free)
         {
             ShowPlacePanels(true);
-            // Also refresh input interactivity to match the new mode
             ShowPlacementSelect(true);
         }
     }
@@ -170,55 +160,52 @@ public class UIManager : MonoBehaviour
     public void SwitchBurnMode()
     {
         thrustUiMode = (thrustUiMode == ThrustUiMode.FreeThrust) ? ThrustUiMode.ManeuverNodes : ThrustUiMode.FreeThrust;
-        var txt = burnControlButton.GetComponentInChildren<TMP_Text>();
+        var txt = burnControlButton ? burnControlButton.GetComponentInChildren<TMP_Text>() : null;
         if (txt != null)
             txt.text = thrustUiMode == ThrustUiMode.FreeThrust ? "Use Maneuver Nodes" : "Use Free Thrust";
 
-        // Only visible in TrackCam
-        if (cameraTracker != null && !cameraTracker.IsFree)
+        if (cameraTracker != null && cameraTracker.Mode != CameraMode.Free)
             ShowThrustPanels(true);
     }
 
     // --------- CAMERA EVENT HANDLERS (authoritative state) ----------
 
-    private void HandleEarthViewChanged(bool inEarth)
+    private void HandleModeChanged(CameraMode mode)
     {
+        // Update EarthCam toggle label
         if (earthCamButtonText != null)
-            earthCamButtonText.text = inEarth ? "Satellite Cam" : "Earth Cam";
+            earthCamButtonText.text = (mode == CameraMode.Earth) ? "Satellite Cam" : "Earth Cam";
 
-        // Reapply current overall mode to panels (keeps things consistent)
-        ApplyModeUi(isFreeCam: cameraTracker?.IsFree == true, inEarthCam: inEarth);
+        ApplyModeUi(mode);
     }
 
-    private void HandleFreeModeChanged(bool isFree)
-    {
-        // Reapply UI for Free/Track – EarthCam text handled by its own event
-        ApplyModeUi(isFreeCam: isFree, inEarthCam: cameraTracker?.IsEarthView == true);
-    }
-
-    // When tracking switches programmatically, keep buttons coherent
+    // When tracking switches programmatically, keep buttons coherent in Track/Earth
     private void EnsureTrackUiConsistency()
     {
-        if (cameraTracker != null && !cameraTracker.IsFree)
+        if (cameraTracker != null && cameraTracker.Mode != CameraMode.Free)
         {
             SetButtonState(trackCamButton, true);
-            trackCamButton.interactable = false;
-            if (freeCamButton != null) freeCamButton.interactable = true;
+            if (trackCamButton) trackCamButton.interactable = false;
+            if (freeCamButton) freeCamButton.interactable = true;
         }
     }
 
     // --------- CORE UI LAYOUT LOGIC ----------
 
-    private void ApplyModeUi(bool isFreeCam, bool inEarthCam)
+    private void ApplyModeUi(CameraMode mode)
     {
+        bool isFreeCam = (mode == CameraMode.Free);
+        bool inEarthCam = (mode == CameraMode.Earth);
+
         // Buttons …
         SetButtonState(freeCamButton, isFreeCam);
         SetButtonState(trackCamButton, !isFreeCam);
-        freeCamButton.interactable = !isFreeCam;
-        trackCamButton.interactable = isFreeCam;
+        if (freeCamButton) freeCamButton.interactable = !isFreeCam;
+        if (trackCamButton) trackCamButton.interactable = isFreeCam;
 
-        // 👇 NEW: swap instructions here
-        instructionText.text = isFreeCam ? BuildFreeCamInstructions() : BuildTrackCamInstructions();
+        // Instructions
+        if (instructionText != null)
+            instructionText.text = isFreeCam ? BuildFreeCamInstructions() : BuildTrackCamInstructions();
 
         if (isFreeCam)
         {
@@ -229,38 +216,38 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(false);
             ShowApogeePerigeePanel(false);
             ShowTimeControlsPanel(false);
-            toggleOptionsPanel.SetActive(false);
-            dropdown.SetActive(false);
+            if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
+            if (dropdown) dropdown.SetActive(false);
         }
         else
         {
-            // TrackCam panels …
+            // Track/Earth panels …
             ShowPlacementSelect(false);
             ShowPlacePanels(false);
             ShowThrustPanels(true);
             ShowOrbitInfoPanel(true);
             ShowApogeePerigeePanel(true);
             ShowTimeControlsPanel(true);
-            toggleOptionsPanel.SetActive(true);
-            dropdown.SetActive(true);
+            if (toggleOptionsPanel) toggleOptionsPanel.SetActive(true);
+            if (dropdown) dropdown.SetActive(true);
         }
 
-        cameraControls.SetActive(true);
-    }
+        if (cameraControls) cameraControls.SetActive(true);
 
+        // Optional: placement button interactivity mirrors FreeCam
+        if (placementModeButton) placementModeButton.interactable = isFreeCam;
+    }
 
     private void ShowPlacementSelect(bool show)
     {
-        if (placementSelectPanel != null)
-            placementSelectPanel.SetActive(show);
+        if (placementSelectPanel) placementSelectPanel.SetActive(show);
 
-        // Inputs & button interactivity in placement mode
         bool manual = placementMode == PlacementMode.Manual;
+
+        if (velocityInputField) velocityInputField.interactable = false;
 
         if (show)
         {
-            if (velocityInputField != null) velocityInputField.interactable = false;
-
             if (nameInputField) nameInputField.interactable = manual;
             if (positionInputField) positionInputField.interactable = manual;
             if (massInputField) massInputField.interactable = manual;
@@ -269,9 +256,6 @@ public class UIManager : MonoBehaviour
         }
         else
         {
-            // Clear & lock when leaving placement
-            if (velocityInputField != null) velocityInputField.interactable = false;
-
             if (nameInputField) { nameInputField.text = null; nameInputField.interactable = false; }
             if (positionInputField) { positionInputField.text = null; positionInputField.interactable = false; }
             if (massInputField) { massInputField.text = null; massInputField.interactable = false; }
@@ -282,8 +266,7 @@ public class UIManager : MonoBehaviour
 
     private void ShowPlacePanels(bool show)
     {
-        // Only meaningful in FreeCam
-        if (placeTLEPanel == null || objectPlacementPanel == null) return;
+        if (!placeTLEPanel || !objectPlacementPanel) return;
 
         if (!show)
         {
@@ -301,15 +284,12 @@ public class UIManager : MonoBehaviour
         {
             placeTLEPanel.SetActive(true);
             objectPlacementPanel.SetActive(false);
-
-            // objectPlacementManager.ClearManualPlacementCompletely();
         }
     }
 
     private void ShowThrustPanels(bool show)
     {
-        // Only meaningful in TrackCam
-        if (thrustButtons == null || maneuverNodePanel == null || burnControlsPanel == null) return;
+        if (!thrustButtons || !maneuverNodePanel || !burnControlsPanel) return;
 
         burnControlsPanel.SetActive(show);
 
@@ -335,19 +315,19 @@ public class UIManager : MonoBehaviour
     // --------- SMALL HELPERS / DISPLAY FNS ----------
 
     private string BuildFreeCamInstructions() =>
-    "<b>Free Cam Mode Activated!</b>\n\n" +
-    "You can freely move to explore or place satellites.\n\n" +
-    "\u00A0\u00A0\u00A0\u00A0<b>──────── CONTROLS ────────</b>\n" +
-    "- WASD: Move around.\n" +
-    "- Right Mouse Button: Rotate the camera.\n" +
-    "- Esc Key: Closes the game.\n\n" +
-    "\u00A0\u00A0\u00A0\u00A0<b>──────── PLACING A SATELLITE ────────</b>\n" +
-    "- Naming is optional (defaults to 'Satellite (n)').\n" +
-    "- Set Mass (500 - 1,000,000 kg).\n" +
-    "- Set Radius (1-50).\n" +
-    "  * Format: 5,45,3\n" +
-    "  * No parentheses, negatives, or non-numeric characters.\n" +
-    "- Click 'Place Satellite' to spawn.";
+        "<b>Free Cam Mode Activated!</b>\n\n" +
+        "You can freely move to explore or place satellites.\n\n" +
+        "\u00A0\u00A0\u00A0\u00A0<b>──────── CONTROLS ────────</b>\n" +
+        "- WASD: Move around.\n" +
+        "- Right Mouse Button: Rotate the camera.\n" +
+        "- Esc Key: Closes the game.\n\n" +
+        "\u00A0\u00A0\u00A0\u00A0<b>──────── PLACING A SATELLITE ────────</b>\n" +
+        "- Naming is optional (defaults to 'Satellite (n)').\n" +
+        "- Set Mass (500 - 1,000,000 kg).\n" +
+        "- Set Radius (1-50).\n" +
+        "  * Format: 5,45,3\n" +
+        "  * No parentheses, negatives, or non-numeric characters.\n" +
+        "- Click 'Place Satellite' to spawn.";
 
     private string BuildTrackCamInstructions() =>
         "<b>Track Cam Mode Activated!</b>\n\n" +
@@ -371,10 +351,9 @@ public class UIManager : MonoBehaviour
         "- Click 'Place' to finalize the maneuver.\n\n" +
         "Switch to Free Cam to explore or place satellites.";
 
-
     private void UpdateInstructionToggleButton()
     {
-        TMP_Text tmpButtonText = instructionsButton.GetComponentInChildren<TMP_Text>();
+        TMP_Text tmpButtonText = instructionsButton ? instructionsButton.GetComponentInChildren<TMP_Text>() : null;
         if (tmpButtonText != null)
             tmpButtonText.text = showInstructionText ? "Hide Instructions" : "Show Instructions";
     }
@@ -388,7 +367,7 @@ public class UIManager : MonoBehaviour
         colors.normalColor = newColor;
         button.colors = colors;
 
-        // Force refresh
+        // Force refresh (optional—can cause focus flicker if overused)
         button.Select();
         button.OnDeselect(null);
     }
@@ -404,7 +383,6 @@ public class UIManager : MonoBehaviour
         if (timeControlsPanel != null)
             timeControlsPanel.SetActive(show);
     }
-
 
     private void ShowOrbitInfoPanel(bool show)
     {

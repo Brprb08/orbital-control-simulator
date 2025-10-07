@@ -121,12 +121,24 @@ If you’d rather use freely, just click **Skip Tutorial** when it appears.
 
 ---
 
-## Unit Testing
+## Unit Testing Overview
 
-- Includes Editor Mode unit tests for utility logic
-- All tests written in C# using Unity Test Framework
-- 34/34 tests passing as of latest commit (TLE parsing, camera math, edge cases)
-- Utility classes refactored for testability (static methods, no MonoBehaviours)
+**Total:** 50 Edit-Mode Tests — **All Passing**  
+**Framework:** Unity Test Framework (NUnit-style)  
+**Scope:** Real component interaction (no mocks, real `MonoBehaviour` wiring)
+
+| System                   | Tests | Coverage                                                        |
+| :----------------------- | :---: | :-------------------------------------------------------------- |
+| **CameraCalculations**   |   4   | Angle clamping, normalization, min/max distance logic           |
+| **CameraController**     |   5   | Mode switching (Track/Free/Earth), tracking bodies/placeholders |
+| **CameraMovement**       |   3   | Target distance, EarthCam handling, movement state              |
+| **NBody**                |   2   | Initialization and central-body velocity reset                  |
+| **Orbital Calculations** |   3   | Apogee/perigee computation, orbital period, eccentricity        |
+| **BodyService**          |   3   | Register/deregister, central body events, satellite filtering   |
+| **UIManager**            |   3   | Mode-based UI states, EarthCam label updates, interactivity     |
+| **ExtensionTests**       |   2   | Vector3↔double3 conversions and precision checks                |
+| **ParsingUtils**         |   6   | String parsing, numeric extraction, TLE line validation         |
+| **TLE Parser**           |  13   | Field parsing, checksum validation, orbital element extraction  |
 
 ---
 

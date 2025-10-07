@@ -5,7 +5,7 @@ using NUnit.Framework;
 /// Unit tests for the CameraCalculations utility class.
 /// Validates behavior of angle normalization, clamping, and camera distance calculations.
 /// </summary>
-public class CameraCalculationsTest
+public class CameraCalculationsTest_EditModeTests
 {
 
     /// <summary>

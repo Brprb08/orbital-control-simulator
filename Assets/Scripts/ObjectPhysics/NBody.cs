@@ -30,6 +30,7 @@ public class NBody : MonoBehaviour
     private ThrustController thrustController;
     private LineVisibilityManager lineVisibilityManager;
     private RocketThrustAudio rocketThrustAudio;
+    private BodyService bodyService;
 
     [Header("References - Relevant Bodies")]
     private List<NBody> relevantBodies;
@@ -70,6 +71,7 @@ public class NBody : MonoBehaviour
         this.tcc = ctx.TrajectoryComputeController;
         this.thrustController = ctx.ThrustController;
         this.rocketThrustAudio = ctx.RocketThrustAudio;
+        this.bodyService = ctx.BodyService;
     }
 
     /// <summary>
@@ -95,9 +97,25 @@ public class NBody : MonoBehaviour
             Vector3.zero
         );
 
-        relevantBodies = gravityManager.Bodies
-       .Where(b => b != this && (b.isCentralBody || b.name == "Moon"))
-       .ToList();
+        //     relevantBodies = gravityManager.Bodies
+        //    .Where(b => b != this && (b.isCentralBody || b.name == "Moon"))
+        //    .ToList();
+        var all = bodyService != null ? bodyService.Bodies : null;
+        if (all != null)
+        {
+            relevantBodies = new List<NBody>();
+            for (int i = 0; i < all.Count; i++)
+            {
+                var b = all[i];
+                if (b == null || b == this) continue;
+                if (b.isCentralBody || b.name == "Moon")
+                    relevantBodies.Add(b);
+            }
+        }
+        else
+        {
+            relevantBodies = new List<NBody>();
+        }
     }
 
     /// <summary>
@@ -326,7 +344,8 @@ public class NBody : MonoBehaviour
     /// </summary>
     void CheckCollisionWithEarth()
     {
-        NBody earth = gravityManager.CentralBody;
+        // NBody earth = gravityManager.CentralBody;
+        NBody earth = bodyService != null ? bodyService.CentralBody : null;
         if (earth == null || earth == this) return;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);
@@ -344,7 +363,8 @@ public class NBody : MonoBehaviour
     /// </summary>
     void CheckEscapeFromEarth()
     {
-        NBody earth = gravityManager.CentralBody;
+        // NBody earth = gravityManager.CentralBody;
+        NBody earth = bodyService != null ? bodyService.CentralBody : null;
         if (earth == null || earth == this) return;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);

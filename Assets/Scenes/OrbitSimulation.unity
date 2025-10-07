@@ -6864,6 +6864,7 @@ MonoBehaviour:
   rocketThrustAudio: {fileID: 237235847}
   tutorialController: {fileID: 716810392}
   cameraButtonProxy: {fileID: 1667378689}
+  bodyService: {fileID: 1586431862}
 --- !u!1 &555887999
 GameObject:
   m_ObjectHideFlags: 0
@@ -21843,6 +21844,7 @@ GameObject:
   - component: {fileID: 1586431856}
   - component: {fileID: 1586431860}
   - component: {fileID: 1586431861}
+  - component: {fileID: 1586431862}
   m_Layer: 0
   m_Name: GameController
   m_TagString: Untagged
@@ -21892,13 +21894,11 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: b4c190b26fbc8b54c9ea1dc6b77cc49e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  trajectoryRenderer: {fileID: 0}
-  uIManager: {fileID: 0}
-  bodies: []
-  currentIndex: 0
-  isTrackingPlaceholder: 0
-  inEarthViewCam: 0
-  inFreeCam: 0
+  _uiManager: {fileID: 0}
+  _cameraMovement: {fileID: 0}
+  _freeCamera: {fileID: 0}
+  _bodies: []
+  _currentIndex: 0
 --- !u!114 &1586431852
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -21914,8 +21914,6 @@ MonoBehaviour:
   mainCamera: {fileID: 330585545}
   spherePrefab: {fileID: 8138528938423591098, guid: 739c2da935a11ac43a6ee56e5cef1dbb, type: 3}
   trajectoryRenderer: {fileID: 0}
-  cameraController: {fileID: 0}
-  cameraMovement: {fileID: 0}
   velocityDragManager: {fileID: 1119227881}
   tutorialController: {fileID: 0}
   objectNameInputField: {fileID: 861192241}
@@ -22051,8 +22049,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   bodyDropdown: {fileID: 1744299771}
-  cameraController: {fileID: 1586431851}
-  cameraMovement: {fileID: 817157355}
+  dropdownObserver: {fileID: 0}
   tutorialController: {fileID: 716810392}
 --- !u!114 &1586431861
 MonoBehaviour:
@@ -22079,6 +22076,18 @@ MonoBehaviour:
   green: {fileID: 2100000, guid: 5ba0d4a738126dc45bab53822e13e1d0, type: 2}
   red: {fileID: 2100000, guid: bd324aa9b60fca74aad1a596425e789b, type: 2}
   gravityManager: {fileID: 0}
+--- !u!114 &1586431862
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1586431846}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1869b3ebed30054ea552b6560fe53cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &1590649024
 GameObject:
   m_ObjectHideFlags: 0
@@ -22350,7 +22359,6 @@ MonoBehaviour:
   trajectoryRenderer: {fileID: 2109498698}
   lineVisibilityManager: {fileID: 1586431854}
   cameraController: {fileID: 1586431851}
-  gravityManager: {fileID: 1586431850}
 --- !u!114 &1667378689
 MonoBehaviour:
   m_ObjectHideFlags: 0

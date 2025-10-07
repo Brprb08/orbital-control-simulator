@@ -9,12 +9,9 @@ public class ObjectPlacementManager : MonoBehaviour
     public Camera mainCamera;
     public GameObject spherePrefab; // placeholder without NBody
     public TrajectoryRenderer trajectoryRenderer;
-    public CameraController cameraController;
     private ICameraTracker cameraTracker;
-    public CameraMovement cameraMovement;
     public VelocityDragManager velocityDragManager;
     public TutorialController tutorialController;
-    private GravityManager gravityManager;
     private UIManager uIManager;
     private NBody lastManualNBody;
 
@@ -24,7 +21,6 @@ public class ObjectPlacementManager : MonoBehaviour
     public TMP_InputField massInput;
     public TMP_InputField massInputField;
     public TMP_InputField radiusInput;
-    // public TMP_InputField radiusInputField;
     public TMP_InputField positionInput;
     public TextMeshProUGUI feedbackText;
     public Button placeObjectButton;
@@ -54,12 +50,9 @@ public class ObjectPlacementManager : MonoBehaviour
     {
         this.ctx = ctx;
         trajectoryRenderer = ctx.TrajectoryRenderer;
-        cameraController = ctx.CameraController;
-        cameraMovement = ctx.CameraMovement;
         tutorialController = ctx.TutorialController;
         cameraTracker = ctx.CameraTracker; // make sure this is set
         uIManager = ctx.UIManager;
-        gravityManager = ctx.GravityManager;
         if (tutorialController.inTutorialMode)
         {
             massInput.onValueChanged.AddListener(OnMassInputChanged);
@@ -82,7 +75,7 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!cameraTracker.IsFree)
+        if (cameraTracker.Mode != CameraMode.Free)
         {
             feedbackText.text = "You must be in FreeCam mode to place planets.";
             return;
@@ -165,7 +158,9 @@ public class ObjectPlacementManager : MonoBehaviour
             velocityDragManager.placeholderMass = placeholderMass;
         }
 
-        TrackSilently(lastPlacedGameObject.transform);
+        // TrackSilently(lastPlacedGameObject.transform);
+        PreviewSilently(lastPlacedGameObject.transform);
+
         uIManager.trackCamButton.interactable = false;
         uIManager.placementModeButton.interactable = false;
 
@@ -268,11 +263,11 @@ public class ObjectPlacementManager : MonoBehaviour
         if (cameraTracker != null) cameraTracker.ReturnToTracking();
     }
 
-    private void TrackSilently(Transform transform)
+    private void PreviewSilently(Transform t)
     {
-        if (cameraTracker == null || transform == null) return;
+        if (cameraTracker == null || t == null) return;
         cameraTracker.BeginUiSuppress();
-        cameraTracker.TrackPlaceholder(transform);
+        cameraTracker.PreviewPlaceholderInFree(t);   // <-- stays in Free
         cameraTracker.EndUiSuppress();
     }
 
@@ -356,7 +351,9 @@ public class ObjectPlacementManager : MonoBehaviour
                 ghostInstance.SetActive(true);
                 ghostInstance.transform.position = targetPosition;
             }
-            TrackSilently(ghostInstance.transform);
+            // TrackSilently(ghostInstance.transform);
+            PreviewSilently(ghostInstance.transform);
+
             // Change this ghost object placed after TrackSilently call to make sure it doesnt conflict with ReturnToTracking
             ghostObjectPlaced = true;
             feedbackText.text = "";

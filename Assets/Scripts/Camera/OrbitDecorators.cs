@@ -9,9 +9,11 @@ public class OrbitDecorators : MonoBehaviour
     [SerializeField] private TrajectoryRenderer trajectoryRenderer;
     [SerializeField] private LineVisibilityManager lineVisibilityManager;
     [SerializeField] private CameraController cameraController;
-    [SerializeField] private GravityManager gravityManager;
 
-    void Awake()
+    /// <summary>
+    /// Unity Awake: wires event listeners.
+    /// </summary>
+    private void Awake()
     {
         if (!cameraController)
         {
@@ -19,28 +21,32 @@ public class OrbitDecorators : MonoBehaviour
             return;
         }
 
-        cameraController.OnTrackedBodyChanged += SetTracked;
-        cameraController.OnTrackedPlaceholderChanged += OnPlaceholder;
-        cameraController.OnFreeModeChanged += OnFreeMode;
-        cameraController.OnEarthViewChanged += OnEarthView;
+        cameraController.OnTrackedBodyChanged += HandleTrackedBodyChanged;
+        cameraController.OnTrackedPlaceholderChanged += HandleTrackedPlaceholderChanged;
+
+        // ===== REFACTOR: replace legacy OnFreeModeChanged/OnEarthViewChanged with OnModeChanged
+        cameraController.OnModeChanged += HandleModeChanged;
     }
 
-    void Start()
+    /// <summary>
+    /// Unity Start: perform an initial sync to the current controller state.
+    /// </summary>
+    private void Start()
     {
         if (!cameraController) return;
 
-        // Initial sync to current state
+        // ===== REFACTOR: initial sync via consolidated properties and mode
         if (cameraController.IsEarthView)
         {
-            OnEarthView(true);
+            HandleModeChanged(CameraMode.Earth);
         }
         else if (cameraController.CurrentPlaceholder != null)
         {
-            OnPlaceholder(cameraController.CurrentPlaceholder);
+            HandleTrackedPlaceholderChanged(cameraController.CurrentPlaceholder);
         }
         else if (cameraController.CurrentBody != null)
         {
-            SetTracked(cameraController.CurrentBody);
+            HandleTrackedBodyChanged(cameraController.CurrentBody);
         }
         else if (cameraController.IsFree)
         {
@@ -48,8 +54,11 @@ public class OrbitDecorators : MonoBehaviour
         }
     }
 
-
-    private void SetTracked(NBody body)
+    /// <summary>
+    /// Sets the tracked body in renderers/visibility managers.
+    /// </summary>
+    /// <param name="body">The body that is now tracked.</param>
+    private void HandleTrackedBodyChanged(NBody body)
     {
         if (trajectoryRenderer != null)
         {
@@ -57,9 +66,14 @@ public class OrbitDecorators : MonoBehaviour
             trajectoryRenderer.orbitIsDirty = true;
         }
         if (lineVisibilityManager != null)
+        {
             lineVisibilityManager.SetTrackedBody(body);
+        }
     }
 
+    /// <summary>
+    /// Clears all trajectory and line visuals.
+    /// </summary>
     private void Clear()
     {
         if (trajectoryRenderer != null)
@@ -72,29 +86,62 @@ public class OrbitDecorators : MonoBehaviour
         }
     }
 
-    void OnDestroy()
+    /// <summary>
+    /// Unity OnDestroy: unhooks listeners.
+    /// </summary>
+    private void OnDestroy()
     {
         if (cameraController == null) return;
-        cameraController.OnTrackedBodyChanged -= SetTracked;
-        cameraController.OnTrackedPlaceholderChanged -= OnPlaceholder;
-        cameraController.OnFreeModeChanged -= OnFreeMode;
-        cameraController.OnEarthViewChanged -= OnEarthView;
+
+        cameraController.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
+        cameraController.OnTrackedPlaceholderChanged -= HandleTrackedPlaceholderChanged;
+
+        // ===== REFACTOR: unsubscribe from OnModeChanged instead of legacy events
+        cameraController.OnModeChanged -= HandleModeChanged;
     }
 
-    private void OnPlaceholder(Transform _)
+    /// <summary>
+    /// Placeholder selection currently doesn't change visuals; reserved for future behavior.
+    /// </summary>
+    /// <param name="_">The placeholder transform.</param>
+    private void HandleTrackedPlaceholderChanged(Transform _)
     {
-        // Clear();
+        // Intentionally left blank (keeps whatever body visuals are shown).
+        // If you want to hide lines when previewing a placeholder, call Clear() here.
     }
 
-    private void OnFreeMode(bool isFree)
+    /// <summary>
+    /// Responds to consolidated camera mode changes.
+    /// </summary>
+    /// <param name="mode">New camera mode.</param>
+    private void HandleModeChanged(CameraMode mode)
     {
-        if (isFree) Clear();
-    }
+        // ===== REFACTOR: consolidate legacy free/earth handling here
+        if (mode == CameraMode.Free)
+        {
+            Clear();
+            return;
+        }
 
-    private void OnEarthView(bool inEarth)
-    {
-        // NO-OP: keep showing the currently tracked satellite’s lines.
-        // Do nothing on enter or exit EarthCam.
-    }
+        if (mode == CameraMode.Earth)
+        {
+            // NO-OP: keep showing the currently tracked satellite’s lines.
+            // You can choose to Clear() here if Earth view should hide trajectories.
+            return;
+        }
 
+        // In Track mode, ensure visuals match whichever target is active
+        if (cameraController.CurrentBody != null)
+        {
+            HandleTrackedBodyChanged(cameraController.CurrentBody);
+        }
+        else if (cameraController.CurrentPlaceholder != null)
+        {
+            HandleTrackedPlaceholderChanged(cameraController.CurrentPlaceholder);
+        }
+        else
+        {
+            Clear();
+        }
+    }
 }
