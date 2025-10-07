@@ -127,12 +127,6 @@ If you’d rather use freely, just click **Skip Tutorial** when it appears.
 **Framework:** Unity Test Framework (NUnit-style)  
 **Type:** Edit-Mode (runs directly on compiled assemblies)
 
-## Unit Testing Overview
-
-**Total:** 46 Edit-Mode Tests — All Passing  
-**Framework:** Unity Test Framework (NUnit-style)  
-**Type:** Edit-Mode (runs directly on compiled assemblies)
-
 - **CameraCalculations** – Angle clamping, normalization, min/max distance logic
 - **CameraController** – Mode switching (Track/Free/Earth), tracking bodies/placeholders
 - **CameraMovement** – Target distance, EarthCam handling, movement state
