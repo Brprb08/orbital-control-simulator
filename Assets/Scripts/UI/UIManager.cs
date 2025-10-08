@@ -165,7 +165,10 @@ public class UIManager : MonoBehaviour
 
         if (cameraTracker != null && cameraTracker.Mode == CameraMode.Free)
         {
-            objectPlacementManager.ClearAllFields();
+            if (objectPlacementManager != null)
+            {
+                objectPlacementManager.ClearAllFields();
+            }
             ShowPlacePanels(true);
             ShowPlacementSelect(true);
         }
@@ -234,9 +237,11 @@ public class UIManager : MonoBehaviour
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
             if (dropdown) dropdown.SetActive(false);
 
-            feedbackText.text = "";
-            feedbackText.gameObject.SetActive(true);
-
+            if (feedbackText != null)
+            {
+                feedbackText.text = "";
+                feedbackText.gameObject.SetActive(true);
+            }
         }
         else
         {
@@ -247,12 +252,16 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(true);
             ShowApogeePerigeePanel(true);
             ShowTimeControlsPanel(true);
-            objectPlacementManager.ClearAllFields();
+            if (objectPlacementManager != null)
+            {
+                objectPlacementManager.ClearAllFields();
+            }
 
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(true);
             if (dropdown) dropdown.SetActive(true);
 
-            feedbackText.gameObject.SetActive(false);
+            if (feedbackText != null)
+                feedbackText.gameObject.SetActive(false);
         }
 
         if (cameraControls) cameraControls.SetActive(true);

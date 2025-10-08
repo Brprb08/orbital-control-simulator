@@ -30,6 +30,9 @@ _All functionality is live in runtime._
    - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)
 6. GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)
 7. Runtime placement of satellites with mass, radius, velocity, and direction
+   - **Cartesian Placement:** Define satellites using 3D position and velocity vectors.
+   - **TLE Placement:** Import real satellites using standard Two-Line Element data.
+   - **Keplerian Placement:** Create orbits from classical orbital elements (a, e, i, Ω, ω, ν).
 8. Add satellites at runtime via TLE input
 9. Time scaling from 1x to 100x for long-term simulations
 10. Dual camera modes (free roam and tracking)
