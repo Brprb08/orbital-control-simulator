@@ -33,6 +33,8 @@ public class UIManager : MonoBehaviour
     public GameObject placementSelectPanel;
     public GameObject cameraControls;
 
+    public GameObject placeKeplerPanel;
+
     [Header("UI - Input Fields")]
     public TMP_InputField nameInputField;
     public TMP_InputField positionInputField;
@@ -48,6 +50,7 @@ public class UIManager : MonoBehaviour
     [Header("UI - Text Displays")]
     public TMP_Text earthCamButtonText;
     public TextMeshProUGUI instructionText;
+    public TextMeshProUGUI feedbackText;
     public TextMeshProUGUI apogeeText;
     public TextMeshProUGUI perigeeText;
     public TextMeshProUGUI semiMajorAxisText;
@@ -66,7 +69,7 @@ public class UIManager : MonoBehaviour
     public GameObject tutorialPanel;
     public Button skipButton;
 
-    private enum PlacementMode { Manual, TLE }
+    private enum PlacementMode { Manual, TLE, Kepler }
     private enum ThrustUiMode { FreeThrust, ManeuverNodes }
 
     private PlacementMode placementMode = PlacementMode.Manual;
@@ -144,18 +147,30 @@ public class UIManager : MonoBehaviour
 
     public void SwitchPlacementMode()
     {
-        placementMode = (placementMode == PlacementMode.Manual) ? PlacementMode.TLE : PlacementMode.Manual;
+        placementMode = (PlacementMode)(((int)placementMode + 1) % 3);
 
-        var placementModeButtonText = placementModeButton ? placementModeButton.GetComponentInChildren<TMP_Text>() : null;
-        if (placementModeButtonText != null)
-            placementModeButtonText.text = placementMode == PlacementMode.Manual ? "Switch to TLE Input" : "Switch to Manual Input";
+        var txt = placementModeButton ? placementModeButton.GetComponentInChildren<TMP_Text>() : null;
+        if (txt != null)
+        {
+            txt.text = placementMode switch
+            {
+                PlacementMode.Manual => "Mode: Cartesian  (next: TLE)",
+                PlacementMode.TLE => "Mode: TLE       (next: Kepler)",
+                PlacementMode.Kepler => "Mode: Kepler      (next: Cartesian)",
+                _ => txt.text
+            };
+        }
+
+        feedbackText.text = "";
 
         if (cameraTracker != null && cameraTracker.Mode == CameraMode.Free)
         {
+            objectPlacementManager.ClearAllFields();
             ShowPlacePanels(true);
             ShowPlacementSelect(true);
         }
     }
+
 
     public void SwitchBurnMode()
     {
@@ -218,6 +233,10 @@ public class UIManager : MonoBehaviour
             ShowTimeControlsPanel(false);
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
             if (dropdown) dropdown.SetActive(false);
+
+            feedbackText.text = "";
+            feedbackText.gameObject.SetActive(true);
+
         }
         else
         {
@@ -228,8 +247,12 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(true);
             ShowApogeePerigeePanel(true);
             ShowTimeControlsPanel(true);
+            objectPlacementManager.ClearAllFields();
+
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(true);
             if (dropdown) dropdown.SetActive(true);
+
+            feedbackText.gameObject.SetActive(false);
         }
 
         if (cameraControls) cameraControls.SetActive(true);
@@ -264,27 +287,44 @@ public class UIManager : MonoBehaviour
         }
     }
 
+    // private void ShowPlacePanels(bool show)
+    // {
+    //     if (!placeTLEPanel || !objectPlacementPanel) return;
+
+    //     if (!show)
+    //     {
+    //         placeTLEPanel.SetActive(false);
+    //         objectPlacementPanel.SetActive(false);
+    //         return;
+    //     }
+
+    //     if (placementMode == PlacementMode.Manual)
+    //     {
+    //         placeTLEPanel.SetActive(false);
+    //         objectPlacementPanel.SetActive(true);
+    //     }
+    //     else
+    //     {
+    //         placeTLEPanel.SetActive(true);
+    //         objectPlacementPanel.SetActive(false);
+    //     }
+    // }
+
     private void ShowPlacePanels(bool show)
     {
-        if (!placeTLEPanel || !objectPlacementPanel) return;
+        if (!placeTLEPanel || !objectPlacementPanel || !placeKeplerPanel) return;
 
         if (!show)
         {
             placeTLEPanel.SetActive(false);
             objectPlacementPanel.SetActive(false);
+            placeKeplerPanel.SetActive(false);
             return;
         }
 
-        if (placementMode == PlacementMode.Manual)
-        {
-            placeTLEPanel.SetActive(false);
-            objectPlacementPanel.SetActive(true);
-        }
-        else
-        {
-            placeTLEPanel.SetActive(true);
-            objectPlacementPanel.SetActive(false);
-        }
+        placeTLEPanel.SetActive(placementMode == PlacementMode.TLE);
+        objectPlacementPanel.SetActive(placementMode == PlacementMode.Manual);   // “Cartesian”
+        placeKeplerPanel.SetActive(placementMode == PlacementMode.Kepler);
     }
 
     private void ShowThrustPanels(bool show)
@@ -399,7 +439,7 @@ public class UIManager : MonoBehaviour
         SetText(semiMajorAxisText, "Semi-Major Axis", semiMajorAxis * 10f);
         SetText(eccentricityText, "Eccentricity", eccentricity, "", "F3");
         SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
-        SetText(inclinationText, "Inclination", inclination, "°");
+        SetText(inclinationText, "Inclination", inclination, "°", "F1");
         SetText(raanText, "RAAN", RAAN, "°", "F1");
     }
 

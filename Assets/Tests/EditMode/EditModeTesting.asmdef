@@ -6,7 +6,8 @@
         "UnityEditor.TestRunner",
         "CoreRuntime",
         "Unity.Mathematics",
-        "Unity.TextMeshPro"
+        "Unity.TextMeshPro",
+        "UnityEngine"
     ],
     "includePlatforms": [
         "Editor"

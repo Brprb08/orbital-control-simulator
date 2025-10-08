@@ -15,7 +15,7 @@ public class NBody : MonoBehaviour
     public Vector3 velocity = new Vector3(0, 0, 20);
     public float mass = 5.0e21f;
     public double trueMass = 5.0e21;
-    public float radius = EarthRadiusKm;
+    public float radius = 637.8137f;
     public float cameraDistanceRadius = 637f;
     public bool isCentralBody = false;
     public OrbitalState state;
@@ -47,7 +47,8 @@ public class NBody : MonoBehaviour
 
     [Header("Constants")]
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
-    private const float EarthRadiusKm = 637.8137f;
+    const double EarthRadiusUnits = 637.8137;
+    private const double UnitToKm = 10.0;
 
     private const float MaxDistanceFromEarth = 40000f;
 
@@ -451,10 +452,8 @@ public class NBody : MonoBehaviour
     {
         get
         {
-            float distanceFromCenter = transform.position.magnitude;
-            float distanceInKm = distanceFromCenter;
-            float earthRadiusKm = EarthRadiusKm;
-            return distanceInKm - earthRadiusKm;
+            double rUnits = transform.position.magnitude;
+            return rUnits - EarthRadiusUnits;
         }
     }
 

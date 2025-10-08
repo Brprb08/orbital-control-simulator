@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using Unity.Mathematics;
+using System;
 
 /// <summary>
 /// Handles the rendering of trajectory prediction lines for celestial bodies.
@@ -72,6 +73,9 @@ public class TrajectoryRenderer : MonoBehaviour
     private float previewMass;
     private bool previewDirty;
 
+    const float KM_PER_UNIT = 10f;          // 1 unit = 10 km
+    const float EARTH_RADIUS_U = 637.8f;    // in Unity units
+    const float CIRCULAR_KM_THRESHOLD = 1f;
 
     private SimContext ctx;
 
@@ -237,58 +241,73 @@ public class TrajectoryRenderer : MonoBehaviour
     /// <returns>Coroutine enumerator.</returns>
     public IEnumerator RecomputeTrajectory()
     {
-        Vector3 lastPosition = trackedBody.transform.position;
+        // One frame + one physics step so the just-placed body finishes initializing
+        yield return null;
+        yield return new WaitForFixedUpdate();
+
+        // soft deadline to avoid infinite spin if something is wrong
+        float readyDeadline = Time.realtimeSinceStartup + 0.75f;
+
         while (true)
         {
+            // 0) no body? clear visuals & idle
             if (trackedBody == null)
-                yield return new WaitForSeconds(0.1f);
+            {
+                ClearAllLines();
+                if (uIManager != null) uIManager.ShowApogeePerigeePanel(false);
+                yield return null;      // wait next frame to get a body
+                continue;
+            }
 
+            // 1) must be the camera’s target (prevents placeholder/null spam)
             if (cameraMovement == null || cameraMovement.targetBody != trackedBody)
             {
-                predictionProceduralLine.Clear();
-                originProceduralLine.Clear();
-                apogeeProceduralLine.Clear();
-                perigeeProceduralLine.Clear();
-                preManeuverLine.Clear();
-                yield return new WaitForSeconds(0.1f);
+                ClearAllLines();
+                yield return null;      // try again next frame
                 continue;
             }
 
-            var orbitalParams = OrbitalCalculations.CalculateOrbitalParameters(
+            // 2) wait until the body is actually initialized (pos/vel/mu)
+            if (!IsBodyReady(trackedBody))
+            {
+                // don’t spam errors; just wait until it’s ready or we hit a short deadline
+                if (Time.realtimeSinceStartup > readyDeadline)
+                    readyDeadline = Time.realtimeSinceStartup + 0.25f; // extend window gently
+                yield return null;
+                continue;
+            }
+
+            // 3) compute orbital params (if this returns invalid, just retry soon)
+            var p = OrbitalCalculations.CalculateOrbitalParameters(
                 trackedBody.state.centralBodyMass,
                 Vector3.zero,
-                trackedBody.transform,
-                trackedBody.velocity
+                trackedBody.state.position,
+                trackedBody.state.velocity
             );
 
-            if (!orbitalParams.isValid)
+            if (!p.isValid)
             {
-                yield return new WaitForSeconds(0.5f);
+                // not ready enough yet; back off briefly
+                yield return null;
                 continue;
             }
 
-            bool isElliptical = orbitalParams.eccentricity < 1f;
+            // 4) render prediction/markers
+            bool isElliptical = p.eccentricity < 1f;
+            bool moonFlag = trackedBody.name == "Moon";
 
-            // TEMP CHECK TO STOP RENDERS FOR MOON
-            bool moonFlag = false;
-            if (trackedBody.name == "Moon")
-            {
-                moonFlag = true;
-            }
+            if (uIManager != null) uIManager.ShowApogeePerigeePanel(true);
 
-            // If we should show prediction lines and..
-            //     - isThrusting = true
-            //     - orbitIsDirty = true
-            //     - If not thrusting, orbit is elliptical, and prediction steps are still low
-            // TEMP MOON FLAG TO PREVENT LINE RENDERS FOR MOON
-            if (showPredictionLines && (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)) && !moonFlag)
+            if (showPredictionLines &&
+                !moonFlag &&
+                (isThrusting || orbitIsDirty || (isElliptical && (predictionSteps == 5000 || predictionSteps == 3000) && !isThrusting)))
             {
-                ComputePredictionLine(orbitalParams, isElliptical);
+                ComputePredictionLine(p, isElliptical);
             }
 
             if (Time.time >= nextTime)
             {
-                ShowApogeePerigeeLines(orbitalParams);
+                ShowApogeePerigeeLines(p);
                 nextTime = Time.time + interval;
             }
 
@@ -299,18 +318,43 @@ public class TrajectoryRenderer : MonoBehaviour
                 originProceduralLine.UpdateLine(new Vector3[] { trackedBody.transform.position, Vector3.zero });
             }
 
+            // 5) pacing: faster when idle, slower if thrusting or timescale high
             if (isThrusting)
             {
-                // For high timescales, slightly reduce update speed
-                if (Time.timeScale >= 50)
-                {
-                    yield return new WaitForSeconds(3f);
-                }
-                yield return new WaitForSeconds(1f);
+                if (Time.timeScale >= 50f) yield return new WaitForSeconds(3f);
+                else yield return new WaitForSeconds(1f);
             }
-            yield return new WaitForSeconds(.1f);
+            else
+            {
+                yield return new WaitForSeconds(0.1f);
+            }
         }
+    }
 
+
+    private static bool IsBodyReady(NBody b)
+    {
+        if (b == null) return false;
+        if (b.transform == null) return false;
+
+        // if you use b.state, check those values; otherwise fall back to b fields
+        var pos = Double3Extensions.ToVector3(b.state.position);         // Unity units
+        var vel = Double3Extensions.ToVector3(b.state.velocity);         // Unity units / sec
+        double mu = b.state.centralBodyMass * PhysicsConstants.G;
+
+        if (!(mu > 0.0)) return false;
+        if (pos.sqrMagnitude < 0.25f) return false;  // ~0.5 units from origin (adjust)
+        if (vel.sqrMagnitude < 1e-8f) return false;  // ~0.0001 u/s (adjust)
+        return true;
+    }
+
+    private void ClearAllLines()
+    {
+        if (predictionProceduralLine != null) predictionProceduralLine.Clear();
+        if (originProceduralLine != null) originProceduralLine.Clear();
+        if (apogeeProceduralLine != null) apogeeProceduralLine.Clear();
+        if (perigeeProceduralLine != null) perigeeProceduralLine.Clear();
+        if (preManeuverLine != null) preManeuverLine.Clear();
     }
 
     /// <summary>
@@ -425,7 +469,14 @@ public class TrajectoryRenderer : MonoBehaviour
         {
             if (apogeeProceduralLine != null && perigeeProceduralLine != null)
             {
-                if (!orbitalParams.isCircular)
+                Vector3 apoPos = orbitalParams.apogeePosition;
+                Vector3 periPos = orbitalParams.perigeePosition;
+
+                // ✅ compare magnitudes (distance from Earth's center)
+                float circularUnitsThreshold = CIRCULAR_KM_THRESHOLD / KM_PER_UNIT;
+                float altDiffU = Mathf.Abs(apoPos.magnitude - periPos.magnitude);
+                bool nearCircular = altDiffU < circularUnitsThreshold;
+                if (!nearCircular)
                 {
                     apogeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.apogeePosition, Vector3.zero });
                     perigeeProceduralLine.UpdateLine(new Vector3[] { orbitalParams.perigeePosition, Vector3.zero });
@@ -433,11 +484,20 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 if (apogeeText != null && perigeeText != null)
                 {
-                    float apogeeAltitude = (orbitalParams.apogeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
-                    float perigeeAltitude = (orbitalParams.perigeePosition.magnitude - 637.8f) * 10f; // Convert to kilometers
+                    // Compute altitudes in kilometers using double precision
+                    double apogeeAltitude_km = (orbitalParams.apogeePosition.magnitude - 637.8) * 10.0;  // 1 unit = 10 km
+                    double perigeeAltitude_km = (orbitalParams.perigeePosition.magnitude - 637.8) * 10.0; // 1 unit = 10 km
 
-                    uIManager.UpdateOrbitUI(apogeeAltitude, perigeeAltitude, orbitalParams.semiMajorAxis, orbitalParams.eccentricity,
-                        orbitalParams.orbitalPeriod, orbitalParams.inclination, orbitalParams.RAAN);
+                    // Convert back to float for the UI (if UI expects floats)
+                    uIManager.UpdateOrbitUI(
+                        (float)apogeeAltitude_km,
+                        (float)perigeeAltitude_km,
+                        orbitalParams.semiMajorAxis,
+                        orbitalParams.eccentricity,
+                        orbitalParams.orbitalPeriod,
+                        orbitalParams.inclination,
+                        orbitalParams.RAAN
+                    );
                 }
             }
         }

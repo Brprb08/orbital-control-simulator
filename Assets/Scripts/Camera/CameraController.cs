@@ -245,7 +245,6 @@ public class CameraController : MonoBehaviour, ICameraTracker
         SetMode(CameraMode.Free);
     }
 
-
     /// <summary>
     /// Attempts to return to a sensible tracked target (last body, Earth fallback, next available satellite),
     /// otherwise falls back to FreeCam.

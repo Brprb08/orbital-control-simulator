@@ -153,8 +153,8 @@ public class ManeuverNodeManager : MonoBehaviour
         OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
             centralBody.mass,
             centralBody.transform.position,
-            trackedBody.transform,
-            trackedBody.velocity
+            trackedBody.state.position,
+            trackedBody.state.velocity
         );
 
         if (!orbit.isCircular)
