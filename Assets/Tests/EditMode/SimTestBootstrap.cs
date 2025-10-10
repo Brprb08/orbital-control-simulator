@@ -6,11 +6,15 @@ using TMPro;
 
 /// <summary>
 /// Tests-only scene builder for integration-style EditMode tests.
-/// Creates a minimal SimContext + core components, registers a central Earth and satellites,
-/// wires dependencies in the same spirit as your runtime bootstrap, and offers TearDown().
+/// Creates a minimal SimContext and core components, registers a central Earth and optional satellites,
+/// wires dependencies similarly to runtime bootstrap, and returns a disposable SimTestRig.
 /// </summary>
 public static class SimTestBootstrap
 {
+    /// <summary>
+    /// Builds a minimal simulation rig without UI and initializes camera/controller/services.
+    /// Registers Earth as the central body and creates the requested number of satellites.
+    /// </summary>
     public static SimTestRig CreateBasic(int satelliteCount = 2, bool ensureSatelliteTag = true)
     {
         var root = new GameObject($"TestRig_{Guid.NewGuid():N}");
@@ -50,7 +54,7 @@ public static class SimTestBootstrap
             FreeCamera = freeCam,
             BodyService = bodyService,
             TutorialController = tut,
-            UIManager = null // basic rig doesn't include UI
+            UIManager = null
         };
 
         // Initialize deps (order mirrors runtime, pared down)
@@ -77,6 +81,9 @@ public static class SimTestBootstrap
         return new SimTestRig(root, ctx, controller, camMove, freeCam, bodyService, earth, satellites, null);
     }
 
+    /// <summary>
+    /// Builds a simulation rig with a minimal UI tree and wires UIManager into the SimContext.
+    /// </summary>
     public static SimTestRig CreateWithUI(int satelliteCount = 2, bool withTMP = true)
     {
         var rig = CreateBasic(satelliteCount);
@@ -134,6 +141,9 @@ public static class SimTestBootstrap
 
     // ---------- helpers ----------
 
+    /// <summary>
+    /// Creates an NBody GameObject with basic radii and optional tag, and parents it under the given transform.
+    /// </summary>
     private static NBody MakeBody(Transform parent, string name, bool central, float radius, float camRadius, string tag)
     {
         var go = new GameObject(name);
@@ -147,6 +157,9 @@ public static class SimTestBootstrap
         return nb;
     }
 
+    /// <summary>
+    /// Creates a minimal Button with a RectTransform and a child TMP text element.
+    /// </summary>
     private static Button MakeButton(Transform parent, string name)
     {
         var go = new GameObject(name);
@@ -160,6 +173,9 @@ public static class SimTestBootstrap
         return btn;
     }
 
+    /// <summary>
+    /// Creates a simple panel GameObject with a RectTransform and parents it under the given transform.
+    /// </summary>
     private static GameObject MakePanel(Transform parent, string name)
     {
         var go = new GameObject(name);
@@ -170,7 +186,7 @@ public static class SimTestBootstrap
 }
 
 /// <summary>
-/// Disposable handle for a built test rig.
+/// Disposable handle that exposes references to the built test rig and cleans up on Dispose.
 /// </summary>
 public sealed class SimTestRig : IDisposable
 {
@@ -198,6 +214,9 @@ public sealed class SimTestRig : IDisposable
         UI = ui;
     }
 
+    /// <summary>
+    /// Destroys the entire rig hierarchy immediately.
+    /// </summary>
     public void Dispose()
     {
         if (Root != null)

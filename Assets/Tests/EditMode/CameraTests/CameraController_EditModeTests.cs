@@ -1,8 +1,12 @@
 using System.Collections;
 using NUnit.Framework;
-using UnityEngine;
 using UnityEngine.TestTools;
 
+/// <summary>
+/// Edit-mode tests for CameraController behavior:
+/// verifies initial tracking, Earth Cam toggling, fallback selection when bodies are removed,
+/// transitions to Free Cam, and returning from Free Cam to tracking.
+/// </summary>
 public class CameraController_EditModeTests
 {
     private SimTestRig rig;
@@ -10,6 +14,10 @@ public class CameraController_EditModeTests
     [TearDown]
     public void TearDown() => rig?.Dispose();
 
+    /// <summary>
+    /// After bootstrap, controller should be in Track mode and locked to the first satellite.
+    /// Also asserts CameraMovement flags reflect tracked (non-free, non-Earth) state.
+    /// </summary>
     [UnityTest]
     public IEnumerator Initializes_and_tracks_first_satellite_in_Track_mode()
     {
@@ -25,6 +33,9 @@ public class CameraController_EditModeTests
         Assert.IsFalse(rig.CamMove.inEarthCam);
     }
 
+    /// <summary>
+    /// Switching to Earth Cam toggles Earth/Track states while preserving the prior tracked body.
+    /// </summary>
     [UnityTest]
     public IEnumerator SwitchToEarthCam_toggles_and_back()
     {
@@ -42,6 +53,10 @@ public class CameraController_EditModeTests
         Assert.That(rig.Controller.CurrentBody, Is.EqualTo(prior));
     }
 
+    /// <summary>
+    /// When the currently tracked body is removed, controller falls back to another body,
+    /// and eventually switches to Free mode if none remain.
+    /// </summary>
     [UnityTest]
     public IEnumerator Removing_current_body_falls_back_then_free()
     {
@@ -63,6 +78,9 @@ public class CameraController_EditModeTests
         Assert.IsNull(rig.Controller.CurrentBody);
     }
 
+    /// <summary>
+    /// Breaking to Free Cam clears tracked targets and disables CameraMovement (tracked mode component).
+    /// </summary>
     [UnityTest]
     public IEnumerator BreakToFreeCam_enters_free_and_disables_CameraMovement()
     {
@@ -79,6 +97,9 @@ public class CameraController_EditModeTests
         Assert.IsFalse(rig.CamMove.inEarthCam);
     }
 
+    /// <summary>
+    /// From Free Cam, ReturnToTracking should reselect the first available satellite and enter Track mode.
+    /// </summary>
     [UnityTest]
     public IEnumerator ReturnToTracking_from_free_picks_first_satellite()
     {

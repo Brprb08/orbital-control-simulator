@@ -1,0 +1,96 @@
+StructuredBuffer<float3> bodyPositions;  
+StructuredBuffer<float>  bodyMasses;  
+
+uint numOtherBodies; 
+float gravitationalConstant;
+
+float3 ComputeAcceleration(float3 position, float thisMass)
+{
+    float3 totalForce = float3(0, 0, 0);
+
+    float minDistSq = .0001;
+    float maxDistSq = 1e12;
+    float maxForce = 1e12;   
+
+    for (uint i = 0; i < numOtherBodies; i++)
+    {
+        float3 dir = bodyPositions[i] - position;
+
+        float distSq = dot(dir, dir);
+
+        distSq = clamp(distSq, minDistSq, maxDistSq);
+
+        float forceMag = (gravitationalConstant * (thisMass * bodyMasses[i])) / distSq;
+        forceMag = min(forceMag, maxForce);
+        totalForce += normalize(dir) * forceMag;
+    }
+    
+    return totalForce / thisMass;
+}
+
+#pragma kernel RungeKutta
+
+StructuredBuffer<float3> initialPosition;  
+StructuredBuffer<float3> initialVelocity;  
+StructuredBuffer<float>  mass;            
+
+uint lodFactor;  
+
+RWStructuredBuffer<float3> outTrajectory;
+
+float deltaTime;
+uint steps;
+
+[numthreads(1, 1, 1)]
+void RungeKutta(uint3 id : SV_DispatchThreadID)
+{
+    float3 pos = initialPosition[0];
+    float3 vel = initialVelocity[0];
+    float thisMass = mass[0];
+
+    uint outIndex = 0;
+    for (uint i = 0; i < steps; i++)
+    {
+        if (i % lodFactor == 0)
+        {
+            outTrajectory[outIndex] = pos;
+            outIndex++;
+        }
+
+        // float3 k1_pos = vel;
+        // float3 k1_vel = ComputeAcceleration(pos, thisMass);
+
+        // float3 k2_pos = vel + (k1_vel * (deltaTime / 2.0));
+        // float3 k2_vel = ComputeAcceleration(pos + (k1_pos * (deltaTime / 2.0)), thisMass);
+
+        // float3 k3_pos = vel + (k2_vel * (deltaTime / 2.0));
+        // float3 k3_vel = ComputeAcceleration(pos + (k2_pos * (deltaTime / 2.0)), thisMass);
+
+        // float3 k4_pos = vel + (k3_vel * deltaTime);
+        // float3 k4_vel = ComputeAcceleration(pos + (k3_pos * deltaTime), thisMass);
+
+        // pos += (deltaTime / 6.0) * (k1_pos + 2.0 * k2_pos + 2.0 * k3_pos + k4_pos);
+        // vel += (deltaTime / 6.0) * (k1_vel + 2.0 * k2_vel + 2.0 * k3_vel + k4_vel);
+
+
+
+
+        // RK2 (midpoint) for state y = [pos, vel]
+        // k1 at current state
+        float3 k1_pos = vel;
+        float3 k1_vel = ComputeAcceleration(pos, thisMass);
+
+        // state at midpoint
+        float3 p_mid = pos + 0.5f * deltaTime * k1_pos;
+        float3 v_mid = vel + 0.5f * deltaTime * k1_vel;
+
+        // k2 at midpoint
+        float3 k2_pos = v_mid;
+        float3 k2_vel = ComputeAcceleration(p_mid, thisMass);
+
+        // advance with k2
+        pos += deltaTime * k2_pos;
+        vel += deltaTime * k2_vel;
+
+    }
+}

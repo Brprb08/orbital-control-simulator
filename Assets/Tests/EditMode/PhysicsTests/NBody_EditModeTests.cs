@@ -2,6 +2,10 @@ using NUnit.Framework;
 using UnityEngine;
 using System.Reflection;
 
+/// <summary>
+/// Edit-mode tests for NBody: verifies central-body initialization (velocity reset)
+/// and altitude calculation relative to Earth's radius.
+/// </summary>
 public class NBody_EditModeTests
 {
     private SimTestRig rig;

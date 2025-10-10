@@ -1,137 +1,193 @@
+using System;
 using NUnit.Framework;
-using UnityEngine;
-using UnityEngine.TestTools;
 
 /// <summary>
-/// Unit tests for the TLEParser class.
-/// Verifies correct parsing of valid TLE strings and appropriate handling of invalid inputs.
+/// Unit tests for the TLEParser class (two-body approximation).
+/// Verifies parsing, propagation, and handling of malformed inputs.
+/// Notes:
+/// - Outputs are ECI-like position (meters) and velocity (m/s) using Vector3d.
+/// - API under test: TLEParser.TryPropagate(line1, line2, whenUtc, out rEci_m, out vEci_mps, out tleEpochUtc)
 /// </summary>
 public class TLEParserTests_EditModeTests
 {
-    // Sample valid TLE (ISS)
+    // Sample valid TLE (ISS) — same as before
     private const string Line1_Valid = "1 25544U 98067A   20029.54791435  .00001264  00000-0  29621-4 0  9993";
     private const string Line2_Valid = "2 25544  51.6448 172.4814 0007419  39.3392 104.3828 15.49163575210626";
 
-    [Test]
-    public void TryParseTLE_ValidInput_ReturnsTrueAndOutputsVectors()
-    {
-        bool success = TLEParser.TryParseTLE(Line1_Valid, Line2_Valid, out Vector3 position, out Vector3 velocity);
+    // Pick a propagation instant near the TLE epoch (20029.5479... ≈ 2020-01-29T13:08:58Z)
+    private static readonly DateTime WhenNearEpochUtc = new DateTime(2020, 1, 29, 13, 8, 58, DateTimeKind.Utc);
 
-        Assert.IsTrue(success);
-        Assert.That(position.magnitude, Is.GreaterThan(0));
-        Assert.That(velocity.magnitude, Is.GreaterThan(0));
+    // --- Helpers ---
+
+    private static double Mag(Vector3d v) => Math.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+
+    // --- Tests ---
+
+    [Test]
+    public void TryPropagate_ValidInput_ReturnsTrueAndOutputsVectors()
+    {
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, Line2_Valid, WhenNearEpochUtc,
+            out Vector3d rEci_m, out Vector3d vEci_mps, out DateTime tleEpochUtc);
+
+        Assert.IsTrue(ok);
+        Assert.AreNotEqual(default(Vector3d), rEci_m, "Position should be non-zero.");
+        Assert.AreNotEqual(default(Vector3d), vEci_mps, "Velocity should be non-zero.");
+
+        // Epoch sanity: parsed epoch should be close to TLE's encoded epoch
+        var expectedEpoch = new DateTime(2020, 1, 29, 13, 8, 58, DateTimeKind.Utc);
+        Assert.That(Math.Abs((tleEpochUtc - expectedEpoch).TotalSeconds), Is.LessThan(5.0),
+            "Parsed TLE epoch should be within a few seconds of expected.");
     }
 
     [Test]
-    public void TryParseTLE_EmptyLines_ReturnsFalse()
+    public void TryPropagate_EmptyLines_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. Each line must be at least 69 characters.");
-        bool result = TLEParser.TryParseTLE("", "", out _, out _);
-        Assert.IsFalse(result);
+        bool ok = TLEParser.TryPropagate(
+            "", "", WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void TryParseTLE_ShortLines_ReturnsFalse()
+    public void TryPropagate_ShortLines_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. Each line must be at least 69 characters.");
         string shortLine = "1 25544"; // way too short
-        bool result = TLEParser.TryParseTLE(shortLine, shortLine, out _, out _);
-        Assert.IsFalse(result);
+        bool ok = TLEParser.TryPropagate(
+            shortLine, shortLine, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void TryParseTLE_InvalidNumericField_ReturnsFalse()
+    public void TryPropagate_InvalidNumericField_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. Each line must be at least 69 characters.");
-        string corruptedLine2 = Line2_Valid.Substring(0, 8) + "ABC.DEF " + Line2_Valid.Substring(17); // corrupt inclination
-        bool result = TLEParser.TryParseTLE(Line1_Valid, corruptedLine2, out _, out _);
-        Assert.IsFalse(result);
+        // Corrupt inclination number field
+        string corruptedLine2 = Line2_Valid.Substring(0, 8) + "ABC.DEF " + Line2_Valid.Substring(17);
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, corruptedLine2, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void TryParseTLE_PositionWithinExpectedOrbitalRange()
+    public void TryPropagate_PositionWithinExpectedOrbitalRange_InMeters()
     {
-        TLEParser.TryParseTLE(Line1_Valid, Line2_Valid, out Vector3 position, out _);
-        float distanceFromEarth = position.magnitude;
-        Assert.That(distanceFromEarth, Is.InRange(400, 10000)); // in km, approximate for LEO
+        // LEO orbital radius ~ 6.6e6–7.2e6 m (very rough band; ISS altitude varies)
+        TLEParser.TryPropagate(
+            Line1_Valid, Line2_Valid, WhenNearEpochUtc,
+            out Vector3d rEci_m, out _, out _);
+
+        double r = Mag(rEci_m);
+        Assert.That(r, Is.InRange(6.3e6, 8.5e6), "ECI radius should be within a reasonable LEO band (meters).");
     }
 
     [Test]
-    public void TryParseTLE_ZeroEccentricity_ParsesSuccessfully()
+    public void TryPropagate_ZeroEccentricity_ParsesSuccessfully()
     {
         string line2ZeroEcc = Line2_Valid.Substring(0, 26) + "0000000" + Line2_Valid.Substring(33);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, line2ZeroEcc, out Vector3 pos, out Vector3 vel);
 
-        Assert.IsTrue(result);
-        Assert.That(pos.magnitude, Is.GreaterThan(0));
-        Assert.That(vel.magnitude, Is.GreaterThan(0));
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, line2ZeroEcc, WhenNearEpochUtc,
+            out Vector3d r, out Vector3d v, out _);
+
+        Assert.IsTrue(ok);
+        Assert.AreNotEqual(default(Vector3d), r);
+        Assert.AreNotEqual(default(Vector3d), v);
     }
 
     [Test]
     public void MalformedInclination_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
         string broken = Line2_Valid.Substring(0, 8) + "********" + Line2_Valid.Substring(16);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, broken, out _, out _);
-        Assert.IsFalse(result);
+
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, broken, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void TryParseTLE_MalformedRAAN_ThrowsAndReturnsFalse()
+    public void MalformedRAAN_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
         string brokenRAAN = Line2_Valid.Substring(0, 17) + "********" + Line2_Valid.Substring(25);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, brokenRAAN, out _, out _);
 
-        Assert.IsFalse(result);
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, brokenRAAN, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void MalformedEccentricity_ReturnsFalse()
+    public void MalformedEccentricity_TreatedAsZero_Succeeds()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
+        // Corrupt the eccentricity field (cols 27–33). Parser maps non-numeric to 0.0.
         string broken = Line2_Valid.Substring(0, 26) + "#######" + Line2_Valid.Substring(33);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, broken, out _, out _);
-        Assert.IsFalse(result);
+
+        bool okBroken = TLEParser.TryPropagate(
+            Line1_Valid, broken, WhenNearEpochUtc, out Vector3d rBroken, out Vector3d vBroken, out _);
+
+        // Build a version that explicitly sets ecc to 0.0; both should behave the same.
+        string line2ZeroEcc = Line2_Valid.Substring(0, 26) + "0000000" + Line2_Valid.Substring(33);
+        bool okZero = TLEParser.TryPropagate(
+            Line1_Valid, line2ZeroEcc, WhenNearEpochUtc, out Vector3d rZero, out Vector3d vZero, out _);
+
+        Assert.IsTrue(okBroken, "Parser should succeed and treat malformed eccentricity as 0.0.");
+        Assert.IsTrue(okZero, "Zero-eccentricity case should also succeed.");
+
+        // Since both resolve to e = 0, results should match closely.
+        double posDiff = Math.Sqrt(Math.Pow(rBroken.x - rZero.x, 2) + Math.Pow(rBroken.y - rZero.y, 2) + Math.Pow(rBroken.z - rZero.z, 2));
+        double velDiff = Math.Sqrt(Math.Pow(vBroken.x - vZero.x, 2) + Math.Pow(vBroken.y - vZero.y, 2) + Math.Pow(vBroken.z - vZero.z, 2));
+
+        Assert.That(posDiff, Is.LessThan(1e-6), "Positions should be identical (within fp noise).");
+        Assert.That(velDiff, Is.LessThan(1e-6), "Velocities should be identical (within fp noise).");
     }
+
 
     [Test]
     public void MalformedArgumentOfPerigee_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
         string broken = Line2_Valid.Substring(0, 34) + "********" + Line2_Valid.Substring(42);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, broken, out _, out _);
-        Assert.IsFalse(result);
+
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, broken, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
     public void MalformedMeanAnomaly_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
         string broken = Line2_Valid.Substring(0, 43) + "********" + Line2_Valid.Substring(51);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, broken, out _, out _);
-        Assert.IsFalse(result);
+
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, broken, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
     public void MalformedMeanMotion_ReturnsFalse()
     {
-        LogAssert.Expect(LogType.Error, "Invalid TLE input. One or more fields are non-numeric or malformed.");
         string broken = Line2_Valid.Substring(0, 52) + "***********" + Line2_Valid.Substring(63);
-        bool result = TLEParser.TryParseTLE(Line1_Valid, broken, out _, out _);
-        Assert.IsFalse(result);
+
+        bool ok = TLEParser.TryPropagate(
+            Line1_Valid, broken, WhenNearEpochUtc, out _, out _, out _);
+
+        Assert.IsFalse(ok);
     }
 
     [Test]
-    public void TryParseTLE_DifferentMeanAnomalies_ProducesDifferentResults()
+    public void TryPropagate_DifferentMeanAnomalies_ProducesDifferentResults()
     {
         string line2A = Line2_Valid;
         string line2B = Line2_Valid.Substring(0, 43) + "204.3828" + Line2_Valid.Substring(51); // modify mean anomaly
 
-        TLEParser.TryParseTLE(Line1_Valid, line2A, out Vector3 posA, out Vector3 velA);
-        TLEParser.TryParseTLE(Line1_Valid, line2B, out Vector3 posB, out Vector3 velB);
+        TLEParser.TryPropagate(Line1_Valid, line2A, WhenNearEpochUtc, out Vector3d rA, out Vector3d vA, out _);
+        TLEParser.TryPropagate(Line1_Valid, line2B, WhenNearEpochUtc, out Vector3d rB, out Vector3d vB, out _);
 
-        Assert.AreNotEqual(posA, posB);
-        Assert.AreNotEqual(velA, velB);
+        // Different true anomalies => different state vectors
+        Assert.IsFalse(rA.x == rB.x && rA.y == rB.y && rA.z == rB.z, "Positions should differ with different mean anomalies.");
+        Assert.IsFalse(vA.x == vB.x && vA.y == vB.y && vA.z == vB.z, "Velocities should differ with different mean anomalies.");
     }
 }

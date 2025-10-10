@@ -4,6 +4,11 @@ using Unity.Mathematics;
 using System;
 using UnityEngine.TestTools;
 
+/// <summary>
+/// Unit tests for orbital parameter computation using the project’s scaled units (km → units/10).
+/// Covers circular orbits, invalid inputs (zero velocity), and hyperbolic trajectories,
+/// asserting validity flags, eccentricity ranges, characteristic distances, and period behavior.
+/// </summary>
 public class OrbitalCalculationsTests
 {
     [Test]

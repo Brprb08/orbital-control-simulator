@@ -1,6 +1,9 @@
 using NUnit.Framework;
-using UnityEngine;
 
+/// <summary>
+/// Edit-mode tests for BodyService: confirms central body registration,
+/// satellite filtering by tag, and clearing the central body on deregistration.
+/// </summary>
 public class BodyService_EditModeTests
 {
     private SimTestRig rig;

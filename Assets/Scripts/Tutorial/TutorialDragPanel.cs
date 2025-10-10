@@ -1,9 +1,13 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
 
+/// <summary>
+/// Draggable UI panel that follows the pointer while keeping itself fully within the parent canvas.
+/// Optionally confines the cursor to the game window during the drag.
+/// </summary>
 public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerDownHandler
 {
-    [SerializeField] private Canvas canvas; // assign in Inspector
+    [SerializeField] private Canvas canvas; // Assign in Inspector
     [SerializeField] private bool confineCursorWhileDragging = true;
 
     private RectTransform rt;
@@ -12,17 +16,26 @@ public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler,
     private CursorLockMode prevLock;
     private bool prevVisible;
 
+    /// <summary>
+    /// Caches RectTransform references for the panel and its canvas.
+    /// </summary>
     void Awake()
     {
         rt = GetComponent<RectTransform>();
         canvasRect = canvas.GetComponent<RectTransform>();
     }
 
+    /// <summary>
+    /// Brings the panel to the front when clicked.
+    /// </summary>
     public void OnPointerDown(PointerEventData eventData)
     {
-        transform.SetAsLastSibling(); // bring to front
+        transform.SetAsLastSibling();
     }
 
+    /// <summary>
+    /// Starts a drag operation and (optionally) confines the cursor to the window.
+    /// </summary>
     public void OnBeginDrag(PointerEventData eventData)
     {
         if (confineCursorWhileDragging)
@@ -30,21 +43,23 @@ public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler,
             prevLock = Cursor.lockState;
             prevVisible = Cursor.visible;
 
-            // Keep the cursor inside the game window while dragging
             Cursor.lockState = CursorLockMode.Confined;
-            Cursor.visible = true; // keep visible for UI
+            Cursor.visible = true;
         }
     }
 
+    /// <summary>
+    /// Moves the panel with the pointer and clamps it to the canvas bounds.
+    /// </summary>
     public void OnDrag(PointerEventData eventData)
     {
-        // Move by pointer delta, corrected for canvas scale
         rt.anchoredPosition += eventData.delta / canvas.scaleFactor;
-
-        // Keep the panel fully on-screen
         ClampToCanvas();
     }
 
+    /// <summary>
+    /// Ends the drag operation and restores the previous cursor state.
+    /// </summary>
     public void OnEndDrag(PointerEventData eventData)
     {
         if (confineCursorWhileDragging)
@@ -54,6 +69,9 @@ public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler,
         }
     }
 
+    /// <summary>
+    /// Keeps the panel fully on-screen by clamping its world-space corners to the canvas.
+    /// </summary>
     private void ClampToCanvas()
     {
         Vector3[] canvasCorners = new Vector3[4];
@@ -72,9 +90,11 @@ public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler,
         rt.position = pos;
     }
 
+    /// <summary>
+    /// Restores a safe cursor state if the panel is disabled mid-drag.
+    /// </summary>
     void OnDisable()
     {
-        // Safety restore if the object gets disabled mid-drag
         if (confineCursorWhileDragging)
         {
             Cursor.lockState = CursorLockMode.None;

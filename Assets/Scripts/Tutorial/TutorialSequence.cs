@@ -1,12 +1,18 @@
 using UnityEngine;
 
+/// <summary>
+/// Provides the hardcoded tutorial sequence for the Orbital Control Simulator.
+/// Each step defines instructional text, required actions, optional interstitial transitions,
+/// and auto-advance behavior to guide the player through camera controls, satellite creation,
+/// orbit manipulation, and maneuver planning.
+/// </summary>
 public static class TutorialSequence
 {
-    // Returns the hardcoded steps you currently have
     public static TutorialStep[] Default()
     {
         return new TutorialStep[]
         {
+            // STEP 1 — Welcome
             new TutorialStep {
                 body =
                 "<b>Welcome</b>\n\n" +

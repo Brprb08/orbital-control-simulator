@@ -1,6 +1,10 @@
 using NUnit.Framework;
 using UnityEngine;
 
+/// <summary>
+/// Unit tests for ParsingUtils ensuring correct handling of vector and mass parsing.
+/// Covers valid input, formatting errors, numeric range validation, and invalid strings.
+/// </summary>
 public class ParsingUtilsTests_EditModeTests
 {
     [Test]

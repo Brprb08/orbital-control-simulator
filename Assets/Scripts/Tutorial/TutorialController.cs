@@ -3,6 +3,11 @@ using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
 
+/// <summary>
+/// Drives the step-by-step tutorial flow: checklist requirements, interstitial pages,
+/// input polling for tasks (rotate, zoom, WASD, etc.), and UI updates.
+/// External systems flip boolean flags to satisfy certain steps.
+/// </summary>
 public class TutorialController : MonoBehaviour
 {
     private CameraMovement cameraMovement;
@@ -27,11 +32,11 @@ public class TutorialController : MonoBehaviour
 
     public bool inTutorialMode = true;
 
-    // External flags updated by other systems
+    // Progress flags set by outside systems or input polling
     public bool hasSwitchedSatellites = false;
     public bool hasSwitchedToEarthCam = false;
-    public bool hasNameBeenEnteredForSatellite = false;  // currently unused in steps, keep if you’ll use later
-    public bool hasPositionBeenEnteredForSatellite = false; // currently unused in steps
+    public bool hasNameBeenEnteredForSatellite = false;     // reserved
+    public bool hasPositionBeenEnteredForSatellite = false; // reserved
     public bool hasMassBeenEnteredForSatellite = false;
     public bool hasRadiusBeenEnteredForSatellite = false;
     public bool hasSatelliteBeenPlaced = false;
@@ -43,11 +48,10 @@ public class TutorialController : MonoBehaviour
     public bool hasSetupNode = false;
     public bool hasPlacedNode = false;
 
-    // One-time interstitial flow tracking
-    private bool[] interstitialShown;        // true after we show the interstitial for a step
-    private bool[] preInterstitialConsumed;  // true once the 2s pre-interstitial timer has started for a step
+    // Interstitial state
+    private bool[] interstitialShown;
+    private bool[] preInterstitialConsumed;
 
-    // One-time pre-interstitial countdown (while still on the checklist page)
     [SerializeField] private float preInterstitialDelay = 2f;
 
     private bool interstitialCountdownActive = false;
@@ -56,7 +60,7 @@ public class TutorialController : MonoBehaviour
 
     private enum StepPhase { Main, Interstitial }
     private StepPhase phase = StepPhase.Main;
-    private float interstitialTimer = 0f; // timer used while on interstitial if that step wants auto-advance
+    private float interstitialTimer = 0f;
 
     private readonly TutorialProgress progress = new();
 
@@ -70,23 +74,31 @@ public class TutorialController : MonoBehaviour
 
     private TutorialStep[] steps;
 
-    // --------------- Internal state ---------------
+    // Step/UI state
     private int stepIndex = 0;
     private readonly List<Toggle> activeReqToggles = new();
 
-    // ------------------ Lifecycle ------------------
+    /// <summary>
+    /// Injects the simulation context and caches camera movement.
+    /// </summary>
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
         this.cameraMovement = ctx.CameraMovement;
     }
 
+    /// <summary>
+    /// Wires button events.
+    /// </summary>
     private void Awake()
     {
         if (nextButton) nextButton.onClick.AddListener(OnNextClicked);
         if (backButton) backButton.onClick.AddListener(OnBackClicked);
     }
 
+    /// <summary>
+    /// Starts or restarts the tutorial sequence and builds the initial UI.
+    /// </summary>
     private void OnEnable()
     {
         stepIndex = 0;
@@ -102,13 +114,15 @@ public class TutorialController : MonoBehaviour
         UpdateButtons();
     }
 
+    /// <summary>
+    /// Per-frame step logic: polls requirements, handles timers, and manages interstitial transitions.
+    /// </summary>
     private void Update()
     {
         var step = steps[stepIndex];
 
         if (phase == StepPhase.Main)
         {
-            // Poll only what’s needed for the current step
             var reqs = step.requirements;
             for (int i = 0; i < reqs.Length; i++)
             {
@@ -176,10 +190,12 @@ public class TutorialController : MonoBehaviour
                         if (!progress.IsComplete(RequirementType.ClickSatelliteAndDrag) && hasClickAndDrag)
                             progress.SetComplete(RequirementType.ClickSatelliteAndDrag);
                         break;
+
                     case RequirementType.AddVelocity:
                         if (!progress.IsComplete(RequirementType.AddVelocity) && hasAddVelocity)
                             progress.SetComplete(RequirementType.AddVelocity);
                         break;
+
                     case RequirementType.SetVelocity:
                         if (!progress.IsComplete(RequirementType.SetVelocity) && hasSetVelocity)
                             progress.SetComplete(RequirementType.SetVelocity);
@@ -199,11 +215,11 @@ public class TutorialController : MonoBehaviour
                         if (!progress.IsComplete(RequirementType.ClickSetupForNode) && hasSetupNode)
                             progress.SetComplete(RequirementType.ClickSetupForNode);
                         break;
+
                     case RequirementType.PlaceManeuverNode:
                         if (!progress.IsComplete(RequirementType.PlaceManeuverNode) && hasPlacedNode)
                             progress.SetComplete(RequirementType.PlaceManeuverNode);
                         break;
-
 
                     case RequirementType.None:
                     default:
@@ -219,14 +235,14 @@ public class TutorialController : MonoBehaviour
 
             if (nextButton) nextButton.interactable = allMet;
 
-            // One-time pre-interstitial countdown (stay on checklist first time requirements are met)
+            // Pre-interstitial countdown, if the step uses an interstitial
             if (step.showInterstitialAfterComplete && !interstitialShown[stepIndex])
             {
                 if (allMet)
                 {
                     if (!preInterstitialConsumed[stepIndex])
                     {
-                        preInterstitialConsumed[stepIndex] = true; // consume so it won’t restart later
+                        preInterstitialConsumed[stepIndex] = true;
                         interstitialCountdownActive = true;
                         interstitialCountdown = preInterstitialDelay;
                     }
@@ -242,18 +258,18 @@ public class TutorialController : MonoBehaviour
                 }
                 else
                 {
-                    // Cancel a pending countdown if user falls below requirements; keep consumed=true so it won't restart
+                    // Cancel pending countdown if requirements become unmet
                     interstitialCountdownActive = false;
                     interstitialCountdown = 0f;
                 }
             }
-            // NEW: only allow checklist auto-advance on steps that do NOT use an interstitial
+            // Auto-advance directly from the checklist for steps without interstitials (opt-in)
             else if (!step.showInterstitialAfterComplete)
             {
                 if (allMet && steps[stepIndex].autoAdvanceFromInterstitial)
                 {
                     if (mainCountdown <= 0f)
-                        mainCountdown = preInterstitialDelay; // start once when first satisfied
+                        mainCountdown = preInterstitialDelay;
 
                     mainCountdown -= Time.unscaledDeltaTime;
                     if (mainCountdown <= 0f)
@@ -263,26 +279,27 @@ public class TutorialController : MonoBehaviour
                 }
                 else
                 {
-                    mainCountdown = 0f; // no countdown if not allMet or autoAdvance disabled
+                    mainCountdown = 0f;
                 }
             }
-
         }
         else if (phase == StepPhase.Interstitial)
         {
-            // Optional auto-advance while on the interstitial page
+            // Optional auto-advance while on the interstitial
             if (steps[stepIndex].autoAdvanceFromInterstitial && interstitialTimer > 0f)
             {
                 interstitialTimer -= Time.unscaledDeltaTime;
                 if (interstitialTimer <= 0f)
                 {
-                    AdvanceStep(); // same as clicking Continue
+                    AdvanceStep();
                 }
             }
         }
     }
 
-    // ------------------ Interstitial ------------------
+    /// <summary>
+    /// Switches from checklist to interstitial view for the current step.
+    /// </summary>
     private void EnterInterstitial(TutorialStep step)
     {
         interstitialShown[stepIndex] = true;
@@ -292,11 +309,9 @@ public class TutorialController : MonoBehaviour
             ? "Nice! Next we will go into blah blah blah…"
             : step.interstitialBody;
 
-        // Clear checklist UI
         foreach (var t in activeReqToggles) if (t) Destroy(t.gameObject);
         activeReqToggles.Clear();
 
-        // Button label & interactivity
         if (nextButton)
         {
             nextButton.interactable = true;
@@ -304,7 +319,6 @@ public class TutorialController : MonoBehaviour
             if (lbl) lbl.text = "Continue";
         }
 
-        // Interstitial auto-advance (no extra 2s here; that delay happened before entering)
         interstitialTimer = (step.autoAdvanceFromInterstitial && step.autoAdvanceDelay > 0f)
             ? step.autoAdvanceDelay
             : 0f;
@@ -312,19 +326,9 @@ public class TutorialController : MonoBehaviour
         ReflowLayout();
     }
 
-    // ------------------ Public notifiers ------------------
-    // public void NotifyRotatedCamera()
-    // {
-    //     progress.SetComplete(RequirementType.RotateViewRMB);
-    // }
-
-    // public void NotifyZoomedAbs(float amountAbs)
-    // {
-    //     zoomAccumAbs += Mathf.Abs(amountAbs);
-    //     if (zoomAccumAbs >= scrollThreshold)
-    //         progress.SetComplete(RequirementType.ZoomScroll);
-    // }
-
+    /// <summary>
+    /// Clears all progress and restarts the tutorial from the first step.
+    /// </summary>
     public void ResetAllProgress()
     {
         System.Array.Clear(interstitialShown, 0, interstitialShown.Length);
@@ -354,7 +358,10 @@ public class TutorialController : MonoBehaviour
         UpdateButtons();
     }
 
-    // ------------------ Buttons ------------------
+    /// <summary>
+    /// Next/Continue button handler: advances through interstitial or moves to the next step.
+    /// Closes the panel at the end if configured to do so.
+    /// </summary>
     public void OnNextClicked()
     {
         if (phase == StepPhase.Interstitial)
@@ -382,6 +389,9 @@ public class TutorialController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Advances to the next step and rebuilds the UI; closes the panel at the end if configured.
+    /// </summary>
     private void AdvanceStep()
     {
         if (stepIndex < steps.Length - 1)
@@ -403,14 +413,15 @@ public class TutorialController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Back button handler. From interstitial, returns to the same step checklist; otherwise goes to the previous step.
+    /// </summary>
     private void OnBackClicked()
     {
-        // From an interstitial, return to the SAME step’s checklist
         if (phase == StepPhase.Interstitial)
         {
             phase = StepPhase.Main;
 
-            // kill any timers/counters so no forward jump happens
             interstitialTimer = 0f;
             interstitialCountdownActive = false;
             interstitialCountdown = 0f;
@@ -421,7 +432,6 @@ public class TutorialController : MonoBehaviour
             return;
         }
 
-        // From checklist, go to previous step
         if (stepIndex > 0)
         {
             stepIndex--;
@@ -437,13 +447,14 @@ public class TutorialController : MonoBehaviour
         }
     }
 
-    // ------------------ UI Helpers ------------------
+    /// <summary>
+    /// Rebuilds text, checklist items, and button labels for the current step and phase.
+    /// </summary>
     private void RebuildUIForStep()
     {
         var step = steps[stepIndex];
         if (bodyText) bodyText.text = step.body;
 
-        // rebuild checklist only in Main phase
         foreach (var t in activeReqToggles) if (t) Destroy(t.gameObject);
         activeReqToggles.Clear();
 
@@ -477,6 +488,9 @@ public class TutorialController : MonoBehaviour
         ReflowLayout();
     }
 
+    /// <summary>
+    /// Enables/disables navigation buttons based on progress and phase.
+    /// </summary>
     private void UpdateButtons()
     {
         if (backButton) backButton.interactable = (stepIndex > 0);
@@ -487,6 +501,9 @@ public class TutorialController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Clears transient input and timer state used within a step.
+    /// </summary>
     private void ResetTransients()
     {
         rmbHolding = false;
@@ -497,7 +514,9 @@ public class TutorialController : MonoBehaviour
         interstitialCountdown = 0f;
     }
 
-    // ------------------ Requirement Logic ------------------
+    /// <summary>
+    /// Returns whether all requirements for the provided list are satisfied.
+    /// </summary>
     private bool AreAllRequirementsMet(RequirementDef[] reqs)
     {
         for (int i = 0; i < reqs.Length; i++)
@@ -505,7 +524,11 @@ public class TutorialController : MonoBehaviour
         return true;
     }
 
-    // ------------------ Input Polling ------------------
+    // ---- Input polling that marks requirements complete ----
+
+    /// <summary>
+    /// Marks the W key requirement when pressed.
+    /// </summary>
     public void PressedW()
     {
         if (progress.IsComplete(RequirementType.PressW) && cameraMovement.IsFreeCamMode) return;
@@ -513,6 +536,9 @@ public class TutorialController : MonoBehaviour
             progress.SetComplete(RequirementType.PressW);
     }
 
+    /// <summary>
+    /// Marks the A key requirement when pressed.
+    /// </summary>
     public void PressedA()
     {
         if (progress.IsComplete(RequirementType.PressA) && cameraMovement.IsFreeCamMode) return;
@@ -520,6 +546,9 @@ public class TutorialController : MonoBehaviour
             progress.SetComplete(RequirementType.PressA);
     }
 
+    /// <summary>
+    /// Marks the S key requirement when pressed.
+    /// </summary>
     public void PressedS()
     {
         if (progress.IsComplete(RequirementType.PressS) && cameraMovement.IsFreeCamMode) return;
@@ -527,6 +556,9 @@ public class TutorialController : MonoBehaviour
             progress.SetComplete(RequirementType.PressS);
     }
 
+    /// <summary>
+    /// Marks the D key requirement when pressed.
+    /// </summary>
     public void PressedD()
     {
         if (progress.IsComplete(RequirementType.PressD) && cameraMovement.IsFreeCamMode) return;
@@ -534,6 +566,9 @@ public class TutorialController : MonoBehaviour
             progress.SetComplete(RequirementType.PressD);
     }
 
+    /// <summary>
+    /// Tracks right-mouse dragging to satisfy rotate requirements (separate flags for free cam vs tracked cam).
+    /// </summary>
     private void TrackRotateRMB()
     {
         if (cameraMovement != null && cameraMovement.IsFreeCamMode)
@@ -564,11 +599,14 @@ public class TutorialController : MonoBehaviour
                 else
                     progress.SetComplete(RequirementType.RotateViewRMB);
 
-                rmbHolding = false; // mark done
+                rmbHolding = false;
             }
         }
     }
 
+    /// <summary>
+    /// Accumulates scroll input until the zoom requirement threshold is met.
+    /// </summary>
     private void TrackZoomScroll()
     {
         if (progress.IsComplete(RequirementType.ZoomScroll)) return;
@@ -582,6 +620,9 @@ public class TutorialController : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Forces a layout refresh after text or list changes.
+    /// </summary>
     private void ReflowLayout()
     {
         if (bodyText != null)

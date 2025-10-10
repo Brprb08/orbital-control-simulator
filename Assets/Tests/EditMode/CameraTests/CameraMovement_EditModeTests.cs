@@ -3,6 +3,10 @@ using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
 
+/// <summary>
+/// Edit-mode tests for CameraMovement: verifies safe target assignment,
+/// Earth-cam toggling, and placeholder targeting distance/height calculations.
+/// </summary>
 public class CameraMovement_EditModeTests
 {
     private SimTestRig rig;
@@ -10,6 +14,10 @@ public class CameraMovement_EditModeTests
     [TearDown]
     public void TearDown() => rig?.Dispose();
 
+    /// <summary>
+    /// Setting a real target body should clear any placeholder, bind fields,
+    /// and leave the pivot rotation valid (non-NaN).
+    /// </summary>
     [UnityTest]
     public IEnumerator SetTargetBody_configures_rig_safely()
     {
@@ -25,6 +33,9 @@ public class CameraMovement_EditModeTests
         Assert.IsFalse(float.IsNaN(q.x + q.y + q.z + q.w));
     }
 
+    /// <summary>
+    /// Switching to Earth as the target should flip the Earth-cam flag and bind the temporary Earth reference.
+    /// </summary>
     [UnityTest]
     public IEnumerator SetTargetEarth_toggles_flag_and_distance_valid()
     {
@@ -39,6 +50,10 @@ public class CameraMovement_EditModeTests
         Assert.AreEqual(earth, rig.CamMove.tempEarthBody);
     }
 
+    /// <summary>
+    /// Targeting a placeholder should compute camera distance from placeholder scale
+    /// and set height accordingly, with no real body targeted.
+    /// </summary>
     [UnityTest]
     public IEnumerator SetTargetBodyPlaceholder_sets_distance_from_scale()
     {
@@ -56,7 +71,9 @@ public class CameraMovement_EditModeTests
         Assert.AreEqual(0.6f, rig.CamMove.height, 0.001f);
     }
 
-    // small helper to make a body without touching BodyService
+    /// <summary>
+    /// Creates a minimal NBody for tests without involving BodyService.
+    /// </summary>
     private static NBody SimTestBootstrap_CreateBody(Transform parent, string name, float radius, float camRadius, string tag)
     {
         var go = new GameObject(name);

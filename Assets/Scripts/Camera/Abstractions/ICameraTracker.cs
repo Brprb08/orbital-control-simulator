@@ -1,12 +1,16 @@
 using UnityEngine;
 using System;
 
+/// <summary>
+/// Defines camera tracking behavior, including mode switching and target management.
+/// Handles transitions between free, Earth, and body tracking modes, and provides
+/// events for when the tracked object or mode changes.
+/// </summary>
 public interface ICameraTracker
 {
     CameraMode Mode { get; }
     event Action<CameraMode> OnModeChanged;
 
-    // events
     event Action<NBody> OnTrackedBodyChanged;
     event Action<Transform> OnTrackedPlaceholderChanged;
 
@@ -18,7 +22,7 @@ public interface ICameraTracker
 
     bool IsTrackingPlaceholder { get; }
 
-    // commands
+    // Calls to CameraController
     void TrackBody(NBody body);
     void TrackPlaceholder(Transform placeholder);
     void SwitchToEarthCam();
@@ -27,7 +31,6 @@ public interface ICameraTracker
     void RefreshBodiesList();
     void BeginUiSuppress();
     void EndUiSuppress();
-
     void PreviewPlaceholderInFree(Transform placeholder);
     void EndPreviewPlaceholder();
 }

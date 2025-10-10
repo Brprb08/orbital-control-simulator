@@ -1252,13 +1252,13 @@ RectTransform:
   m_ConstrainProportionsScale: 0
   m_Children:
   - {fileID: 861192240}
+  - {fileID: 1784521143}
   - {fileID: 916841082}
   - {fileID: 770696343}
   - {fileID: 1213897966}
   - {fileID: 151038884}
   - {fileID: 229281973}
   - {fileID: 1461049983}
-  - {fileID: 1784521143}
   - {fileID: 1768694421}
   - {fileID: 526190632}
   - {fileID: 688699147}
@@ -1284,9 +1284,9 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   inputFields:
   - {fileID: 861192241}
+  - {fileID: 1784521142}
   - {fileID: 916841083}
   - {fileID: 770696344}
-  - {fileID: 1784521142}
   placeButton: {fileID: 229281974}
 --- !u!1 &62185178
 GameObject:
@@ -2956,7 +2956,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431861}
+      - m_Target: {fileID: 772056303}
         m_TargetAssemblyTypeName: ManeuverNodeManager, CoreRuntime
         m_MethodName: FinalizeManeuver
         m_Mode: 1
@@ -3527,8 +3527,8 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431852}
-        m_TargetAssemblyTypeName: ObjectPlacementManager, Assembly-CSharp
+      - m_Target: {fileID: 1119227883}
+        m_TargetAssemblyTypeName: ObjectPlacementManager, CoreRuntime
         m_MethodName: StartPlacement
         m_Mode: 1
         m_Arguments:
@@ -3744,8 +3744,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartLeftThrust
           m_Mode: 1
           m_Arguments:
@@ -3772,8 +3772,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopLeftThrust
           m_Mode: 1
           m_Arguments:
@@ -7697,8 +7697,8 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431853}
-        m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
+      - m_Target: {fileID: 1134296948}
+        m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: ShowFeedbackPanel
         m_Mode: 1
         m_Arguments:
@@ -8318,8 +8318,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartReverseThrust
           m_Mode: 1
           m_Arguments:
@@ -8346,8 +8346,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopReverseThrust
           m_Mode: 1
           m_Arguments:
@@ -8960,24 +8960,24 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 44793b91016ad8546b2137cdc97a45c9, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  gravityManager: {fileID: 1586431850}
-  cameraController: {fileID: 1586431851}
+  bodyRuntimeCoordinator: {fileID: 1354312601}
+  cameraController: {fileID: 1667378690}
   cameraMovement: {fileID: 817157355}
   freeCamera: {fileID: 330585549}
-  bodyDropdownManager: {fileID: 1586431860}
-  maneuverNodeManager: {fileID: 1586431861}
-  thrustController: {fileID: 1586431855}
+  bodyDropdownManager: {fileID: 1354312599}
+  maneuverNodeManager: {fileID: 772056303}
+  thrustController: {fileID: 772056304}
   timeController: {fileID: 932853253}
-  uIManager: {fileID: 1586431853}
-  lineVisibilityManager: {fileID: 1586431854}
-  trajectoryComputeController: {fileID: 1586431856}
+  uIManager: {fileID: 1134296948}
+  lineVisibilityController: {fileID: 2109498701}
+  trajectoryComputeController: {fileID: 2109498700}
   trajectoryRenderer: {fileID: 2109498698}
-  objectPlacementManager: {fileID: 1586431852}
+  objectPlacementManager: {fileID: 1119227883}
   velocityDragManager: {fileID: 1119227881}
   rocketThrustAudio: {fileID: 237235847}
   tutorialController: {fileID: 716810392}
   cameraButtonProxy: {fileID: 1667378689}
-  bodyService: {fileID: 1586431862}
+  bodyService: {fileID: 1354312600}
 --- !u!1 &555887999
 GameObject:
   m_ObjectHideFlags: 0
@@ -9306,7 +9306,7 @@ RectTransform:
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
   m_AnchorMin: {x: 0.112541676, y: 0.040662423}
   m_AnchorMax: {x: 0.23356251, y: 0.10414832}
-  m_AnchoredPosition: {x: -578.3, y: -413.6}
+  m_AnchoredPosition: {x: -578.30005, y: -413.6}
   m_SizeDelta: {x: 146.39362, y: 51.098938}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &593260704
@@ -9420,8 +9420,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartRadialInThrust
           m_Mode: 1
           m_Arguments:
@@ -9448,8 +9448,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopRadialInThrust
           m_Mode: 1
           m_Arguments:
@@ -9603,7 +9603,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431852}
+      - m_Target: {fileID: 1119227883}
         m_TargetAssemblyTypeName: ObjectPlacementManager, CoreRuntime
         m_MethodName: PlaceObjectFromTLE
         m_Mode: 1
@@ -10617,8 +10617,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartForwardThrust
           m_Mode: 1
           m_Arguments:
@@ -10645,8 +10645,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopForwardThrust
           m_Mode: 1
           m_Arguments:
@@ -10932,37 +10932,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 706326775}
   m_CullTransparentMesh: 1
---- !u!1 &708421543
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 708421544}
-  m_Layer: 0
-  m_Name: CalculationsController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &708421544
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 708421543}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1803650427}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &716810390
 GameObject:
   m_ObjectHideFlags: 0
@@ -11524,6 +11493,90 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 771792866}
   m_CullTransparentMesh: 1
+--- !u!1 &772056302
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 772056305}
+  - component: {fileID: 772056304}
+  - component: {fileID: 772056303}
+  m_Layer: 0
+  m_Name: ManeuverManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!114 &772056303
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 772056302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 20071fad0500f634987422dda57b02d3, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maneuverTrajectoryLine: {fileID: 0}
+  trajectoryRenderer: {fileID: 0}
+  timeController: {fileID: 0}
+  maneuverTimeSlider: {fileID: 1250303462}
+  burnDropdown: {fileID: 279922321}
+  setupButton: {fileID: 2011604323}
+  adjustNodeSlider: {fileID: 1250303462}
+  placeNodeButton: {fileID: 205979987}
+  isSliderActive: 0
+  green: {fileID: 2100000, guid: 5ba0d4a738126dc45bab53822e13e1d0, type: 2}
+  red: {fileID: 2100000, guid: bd324aa9b60fca74aad1a596425e789b, type: 2}
+  bodyRuntimeCoordinator: {fileID: 0}
+--- !u!114 &772056304
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 772056302}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 9c71be2541f3ee842a9f85aff7d6bce6, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  maxForwardThrustMagnitude: 10
+  maxReverseThrustMagnitude: 10
+  maxLateralThrustMagnitude: 10
+  maxRadialThrustMagnitude: 10
+  thrustParticles: {fileID: 1019586387}
+  isForwardThrustActive: 0
+  isReverseThrustActive: 0
+  isLeftThrustActive: 0
+  isRightThrustActive: 0
+  isRadialInThrustActive: 0
+  isRadialOutThrustActive: 0
+  cameraController: {fileID: 0}
+  cameraMovement: {fileID: 0}
+  trajectoryRenderer: {fileID: 0}
+  bodyRuntimeCoordinator: {fileID: 0}
+--- !u!4 &772056305
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 772056302}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &776932270
 GameObject:
   m_ObjectHideFlags: 0
@@ -11812,8 +11865,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartRadialOutThrust
           m_Mode: 1
           m_Arguments:
@@ -11840,8 +11893,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopRadialOutThrust
           m_Mode: 1
           m_Arguments:
@@ -12660,7 +12713,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431853}
+      - m_Target: {fileID: 1134296948}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: SwitchBurnMode
         m_Mode: 1
@@ -13666,7 +13719,7 @@ MonoBehaviour:
   m_enableAutoSizing: 0
   m_fontSizeMin: 18
   m_fontSizeMax: 72
-  m_fontStyle: 0
+  m_fontStyle: 1
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
   m_textAlignment: 65535
@@ -13958,6 +14011,7 @@ MonoBehaviour:
   pauseButton: {fileID: 2112860532}
   pauseButtonText: {fileID: 60513572}
   uIManager: {fileID: 0}
+  cameraController: {fileID: 0}
 --- !u!4 &933124824 stripped
 Transform:
   m_CorrespondingSourceObject: {fileID: 8915452017620154880, guid: 739c2da935a11ac43a6ee56e5cef1dbb, type: 3}
@@ -14038,37 +14092,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 933996014}
   m_CullTransparentMesh: 1
---- !u!1 &954413488
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 954413489}
-  m_Layer: 0
-  m_Name: NodeController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &954413489
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 954413488}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1803650427}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &961628097
 GameObject:
   m_ObjectHideFlags: 0
@@ -20245,8 +20268,9 @@ GameObject:
   m_Component:
   - component: {fileID: 1119227882}
   - component: {fileID: 1119227881}
+  - component: {fileID: 1119227883}
   m_Layer: 0
-  m_Name: VelocityDragManager
+  m_Name: PlacementManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -20266,9 +20290,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   mainCamera: {fileID: 330585545}
   dragLineRenderer: {fileID: 1744725512}
-  gravityManager: {fileID: 1586431850}
   trajectoryRenderer: {fileID: 0}
-  cameraController: {fileID: 0}
   tutorialController: {fileID: 0}
   velocityDisplayText: {fileID: 151038885}
   speedSlider: {fileID: 42808061}
@@ -20296,6 +20318,48 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1803650427}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1119227883
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1119227880}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6a71044423df5fb4588e53b65f8eadcd, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  mainCamera: {fileID: 330585545}
+  spherePrefab: {fileID: 8138528938423591098, guid: 739c2da935a11ac43a6ee56e5cef1dbb, type: 3}
+  trajectoryRenderer: {fileID: 0}
+  velocityDragManager: {fileID: 1119227881}
+  tutorialController: {fileID: 0}
+  objectNameInputField: {fileID: 861192241}
+  massInput: {fileID: 916841083}
+  radiusInput: {fileID: 770696344}
+  positionInput: {fileID: 1784521142}
+  placeObjectButton: {fileID: 229281974}
+  feedbackText: {fileID: 885149437}
+  kepNameInputField: {fileID: 281207403}
+  kepMassInputField: {fileID: 1713516112}
+  kepADegOrMetersInputField: {fileID: 372281857}
+  kepEccInputField: {fileID: 667094550}
+  kepIncDegInputField: {fileID: 2110941232}
+  kepRAANDegInputField: {fileID: 329563524}
+  kepArgPDegInputField: {fileID: 1150980957}
+  kepTrueAnomDegInputField: {fileID: 513570131}
+  placeKeplerObjectButton: {fileID: 1653725848}
+  tleNameInputField: {fileID: 687411727}
+  tleMassInputField: {fileID: 2004575630}
+  tleLine1InputField: {fileID: 706326777}
+  tleLine2InputField: {fileID: 812988481}
+  placeTLEObjectButton: {fileID: 634844777}
+  metersPerUnit: 10000
+  mu: 398600441800000
+  earthRadiusMeters: 6371925
+  ghostPreviewPrefab: {fileID: 913149381424323304, guid: 9997e5835dc224442bf55346e9c52a4b, type: 3}
+  lastPlacedGameObject: {fileID: 0}
 --- !u!1 &1127201820
 GameObject:
   m_ObjectHideFlags: 0
@@ -20432,6 +20496,92 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1127201820}
   m_CullTransparentMesh: 1
+--- !u!1 &1134296946
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1134296947}
+  - component: {fileID: 1134296948}
+  m_Layer: 0
+  m_Name: UI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1134296947
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134296946}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1134296948
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1134296946}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f91ffe0992e74414cb6eba95c46e10d4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  tutorialController: {fileID: 716810392}
+  freeCamButton: {fileID: 1142357709}
+  trackCamButton: {fileID: 1407380277}
+  instructionsButton: {fileID: 499242614}
+  objectPlacementPanel: {fileID: 61829408}
+  objectInfoPanel: {fileID: 223772662}
+  thrustButtons: {fileID: 573697104}
+  maneuverNodePanel: {fileID: 209359998}
+  burnControlsPanel: {fileID: 2034361207}
+  apogeePerigeePanel: {fileID: 397926655}
+  timeControlsPanel: {fileID: 1063296264}
+  instructionsPanel: {fileID: 1138443353}
+  toggleOptionsPanel: {fileID: 1948112842}
+  dropdown: {fileID: 1612063109}
+  placeTLEPanel: {fileID: 2110860975}
+  placementSelectPanel: {fileID: 1861547495}
+  cameraControls: {fileID: 790294473}
+  placeKeplerPanel: {fileID: 1609824493}
+  nameInputField: {fileID: 861192241}
+  positionInputField: {fileID: 1784521142}
+  massInputField: {fileID: 916841083}
+  radiusInputField: {fileID: 770696344}
+  velocityInputField: {fileID: 0}
+  placeObjectButton: {fileID: 229281974}
+  placementModeButton: {fileID: 1746140638}
+  burnControlButton: {fileID: 844738191}
+  earthCamButtonText: {fileID: 26694654}
+  instructionText: {fileID: 1138443355}
+  feedbackText: {fileID: 885149437}
+  apogeeText: {fileID: 1715665085}
+  perigeeText: {fileID: 288121592}
+  semiMajorAxisText: {fileID: 1873600792}
+  eccentricityText: {fileID: 1219915336}
+  orbitalPeriodText: {fileID: 289863554}
+  inclinationText: {fileID: 1511272215}
+  raanText: {fileID: 696612674}
+  deltaVText: {fileID: 444277609}
+  showInstructionText: 0
+  isTracking: 1
+  earthCamPressed: 1
+  tutorialPanel: {fileID: 1975263423}
+  skipButton: {fileID: 1730640448}
 --- !u!1 &1138443353
 GameObject:
   m_ObjectHideFlags: 0
@@ -20676,7 +20826,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431853}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UIManager, Assembly-CSharp
         m_MethodName: OnFreeCamPressed
         m_Mode: 1
@@ -21130,8 +21280,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StartRightThrust
           m_Mode: 1
           m_Arguments:
@@ -21158,8 +21308,8 @@ MonoBehaviour:
             m_StringArgument: 
             m_BoolArgument: 0
           m_CallState: 2
-        - m_Target: {fileID: 1586431855}
-          m_TargetAssemblyTypeName: ThrustController, Assembly-CSharp
+        - m_Target: {fileID: 772056304}
+          m_TargetAssemblyTypeName: ThrustController, CoreRuntime
           m_MethodName: StopRightThrust
           m_Mode: 1
           m_Arguments:
@@ -21973,6 +22123,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 159948688821dc14a8c6ed0f77d0656d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controller: {fileID: 0}
   activeColorHex: '#008CDB'
   inactiveColorHex: '#004A70'
   lineType: 0
@@ -22703,6 +22854,82 @@ Transform:
   - {fileID: 817157354}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!1 &1354312597
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1354312598}
+  - component: {fileID: 1354312601}
+  - component: {fileID: 1354312600}
+  - component: {fileID: 1354312599}
+  m_Layer: 0
+  m_Name: BodyManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1354312598
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354312597}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1354312599
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354312597}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d0f8d975f78c48143bd7a2a0cc725c36, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  bodyDropdown: {fileID: 1744299771}
+  dropdownObserver: {fileID: 0}
+  tutorialController: {fileID: 716810392}
+--- !u!114 &1354312600
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354312597}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: c1869b3ebed30054ea552b6560fe53cf, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+--- !u!114 &1354312601
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1354312597}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 0531bfd4ab6827449b9a3120e00a19cb, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  simulationTime: 0
+  minCollisionDistance: 0.5
+  bodyDropdown: {fileID: 1744299771}
 --- !u!1 &1362242733
 GameObject:
   m_ObjectHideFlags: 0
@@ -24526,6 +24753,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 159948688821dc14a8c6ed0f77d0656d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controller: {fileID: 0}
   activeColorHex: '#008CDB'
   inactiveColorHex: '#004A70'
   lineType: 1
@@ -25603,6 +25831,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 159948688821dc14a8c6ed0f77d0656d, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  controller: {fileID: 0}
   activeColorHex: '#008CDB'
   inactiveColorHex: '#004A70'
   lineType: 2
@@ -25790,282 +26019,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1578665957}
   m_CullTransparentMesh: 1
---- !u!1 &1586431846
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1586431849}
-  - component: {fileID: 1586431850}
-  - component: {fileID: 1586431851}
-  - component: {fileID: 1586431852}
-  - component: {fileID: 1586431853}
-  - component: {fileID: 1586431854}
-  - component: {fileID: 1586431855}
-  - component: {fileID: 1586431856}
-  - component: {fileID: 1586431860}
-  - component: {fileID: 1586431861}
-  - component: {fileID: 1586431862}
-  m_Layer: 0
-  m_Name: GameController
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1586431849
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  serializedVersion: 2
-  m_LocalRotation: {x: -0, y: -0, z: -0, w: 1}
-  m_LocalPosition: {x: -1659.2246, y: -881.81, z: -41.780045}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1803650427}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1586431850
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 0531bfd4ab6827449b9a3120e00a19cb, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  simulationTime: 0
-  minCollisionDistance: 0.5
-  bodyDropdown: {fileID: 1744299771}
---- !u!114 &1586431851
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: b4c190b26fbc8b54c9ea1dc6b77cc49e, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _uiManager: {fileID: 0}
-  _cameraMovement: {fileID: 0}
-  _freeCamera: {fileID: 0}
-  _bodies: []
-  _currentIndex: 0
---- !u!114 &1586431852
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6a71044423df5fb4588e53b65f8eadcd, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  mainCamera: {fileID: 330585545}
-  spherePrefab: {fileID: 8138528938423591098, guid: 739c2da935a11ac43a6ee56e5cef1dbb, type: 3}
-  trajectoryRenderer: {fileID: 0}
-  velocityDragManager: {fileID: 1119227881}
-  tutorialController: {fileID: 0}
-  objectNameInputField: {fileID: 861192241}
-  nameInputField: {fileID: 861192241}
-  massInput: {fileID: 916841083}
-  massInputField: {fileID: 916841083}
-  radiusInput: {fileID: 770696344}
-  positionInput: {fileID: 1784521142}
-  feedbackText: {fileID: 885149437}
-  placeObjectButton: {fileID: 229281974}
-  kepNameInputField: {fileID: 281207403}
-  kepMassInputField: {fileID: 1713516112}
-  kepADegOrMetersInputField: {fileID: 372281857}
-  kepEccInputField: {fileID: 667094550}
-  kepIncDegInputField: {fileID: 2110941232}
-  kepRAANDegInputField: {fileID: 329563524}
-  kepArgPDegInputField: {fileID: 1150980957}
-  kepTrueAnomDegInputField: {fileID: 513570131}
-  placeKeplerObjectButton: {fileID: 1653725848}
-  metersPerUnit: 10000
-  mu: 398600441800000
-  earthRadiusMeters: 6371925
-  tleNameInputField: {fileID: 687411727}
-  tleMassInputField: {fileID: 2004575630}
-  tleLine1InputField: {fileID: 706326777}
-  tleLine2InputField: {fileID: 812988481}
-  placeTLEObjectButton: {fileID: 634844777}
-  ghostPreviewPrefab: {fileID: 913149381424323304, guid: 9997e5835dc224442bf55346e9c52a4b, type: 3}
-  lastPlacedGameObject: {fileID: 0}
---- !u!114 &1586431853
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f91ffe0992e74414cb6eba95c46e10d4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tutorialController: {fileID: 716810392}
-  freeCamButton: {fileID: 1142357709}
-  trackCamButton: {fileID: 1407380277}
-  instructionsButton: {fileID: 499242614}
-  objectPlacementPanel: {fileID: 61829408}
-  objectInfoPanel: {fileID: 223772662}
-  thrustButtons: {fileID: 573697104}
-  maneuverNodePanel: {fileID: 209359998}
-  burnControlsPanel: {fileID: 2034361207}
-  apogeePerigeePanel: {fileID: 397926655}
-  timeControlsPanel: {fileID: 1063296264}
-  instructionsPanel: {fileID: 1138443353}
-  toggleOptionsPanel: {fileID: 1948112842}
-  dropdown: {fileID: 1612063109}
-  placeTLEPanel: {fileID: 2110860975}
-  placementSelectPanel: {fileID: 1861547495}
-  cameraControls: {fileID: 790294473}
-  placeKeplerPanel: {fileID: 1609824493}
-  nameInputField: {fileID: 861192241}
-  positionInputField: {fileID: 1784521142}
-  massInputField: {fileID: 916841083}
-  radiusInputField: {fileID: 770696344}
-  velocityInputField: {fileID: 0}
-  placeObjectButton: {fileID: 229281974}
-  placementModeButton: {fileID: 1746140638}
-  burnControlButton: {fileID: 844738191}
-  earthCamButtonText: {fileID: 26694654}
-  instructionText: {fileID: 1138443355}
-  feedbackText: {fileID: 885149437}
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
-  semiMajorAxisText: {fileID: 1873600792}
-  eccentricityText: {fileID: 1219915336}
-  orbitalPeriodText: {fileID: 289863554}
-  inclinationText: {fileID: 1511272215}
-  raanText: {fileID: 696612674}
-  deltaVText: {fileID: 444277609}
-  showInstructionText: 0
-  isTracking: 1
-  earthCamPressed: 1
-  tutorialPanel: {fileID: 1975263423}
-  skipButton: {fileID: 1730640448}
---- !u!114 &1586431854
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d1b9a5a21c17ba548a1a8b37a1eed965, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  centralTrajectoryRenderer: {fileID: 0}
---- !u!114 &1586431855
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 9c71be2541f3ee842a9f85aff7d6bce6, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  maxForwardThrustMagnitude: 10
-  maxReverseThrustMagnitude: 10
-  maxLateralThrustMagnitude: 10
-  maxRadialThrustMagnitude: 10
-  thrustParticles: {fileID: 1019586387}
-  isForwardThrustActive: 0
-  isReverseThrustActive: 0
-  isLeftThrustActive: 0
-  isRightThrustActive: 0
-  isRadialInThrustActive: 0
-  isRadialOutThrustActive: 0
-  cameraController: {fileID: 1586431851}
-  cameraMovement: {fileID: 0}
-  trajectoryRenderer: {fileID: 0}
-  gravityManager: {fileID: 0}
---- !u!114 &1586431856
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 0
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 59175a2c94b2e154499c31224094c177, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  trajectoryComputeShader: {fileID: 7200000, guid: 92de40aeb48844d41acf972133e9c856, type: 3}
---- !u!114 &1586431860
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d0f8d975f78c48143bd7a2a0cc725c36, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  bodyDropdown: {fileID: 1744299771}
-  dropdownObserver: {fileID: 0}
-  tutorialController: {fileID: 716810392}
---- !u!114 &1586431861
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 20071fad0500f634987422dda57b02d3, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  cachedTrajectory: []
-  maneuverTrajectoryLine: {fileID: 0}
-  trajectoryRenderer: {fileID: 0}
-  timeController: {fileID: 0}
-  maneuverTimeSlider: {fileID: 1250303462}
-  burnDropdown: {fileID: 279922321}
-  setupButton: {fileID: 2011604323}
-  adjustNodeSlider: {fileID: 1250303462}
-  placeNodeButton: {fileID: 205979987}
-  isSliderActive: 0
-  green: {fileID: 2100000, guid: 5ba0d4a738126dc45bab53822e13e1d0, type: 2}
-  red: {fileID: 2100000, guid: bd324aa9b60fca74aad1a596425e789b, type: 2}
-  gravityManager: {fileID: 0}
---- !u!114 &1586431862
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1586431846}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: c1869b3ebed30054ea552b6560fe53cf, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
 --- !u!1 &1590649024
 GameObject:
   m_ObjectHideFlags: 0
@@ -26583,9 +26536,21 @@ MonoBehaviour:
   m_OnClick:
     m_PersistentCalls:
       m_Calls:
-      - m_Target: {fileID: 1586431852}
+      - m_Target: {fileID: 1119227883}
         m_TargetAssemblyTypeName: ObjectPlacementManager, CoreRuntime
         m_MethodName: PlaceObjectFromKepler
+        m_Mode: 1
+        m_Arguments:
+          m_ObjectArgument: {fileID: 0}
+          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
+          m_IntArgument: 0
+          m_FloatArgument: 0
+          m_StringArgument: 
+          m_BoolArgument: 0
+        m_CallState: 2
+      - m_Target: {fileID: 237235845}
+        m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
+        m_MethodName: PlayClickSound
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -26644,6 +26609,7 @@ GameObject:
   - component: {fileID: 1667378687}
   - component: {fileID: 1667378688}
   - component: {fileID: 1667378689}
+  - component: {fileID: 1667378690}
   m_Layer: 0
   m_Name: CameraManager
   m_TagString: Untagged
@@ -26679,8 +26645,8 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   trajectoryRenderer: {fileID: 2109498698}
-  lineVisibilityManager: {fileID: 1586431854}
-  cameraController: {fileID: 1586431851}
+  lineVisibilityController: {fileID: 2109498701}
+  cameraController: {fileID: 1667378690}
 --- !u!114 &1667378689
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -26693,6 +26659,23 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 2700364e90978274596b3f81df114947, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+--- !u!114 &1667378690
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1667378686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: b4c190b26fbc8b54c9ea1dc6b77cc49e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _uiManager: {fileID: 0}
+  _cameraMovement: {fileID: 0}
+  _freeCamera: {fileID: 0}
+  _bodies: []
+  _currentIndex: 0
 --- !u!1 &1692098758
 GameObject:
   m_ObjectHideFlags: 0
@@ -27982,7 +27965,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431853}
+      - m_Target: {fileID: 1134296948}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: OnSkipButtonPressed
         m_Mode: 1
@@ -28502,21 +28485,9 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431853}
+      - m_Target: {fileID: 1134296948}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: SwitchPlacementMode
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 1586431852}
-        m_TargetAssemblyTypeName: ObjectPlacementManager, CoreRuntime
-        m_MethodName: ClearFields
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -29333,16 +29304,17 @@ Transform:
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:
-  - {fileID: 1586431849}
   - {fileID: 932853252}
   - {fileID: 1119227882}
-  - {fileID: 708421544}
-  - {fileID: 954413489}
   - {fileID: 534088644}
   - {fileID: 2109498699}
   - {fileID: 237235846}
   - {fileID: 716810391}
   - {fileID: 1667378687}
+  - {fileID: 1354312598}
+  - {fileID: 772056305}
+  - {fileID: 1134296947}
+  - {fileID: 2081669842}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1835204575
@@ -31036,12 +31008,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20
+  m_fontSize: 25
   m_fontSizeBase: 20
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_fontSizeMax: 25
   m_fontStyle: 1
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
@@ -31738,12 +31710,12 @@ MonoBehaviour:
   m_faceColor:
     serializedVersion: 2
     rgba: 4294967295
-  m_fontSize: 20
+  m_fontSize: 25
   m_fontSizeBase: 20
   m_fontWeight: 400
-  m_enableAutoSizing: 0
+  m_enableAutoSizing: 1
   m_fontSizeMin: 18
-  m_fontSizeMax: 72
+  m_fontSizeMax: 25
   m_fontStyle: 1
   m_HorizontalAlignment: 1
   m_VerticalAlignment: 256
@@ -31885,7 +31857,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1586431861}
+      - m_Target: {fileID: 772056303}
         m_TargetAssemblyTypeName: ManeuverNodeManager, CoreRuntime
         m_MethodName: OnAddManeuverNode
         m_Mode: 1
@@ -32338,6 +32310,50 @@ MonoBehaviour:
   m_ChildScaleWidth: 0
   m_ChildScaleHeight: 0
   m_ReverseArrangement: 0
+--- !u!1 &2081669841
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 2081669842}
+  - component: {fileID: 2081669843}
+  m_Layer: 0
+  m_Name: SystemManager
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &2081669842
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2081669841}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2081669843
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2081669841}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ad7243a37f674b640bc20c1dc8025531, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
 --- !u!1 &2109498697
 GameObject:
   m_ObjectHideFlags: 0
@@ -32348,8 +32364,10 @@ GameObject:
   m_Component:
   - component: {fileID: 2109498699}
   - component: {fileID: 2109498698}
+  - component: {fileID: 2109498701}
+  - component: {fileID: 2109498700}
   m_Layer: 0
-  m_Name: RendererTrajectory
+  m_Name: RenderManager
   m_TagString: Untagged
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
@@ -32374,17 +32392,20 @@ MonoBehaviour:
   perigeeText: {fileID: 288121592}
   thrustController: {fileID: 0}
   cameraMovement: {fileID: 0}
-  gravityManager: {fileID: 0}
+  bodyRuntimeCoordinator: {fileID: 0}
+  bodyService: {fileID: 0}
   trackedBody: {fileID: 0}
-  predictionProceduralLine: {fileID: 0}
-  originProceduralLine: {fileID: 0}
-  apogeeProceduralLine: {fileID: 0}
-  perigeeProceduralLine: {fileID: 0}
+  predictionLine: {fileID: 0}
+  originLine: {fileID: 0}
+  apogeeLine: {fileID: 0}
+  perigeeLine: {fileID: 0}
   preManeuverLine: {fileID: 0}
-  predictionLineColor: '#2978FF'
-  originLineColor: '#FFFFFF'
-  apogeeLineColor: '#C0392B'
-  perigeeLineColor: '#009B4D'
+  predictionColor: {r: 0.16078432, g: 0.47058824, b: 1, a: 1}
+  originColor: {r: 1, g: 1, b: 1, a: 1}
+  apogeeColor: {r: 0.7529412, g: 0.22352941, b: 0.16862746, a: 1}
+  perigeeColor: {r: 0, g: 0.60784316, b: 0.3019608, a: 1}
+  previewColor: {r: 1, g: 0.81960785, b: 0.4, a: 1}
+  lineDisableDistance: 20
   latestPrediction: []
   latestPredictionDeltaTime: 0
   latestPredictionStartTime: 0
@@ -32404,6 +32425,32 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1803650427}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &2109498700
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2109498697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 59175a2c94b2e154499c31224094c177, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  trajectoryComputeShader: {fileID: 7200000, guid: 92de40aeb48844d41acf972133e9c856, type: 3}
+--- !u!114 &2109498701
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 2109498697}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d1b9a5a21c17ba548a1a8b37a1eed965, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  centralTrajectoryRenderer: {fileID: 0}
 --- !u!1 &2110860975
 GameObject:
   m_ObjectHideFlags: 0

@@ -1,6 +1,10 @@
-// TutorialTypes.cs
 using UnityEngine;
 
+/// <summary>
+/// Defines all requirement types that can appear in a tutorial step,
+/// representing specific player actions or conditions that must be met
+/// to progress through the tutorial sequence.
+/// </summary>
 public enum RequirementType
 {
     None,
@@ -26,6 +30,10 @@ public enum RequirementType
     PlaceManeuverNode
 }
 
+/// <summary>
+/// Describes a single tutorial requirement, including its type and display label
+/// for checklist items in the tutorial UI.
+/// </summary>
 [System.Serializable]
 public struct RequirementDef
 {
@@ -34,6 +42,11 @@ public struct RequirementDef
     public string label;
 }
 
+/// <summary>
+/// Represents one step in the tutorial sequence, containing instructional text,
+/// a list of completion requirements, optional interstitial transition content,
+/// and auto-advance settings for smooth tutorial flow.
+/// </summary>
 [System.Serializable]
 public struct TutorialStep
 {
