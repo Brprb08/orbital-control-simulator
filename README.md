@@ -3,7 +3,7 @@
 Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn’t just a visualization tool. It’s a physics-based simulator that runs a native integrator with GPU-predicted trajectories for precise orbital mechanics. Built in Unity using a custom double-precision C++ core, it handles orbital propagation, thrust, and drag completely outside Unity’s built-in physics.
 
 [Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
-![Orbit Mechanics Simulator in Track Cam](./Assets/Images/10-19Track.png)
+![Track Cam](./Assets/Images/10-19Track.png)
 ![Elliptical Orbit](./Assets/Images/10-19SatelliteUpClose.png)
 ![Free Cam](./Assets/Images/10-19Free.png)
 
