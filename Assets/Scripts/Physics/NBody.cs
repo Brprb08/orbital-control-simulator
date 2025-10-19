@@ -55,6 +55,10 @@ public class NBody : MonoBehaviour
     private Vector3 burnStartVelocity;
     private Vector3 burnEndVelocity;
 
+    private OrbitalFrameFilter basisFilter = new OrbitalFrameFilter();
+    public bool projectLateralPerSubstep = false;
+
+
     private SimContext ctx;
 
     /// <summary>
@@ -272,10 +276,6 @@ public class NBody : MonoBehaviour
         thrustController.SetDirectionalThrust(node.burnType);
     }
 
-    /// <summary>
-    /// Integrates motion using Dormand–Prince substeps and applies drag/forces from relevant bodies.
-    /// Also checks for collision/escape after integration.
-    /// </summary>
     void SimulateOrbitalMotion()
     {
         if (relevantBodies == null || relevantBodies.Count == 0) return;
@@ -291,12 +291,68 @@ public class NBody : MonoBehaviour
             masses[i] = relevantBodies[i].trueMass;
         }
 
-        const float dtMax = 0.002f;
-        int substeps = Mathf.CeilToInt(Time.fixedDeltaTime / dtMax);
+        // ----- time slicing -----
+        const float dtMax = 0.002f; // ~2 ms substep cap
+        int substeps = Mathf.Max(1, Mathf.CeilToInt(Time.fixedDeltaTime / dtMax));
         float dt = Time.fixedDeltaTime / substeps;
+
+        // ----- lateral projection gating -----
+        // bool lateralActive = thrustController != null &&
+        //                      (thrustController.isRightThrustActive || thrustController.isLeftThrustActive);
+
+        // // ThrustController should set this on the ship when left/right is down
+        // bool shouldProject = projectLateralPerSubstep && lateralActive;
+        var att = GetComponent<AttitudeController>();
+        bool shouldProject = false;
+        if (att && att.mode == AttitudeController.PointingMode.Normal || att.mode == AttitudeController.PointingMode.AntiNormal) shouldProject = true;
+
+        // If attitude is holding a fixed world orientation, do NOT re-project (we’d fight the hold)
+
+        if (att && att.mode == AttitudeController.PointingMode.HoldCurrent)
+            shouldProject = false;
 
         for (int s = 0; s < substeps; s++)
         {
+            // Start with force accumulated this frame
+            Vector3 F = state.force;
+
+            // Keep lateral burns energy-neutral by enforcing F ⟂ v (i.e., F ∥ n̂)
+            if (shouldProject && F.sqrMagnitude > 0f)
+            {
+                Vector3 rInst = state.position.ToVector3();
+                Vector3 vInst = state.velocity.ToVector3();
+
+                float r2 = rInst.sqrMagnitude;
+                float v2 = vInst.sqrMagnitude;
+
+                if (r2 > 1e-18f && v2 > 1e-18f)
+                {
+                    Vector3 rHat = rInst / Mathf.Sqrt(r2);
+                    Vector3 vHat = vInst / Mathf.Sqrt(v2);
+                    Vector3 nHat = Vector3.Cross(rHat, vHat);
+                    float n2 = nHat.sqrMagnitude;
+
+                    if (n2 > 1e-18f)
+                    {
+                        nHat /= Mathf.Sqrt(n2);
+
+                        float Fmag = F.magnitude;
+                        // Preserve the intended left/right sign relative to n̂
+                        float sign = Mathf.Sign(Vector3.Dot(F, nHat));
+                        if (sign == 0f) sign = 1f;
+
+                        F = nHat * (Fmag * sign);
+                    }
+                    // else: orbital plane is degenerate this substep — skip projection
+                }
+                // else: r or v invalid — skip projection
+            }
+
+            // NaN clamp just in case
+            if (float.IsNaN(F.x) || float.IsNaN(F.y) || float.IsNaN(F.z))
+                F = Vector3.zero;
+
+            // Integrate one substep with per-substep (possibly projected) force
             NativePhysics.DormandPrinceSingle(
                 ref state.position,
                 ref state.velocity,
@@ -305,12 +361,13 @@ public class NBody : MonoBehaviour
                 masses,
                 numBodies,
                 dt,
-                state.force,
+                F,
                 (float)state.dragCoefficient,
                 (float)state.crossSectionArea
             );
         }
 
+        // Sync Transform / cached velocity
         transform.position = state.position.ToVector3();
         velocity = state.velocity.ToVector3();
 

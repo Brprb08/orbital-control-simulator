@@ -25,6 +25,7 @@ public class SimulationBootstrap : MonoBehaviour
     public TutorialController tutorialController;
     public CameraButtonProxy cameraButtonProxy;
     public BodyService bodyService;
+    public AttitudeUIBinder attitudeUIBinder;
     private SimContext ctx;
 
     /// <summary>
@@ -52,6 +53,7 @@ public class SimulationBootstrap : MonoBehaviour
             TutorialController = tutorialController,
             CameraButtonProxy = cameraButtonProxy,
             BodyService = bodyService,
+            AttitudeUIBinder = attitudeUIBinder,
         };
 
         // Initialize in dependency order
@@ -73,5 +75,6 @@ public class SimulationBootstrap : MonoBehaviour
         velocityDragManager.Initialize(ctx);
         rocketThrustAudio.Initialize(ctx);
         tutorialController.Initialize(ctx);
+        attitudeUIBinder.Initialize(ctx);
     }
 }

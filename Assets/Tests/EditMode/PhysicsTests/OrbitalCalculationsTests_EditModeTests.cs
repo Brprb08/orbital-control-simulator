@@ -54,7 +54,7 @@ public class OrbitalCalculationsTests
         double3 position_d = new double3(700f / 10f, 0, 0); // 700 km in units
         double3 zeroVelocity_d = double3.zero;
 
-        LogAssert.Expect(LogType.Error, "[ERROR] Position or velocity magnitude too small. Cannot compute orbital parameters.");
+        LogAssert.Expect(LogType.Warning, "[ERROR] Position or velocity magnitude too small. Cannot compute orbital parameters.");
 
         var result = OrbitalCalculations.CalculateOrbitalParameters(
             earthMass,

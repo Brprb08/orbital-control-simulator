@@ -19,4 +19,5 @@ public class SimContext
     public TutorialController TutorialController { get; set; }
     public ICameraTracker CameraTracker => CameraController;
     public CameraButtonProxy CameraButtonProxy { get; set; }
+    public AttitudeUIBinder AttitudeUIBinder { get; set; }
 }

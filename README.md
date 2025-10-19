@@ -1,8 +1,8 @@
 # Orbital Control Simulator
 
-Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn’t just a visualization tool. It’s a physics-based simulator that uses a native integrator and GPU-predicted trajectories to model orbital mechanics with precision. Built in Unity and powered by a custom double-precision C++ backend, it handles maneuver nodes, atmospheric drag, and orbital propagation entirely outside Unity’s physics system.
+Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn’t just a visualization tool. It’s a physics-based simulator that runs a native integrator with GPU-predicted trajectories for precise orbital mechanics. Built in Unity using a custom double-precision C++ core, it handles orbital propagation, thrust, and drag completely outside Unity’s built-in physics.
 
-[🎥 Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
+[Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Orbit Mechanics Simulator in Track Cam](./Assets/Images/06-17Track.png)
 ![Elliptical Orbit](./Assets/Images/06-17SatelliteUpClose.png)
 ![Free Cam](./Assets/Images/06-17Free.png)
@@ -11,31 +11,7 @@ Drop in real satellite data, apply thrust, and watch orbital paths shift in real
 
 ## Why I Built This
 
-I got interested in orbital mechanics after watching a few rocket launches and started digging into what actually happens after liftoff. I didn’t have a background in orbital physics or game development, so I used this project as a way to learn both. I wanted something that combined low-level systems, real-time performance, physics modeling, and 3D visualization. This led to me making a simulator that models real orbital behavior using a custom C++ physics engine, double-precision integration, and Unity-based rendering. The goal wasn’t just to visualize orbits. It was to understand and simulate them as accurately as possible.
-
----
-
-## Capabilities & Features
-
-_All functionality is live in runtime._
-
-1. Live computation of orbital parameters including apogee, perigee, velocity, altitude, period, inclination, eccentricity, semi-major axis, and RAAN
-2. Real-time orbital decay via atmospheric drag modeling
-3. Instant thrust maneuvers in multiple directions (prograde, radial, normal, etc.)
-4. Toggle between Free Thrust and early Maneuver Node system
-5. In Node mode:
-   - Select burn direction (prograde, retrograde, radial, normal, etc.)
-   - Setup a maneuver node and adjust its orbital position
-   - Auto-execute burns when the satellite reaches the node
-   - See updated orbital paths post-burn with color-coded trajectories (gray = old, blue = new)
-6. GPU-predicted trajectories rendered using async RK4 integration (separate from live sim)
-7. Runtime placement of satellites with mass, radius, velocity, and direction
-   - **Cartesian Placement:** Define satellites using 3D position and velocity vectors.
-   - **TLE Placement:** Import real satellites using standard Two-Line Element data.
-   - **Keplerian Placement:** Create orbits from classical orbital elements (a, e, i, Ω, ω, ν).
-8. Add satellites at runtime via TLE input
-9. Time scaling from 1x to 100x for long-term simulations
-10. Dual camera modes (free roam and tracking)
+I got curious about orbital mechanics after watching a few SpaceX launches and wondering what really happens once the second stage reaches orbit. I didn’t have a background in orbital dynamics or game development, but I did have one in computer science and wanted to build something that tied all of it together. It started as a simple scene with a few moving spheres, and over time I just kept adding to it. It never really stopped growing.
 
 ---
 
@@ -51,12 +27,30 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 
 ---
 
+## Capabilities & Features
+
+_All functionality runs live at runtime._
+
+1. Live computation of orbital parameters — apogee, perigee, velocity, altitude, period, inclination, eccentricity, semi-major axis, RAAN
+2. Real-time orbital decay using an atmospheric drag model
+3. Thrust in the direction you’re pointing (prograde, retrograde, nadir/zenith, normal/antinormal)
+4. **Attitude control system** with selectable pointing modes and smooth or snap slewing
+5. GPU-predicted trajectories rendered with async RK4 integration (separate from the live sim)
+6. Runtime placement of satellites with configurable mass, radius, velocity, and direction
+   - **Cartesian Placement:** position + velocity vectors
+   - **TLE Placement:** import real satellites via Two-Line Elements
+   - **Keplerian Placement:** create orbits from classical elements (a, e, i, Ω, ω, ν)
+7. Add satellites dynamically at runtime via TLE input
+8. Adjustable time scale from 1× to 100× for long-run propagation
+9. Dual camera modes (free roam and tracking)
+
+---
+
 ## Architecture Overview
 
 - **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator, double-precision, real-time execution
 - **Unity Frontend:** UI, scene management, camera controls, and GPU-based line rendering
 - **Thrust Model:** Instantaneous impulse-based velocity change (scaled by body mass)
-- **Atmospheric Drag:** Empirical model using interpolated density tables and cross-sectional area
 - **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
 
 ---
@@ -65,7 +59,7 @@ I built this to explore and implement orbital mechanics concepts in a real-time 
 
 ### Requirements
 
-- Unity 2020.3 or later (tested on LTS versions)
+- Unity 2020.3 or later
 - Windows 64-bit (required for native C++ DLL support)
 
 ### Run from the Unity Editor
@@ -113,21 +107,21 @@ All required DLLs (including the native physics plugin and its runtime dependenc
 
 ## Interactive Tutorial (Built-In)
 
-When you first press **Play** in Unity or run the built executable, an **interactive tutorial** automatically starts to guide you through the basics. Camera controls, satellite placement, and orbital maneuvers.
+When you first press **Play** in Unity or run the built executable, an interactive tutorial automatically startsand takes you through the basics. Camera controls, satellite placement, and orbital maneuvers.
 
 - **Starts automatically** on first launch
 - **Fully interactive**: perform real actions to progress
-- **Manual control**: use **Next**, **Back**, or **Skip Tutorial** anytime
+- **Manual control**: use Next, Back, or Skip Tutorial anytime
 
 **Sequence:**
 
 - Learn camera controls and zoom with Track, Earth, and Free Cam
 - Move freely with WASD and mouse look
-- Place satellites by entering mass and radius
-- Set velocity and apply thrust to form stable orbits
-- Adjust time scale and plan burns or use maneuver nodes
+- Place satellites by entering mass and radius and set velocity
+- Adjust time scale
+- Apply thrust to perform maneuvers
 
-If you’d rather explore freely, just click **Skip Tutorial** when it appears.
+If you’d rather explore freely, just click Skip Tutorial when it appears.
 
 ---
 

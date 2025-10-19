@@ -9,21 +9,12 @@ public class ThrustController : MonoBehaviour
 {
     [Header("Thrust Settings")]
     public float maxForwardThrustMagnitude = 10f;
-    public float maxReverseThrustMagnitude = 10f;
-    public float maxLateralThrustMagnitude = 10f;
-    public float maxRadialThrustMagnitude = 10f;
-    // public float thrustRampUpTime = 2f;
 
     [Header("Visual Feedback")]
     public ParticleSystem thrustParticles;
 
     [Header("Thrust Flags")]
     public bool isForwardThrustActive = false;
-    public bool isReverseThrustActive = false;
-    public bool isLeftThrustActive = false;
-    public bool isRightThrustActive = false;
-    public bool isRadialInThrustActive = false;
-    public bool isRadialOutThrustActive = false;
 
     [Header("References - Scripts")]
     public CameraController cameraController;
@@ -31,6 +22,10 @@ public class ThrustController : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
     public BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private TutorialController tutorialController;
+
+    private AttitudeController attitude;
+
+    bool isFireHeld;
 
     [Header("Thrust Configs")]
     private bool thrustStopped = false;
@@ -41,12 +36,7 @@ public class ThrustController : MonoBehaviour
     /// True if any thrust flag is active.
     /// </summary>
     public bool IsThrusting =>
-        isForwardThrustActive
-        || isReverseThrustActive
-        || isLeftThrustActive
-        || isRightThrustActive
-        || isRadialInThrustActive
-        || isRadialOutThrustActive;
+        isForwardThrustActive;
 
     /// <summary>
     /// Injects context, resolves dependencies, and initializes thrust VFX.
@@ -75,11 +65,9 @@ public class ThrustController : MonoBehaviour
 
         thrustParticles.Stop();
         thrustParticles.Clear();
+
     }
 
-    /// <summary>
-    /// Applies thrust each physics tick based on active flags and current orbital basis.
-    /// </summary>
     void FixedUpdate()
     {
         if (cameraMovement == null) return;
@@ -87,47 +75,57 @@ public class ThrustController : MonoBehaviour
         NBody ship = cameraMovement.targetBody;
         if (ship == null) return;
 
-        // Orbital basis (radial, prograde, normal) in the same inertial frame
-        Vector3 r = ship.transform.position - Vector3.zero;
-        Vector3 v = ship.velocity - Vector3.zero;
+        // Ensure we have the craft's attitude controller
+        if (!attitude) attitude = ship.GetComponent<AttitudeController>();
 
-        Vector3 rHat = r.normalized;                         // radial-out
-        Vector3 vHat = v.normalized;                         // prograde
-        Vector3 nHat = Vector3.Cross(rHat, vHat).normalized; // orbit normal
+        // Body axes in world space
+        Transform t = ship.transform;
+        Vector3 fwd = t.forward;   // +Z in Unity
+        Vector3 right = t.right;   // +X
+        Vector3 up = t.up;         // +Y
+
+        // Central body position
+        Vector3 center = Vector3.zero;
+        var svc = ctx?.BodyService;
+        if (svc != null && svc.CentralBody)
+            center = svc.CentralBody.transform.position;
+
+        Vector3 r = ship.transform.position - center;
+        Vector3 v = ship.velocity;
+
+        Vector3 rHat = r.normalized;
+        Vector3 vHat = v.normalized;
+
+        // nominal orbit normal
+        Vector3 nHat = Vector3.Cross(rHat, vHat);
+        if (nHat.sqrMagnitude < 1e-12f)
+        {
+            // fallback normal using a stable world reference
+            Vector3 refUp = (Mathf.Abs(Vector3.Dot(rHat, Vector3.up)) < 0.9f) ? Vector3.up : Vector3.forward;
+            nHat = Vector3.Cross(rHat, refUp);
+        }
+        nHat.Normalize();
+
 
         bool isThrusting = false;
+        bool lateralActive = false;
 
+        // --- Thrust modes ---
         if (isForwardThrustActive)
         {
-            ApplyThrust(ship, maxForwardThrustMagnitude, vHat);
-            isThrusting = true;
-        }
-        else if (isReverseThrustActive)
-        {
-            ApplyThrust(ship, maxReverseThrustMagnitude, -vHat);
-            isThrusting = true;
-        }
-        else if (isRightThrustActive)   // Normal
-        {
-            ApplyThrust(ship, maxLateralThrustMagnitude, nHat);
-            isThrusting = true;
-        }
-        else if (isLeftThrustActive)    // Anti-Normal
-        {
-            ApplyThrust(ship, maxLateralThrustMagnitude, -nHat);
-            isThrusting = true;
-        }
-        else if (isRadialInThrustActive)
-        {
-            ApplyThrust(ship, maxRadialThrustMagnitude, -rHat);
-            isThrusting = true;
-        }
-        else if (isRadialOutThrustActive)
-        {
-            ApplyThrust(ship, maxRadialThrustMagnitude, rHat);
+            ApplyThrust(ship, maxForwardThrustMagnitude, fwd);
             isThrusting = true;
         }
 
+        // --- Control integrator behavior ---
+        bool holdCurrent = attitude != null &&
+                           attitude.mode == AttitudeController.PointingMode.HoldCurrent;
+
+        // Only enable per-substep re-projection if we’re actually doing a lateral burn
+        // AND not in HoldCurrent mode.
+        ship.projectLateralPerSubstep = lateralActive && !holdCurrent;
+
+        // --- Visuals / cleanup ---
         if (!isThrusting)
         {
             thrustParticles.Stop();
@@ -179,20 +177,22 @@ public class ThrustController : MonoBehaviour
         }
     }
 
+    [SerializeField] float backOffset = 0.6f;
     /// <summary>
     /// Positions/orients the thrust particle system and plays it when thrust starts.
     /// </summary>
     private void UpdateThrustParticleSystem(NBody targetBody, Vector3 thrustDirection)
     {
-        if (thrustParticles == null)
-        {
-            Debug.LogError("ThrustController: thrustParticles is null! Ensure the particle system is assigned.");
-            return;
-        }
         if (!thrustParticles) return;
 
-        thrustParticles.transform.position = targetBody.transform.position;
-        thrustParticles.transform.rotation = Quaternion.LookRotation(-thrustDirection, targetBody.transform.up);
+        // Build rotation first
+        var rot = Quaternion.LookRotation(-thrustDirection.normalized, targetBody.transform.up);
+
+        // Offset "back" relative to the particle system's forward (which is -thrustDirection)
+        // rot * (Vector3.forward) == +thrustDirection (toward the craft)
+        Vector3 pos = targetBody.transform.position + rot * Vector3.forward * backOffset;
+
+        thrustParticles.transform.SetPositionAndRotation(pos, rot);
 
         if (!thrustParticles.isPlaying || thrustStopped)
         {
@@ -209,26 +209,12 @@ public class ThrustController : MonoBehaviour
     {
         // Reset all
         isForwardThrustActive = false;
-        isReverseThrustActive = false;
-        isLeftThrustActive = false;
-        isRightThrustActive = false;
-        isRadialInThrustActive = false;
-        isRadialOutThrustActive = false;
+
 
         switch (burnDirection)
         {
             case "Prograde":
                 isForwardThrustActive = true; break;
-            case "Retrograde":
-                isReverseThrustActive = true; break;
-            case "Radial In":
-                isRadialInThrustActive = true; break;
-            case "Radial Out":
-                isRadialOutThrustActive = true; break;
-            case "Normal":
-                isRightThrustActive = true; break;
-            case "Anti-Normal":
-                isLeftThrustActive = true; break;
             default:
                 isForwardThrustActive = true;
                 Debug.LogWarning($"Unknown burn direction: {burnDirection}. Defaulting to Prograde.");
@@ -240,53 +226,18 @@ public class ThrustController : MonoBehaviour
     public void StopAllThrust()
     {
         isForwardThrustActive = false;
-        isReverseThrustActive = false;
-        isLeftThrustActive = false;
-        isRightThrustActive = false;
-        isRadialInThrustActive = false;
-        isRadialOutThrustActive = false;
     }
 
     // UI Button Handlers
-    public void StartForwardThrust() => isForwardThrustActive = true;
+    public void StartForwardThrust()
+    {
+        isForwardThrustActive = true;
+        isFireHeld = true;
+    }
     public void StopForwardThrust()
     {
         isForwardThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    public void StartReverseThrust() => isReverseThrustActive = true;
-    public void StopReverseThrust()
-    {
-        isReverseThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    public void StartLeftThrust() => isLeftThrustActive = true;
-    public void StopLeftThrust()
-    {
-        isLeftThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    public void StartRightThrust() => isRightThrustActive = true;
-    public void StopRightThrust()
-    {
-        isRightThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    public void StartRadialInThrust() => isRadialInThrustActive = true;
-    public void StopRadialInThrust()
-    {
-        isRadialInThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
-    }
-
-    public void StartRadialOutThrust() => isRadialOutThrustActive = true;
-    public void StopRadialOutThrust()
-    {
-        isRadialOutThrustActive = false;
+        isFireHeld = false;
         EventSystem.current.SetSelectedGameObject(null);
     }
 }

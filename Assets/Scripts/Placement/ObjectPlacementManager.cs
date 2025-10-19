@@ -125,7 +125,10 @@ public class ObjectPlacementManager : MonoBehaviour
 
         HideGhost();
 
-        lastPlacedGameObject = CreateSatellite(name, pos, radius, mass, null);
+        // TODO - TEMP Radius default
+        Vector3 radiusDefault = Vector3.one;
+
+        lastPlacedGameObject = CreateSatellite(name, pos, radiusDefault, mass, null);
         PreviewSilently(lastPlacedGameObject.transform);
 
         // Manual placement expects a drag-to-set-velocity step -> lock inputs until user finishes/cancels
@@ -367,8 +370,8 @@ public class ObjectPlacementManager : MonoBehaviour
 
         feedbackText.text = "";
 
-        if (velocityDragManager != null && velocityDragManager.dragLineRenderer != null)
-            velocityDragManager.dragLineRenderer.positionCount = 0;
+        // if (velocityDragManager != null && velocityDragManager.dragLineRenderer != null)
+        //     velocityDragManager.dragLineRenderer.positionCount = 0;
 
         if (cameraTracker != null) cameraTracker.ReturnToTracking();
     }
@@ -405,7 +408,7 @@ public class ObjectPlacementManager : MonoBehaviour
         }
         else
         {
-            feedbackText.text = "Invalid. Mass should be 500-1,000,000 kg.";
+            feedbackText.text = "Invalid Mass: Should be between 500-1,000,000. Units are in kg by default.";
         }
     }
 
@@ -430,7 +433,7 @@ public class ObjectPlacementManager : MonoBehaviour
         }
         else
         {
-            feedbackText.text = "Invalid format. Use numeric x,y,z values.";
+            feedbackText.text = "Invalid Radius: Format is x,y,x. Ex. 1,2,1";
         }
     }
 
@@ -457,14 +460,14 @@ public class ObjectPlacementManager : MonoBehaviour
         if (ParsingUtils.TryParseVector3(input, out Vector3 targetPosition))
         {
             float distanceFromEarth = Vector3.Distance(Vector3.zero, targetPosition);
-            float minDistance = 638f;
+            float minDistance = 640f;
             float maxDistance = 5000f;
 
             if (distanceFromEarth < minDistance || distanceFromEarth > maxDistance)
             {
                 ghostObjectPlaced = false;
                 if (ghostInstance != null) ghostInstance.SetActive(false);
-                feedbackText.text = $"Distance must be between {minDistance * 10f:N0} km and {maxDistance * 10f:N0} km from Earth.";
+                feedbackText.text = $" Position must have a magnitude greater than 640, otherwise your inside Earth. Ex. 641,0,0";
                 return;
             }
 
@@ -476,7 +479,7 @@ public class ObjectPlacementManager : MonoBehaviour
         else
         {
             HideGhost();
-            feedbackText.text = "Invalid format. Use numeric x,y,z values.";
+            feedbackText.text = "Invalid Position: Format is x,y,x. Example 1000,200,30";
         }
     }
 

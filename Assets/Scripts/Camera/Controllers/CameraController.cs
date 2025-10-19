@@ -98,7 +98,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
             return;
         }
 
-        EnsureServiceSubscriptions(true);
+        Subscribe();
         RefreshBodiesList();
         TrySetInitialTarget();
     }
@@ -122,30 +122,25 @@ public class CameraController : MonoBehaviour, ICameraTracker
         }
     }
 
-    private void OnEnable() => EnsureServiceSubscriptions(true);
-    private void OnDisable() => EnsureServiceSubscriptions(false);
+    private void OnEnable() => Subscribe();
+    private void OnDisable() => Unsubscribe();
+    private void OnDestroy() => Unsubscribe();
 
-    /// <summary>Subscribes or unsubscribes from BodyService events.</summary>
-    private void EnsureServiceSubscriptions(bool subscribe)
+    private void Subscribe()
     {
         if (_bodyService == null) return;
-
-        if (subscribe)
-        {
-            _onBodyAddedHandler ??= OnBodyAdded;
-            _onBodyRemovedHandler ??= OnBodyRemoved;
-
-            _bodyService.BodyAdded -= _onBodyAddedHandler;
-            _bodyService.BodyRemoved -= _onBodyRemovedHandler;
-            _bodyService.BodyAdded += _onBodyAddedHandler;
-            _bodyService.BodyRemoved += _onBodyRemovedHandler;
-        }
-        else
-        {
-            if (_onBodyAddedHandler != null) _bodyService.BodyAdded -= _onBodyAddedHandler;
-            if (_onBodyRemovedHandler != null) _bodyService.BodyRemoved -= _onBodyRemovedHandler;
-        }
+        _bodyService.BodyAdded -= OnBodyAdded;
+        _bodyService.BodyRemoved -= OnBodyRemoved;
+        _bodyService.BodyAdded += OnBodyAdded;
+        _bodyService.BodyRemoved += OnBodyRemoved;
     }
+    private void Unsubscribe()
+    {
+        if (_bodyService == null) return;
+        _bodyService.BodyAdded -= OnBodyAdded;
+        _bodyService.BodyRemoved -= OnBodyRemoved;
+    }
+
 
     private void OnBodyAdded(NBody b)
     {
@@ -323,7 +318,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         }
     }
 
-    /// <summary>Previews a placeholder orbit while in Free mode (for UI feedback).</summary>
+    /// <summary>Previews a placeholder orbit while in Free mode (for UI feedback). Used in ObjectPlacementManager</summary>
     public void PreviewPlaceholderInFree(Transform placeholder)
     {
         if (placeholder == null || _cameraMovement == null) return;
@@ -363,24 +358,24 @@ public class CameraController : MonoBehaviour, ICameraTracker
         var prev = _mode;
         _mode = next;
 
-        if (prev == CameraMode.Free && next != CameraMode.Free)
+        if (prev == CameraMode.Free && _mode != CameraMode.Free)
             EndPreviewPlaceholder();
 
-        ApplyModeToCamera(next);
-        EmitModeChanged(next);
+        ApplyModeToCamera(_mode);
+        EmitModeChanged(_mode);
     }
 
     private void ApplyModeToCamera(CameraMode mode)
     {
         if (_cameraMovement != null)
         {
-            _cameraMovement.isFreeCamMode = (mode == CameraMode.Free);
-            _cameraMovement.inEarthCam = (mode == CameraMode.Earth);
-            _cameraMovement.enabled = (mode != CameraMode.Free);
+            _cameraMovement.isFreeCamMode = mode == CameraMode.Free;
+            _cameraMovement.inEarthCam = mode == CameraMode.Earth;
+            _cameraMovement.enabled = mode != CameraMode.Free;
         }
 
         if (_uiManager != null)
-            _uiManager.placementModeButton.interactable = (mode == CameraMode.Free);
+            _uiManager.placementModeButton.interactable = mode == CameraMode.Free;
     }
 
     private void TrackTarget(NBody body, Transform placeholder, CameraMode mode)
@@ -419,6 +414,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         if (placeholder != null) EmitTrackedPlaceholder(placeholder);
     }
 
+    // Used in ObjectPlacementManager
     public void BeginUiSuppress() => _suppressUiSignals = true;
     public void EndUiSuppress() => _suppressUiSignals = false;
 
@@ -427,22 +423,22 @@ public class CameraController : MonoBehaviour, ICameraTracker
     private void EmitTrackedPlaceholder(Transform t) { if (!_suppressUiSignals) OnTrackedPlaceholderChanged?.Invoke(t); }
 
     /// <summary>Tracks the next satellite in the current ordered list, if any.</summary>
-    public void TrackNextBody()
-    {
-        var sats = _bodyService?.GetSatellites();
-        if (sats == null || sats.Count == 0) return;
+    // public void TrackNextBody()
+    // {
+    //     var sats = _bodyService?.GetSatellites();
+    //     if (sats == null || sats.Count == 0) return;
 
-        _currentIndex = Mathf.Clamp(_currentIndex + 1, 0, sats.Count - 1);
-        TrackBody(sats[_currentIndex]);
-    }
+    //     _currentIndex = Mathf.Clamp(_currentIndex + 1, 0, sats.Count - 1);
+    //     TrackBody(sats[_currentIndex]);
+    // }
 
     /// <summary>Tracks the previous satellite in the current ordered list, if any.</summary>
-    public void TrackPrevBody()
-    {
-        var sats = _bodyService?.GetSatellites();
-        if (sats == null || sats.Count == 0) return;
+    // public void TrackPrevBody()
+    // {
+    //     var sats = _bodyService?.GetSatellites();
+    //     if (sats == null || sats.Count == 0) return;
 
-        _currentIndex = Mathf.Clamp(_currentIndex - 1, 0, sats.Count - 1);
-        TrackBody(sats[_currentIndex]);
-    }
+    //     _currentIndex = Mathf.Clamp(_currentIndex - 1, 0, sats.Count - 1);
+    //     TrackBody(sats[_currentIndex]);
+    // }
 }

@@ -39,7 +39,7 @@ public static class OrbitalCalculations
         const double H_MIN = 1e-12;
         if (r2 < R_MIN * R_MIN || v2 < V_MIN * V_MIN || !(mu > 0.0))
         {
-            Debug.LogError("[ERROR] Position or velocity magnitude too small. Cannot compute orbital parameters.");
+            Debug.LogWarning("[ERROR] Position or velocity magnitude too small. Cannot compute orbital parameters.");
             return result;
         }
 
@@ -52,7 +52,7 @@ public static class OrbitalCalculations
         double h2 = h.x * h.x + h.y * h.y + h.z * h.z;
         if (h2 < H_MIN * H_MIN)
         {
-            Debug.LogError("[ERROR] Angular momentum too small. Cannot compute orbital parameters.");
+            Debug.LogWarning("[ERROR] Angular momentum too small. Cannot compute orbital parameters.");
             return result;
         }
 

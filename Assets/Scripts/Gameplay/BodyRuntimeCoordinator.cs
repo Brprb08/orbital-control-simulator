@@ -28,6 +28,7 @@ public class BodyRuntimeCoordinator : MonoBehaviour
 
     [Header("References - UI")]
     public TMP_Dropdown bodyDropdown;
+    public ConfirmDialog confirmDialog;
 
     /// <summary>
     /// Initializes connections between body services, visibility controllers,
@@ -77,5 +78,32 @@ public class BodyRuntimeCoordinator : MonoBehaviour
 
         ctx.BodyDropdownManager.UpdateDropdownSelection();
         Debug.Log($"[GRAVITY]: Removed {remove.name} due to collision.");
+    }
+
+    public void RemoveSatellite()
+    {
+        confirmDialog.Show("Are you sure you want to remove this satellite?", () =>
+        {
+            ActuallyRemoveSatellite();
+        });
+    }
+
+    private void ActuallyRemoveSatellite()
+    {
+        var tracker = ctx.CameraTracker;
+        NBody currentBody = tracker.CurrentBody;
+        if (tracker != null)
+        {
+            var remaining = bodyService.GetSatellites().Where(x => x != currentBody).ToList();
+            if (remaining.Count > 0)
+                tracker.TrackBody(remaining[0]);
+            else
+                tracker.BreakToFreeCam();
+        }
+
+        bodyService.Deregister(currentBody);
+        Destroy(currentBody.gameObject);
+
+        ctx.BodyDropdownManager.UpdateDropdownSelection();
     }
 }

@@ -71,6 +71,13 @@ public class BodyService : MonoBehaviour, IBodyService
         _bodies.Add(body);
         if (body.isCentralBody) _central = body;
 
+        if (!CentralBody)
+        {
+            if (!body.TryGetComponent(out AttitudeController att))
+                att = body.gameObject.AddComponent<AttitudeController>();
+
+            att.Initialize(ctx);
+        }
         Debug.Log($"[BodyService] Registered {body.name} tag={body.tag} central={body.isCentralBody} total={_bodies.Count}");
         BodyAdded?.Invoke(body);
     }

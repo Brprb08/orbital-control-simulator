@@ -42,13 +42,16 @@ public class TrajectoryRenderer : MonoBehaviour
     public ProceduralLineRenderer apogeeLine;
     public ProceduralLineRenderer perigeeLine;
     public ProceduralLineRenderer preManeuverLine;
+    public ProceduralLineRenderer burnLine;
 
     [Header("Appearance")]
-    public Color predictionColor = new Color32(0x29, 0x78, 0xFF, 255);
+    public Color predictionColor = new Color32(0x29, 0x78, 0xFF, 255); // blue (keep)
     public Color originColor = Color.white;
-    public Color apogeeColor = new Color32(0xC0, 0x39, 0x2B, 255);
-    public Color perigeeColor = new Color32(0x00, 0x9B, 0x4D, 255);
-    public Color previewColor = new Color32(0xFF, 0xD1, 0x66, 255);
+    public Color apogeeColor = new Color32(0xFF, 0xB3, 0x00, 255); // amber  #FFB300
+    public Color perigeeColor = new Color32(0x00, 0xBF, 0xA5, 255); // teal   #00BFA5
+    public Color previewColor = new Color32(0x29, 0x78, 0xFF, 255); // keep or tweak later
+    public Color burnColor = new Color32(0xFF, 0x3B, 0x30, 255); // red (keep)
+
     public float lineDisableDistance = 20f;
 
     [Header("State")]
@@ -57,6 +60,15 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool isComputingPrediction;
     private bool fullPassRequested;
     private bool wasThrusting;
+
+    [Header("Burn Trace State")]
+    [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.1f; // seconds, unscaled
+    [SerializeField, Min(0f)] private float burnMinDistance = 0.05f;      // world units between points (~0.5 km if 1u=10km)
+    [SerializeField, Min(128)] private int burnMaxPoints = 8192;
+
+    private readonly List<Vector3> burnPoints = new();
+    private float burnNextSampleTime;
+    private bool burnTracingActive;
 
     private Coroutine predictionCo;
     private float uiNextTick;
@@ -100,6 +112,7 @@ public class TrajectoryRenderer : MonoBehaviour
         perigeeLine = CreateProceduralLineRenderer("PerigeeLine", perigeeColor);
         preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC");
         previewLine = CreateProceduralLineRenderer("PreviewLine", "#FFD166");
+        burnLine = CreateProceduralLineRenderer("BurnLine", burnColor);   // <— NEW
 
         if (!bodyRuntimeCoordinator) Debug.LogError("[TrajectoryRenderer] missing BodyRuntimeCoordinator");
         if (!cameraMovement) Debug.LogError("[TrajectoryRenderer] missing CameraMovement");
@@ -165,6 +178,8 @@ public class TrajectoryRenderer : MonoBehaviour
         // If thrust just stopped, schedule a full pass
         if (wasThrusting && !isThrusting) fullPassRequested = true;
         wasThrusting = isThrusting;
+
+        UpdateBurnTrace(isThrusting);
 
         if (trackedBody.cumulativeDeltaVUsed != 0f)
             ui?.UpdateDeltaV(trackedBody.cumulativeDeltaVUsed);
@@ -345,6 +360,71 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     /// <summary>
+    /// Maintains a red trace of the spacecraft path while thrust is active.
+    /// Starts on rising edge, samples at a fixed unscaled cadence,
+    /// and stops on falling edge (leaving the segment drawn).
+    /// </summary>
+    private void UpdateBurnTrace(bool thrusting)
+    {
+        if (!trackedBody || burnLine == null) return;
+
+        // Rising edge: start a new segment
+        if (!burnTracingActive && thrusting)
+        {
+            burnTracingActive = true;
+            burnPoints.Clear();
+            burnNextSampleTime = Time.unscaledTime; // sample immediately
+                                                    // Seed first point
+            burnPoints.Add(trackedBody.transform.position);
+            burnLine.UpdateLine(burnPoints.ToArray());
+        }
+
+        // While thrusting: sample at cadence and min spacing
+        if (burnTracingActive && thrusting)
+        {
+            if (Time.unscaledTime >= burnNextSampleTime)
+            {
+                var pos = trackedBody.transform.position;
+
+                bool farEnough =
+                    burnPoints.Count == 0 ||
+                    (pos - burnPoints[burnPoints.Count - 1]).sqrMagnitude >= burnMinDistance * burnMinDistance;
+
+                if (farEnough)
+                {
+                    burnPoints.Add(pos);
+                    // Bound the list length to avoid runaway memory at very long burns
+                    if (burnPoints.Count > burnMaxPoints)
+                        burnPoints.RemoveRange(0, burnPoints.Count - burnMaxPoints);
+
+                    burnLine.UpdateLine(burnPoints.ToArray());
+                }
+
+                burnNextSampleTime = Time.unscaledTime + burnSampleInterval;
+            }
+        }
+
+        // Falling edge: finalize the segment (leave it drawn)
+        if (burnTracingActive && !thrusting)
+        {
+            // Optionally add the final point if it's far from the last
+            var pos = trackedBody.transform.position;
+            if (burnPoints.Count == 0 ||
+                (pos - burnPoints[burnPoints.Count - 1]).sqrMagnitude >= burnMinDistance * burnMinDistance)
+            {
+                burnPoints.Add(pos);
+                if (burnPoints.Count > burnMaxPoints)
+                    burnPoints.RemoveRange(0, burnPoints.Count - burnMaxPoints);
+                burnLine.UpdateLine(burnPoints.ToArray());
+            }
+
+            burnTracingActive = false;
+            // Leave the line visible as the "last burn path". If you prefer it to auto-clear, call ClearBurnTrace() here.
+        }
+    }
+
+
+    /// <summary>
     /// Draws a line from the tracked body to the central body (origin).
     /// </summary>
     private void DrawOriginLine()
@@ -371,6 +451,7 @@ public class TrajectoryRenderer : MonoBehaviour
         perigeeLine?.SetVisibility(show);
         preManeuverLine?.SetVisibility(show);
         previewLine?.SetVisibility(show);
+        burnLine?.SetVisibility(show);
     }
 
     /// <summary>
@@ -486,6 +567,9 @@ public class TrajectoryRenderer : MonoBehaviour
         perigeeLine.Clear();
         preManeuverLine.Clear();
         previewLine.Clear();
+        burnLine.Clear();
+        burnPoints.Clear();
+        burnTracingActive = false;
         trackedBody = null;
     }
 

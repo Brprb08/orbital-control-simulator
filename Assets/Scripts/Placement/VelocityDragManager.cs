@@ -4,19 +4,13 @@ using TMPro;
 using UnityEngine.EventSystems;
 using System.Collections;
 
-/// <summary>
-/// Lets the user set an initial velocity for a placed body by click-and-dragging from the body,
-/// with live and deferred trajectory previews and synchronized UI updates.
-/// </summary>
 public class VelocityDragManager : MonoBehaviour
 {
     [Header("References - Components")]
     [SerializeField] private Camera mainCamera;
-    [SerializeField] public LineRenderer dragLineRenderer;
     [SerializeField] public TrajectoryRenderer trajectoryRenderer;
     [SerializeField] private TutorialController tutorialController;
 
-    // Set at runtime
     private ICameraTracker cameraTracker;
     private BodyService bodyService;
     private UIManager uIManager;
@@ -43,12 +37,12 @@ public class VelocityDragManager : MonoBehaviour
     private float lastLineUpdateTime;
     [SerializeField] private float lineUpdateInterval = 0.05f;
 
-    private const float MaxVelocityMagnitude = 5.0f; // TODO: confirm units vs message
+    private const float MaxVelocityMagnitude = 5.0f;
 
     private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;
 
-    [SerializeField] private float longPreviewDelay = 0.6f;
+    [SerializeField] private float longPreviewDelay = 0.2f;
     [SerializeField] private int longPreviewSteps = 3000;
     [SerializeField] private float longPreviewDt = 60f;
     private Coroutine longPreviewCo;
@@ -56,15 +50,16 @@ public class VelocityDragManager : MonoBehaviour
 
     private SimContext ctx;
 
-    /// <summary>
-    /// Indicates whether a velocity has been applied to the current body.
-    /// </summary>
+    [Header("Runtime Arrow")]
+    [SerializeField] private RuntimeArrow dragArrow;
+    [SerializeField] private float arrowLength = 7f;
+    [SerializeField] private float arrowHeadLen = 0.8f;
+    [SerializeField] private float arrowThickness = 0.5f;
+    [SerializeField] private float arrowHeadRad = 0.15f;
+    [SerializeField] private Color arrowColor = new Color(0.3f, 1f, 1f, 1f);
+
     public bool HasAppliedVelocity => isVelocitySet;
 
-    /// <summary>
-    /// Injects dependencies, wires UI events, and prepares temporary drag helpers.
-    /// Call once after creating the manager.
-    /// </summary>
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -74,8 +69,6 @@ public class VelocityDragManager : MonoBehaviour
         cameraTracker = ctx.CameraTracker;
         tutorialController = ctx.TutorialController;
         bodyService = ctx.BodyService;
-
-        if (dragLineRenderer) dragLineRenderer.positionCount = 0;
 
         if (speedSlider != null)
         {
@@ -91,19 +84,42 @@ public class VelocityDragManager : MonoBehaviour
 
         if (setVelocityButton != null) setVelocityButton.interactable = false;
 
-        // Drag sphere for ray/surface math
         dragSphereObject = new GameObject("DragSphereTemp");
         dragSphereCollider = dragSphereObject.AddComponent<SphereCollider>();
         dragSphereCollider.isTrigger = true;
         dragSphereObject.layer = LayerMask.NameToLayer("DragSphere");
         dragSphereObject.SetActive(false);
+
+        EnsureDragArrow();
+        dragArrow.Hide();
     }
 
-    /// <summary>
-    /// Handles mouse input for drag gestures and dispatches drag lifecycle.
-    /// </summary>
+    private void EnsureDragArrow()
+    {
+        if (dragArrow == null)
+        {
+            var go = new GameObject("DragArrow");
+            dragArrow = go.AddComponent<RuntimeArrow>();
+        }
+        dragArrow.SetColor(arrowColor);
+        dragArrow.Hide();
+    }
+
     private void Update()
     {
+        if (!isVelocitySet && planet != null && !dragArrow.gameObject.activeSelf)
+        {
+            Vector3 start = planet.transform.position;
+
+            var center = ctx.BodyService.CentralBody.transform.position;
+            Vector3 dir = (center - start).normalized;
+
+            Vector3 end = start + dir * arrowLength;
+            dragDirection = dir;
+            dragArrow.Show(start, end, arrowThickness, arrowHeadLen, arrowHeadRad);
+        }
+
+
         if (isVelocitySet) return;
 
         if (Input.GetMouseButtonDown(0))
@@ -123,46 +139,28 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Begins a drag from the target body, initializes helpers, and enables UI.
-    /// </summary>
     private void StartDrag()
     {
         if (planet == null || mainCamera == null) return;
 
-        speedSlider.interactable = false;
-
         CancelLongPreviewDebounce();
-
         isDragging = true;
+
         if (tutorialController.inTutorialMode)
-        {
             tutorialController.hasClickAndDrag = true;
-        }
 
         dragSphereObject.transform.SetPositionAndRotation(planet.transform.position, Quaternion.identity);
         dragSphereObject.transform.localScale = Vector3.one;
         dragSphereCollider.radius = Mathf.Max(1f, planet.transform.localScale.x * sphereRadiusMultiplier);
         dragSphereObject.SetActive(true);
 
-        if (dragLineRenderer != null)
-        {
-            dragLineRenderer.positionCount = 2;
-            dragLineRenderer.SetPosition(0, planet.transform.position);
-            dragLineRenderer.SetPosition(1, planet.transform.position);
-            dragLineRenderer.widthMultiplier = 0.25f;
-        }
-
+        dragArrow.Show(planet.transform.position, planet.transform.position + Vector3.forward * arrowLength, arrowThickness, arrowHeadLen, arrowHeadRad);
         SetUIInteractable(true);
-        dragDirection = Vector3.zero;
+        dragDirection = Vector3.forward;
     }
 
-    /// <summary>
-    /// Updates the drag vector from mouse position, refreshes the preview line, and triggers previews.
-    /// </summary>
     private void UpdateDrag()
     {
-        if (Time.time - lastLineUpdateTime < lineUpdateInterval) return;
         lastLineUpdateTime = Time.time;
 
         Vector3 sphereCenter = planet.transform.position;
@@ -170,11 +168,12 @@ public class VelocityDragManager : MonoBehaviour
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
         Vector3 intersection = GetFarSideIntersection(ray, sphereCenter, radius);
 
-        if (dragLineRenderer == null) return;
-
-        dragLineRenderer.SetPosition(1, intersection);
         dragDirection = (intersection - sphereCenter).normalized;
         currentVelocity = dragDirection * sliderSpeed;
+
+        // FIXED SIZE ARROW: only rotate, don't resize
+        Vector3 arrowEnd = sphereCenter + dragDirection * arrowLength;
+        dragArrow.Show(sphereCenter, arrowEnd, arrowThickness, arrowHeadLen, arrowHeadRad);
 
         if (trajectoryRenderer != null)
         {
@@ -185,19 +184,14 @@ public class VelocityDragManager : MonoBehaviour
         ScheduleLongPreviewForGhost();
     }
 
-    /// <summary>
-    /// Ends the drag interaction and schedules a longer preview.
-    /// </summary>
     private void EndDrag()
     {
         isDragging = false;
         dragSphereObject.SetActive(false);
+        // keep arrow visible to indicate direction
         ScheduleLongPreviewForGhost();
     }
 
-    /// <summary>
-    /// Updates the speed from the slider, syncs text display, and refreshes previews.
-    /// </summary>
     public void OnSpeedSliderChanged(float value)
     {
         sliderSpeed = value;
@@ -218,20 +212,16 @@ public class VelocityDragManager : MonoBehaviour
             float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
             trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
         }
+
         ScheduleLongPreviewForGhost();
+        UpdateArrowFromCurrent();
     }
 
-    /// <summary>
-    /// Formats a velocity vector for display in the UI.
-    /// </summary>
     private string FormatVelocityForUI(Vector3 v)
     {
         return $"{(v.x * 10f):F2}, {(v.z * 10f):F2}, {(v.y * 10f):F2}";
     }
 
-    /// <summary>
-    /// Parses velocity text input and updates the preview when valid.
-    /// </summary>
     private void OnVelocityInputChanged(string inputText)
     {
         if (string.IsNullOrWhiteSpace(inputText)) return;
@@ -240,18 +230,11 @@ public class VelocityDragManager : MonoBehaviour
         {
             currentVelocity = newVelocity;
             setVelocityButton.interactable = true;
-            UpdateLineRenderer();
+            UpdateArrowFromCurrent();
             ScheduleLongPreviewForGhost();
-        }
-        else
-        {
-            Debug.LogWarning("Invalid velocity format. Expected 'x,y,z'.");
         }
     }
 
-    /// <summary>
-    /// Applies the current velocity from UI, clears preview, and deselects UI focus.
-    /// </summary>
     public void callApplyVelocity()
     {
         trajectoryRenderer?.ClearPreview();
@@ -259,23 +242,9 @@ public class VelocityDragManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    /// <summary>
-    /// Applies a velocity to the target body, creating an NBody if needed, registers it,
-    /// requests a full trajectory update, and resets related UI/state.
-    /// </summary>
     public void ApplyVelocityToPlanet(Vector3 velocityToApply)
     {
         if (planet == null) return;
-
-        if (Mathf.Abs(velocityToApply.x) > MaxVelocityMagnitude ||
-            Mathf.Abs(velocityToApply.y) > MaxVelocityMagnitude ||
-            Mathf.Abs(velocityToApply.z) > MaxVelocityMagnitude)
-        {
-            var msg = $"Max velocity component is {MaxVelocityMagnitude} (check units)";
-            Debug.LogWarning($"Velocity too high ({velocityToApply.magnitude:F2}). {msg}");
-            if (feedbackText != null) feedbackText.text = msg;
-            return;
-        }
 
         var nbody = planet.GetComponent<NBody>();
         if (nbody == null)
@@ -283,9 +252,21 @@ public class VelocityDragManager : MonoBehaviour
             nbody = planet.AddComponent<NBody>();
             nbody.mass = (placeholderMass > 0f) ? placeholderMass : 400000f;
             nbody.trueMass = (placeholderMass > 0f) ? (double)placeholderMass : 400000d;
-            nbody.radius = .002f;
+            nbody.radius = 0.002f;
             nbody.cameraDistanceRadius = 1f;
+            nbody.isCentralBody = false;                // important for moving craft
             nbody.Initialize(ctx);
+        }
+
+        // Ensure the craft has an attitude component
+        var attitude = planet.GetComponent<AttitudeController>();
+        if (attitude == null)
+        {
+            attitude = planet.AddComponent<AttitudeController>();
+            // Nice defaults:
+            attitude.mode = AttitudeController.PointingMode.Velocity; // "Prograde" pointing
+            attitude.snapAttitude = false;                             // smooth slew
+            attitude.maxSlewRateDegPerSec = 60f;
         }
 
         if (tutorialController.inTutorialMode)
@@ -300,8 +281,7 @@ public class VelocityDragManager : MonoBehaviour
         planet = null;
         isVelocitySet = true;
 
-        if (dragLineRenderer != null) dragLineRenderer.positionCount = 0;
-
+        dragArrow.Hide();
         objectPlacementManager.ResetLastPlacedGameObject();
         uIManager?.OnTrackCamPressed();
 
@@ -310,9 +290,6 @@ public class VelocityDragManager : MonoBehaviour
         if (setVelocityButton != null) setVelocityButton.interactable = false;
     }
 
-    /// <summary>
-    /// Computes the ray–sphere far-side intersection point; falls back to the ray direction at radius if no hit.
-    /// </summary>
     private Vector3 GetFarSideIntersection(Ray ray, Vector3 sphereCenter, float radius)
     {
         Vector3 d = ray.direction.normalized;
@@ -334,37 +311,16 @@ public class VelocityDragManager : MonoBehaviour
         return ray.origin + d * chosenT;
     }
 
-    /// <summary>
-    /// Recomputes the preview line from the body outward along the current velocity direction.
-    /// </summary>
-    private void UpdateLineRenderer()
+    private void UpdateArrowFromCurrent()
     {
-        if (dragLineRenderer == null || planet == null) return;
+        if (planet == null || dragArrow == null) return;
 
         Vector3 startPos = planet.transform.position;
-        float radius = planet.transform.localScale.x * sphereRadiusMultiplier;
-        Vector3 dir = currentVelocity.sqrMagnitude > 0f ? currentVelocity.normalized : Vector3.forward;
-
-        Ray r = new Ray(startPos, dir);
-        Vector3 intersection = GetFarSideIntersection(r, startPos, radius);
-
-        if (intersection != Vector3.zero)
-        {
-            dragLineRenderer.positionCount = 2;
-            dragLineRenderer.SetPosition(0, startPos);
-            dragLineRenderer.SetPosition(1, intersection);
-            if (velocityDisplayText != null) velocityDisplayText.interactable = true;
-        }
-        else
-        {
-            dragLineRenderer.positionCount = 0;
-            if (velocityDisplayText != null) velocityDisplayText.interactable = false;
-        }
+        Vector3 dir = (dragDirection.sqrMagnitude > 1e-6f) ? dragDirection : Vector3.forward;
+        Vector3 end = startPos + dir * arrowLength;
+        dragArrow.Show(startPos, end, arrowThickness, arrowHeadLen, arrowHeadRad);
     }
 
-    /// <summary>
-    /// Enables or disables the velocity editing UI controls.
-    /// </summary>
     private void SetUIInteractable(bool enable)
     {
         if (velocityDisplayText != null) velocityDisplayText.interactable = enable;
@@ -372,21 +328,14 @@ public class VelocityDragManager : MonoBehaviour
         if (setVelocityButton != null) setVelocityButton.interactable = enable;
     }
 
-    /// <summary>
-    /// Debounces and schedules a longer, more detailed trajectory preview for the current ghost body.
-    /// </summary>
     private void ScheduleLongPreviewForGhost()
     {
         if (planet == null || trajectoryRenderer == null) return;
-
         if (longPreviewCo != null) StopCoroutine(longPreviewCo);
         int thisGen = ++previewGeneration;
         longPreviewCo = StartCoroutine(LongPreviewAfterIdle_Ghost(thisGen));
     }
 
-    /// <summary>
-    /// Waits for idle time, then runs a longer single-shot preview if still applicable.
-    /// </summary>
     private IEnumerator LongPreviewAfterIdle_Ghost(int gen)
     {
         float t = 0f;
@@ -408,9 +357,6 @@ public class VelocityDragManager : MonoBehaviour
         longPreviewCo = null;
     }
 
-    /// <summary>
-    /// Cancels any pending long preview and invalidates queued generations.
-    /// </summary>
     private void CancelLongPreviewDebounce()
     {
         if (longPreviewCo != null) StopCoroutine(longPreviewCo);
@@ -418,33 +364,24 @@ public class VelocityDragManager : MonoBehaviour
         previewGeneration++;
     }
 
-    /// <summary>
-    /// Clears previews, UI states, and temporary drag artifacts without changing simulation bodies.
-    /// </summary>
     public void ClearManualArtifacts()
     {
         CancelLongPreviewDebounce();
-
         isDragging = false;
         isVelocitySet = false;
-
-        if (dragLineRenderer != null) dragLineRenderer.positionCount = 0;
+        dragArrow.Hide();
 
         if (velocityDisplayText != null) { velocityDisplayText.text = ""; velocityDisplayText.interactable = false; }
         if (speedSlider != null) { speedSlider.interactable = false; speedSlider.value = 0f; }
         if (setVelocityButton != null) setVelocityButton.interactable = false;
 
         if (dragSphereObject != null) dragSphereObject.SetActive(false);
-
         planet = null;
 
         trajectoryRenderer?.ClearPreview();
         trajectoryRenderer?.ClearPreManeuverLine();
     }
 
-    /// <summary>
-    /// Resets internal flags and re-enables UI editing after a previous apply.
-    /// </summary>
     public void ResetDragManager()
     {
         isVelocitySet = false;

@@ -114,6 +114,7 @@ public static class SimTestBootstrap
         ui.placeTLEPanel = MakePanel(rig.Root.transform, "PlaceTLE");
         ui.placementSelectPanel = MakePanel(rig.Root.transform, "PlacementSelect");
         ui.cameraControls = MakePanel(rig.Root.transform, "CameraControls");
+        ui.attitudeControlPanel = MakePanel(rig.Root.transform, "AttitudeController");
 
         // Texts
         if (withTMP)

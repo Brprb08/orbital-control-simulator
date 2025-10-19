@@ -277,7 +277,7 @@ public class CameraMovement : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) <= 0.01f) return;
 
-        float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.cameraDistanceRadius / 20f : 0.4f, 1f, 20f);
+        float sizeMultiplier = Mathf.Clamp(targetBody != null ? targetBody.cameraDistanceRadius / 20f : 0.4f, 1f, 15f);
         float distanceFactor = Mathf.Clamp(distance * sizeMultiplier * 0.1f, 0.5f, 100f);
         float zoomSpeed = baseZoomSpeed * distanceFactor * 3f;
 

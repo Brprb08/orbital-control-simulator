@@ -33,6 +33,8 @@ public class UIManager : MonoBehaviour
     public GameObject placementSelectPanel;
     public GameObject cameraControls;
     public GameObject placeKeplerPanel;
+    public GameObject confirmRemoveSatPanel;
+    public GameObject attitudeControlPanel;
 
     [Header("UI - Input Fields")]
     public TMP_InputField nameInputField;
@@ -253,7 +255,9 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(false);
             ShowApogeePerigeePanel(false);
             ShowTimeControlsPanel(false);
+            attitudeControlPanel.SetActive(false);
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
+            if (confirmRemoveSatPanel) confirmRemoveSatPanel.SetActive(false);
             if (dropdown) dropdown.SetActive(false);
 
             if (feedbackText != null)
@@ -270,6 +274,7 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(true);
             ShowApogeePerigeePanel(true);
             ShowTimeControlsPanel(true);
+            attitudeControlPanel.SetActive(true);
             if (objectPlacementManager != null)
             {
                 objectPlacementManager.ClearAllFields();

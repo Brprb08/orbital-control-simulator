@@ -138,7 +138,7 @@ public static class TutorialSequence
             new TutorialStep {
                 body =
                 "<b>Applying Thrust</b>\n\n" +
-                "• Apply thrust in any direction: prograde, retrograde, radial, or normal.\n" +
+                "• Apply thrust in any direction by adjusting your attitude.\n" +
                 "• Watch your orbital path shift instantly.\n" +
                 "• Blue line = new orbit, gray line = old orbit.\n" +
                 "• Hint: Higher time scale = stronger visible effect.\n" +
@@ -152,31 +152,31 @@ public static class TutorialSequence
                 autoAdvanceDelay = 4f
             },
 
-            // STEP 9 — Maneuver Nodes
-            new TutorialStep {
-                body =
-                "<b>Maneuver Nodes</b>\n\n" +
-                "NOTE: These are in an early stage and being improved.\n" +
-                "• Click Use Maneuver Nodes to plan future burns.\n" +
-                "• Choose burn direction in dropdown then click Setup.\n" +
-                "• Move the node with the slider.\n" +
-                "• When ready click Place and the node will turn red (Ready)\n" +
-                "• The satellite will auto burn when it hits the node.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.ClickSetupForNode, label = "Choose burn direction and click Setup" },
-                    new RequirementDef { type = RequirementType.PlaceManeuverNode, label = "Place Node" },
-                },
-                showInterstitialAfterComplete = false,
-                autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
-            },
+            // // STEP 9 — Maneuver Nodes
+            // new TutorialStep {
+            //     body =
+            //     "<b>Maneuver Nodes</b>\n\n" +
+            //     "NOTE: These are in an early stage and being improved.\n" +
+            //     "• Click Use Maneuver Nodes to plan future burns.\n" +
+            //     "• Choose burn direction in dropdown then click Setup.\n" +
+            //     "• Move the node with the slider.\n" +
+            //     "• When ready click Place and the node will turn red (Ready)\n" +
+            //     "• The satellite will auto burn when it hits the node.",
+            //     requirements = new RequirementDef[] {
+            //         new RequirementDef { type = RequirementType.ClickSetupForNode, label = "Choose burn direction and click Setup" },
+            //         new RequirementDef { type = RequirementType.PlaceManeuverNode, label = "Place Node" },
+            //     },
+            //     showInterstitialAfterComplete = false,
+            //     autoAdvanceFromInterstitial = true,
+            //     autoAdvanceDelay = 4f
+            // },
 
             // STEP 10 — Wrap-Up
             new TutorialStep {
                 body =
                 "<b>Wrap-Up</b>\n\n" +
-                "You’ve completed the basics! Experiment with thrusts, nodes, and multiple satellites.\n" +
-                "Your goal: master orbital mechanics and keep your satellites from crashing.",
+                "You’ve completed the basics! Experiment with maneuvers and multiple orbits.\n" +
+                "Master orbital mechanics and keep your satellites from crashing.",
                 requirements = new RequirementDef[0],
                 showInterstitialAfterComplete = false
             }
