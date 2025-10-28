@@ -1,6 +1,8 @@
 # Orbital Control Simulator
 
-Drop in real satellite data, apply thrust, and watch orbital paths shift in real time. This isn’t just a visualization tool. It’s a physics-based simulator that runs a native integrator with GPU-predicted trajectories for precise orbital mechanics. Built in Unity using a custom double-precision C++ core, it handles orbital propagation, thrust, and drag completely outside Unity’s built-in physics.
+A real-time orbital mechanics simulator built in Unity with a native C++ physics core. It computes satellite motion using a double-precision Dormand–Prince integrator and supports live thrust, drag, and orbital propagation.
+
+You can load real TLE data, apply thrust vectors, and visualize trajectory changes as they happen. The Unity layer handles visualization and camera controls; all physics runs natively in the C++ backend for accuracy.
 
 [Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Track Cam](./Assets/Images/10-19Track.png)
@@ -39,47 +41,21 @@ _All functionality runs live at runtime._
 
 - **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator, double-precision, real-time execution
 - **Unity Frontend:** UI, scene management, camera controls, and GPU-based line rendering
-- **Thrust Model:** Instantaneous impulse-based velocity change (scaled by body mass)
+- **Thrust Model:** Continuous force integration (F = m·a, scaled by mass)
 - **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
-
----
-
-## Interactive Tutorial
-
-When you first press **Play** in Unity or run the built executable, an interactive tutorial automatically startsand takes you through the basics. Camera controls, satellite placement, and orbital maneuvers.
-
-- **Starts automatically** on first launch
-- **Fully interactive**: perform real actions to progress
-- **Manual control**: use Next, Back, or Skip Tutorial anytime
-
-**Sequence:**
-
-- Learn camera controls and zoom with Track, Earth, and Free Cam
-- Move freely with WASD and mouse look
-- Place satellites by entering mass and radius and set velocity
-- Adjust time scale
-- Apply thrust to perform maneuvers
-
-If you’d rather explore freely, just click Skip Tutorial when it appears.
 
 ---
 
 ## Unit Testing
 
-**Total:** 50 Edit-Mode Tests **All Passing**  
-**Framework:** Unity Test Framework (NUnit-style)  
-**Type:** Edit-Mode (runs directly on compiled assemblies)
+**Total:** 50 Edit-Mode Tests
 
-- **CameraCalculations** – Angle clamping, normalization, min/max distance logic
-- **CameraController** – Mode switching (Track/Free/Earth), tracking bodies/placeholders
-- **CameraMovement** – Target distance, EarthCam handling, movement state
-- **NBody** – Initialization and central-body velocity reset
-- **Orbital Calculations** – Apogee/perigee computation, orbital period, eccentricity
-- **BodyService** – Register/deregister, central body events, satellite filtering
-- **UIManager** – Mode-based UI states, EarthCam label updates, interactivity
-- **ExtensionTests** – Vector3↔double3 conversions and precision checks
-- **ParsingUtils** – String parsing, numeric extraction, TLE line validation
-- **TLE Parser** – Field parsing, checksum validation, orbital element extraction
+- Camera logic (angles, clamping, tracking)
+- Orbital parameters (apogee, perigee, eccentricity, etc.)
+- Body registration and lifecycle
+- TLE parsing and validation
+- Vector precision conversions
+- UI state handling
 
 ---
 
