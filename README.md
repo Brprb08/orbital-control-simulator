@@ -109,10 +109,6 @@ All required DLLs (including the native physics plugin and its runtime dependenc
 
 ---
 
-[See Technical README →](./TECHNICAL_README.md)
-
----
-
 _This project was designed as a technical demonstration of my abilities in simulation engineering, physics programming, and real-time system development._
 
 [⬆ Back to Top](#orbital-control-simulator)
