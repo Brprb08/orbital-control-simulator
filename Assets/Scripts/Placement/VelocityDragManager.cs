@@ -34,19 +34,19 @@ public class VelocityDragManager : MonoBehaviour
     private Vector3 currentVelocity;
     private Vector3 dragDirection = Vector3.zero;
     private float sliderSpeed;
-    private float lastLineUpdateTime;
-    [SerializeField] private float lineUpdateInterval = 0.05f;
 
     private const float MaxVelocityMagnitude = 5.0f;
 
     private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;
 
+    // --- Long preview configuration (debounced) ---
+    [Header("Preview Settings")]
+    [Tooltip("Delay (seconds) after input stops before running the long preview.")]
     [SerializeField] private float longPreviewDelay = 0.2f;
-    [SerializeField] private int longPreviewSteps = 3000;
+    [SerializeField] private int longPreviewSteps = 2000;
     [SerializeField] private float longPreviewDt = 60f;
     private Coroutine longPreviewCo;
-    private int previewGeneration;
 
     private SimContext ctx;
 
@@ -59,6 +59,22 @@ public class VelocityDragManager : MonoBehaviour
     [SerializeField] private Color arrowColor = new Color(0.3f, 1f, 1f, 1f);
 
     public bool HasAppliedVelocity => isVelocitySet;
+
+    // --- NEW: throttling & change thresholds for quick preview ---
+    [Header("Performance Tuning")]
+    [Tooltip("Minimum time (seconds) between quick preview recomputes while dragging.")]
+    [SerializeField] private float minPreviewInterval = 0.05f; // 20 Hz
+    [Tooltip("Angular change (degrees) required to trigger a new quick preview.")]
+    [SerializeField] private float directionAngleThresholdDeg = 0.5f;
+    [Tooltip("Speed magnitude delta required to trigger a new quick preview.")]
+    [SerializeField] private float speedThreshold = 0.01f;
+
+    private float lastPreviewTime;
+    private Vector3 lastPreviewVel;
+    private Vector3 lastPreviewDir;
+
+    // --- NEW: cache for arrow to avoid redundant redraws ---
+    private Vector3 lastArrowStart, lastArrowEnd;
 
     public void Initialize(SimContext ctx)
     {
@@ -92,6 +108,14 @@ public class VelocityDragManager : MonoBehaviour
 
         EnsureDragArrow();
         dragArrow.Hide();
+
+        // initialize caches
+        lastArrowStart = lastArrowEnd = new Vector3(float.NaN, float.NaN, float.NaN);
+
+        // Use NaN as a sentinel so the first change always triggers
+        lastPreviewDir = new Vector3(float.NaN, float.NaN, float.NaN);
+        lastPreviewVel = new Vector3(float.NaN, float.NaN, float.NaN);
+        lastPreviewTime = -999f;
     }
 
     private void EnsureDragArrow()
@@ -116,9 +140,8 @@ public class VelocityDragManager : MonoBehaviour
 
             Vector3 end = start + dir * arrowLength;
             dragDirection = dir;
-            dragArrow.Show(start, end, arrowThickness, arrowHeadLen, arrowHeadRad);
+            ShowArrowCached(start, end);
         }
-
 
         if (isVelocitySet) return;
 
@@ -154,15 +177,17 @@ public class VelocityDragManager : MonoBehaviour
         dragSphereCollider.radius = Mathf.Max(1f, planet.transform.localScale.x * sphereRadiusMultiplier);
         dragSphereObject.SetActive(true);
 
-        dragArrow.Show(planet.transform.position, planet.transform.position + Vector3.forward * arrowLength, arrowThickness, arrowHeadLen, arrowHeadRad);
+        ShowArrowCached(planet.transform.position, planet.transform.position + Vector3.forward * arrowLength);
         SetUIInteractable(true);
         dragDirection = Vector3.forward;
+
+        lastPreviewTime = -999f;     // bypass min interval
+                                     // If speed is zero, still preview with zero velocity (a fall-line), which is fine.
+        TryQuickPreview();
     }
 
     private void UpdateDrag()
     {
-        lastLineUpdateTime = Time.time;
-
         Vector3 sphereCenter = planet.transform.position;
         float radius = planet.transform.localScale.x * sphereRadiusMultiplier;
         Ray ray = mainCamera.ScreenPointToRay(Input.mousePosition);
@@ -173,15 +198,10 @@ public class VelocityDragManager : MonoBehaviour
 
         // FIXED SIZE ARROW: only rotate, don't resize
         Vector3 arrowEnd = sphereCenter + dragDirection * arrowLength;
-        dragArrow.Show(sphereCenter, arrowEnd, arrowThickness, arrowHeadLen, arrowHeadRad);
+        ShowArrowCached(sphereCenter, arrowEnd);
 
-        if (trajectoryRenderer != null)
-        {
-            float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
-            trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
-        }
-
-        ScheduleLongPreviewForGhost();
+        // Throttled quick preview (no long preview scheduling while dragging)
+        TryQuickPreview();
     }
 
     private void EndDrag()
@@ -189,7 +209,7 @@ public class VelocityDragManager : MonoBehaviour
         isDragging = false;
         dragSphereObject.SetActive(false);
         // keep arrow visible to indicate direction
-        ScheduleLongPreviewForGhost();
+        ScheduleLongPreviewForGhost(); // run long preview once when input settles
     }
 
     public void OnSpeedSliderChanged(float value)
@@ -207,14 +227,15 @@ public class VelocityDragManager : MonoBehaviour
             velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
         }
 
-        if (trajectoryRenderer != null && planet != null)
-        {
-            float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
-            trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
-        }
-
-        ScheduleLongPreviewForGhost();
+        // Throttled quick preview and cached arrow update
+        TryQuickPreview();
         UpdateArrowFromCurrent();
+
+        if (!isDragging)
+        {
+            CancelLongPreviewDebounce();
+            ScheduleLongPreviewForGhost();
+        }
     }
 
     private string FormatVelocityForUI(Vector3 v)
@@ -231,6 +252,13 @@ public class VelocityDragManager : MonoBehaviour
             currentVelocity = newVelocity;
             setVelocityButton.interactable = true;
             UpdateArrowFromCurrent();
+            // no immediate long preview; will be scheduled on mouse up or after idle if needed
+            TryQuickPreview();
+        }
+
+        if (!isDragging)
+        {
+            CancelLongPreviewDebounce();
             ScheduleLongPreviewForGhost();
         }
     }
@@ -252,7 +280,7 @@ public class VelocityDragManager : MonoBehaviour
             nbody = planet.AddComponent<NBody>();
             nbody.mass = (placeholderMass > 0f) ? placeholderMass : 400000f;
             nbody.trueMass = (placeholderMass > 0f) ? (double)placeholderMass : 400000d;
-            nbody.radius = 0.002f;
+            nbody.radius = 0.0002f;
             nbody.cameraDistanceRadius = 1f;
             nbody.isCentralBody = false;                // important for moving craft
             nbody.Initialize(ctx);
@@ -318,7 +346,7 @@ public class VelocityDragManager : MonoBehaviour
         Vector3 startPos = planet.transform.position;
         Vector3 dir = (dragDirection.sqrMagnitude > 1e-6f) ? dragDirection : Vector3.forward;
         Vector3 end = startPos + dir * arrowLength;
-        dragArrow.Show(startPos, end, arrowThickness, arrowHeadLen, arrowHeadRad);
+        ShowArrowCached(startPos, end);
     }
 
     private void SetUIInteractable(bool enable)
@@ -328,32 +356,82 @@ public class VelocityDragManager : MonoBehaviour
         if (setVelocityButton != null) setVelocityButton.interactable = enable;
     }
 
+    // -------- NEW: throttled quick preview helpers --------
+
+    private bool ChangedEnough()
+    {
+        if (dragDirection == Vector3.zero) return false;
+
+        // First-time sentinel → trigger
+        bool firstDir = float.IsNaN(lastPreviewDir.x);
+        bool firstVel = float.IsNaN(lastPreviewVel.x);
+        if (firstDir || firstVel) return true;
+
+        bool dirChanged = Vector3.Angle(lastPreviewDir, dragDirection) > directionAngleThresholdDeg;
+        bool spdChanged = Mathf.Abs(currentVelocity.magnitude - lastPreviewVel.magnitude) > speedThreshold;
+
+        return dirChanged || spdChanged;
+    }
+
+
+    private void TryQuickPreview()
+    {
+        if (trajectoryRenderer == null || planet == null) return;
+        var svc = ctx?.BodyService;
+        if (svc == null || svc.CentralBody == null) return;
+
+        if ((Time.unscaledTime - lastPreviewTime) < minPreviewInterval) return;
+        if (!ChangedEnough()) return;
+
+        float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
+        trajectoryRenderer.QuickPreviewFromState(planet.transform.position, currentVelocity, massForPreview);
+
+        lastPreviewTime = Time.unscaledTime;
+        lastPreviewDir = dragDirection;
+        lastPreviewVel = currentVelocity;
+    }
+
+    // -------- NEW: cached arrow drawing --------
+
+    private void ShowArrowCached(Vector3 start, Vector3 end)
+    {
+        if ((start - lastArrowStart).sqrMagnitude < 1e-6f &&
+            (end - lastArrowEnd).sqrMagnitude < 1e-6f) return;
+
+        dragArrow.Show(start, end, arrowThickness, arrowHeadLen, arrowHeadRad);
+        lastArrowStart = start;
+        lastArrowEnd = end;
+    }
+
+    // -------- UPDATED: long preview debounce --------
+
     private void ScheduleLongPreviewForGhost()
     {
         if (planet == null || trajectoryRenderer == null) return;
         if (longPreviewCo != null) StopCoroutine(longPreviewCo);
-        int thisGen = ++previewGeneration;
-        longPreviewCo = StartCoroutine(LongPreviewAfterIdle_Ghost(thisGen));
+        longPreviewCo = StartCoroutine(LongPreviewAfterIdle());
     }
 
-    private IEnumerator LongPreviewAfterIdle_Ghost(int gen)
+    private IEnumerator LongPreviewAfterIdle()
     {
         float t = 0f;
         while (t < longPreviewDelay)
         {
+            // If user starts interacting again, cancel this long preview
+            if (isDragging) yield break;
             t += Time.unscaledDeltaTime;
             yield return null;
         }
-        if (gen != previewGeneration || planet == null) yield break;
+        if (planet == null) yield break;
 
         float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
         trajectoryRenderer.QuickPreviewOnceLong(
-            planet.transform.position,
-            currentVelocity,
-            massForPreview,
-            longPreviewSteps,
-            longPreviewDt
-        );
+    planet.transform.position,
+    currentVelocity,
+    massForPreview,
+    longPreviewSteps,
+    longPreviewDt,
+    singleOrbit: false);
         longPreviewCo = null;
     }
 
@@ -361,7 +439,6 @@ public class VelocityDragManager : MonoBehaviour
     {
         if (longPreviewCo != null) StopCoroutine(longPreviewCo);
         longPreviewCo = null;
-        previewGeneration++;
     }
 
     public void ClearManualArtifacts()

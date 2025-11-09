@@ -25,7 +25,11 @@ public class ThrustController : MonoBehaviour
 
     private AttitudeController attitude;
 
-    bool isFireHeld;
+    [Header("Thrust Parity Sync")]
+    [SerializeField] private int thrustGraceFrames = 6; // ~0.1s @60fps
+    private int _graceCounter = 0;
+    private bool _prevThrusting = false;
+    private sbyte _latchedParity = 0;
 
     [Header("Thrust Configs")]
     private bool thrustStopped = false;
@@ -75,58 +79,81 @@ public class ThrustController : MonoBehaviour
         NBody ship = cameraMovement.targetBody;
         if (ship == null) return;
 
-        // Ensure we have the craft's attitude controller
         if (!attitude) attitude = ship.GetComponent<AttitudeController>();
 
-        // Body axes in world space
         Transform t = ship.transform;
-        Vector3 fwd = t.forward;   // +Z in Unity
-        Vector3 right = t.right;   // +X
-        Vector3 up = t.up;         // +Y
+        Vector3 fwd = t.forward;
 
-        // Central body position
+        // Central body
         Vector3 center = Vector3.zero;
         var svc = ctx?.BodyService;
         if (svc != null && svc.CentralBody)
             center = svc.CentralBody.transform.position;
 
+        // Local orbital state
         Vector3 r = ship.transform.position - center;
         Vector3 v = ship.velocity;
 
-        Vector3 rHat = r.normalized;
-        Vector3 vHat = v.normalized;
+        // Safe norms
+        Vector3 rHat = (r.sqrMagnitude > 1e-12f) ? r.normalized : Vector3.up;
+        Vector3 vHat = (v.sqrMagnitude > 1e-12f) ? v.normalized : Vector3.right;
 
-        // nominal orbit normal
-        Vector3 nHat = Vector3.Cross(rHat, vHat);
-        if (nHat.sqrMagnitude < 1e-12f)
-        {
-            // fallback normal using a stable world reference
-            Vector3 refUp = (Mathf.Abs(Vector3.Dot(rHat, Vector3.up)) < 0.9f) ? Vector3.up : Vector3.forward;
-            nHat = Vector3.Cross(rHat, refUp);
-        }
-        nHat.Normalize();
+        // Orbit angular momentum
+        Vector3 h = Vector3.Cross(r, v);
+        // Live parity from current side of 90°: +1 if h.y < 0, else -1 (to match your AttitudeController)
+        sbyte liveParity = (h.y < 0f) ? (sbyte)+1 : (sbyte)-1;
 
-
-        bool isThrusting = false;
+        bool isThrustingNow = false;
         bool lateralActive = false;
 
-        // --- Thrust modes ---
+        // --- Thrust modes (yours only has forward right now) ---
         if (isForwardThrustActive)
         {
             ApplyThrust(ship, maxForwardThrustMagnitude, fwd);
-            isThrusting = true;
+            isThrustingNow = true;
         }
 
-        // --- Control integrator behavior ---
+        // NEW: parity latch with grace window
+        if (isThrustingNow && !_prevThrusting)
+        {
+            // rising edge: capture current side (+1 / -1)
+            _latchedParity = liveParity;
+            _graceCounter = thrustGraceFrames; // start/refresh grace
+        }
+
+        if (isThrustingNow)
+        {
+            // while thrusting, keep extending the grace
+            _graceCounter = thrustGraceFrames;
+        }
+        else if (_prevThrusting)
+        {
+            // falling edge: don't clear latch immediately; grace handles it
+            // (no-op here; we decrement below)
+        }
+
+        // tick grace once per frame
+        if (_graceCounter > 0) _graceCounter--;
+
+        // Treat "within grace" as thrusting for attitude purposes
+        bool thrustingForAttitude = isThrustingNow || (_graceCounter > 0);
+
+        // If we’re within grace, send the latched parity; otherwise send 0 (no latch)
+        sbyte parityForAttitude = thrustingForAttitude ? _latchedParity : (sbyte)0;
+
+        // >>> This is the key line: keep AttitudeController from flipping during a burn <<<
+        if (attitude)
+            attitude.SyncThrustParity(thrustingForAttitude, parityForAttitude);
+
+        _prevThrusting = isThrustingNow;
+
+        // --- Your existing integrator + VFX cleanup ---
         bool holdCurrent = attitude != null &&
                            attitude.mode == AttitudeController.PointingMode.HoldCurrent;
 
-        // Only enable per-substep re-projection if we’re actually doing a lateral burn
-        // AND not in HoldCurrent mode.
         ship.projectLateralPerSubstep = lateralActive && !holdCurrent;
 
-        // --- Visuals / cleanup ---
-        if (!isThrusting)
+        if (!isThrustingNow)
         {
             thrustParticles.Stop();
             thrustStopped = true;
@@ -232,12 +259,10 @@ public class ThrustController : MonoBehaviour
     public void StartForwardThrust()
     {
         isForwardThrustActive = true;
-        isFireHeld = true;
     }
     public void StopForwardThrust()
     {
         isForwardThrustActive = false;
-        isFireHeld = false;
         EventSystem.current.SetSelectedGameObject(null);
     }
 }

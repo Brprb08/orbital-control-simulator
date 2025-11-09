@@ -81,6 +81,21 @@ public class ObjectPlacementManager : MonoBehaviour
     private static readonly PlacementValidators.RangeF RadiusClamp = new(0.5f, 1.0f);
     private static readonly PlacementValidators.DistanceBoundsF PosBounds = new(638f, 5000f);
 
+    // ========= Stress Test Spawner =========
+    [Header("Stress Test Spawner")]
+    [SerializeField] private Button randomSatButton;
+    [SerializeField] private int clickCount = 1;
+    [SerializeField] private int shiftClickCount = 10;
+    [SerializeField] private int ctrlClickCount = 100;
+    [SerializeField] private Vector2 eccentricityRange = new Vector2(0.0f, 0.10f); // mostly circular
+    [SerializeField] private Vector2 altitudeKmRange = new Vector2(700f, 35000f);   // perigee above ~200 km
+    [SerializeField] private Vector2 massRangeKg = new Vector2(500f, 50_000);  // mirrors MassRange
+    [SerializeField] private int maxRetries = 8; // retries per sat if a random draw intersects Earth
+
+    // Keep for testing and add button for this when needed
+    [SerializeField] private Button burstButton;
+    [SerializeField] private int burstCount = 500;
+
     /// <summary>
     /// Injects the simulation context and wires dependencies and UI listeners.
     /// Also creates and hides the ghost preview if a prefab is provided.
@@ -99,6 +114,16 @@ public class ObjectPlacementManager : MonoBehaviour
             radiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
         }
         positionInput.onValueChanged.AddListener(OnPositionInputChanged);
+
+        // NEW: random spawner click
+        // if (randomSatButton != null)
+        //     randomSatButton.onClick.AddListener(OnRandomSatButtonClicked);
+
+        // if (burstButton != null)
+        //     burstButton.onClick.AddListener(SpawnRandomBurst100);
+
+        if (randomSatButton != null)
+            randomSatButton.onClick.AddListener(SpawnRandomBurst100);
 
         if (ghostPreviewPrefab != null)
         {
@@ -242,6 +267,152 @@ public class ObjectPlacementManager : MonoBehaviour
         lastPlacedGameObject = null;
         UpdateTrackCamButtonState();
     }
+
+    private void OnRandomSatButtonClicked()
+    {
+        if (!CanStartPlacement(out _)) return;
+
+        int count = clickCount;
+        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
+            count = shiftClickCount;
+#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
+    bool ctrlOrCmd = Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
+#else
+        bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
+#endif
+        if (ctrlOrCmd) count = ctrlClickCount;
+
+        int placed = 0;
+        NBody last = null;
+
+        for (int n = 0; n < count; n++)
+        {
+            if (TryPlaceOneRandomSatellite(out var created))
+            {
+                placed++;
+                last = created; // remember last one
+            }
+        }
+
+        if (last != null)
+        {
+            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(last);
+            uIManager?.OnTrackCamPressed();
+        }
+
+        feedbackText.text = $"Spawned {placed}/{count} random satellite(s).{(last != null ? " Tracking latest." : "")}";
+    }
+
+    //DELETE THIS FOR TESTING
+    private void SpawnRandomBurst100()
+    {
+        int count = Mathf.Max(1, burstCount); // default 100
+        int placed = 0;
+        NBody last = null;
+
+        for (int i = 0; i < count; i++)
+        {
+            if (TryPlaceOneRandomSatellite(out var created))
+            {
+                placed++;
+                last = created;
+            }
+        }
+
+        if (last != null)
+        {
+            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(last);
+            uIManager?.OnTrackCamPressed();
+        }
+
+        feedbackText.text = $"Spawned {placed}/{count} random satellite(s).{(last != null ? " Tracking latest." : "")}";
+    }
+
+
+
+    // Change signature + call the spawner with trackAfterSpawn=false (we track once at the end)
+    private bool TryPlaceOneRandomSatellite(out NBody created)
+    {
+        created = null;
+
+        for (int r = 0; r < maxRetries; r++)
+        {
+            float mass = UnityEngine.Random.Range(massRangeKg.x, massRangeKg.y);
+
+            float ecc = UnityEngine.Random.Range(eccentricityRange.x, eccentricityRange.y);
+            float incDeg = UnityEngine.Random.Range(0f, 180f);
+            float raanDeg = UnityEngine.Random.Range(0f, 360f);
+            float argpDeg = UnityEngine.Random.Range(0f, 360f);
+            float truDeg = UnityEngine.Random.Range(0f, 360f);
+
+            double perigeeAlt_m = UnityEngine.Random.Range(altitudeKmRange.x, altitudeKmRange.y) * 1000.0;
+            double rp = earthRadiusMeters + perigeeAlt_m;
+            double a = rp / Math.Max(1e-6, (1.0 - ecc));
+
+            try
+            {
+                var (rEci, vEci) = KeplerUtils.FromElements(a, ecc, incDeg, raanDeg, argpDeg, truDeg, mu);
+                if (rEci.magnitude <= earthRadiusMeters * 1.001) continue;
+
+                var pos = FrameUtils.EciToUnity(rEci, metersPerUnit);
+                var vel = FrameUtils.VelEciToUnity(vEci, metersPerUnit);
+
+                string name = $"Rand Sat {satelliteCount + 1}";
+                if (name.Length > MaxSatelliteNameLength) name = name.Substring(0, MaxSatelliteNameLength);
+
+                created = SpawnSatelliteDirect(name, pos, mass, vel, trackAfterSpawn: false);
+                return true;
+            }
+            catch { /* retry on numeric edge */ }
+        }
+        return false;
+    }
+
+
+    // Replace your existing SpawnSatelliteDirect with this version:
+    private NBody SpawnSatelliteDirect(string name, Vector3 position, float mass, Vector3 initialVelocity, bool trackAfterSpawn)
+    {
+        satelliteCount++;
+
+        var go = Instantiate(spherePrefab);
+        go.name = name;
+        go.tag = "Satellite";
+        go.transform.position = position;
+        go.transform.localScale = Vector3.one;
+
+        var nbody = go.GetComponent<NBody>();
+        if (nbody == null) nbody = go.AddComponent<NBody>();
+        nbody.mass = mass;
+        nbody.trueMass = (double)mass;
+        nbody.radius = 0.002f;
+        nbody.cameraDistanceRadius = 1f;
+        nbody.isCentralBody = false;
+        nbody.Initialize(ctx);
+        nbody.velocity = initialVelocity;
+
+        var attitude = go.GetComponent<AttitudeController>();
+        if (attitude == null)
+        {
+            attitude = go.AddComponent<AttitudeController>();
+            attitude.mode = AttitudeController.PointingMode.Velocity;
+            attitude.snapAttitude = false;
+            attitude.maxSlewRateDegPerSec = 60f;
+        }
+
+        ctx.BodyService.Register(nbody);
+        cameraTracker.RefreshBodiesList();
+
+        trajectoryRenderer?.RequestFullOrbitPass();
+
+        if (trackAfterSpawn)
+        {
+            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(nbody);
+            uIManager?.OnTrackCamPressed(); // keep your UI in "Track" mode
+        }
+
+        return nbody;
+    }
+
 
     /// <summary>
     /// Instantiates the satellite placeholder, updates VelocityDragManager, and refreshes

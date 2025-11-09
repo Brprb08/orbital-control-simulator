@@ -1,6 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems; // NEW: for clearing selection
 using UnityEngine.UI;
 
 public class AttitudeUIBinder : MonoBehaviour
@@ -24,6 +25,11 @@ public class AttitudeUIBinder : MonoBehaviour
             ? cameraTracker.CurrentBody.GetComponent<AttitudeController>()
             : null;
 
+    // NEW: track changes to body and mode so we can auto-refresh
+    private NBody _lastBody;
+    private AttitudeController.PointingMode _lastModeMirror;
+    private bool _haveMirror = false;
+
     public void Initialize(SimContext ctx) { this.cameraTracker = ctx.CameraTracker; }
 
     void Awake()
@@ -43,7 +49,7 @@ public class AttitudeUIBinder : MonoBehaviour
     {
         if (btnHold) btnText = btnHold.GetComponentInChildren<TextMeshProUGUI>();
         SetHoldUI(false); // start in auto
-        RefreshUIFromCurrent();
+        ForceFullRefresh(); // NEW: makes sure first frame is correct
     }
 
     void OnEnable()
@@ -60,7 +66,7 @@ public class AttitudeUIBinder : MonoBehaviour
         if (tSnap) tSnap.onValueChanged.AddListener(SetSnap);
         if (slewRate) slewRate.onValueChanged.AddListener(SetSlew);
 
-        RefreshUIFromCurrent();
+        ForceFullRefresh(); // NEW
     }
 
     void OnDisable()
@@ -75,6 +81,30 @@ public class AttitudeUIBinder : MonoBehaviour
 
         if (tSnap) tSnap.onValueChanged.RemoveAllListeners();
         if (slewRate) slewRate.onValueChanged.RemoveAllListeners();
+    }
+
+    // NEW: watch for body and external mode changes
+    void Update()
+    {
+        var currentBody = cameraTracker?.CurrentBody;
+        if (currentBody != _lastBody)
+        {
+            _lastBody = currentBody;
+            ForceFullRefresh();
+            return;
+        }
+
+        var att = CurrentAtt;
+        if (!att) return;
+
+        if (!_haveMirror || att.mode != _lastModeMirror)
+        {
+            // Someone changed the mode elsewhere → reflect it
+            _lastModeMirror = att.mode;
+            _haveMirror = true;
+            RefreshUIFrom(att);
+            UpdateModeButtons(att.mode);
+        }
     }
 
     // ----- MODE CHANGES -----
@@ -95,6 +125,11 @@ public class AttitudeUIBinder : MonoBehaviour
             lastAutoMode = m;
 
         att.SetMode(m);
+
+        // mirror state immediately so Update() doesn’t fight us this frame
+        _lastModeMirror = att.mode;
+        _haveMirror = true;
+
         RefreshUIFrom(att);
         UpdateModeButtons(att.mode);
     }
@@ -122,6 +157,9 @@ public class AttitudeUIBinder : MonoBehaviour
             SetHoldUI(false);
         }
 
+        _lastModeMirror = att.mode; // NEW: keep mirror in sync
+        _haveMirror = true;
+
         RefreshUIFrom(att);
         UpdateModeButtons(att.mode);
     }
@@ -138,9 +176,13 @@ public class AttitudeUIBinder : MonoBehaviour
 
     void UpdateModeButtons(AttitudeController.PointingMode active)
     {
-        // rule:
-        //  - if holding: all attitude buttons enabled
-        //  - if auto: disable the active attitude button; enable the others
+        // reset all first so old craft's disabled button doesn't linger
+        foreach (var kv in modeToButton)
+        {
+            var b = kv.Value;
+            if (b) b.interactable = true;
+        }
+
         bool holding = active == AttitudeController.PointingMode.HoldCurrent;
 
         foreach (var kv in modeToButton)
@@ -160,6 +202,10 @@ public class AttitudeUIBinder : MonoBehaviour
 
         // Lock/Auto button never changes color; always interactable
         if (btnHold) btnHold.interactable = true;
+
+        // NEW: clear Unity's current selection to avoid ghost highlight from previous satellite
+        if (EventSystem.current && EventSystem.current.currentSelectedGameObject)
+            EventSystem.current.SetSelectedGameObject(null);
     }
 
     void RefreshUIFromCurrent()
@@ -170,8 +216,11 @@ public class AttitudeUIBinder : MonoBehaviour
         bool lockedNow = att.mode == AttitudeController.PointingMode.HoldCurrent;
         SetHoldUI(lockedNow);
 
-        if (!lockedNow && att.mode != AttitudeController.PointingMode.HoldCurrent)
+        if (!lockedNow)
             lastAutoMode = att.mode;
+
+        _lastModeMirror = att.mode; // NEW
+        _haveMirror = true;
 
         RefreshUIFrom(att);
         UpdateModeButtons(att.mode);
@@ -187,4 +236,17 @@ public class AttitudeUIBinder : MonoBehaviour
 
     void SetSnap(bool snap) { var att = CurrentAtt; if (att) att.snapAttitude = snap; }
     void SetSlew(float degs) { var att = CurrentAtt; if (att) att.maxSlewRateDegPerSec = degs; }
+
+    // NEW: force a full refresh (used on Start/OnEnable/body switch)
+    void ForceFullRefresh()
+    {
+        // clear old selection visuals
+        foreach (var kv in modeToButton)
+            if (kv.Value) kv.Value.interactable = true;
+
+        if (EventSystem.current)
+            EventSystem.current.SetSelectedGameObject(null);
+
+        RefreshUIFromCurrent();
+    }
 }

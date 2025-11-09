@@ -26,7 +26,7 @@ public class NBody : MonoBehaviour
     private TrajectoryComputeController tcc;
     private BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private ManeuverNodeManager maneuverNodeManager;
-    private ThrustController thrustController;
+    public ThrustController thrustController;
     private LineVisibilityController lineVisibilityController;
     private RocketThrustAudio rocketThrustAudio;
     private BodyService bodyService;
@@ -42,21 +42,21 @@ public class NBody : MonoBehaviour
     [Tooltip("Dimensionless drag coefficient")]
     public float dragCoefficient = 2.2f;
 
-    private bool isThrusting = false;
+    public bool isThrusting = false;
 
     [Header("Constants")]
     private const float EarthRotationRate = 360f / (24f * 60f * 60f);
     const double EarthRadiusUnits = 637.8137;
-    private const double UnitToKm = 10.0;
     private const float MaxDistanceFromEarth = 40000f;
 
     public float cumulativeDeltaVUsed = 0f;
-    private bool wasThrustingLastFrame = false;
-    private Vector3 burnStartVelocity;
-    private Vector3 burnEndVelocity;
 
-    private OrbitalFrameFilter basisFilter = new OrbitalFrameFilter();
     public bool projectLateralPerSubstep = false;
+
+    private double[] otherMassCache;   // UPDATED: masses rarely change
+
+    // NEW: cache component lookups
+    private AttitudeController att;    // UPDATED: cached once
 
 
     private SimContext ctx;
@@ -76,9 +76,6 @@ public class NBody : MonoBehaviour
         this.bodyService = ctx.BodyService;
     }
 
-    /// <summary>
-    /// Seeds initial state and establishes the subset of bodies relevant for forces.
-    /// </summary>
     void Start()
     {
         if (isCentralBody)
@@ -99,6 +96,10 @@ public class NBody : MonoBehaviour
             Vector3.zero
         );
 
+        // UPDATED: cache AttitudeController once
+        att = GetComponent<AttitudeController>(); // NEW (cached)
+
+        // Build relevantBodies and caches once here (and rebuild if the set changes)
         var all = bodyService != null ? bodyService.Bodies : null;
         if (all != null)
         {
@@ -115,67 +116,69 @@ public class NBody : MonoBehaviour
         {
             relevantBodies = new List<NBody>();
         }
+
+        AllocateRelevantCaches(); // NEW
+    }
+
+    private void AllocateRelevantCaches()
+    {
+        int n = (relevantBodies != null) ? relevantBodies.Count : 0;
+        otherMassCache = (n > 0) ? new double[n] : Array.Empty<double>();
+
+        for (int i = 0; i < n; i++)
+        {
+            var b = relevantBodies[i];
+            otherMassCache[i] = (b != null) ? b.trueMass : 0.0;
+        }
     }
 
     /// <summary>
-    /// Physics step: rotates the central body; otherwise integrates motion,
-    /// applies thrust impulses, tracks burn Δv, and clears accumulated force.
+    /// One physics tick for this body.
+    /// If <see cref="BodyService.DrivePhysics"/> is <c>true</c>, this method only
+    /// updates burns/audio and leaves integration to the central batch step.
+    /// If <c>false</c>, it performs the legacy per-body integration path.
     /// </summary>
+    /// <remarks>
+    /// - In service-driven mode, we do <b>not</b> zero <see cref="state.force"/> here;
+    ///   the batch step consumes it and clears it afterward.
+    /// - Central body still rotates here in both modes (visual spin only).
+    /// </remarks>
     void FixedUpdate()
     {
-        if (HasNaNPosition())
+        // --- Service-driven path: BodyService integrates all satellites in a batch ---
+        if (ctx != null && ctx.BodyService != null && ctx.BodyService.DrivePhysics)
         {
-            Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={state.force}");
-        }
+            if (HasNaNPosition())
+                Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={state.force}");
 
-        if (mass <= 1e-6f)
-        {
-            state.force = Vector3.zero;
+            if (isCentralBody)
+            {
+                RotateCentralBody();
+                return; // nothing else for the center
+            }
+
+            // Update maneuver node logic + audio; leave state.force for the batch to consume.
+            CheckForNodeBurns();
             return;
         }
+    }
 
-        if (isCentralBody)
-        {
-            RotateCentralBody();
-        }
-        else
-        {
-            CheckForNodeBurns();
+    /// <summary>
+    /// Applies state produced by the batch integrator to the Unity <see cref="Transform"/>,
+    /// runs post-integration safety checks, and clears consumed force.
+    /// Call this once per body after the manager’s native batch step completes.
+    /// </summary>
+    public void SyncAfterBatch()
+    {
+        // Sync cached transform state
+        transform.position = state.position.ToVector3();
+        velocity = state.velocity.ToVector3();
 
-            Vector3 thrustForceThisFrame = state.force;
+        // Post-step checks (same as in legacy path)
+        CheckCollisionWithEarth();
+        CheckEscapeFromEarth();
 
-            SimulateOrbitalMotion();
-
-            Vector3 acceleration = thrustForceThisFrame / (float)mass;
-            float deltaVThisFrame = acceleration.magnitude * Time.fixedDeltaTime;
-
-            bool isThrustingNow = thrustForceThisFrame != Vector3.zero;
-
-            if (isThrustingNow)
-            {
-                if (!wasThrustingLastFrame)
-                {
-                    burnStartVelocity = velocity; // burn start
-                }
-                cumulativeDeltaVUsed += deltaVThisFrame * 10f; // Unity units → km/s
-            }
-            else if (wasThrustingLastFrame && !isThrustingNow)
-            {
-                burnEndVelocity = velocity; // burn end
-
-                float deltaVVectorMagnitude = (burnEndVelocity - burnStartVelocity).magnitude * 10f;
-                Debug.Log(
-                    $"Delta-V used in burn: {cumulativeDeltaVUsed:F3} km/s\n" +
-                    $"Start Velocity: {burnStartVelocity.magnitude * 10f:F3} km/s\n" +
-                    $"End Velocity:   {burnEndVelocity.magnitude * 10f:F3} km/s\n" +
-                    $"Vector Δv:      {deltaVVectorMagnitude:F3} km/s"
-                );
-
-                cumulativeDeltaVUsed = 0f;
-            }
-
-            wasThrustingLastFrame = isThrustingNow;
-        }
+        // Batch consumed the force; clear for the next tick
         state.force = Vector3.zero;
     }
 
@@ -274,105 +277,6 @@ public class NBody : MonoBehaviour
 
         thrustController.ApplyThrust(body, 10f, burnDirection);
         thrustController.SetDirectionalThrust(node.burnType);
-    }
-
-    void SimulateOrbitalMotion()
-    {
-        if (relevantBodies == null || relevantBodies.Count == 0) return;
-
-        int numBodies = relevantBodies.Count;
-
-        var positions = new Vector3[numBodies];
-        var masses = new double[numBodies];
-
-        for (int i = 0; i < numBodies; i++)
-        {
-            positions[i] = relevantBodies[i].transform.position;
-            masses[i] = relevantBodies[i].trueMass;
-        }
-
-        // ----- time slicing -----
-        const float dtMax = 0.002f; // ~2 ms substep cap
-        int substeps = Mathf.Max(1, Mathf.CeilToInt(Time.fixedDeltaTime / dtMax));
-        float dt = Time.fixedDeltaTime / substeps;
-
-        // ----- lateral projection gating -----
-        // bool lateralActive = thrustController != null &&
-        //                      (thrustController.isRightThrustActive || thrustController.isLeftThrustActive);
-
-        // // ThrustController should set this on the ship when left/right is down
-        // bool shouldProject = projectLateralPerSubstep && lateralActive;
-        var att = GetComponent<AttitudeController>();
-        bool shouldProject = false;
-        if (att && att.mode == AttitudeController.PointingMode.Normal || att.mode == AttitudeController.PointingMode.AntiNormal) shouldProject = true;
-
-        // If attitude is holding a fixed world orientation, do NOT re-project (we’d fight the hold)
-
-        if (att && att.mode == AttitudeController.PointingMode.HoldCurrent)
-            shouldProject = false;
-
-        for (int s = 0; s < substeps; s++)
-        {
-            // Start with force accumulated this frame
-            Vector3 F = state.force;
-
-            // Keep lateral burns energy-neutral by enforcing F ⟂ v (i.e., F ∥ n̂)
-            if (shouldProject && F.sqrMagnitude > 0f)
-            {
-                Vector3 rInst = state.position.ToVector3();
-                Vector3 vInst = state.velocity.ToVector3();
-
-                float r2 = rInst.sqrMagnitude;
-                float v2 = vInst.sqrMagnitude;
-
-                if (r2 > 1e-18f && v2 > 1e-18f)
-                {
-                    Vector3 rHat = rInst / Mathf.Sqrt(r2);
-                    Vector3 vHat = vInst / Mathf.Sqrt(v2);
-                    Vector3 nHat = Vector3.Cross(rHat, vHat);
-                    float n2 = nHat.sqrMagnitude;
-
-                    if (n2 > 1e-18f)
-                    {
-                        nHat /= Mathf.Sqrt(n2);
-
-                        float Fmag = F.magnitude;
-                        // Preserve the intended left/right sign relative to n̂
-                        float sign = Mathf.Sign(Vector3.Dot(F, nHat));
-                        if (sign == 0f) sign = 1f;
-
-                        F = nHat * (Fmag * sign);
-                    }
-                    // else: orbital plane is degenerate this substep — skip projection
-                }
-                // else: r or v invalid — skip projection
-            }
-
-            // NaN clamp just in case
-            if (float.IsNaN(F.x) || float.IsNaN(F.y) || float.IsNaN(F.z))
-                F = Vector3.zero;
-
-            // Integrate one substep with per-substep (possibly projected) force
-            NativePhysics.DormandPrinceSingle(
-                ref state.position,
-                ref state.velocity,
-                state.mass,
-                positions,
-                masses,
-                numBodies,
-                dt,
-                F,
-                (float)state.dragCoefficient,
-                (float)state.crossSectionArea
-            );
-        }
-
-        // Sync Transform / cached velocity
-        transform.position = state.position.ToVector3();
-        velocity = state.velocity.ToVector3();
-
-        CheckCollisionWithEarth();
-        CheckEscapeFromEarth();
     }
 
     /// <summary>
@@ -484,19 +388,16 @@ public class NBody : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Compact orbital state container used by integrators and predictors.
-    /// </summary>
     public struct OrbitalState
     {
-        public double3 position;         // ECI position
-        public double3 velocity;         // ECI velocity
-        public float centralBodyMass;    // Earth mass
-        public double mass;              // kg
-        public double radius;            // sim units (for drag/collision)
-        public double crossSectionArea;  // precomputed area for drag
-        public float dragCoefficient;    // ~2.2 default
-        public Vector3 force;            // accumulated external force
+        public double3 position;
+        public double3 velocity;
+        public float centralBodyMass;
+        public double mass;
+        public double radius;
+        public double crossSectionArea;
+        public float dragCoefficient;
+        public Vector3 force;
 
         public OrbitalState(
             double3 position,
@@ -509,13 +410,13 @@ public class NBody : MonoBehaviour
         {
             this.position = position;
             this.velocity = velocity;
-            this.centralBodyMass = 5.972e24f;
+            // UPDATED: use the parameter or remove it from the signature.
+            this.centralBodyMass = (centralBodyMass > 0f) ? centralBodyMass : 5.972e24f; // UPDATED
             this.mass = mass;
             this.radius = radius;
             this.dragCoefficient = dragCoefficient;
             this.force = force;
-
-            this.crossSectionArea = Math.PI * radius * radius; // compute once
+            this.crossSectionArea = Math.PI * radius * radius;
         }
     }
 }

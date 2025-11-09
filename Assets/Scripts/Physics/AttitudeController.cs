@@ -8,8 +8,8 @@ public class AttitudeController : MonoBehaviour
         Retrograde,
         Nadir,           // toward Earth
         Zenith,          // away from Earth
-        Normal,          // +h
-        AntiNormal,      // -h
+        Normal,          // +h (with 90°-swap behavior by design)
+        AntiNormal,      // -h (with 90°-swap behavior by design)
         Inertial,        // fixed world vector
         Manual,          // leave rotation as-is
         HoldCurrent      // freeze current world orientation
@@ -24,7 +24,7 @@ public class AttitudeController : MonoBehaviour
     [Tooltip("Max body pointing slew rate (deg/s) for smooth mode.")]
     public float maxSlewRateDegPerSec = 60f;
     [Tooltip("Roll hold weight (0..1) toward the 'upHint' vector.")]
-    public float rollHold = 1.0f;
+    [Range(0f, 1f)] public float rollHold = 1.0f;
 
     [Header("Debug")]
     public Vector3 primaryWorld; // x-axis target
@@ -35,22 +35,46 @@ public class AttitudeController : MonoBehaviour
     private Vector3 hCache = Vector3.up;
 
     // thresholds
-    const float V_MIN = 0.01f;
-    const float H_MIN = 1e-5f;
-    const float ANG_MIN_DEG = 5f;
+    private const float V_MIN = 0.01f;
+    private const float H_MIN = 1e-5f;
+    private const float ANG_MIN_DEG = 5f;
+    private const float EPS = 1e-8f;
+    private const float CROSS_EPS2 = 1e-10f;
 
     private NBody nbody;
+    private ICameraTracker cameraTracker;
     private BodyService bodyService;
     private SimContext ctx;
 
+    private bool wasTracked = false;
+
     // ---- Hold state ----
     private bool holdValid;
-    private Quaternion holdTarget;   // frozen world rotation
-    private Vector3 holdX, holdY;    // frozen axes (for inspector/debug)
+    private Vector3 holdX, holdY; // frozen axes (for inspector/debug)
+
+    [Header("Thrust parity sync")]
+    public bool useThrustParityWhenThrusting = true;
+
+    // external sync (from ThrustController.SyncThrustParity)
+    private bool _thrustingExternal;      // set by caller each frame
+    private sbyte _latchedParityExternal; // −1/0/+1 (0 = no latch)
+
+    // internal parity + grace
+    [SerializeField] private int thrustGraceFrames = 6; // ~0.1s @60 Hz
+    private int _thrustGraceCounter = 0;
+    private bool _prevThrusting = false;
+    private int _paritySignForBurn = 0; // +1 “prograde side”, -1 “retro side”, 0 = unset
+
+    public void SyncThrustParity(bool isThrusting, sbyte latchedParity)
+    {
+        _thrustingExternal = isThrusting;
+        _latchedParityExternal = latchedParity;
+    }
 
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
+        this.cameraTracker = ctx.CameraTracker;
         this.bodyService = ctx.BodyService;
     }
 
@@ -58,6 +82,17 @@ public class AttitudeController : MonoBehaviour
     {
         if (!nbody) nbody = GetComponent<NBody>();
         if (!nbody) return;
+
+        // === Track-aware gate using CameraTracker.CurrentBody ===
+        bool isTracked = (cameraTracker == null) || (cameraTracker.CurrentBody == nbody);
+        if (!isTracked)
+        {
+            wasTracked = false;
+            return;
+        }
+        bool snapNow = !wasTracked; // first frame after becoming tracked -> snap
+        wasTracked = true;
+        // === end track-aware gate ===
 
         if (!bodyService)
             bodyService = FindFirstObjectByType<BodyService>();
@@ -74,19 +109,13 @@ public class AttitudeController : MonoBehaviour
 
         if (mode == PointingMode.HoldCurrent)
         {
-            // If we just switched into Hold but haven’t captured yet, capture now.
-            if (!holdValid)
-                CaptureHoldFromCurrent();
-
-            // Use frozen axes; skip recomputation.
+            if (!holdValid) CaptureHoldFromCurrent(); // capture on entry
             xTarget = holdX;
             yUpHint = holdY;
         }
         else
         {
-            // live compute per mode
-            ComputeTargetAxes(r, v, center, out xTarget, out yUpHint);
-            // since we’re not in hold, mark hold as invalid
+            ComputeTargetAxes(r, v, out xTarget, out yUpHint);
             holdValid = false;
         }
 
@@ -97,67 +126,91 @@ public class AttitudeController : MonoBehaviour
         // Build orthonormal basis
         Vector3 x = xTarget.normalized;
         Vector3 z = Vector3.Cross(x, yUpHint);
-        if (z.sqrMagnitude < 1e-10f) z = Vector3.Cross(x, Vector3.up);
+        if (z.sqrMagnitude < CROSS_EPS2) z = Vector3.Cross(x, Vector3.up);
         z.Normalize();
         Vector3 y = Vector3.Cross(z, x);
 
         var target = Quaternion.LookRotation(x, y);
         float maxStep = maxSlewRateDegPerSec * Time.unscaledDeltaTime;
-        transform.rotation = snapAttitude
+        bool doSnap = snapAttitude || snapNow;
+
+        transform.rotation = doSnap
             ? target
             : Quaternion.RotateTowards(transform.rotation, target, maxStep);
     }
 
     public void SetMode(PointingMode newMode)
     {
-        // If the user explicitly chooses Hold, freeze immediately at click time
-        if (newMode == PointingMode.HoldCurrent)
-            CaptureHoldFromCurrent();
-        else
-            holdValid = false;
+        if (newMode == PointingMode.HoldCurrent) CaptureHoldFromCurrent();
+        else holdValid = false;
 
         mode = newMode;
         Debug.Log($"[AttitudeController] {name} mode -> {mode}");
     }
 
-    /// <summary>
-    /// Call this to freeze the current world orientation, regardless of current mode.
-    /// Useful for a dedicated "Hold Here" button.
-    /// </summary>
-    public void FreezeCurrentAttitude()
-    {
-        SetMode(PointingMode.HoldCurrent);
-    }
+    public void FreezeCurrentAttitude() => SetMode(PointingMode.HoldCurrent);
 
     private void CaptureHoldFromCurrent()
     {
-        holdTarget = transform.rotation;
-        // Store stable world axes corresponding to this rotation
-        holdX = transform.forward; // Unity forward (Z) is our primary
-        holdY = transform.up;
-        if (holdX.sqrMagnitude < 1e-8f) holdX = Vector3.forward;
-        if (holdY.sqrMagnitude < 1e-8f) holdY = Vector3.up;
+        holdX = (transform.forward.sqrMagnitude > EPS) ? transform.forward : Vector3.forward;
+        holdY = (transform.up.sqrMagnitude > EPS) ? transform.up : Vector3.up;
         holdValid = true;
     }
 
     public void SetInertialDirection(Vector3 worldDir)
     {
-        if (worldDir.sqrMagnitude > 1e-12f) inertialDirection = worldDir.normalized;
+        if (worldDir.sqrMagnitude > EPS) inertialDirection = worldDir.normalized;
     }
 
     /// <summary>
     /// Compute target primary (x̂) and roll up-hint (ŷ) in world space with safe fallbacks.
     /// </summary>
-    private void ComputeTargetAxes(Vector3 r, Vector3 v, Vector3 center, out Vector3 xHat, out Vector3 yUp)
+    private void ComputeTargetAxes(Vector3 r, Vector3 v, out Vector3 xHat, out Vector3 yUp)
     {
         Vector3 rHat = SafeNorm(r, Vector3.up);
         Vector3 vHat = SafeNorm(v, vCache);
+
         float alpha = Vector3.Angle(rHat, vHat); // deg
         Vector3 h = Vector3.Cross(r, v);
         Vector3 hHat = SafeNorm(h, hCache);
 
         bool okV = v.magnitude > V_MIN;
         bool okH = h.magnitude > H_MIN && alpha > ANG_MIN_DEG;
+
+        // ---- Parity decision (unified for both attitude & burns) ----
+        // live sign from current side of 90° boundary
+        int liveSign = (h.y < 0f) ? +1 : -1;
+
+        // internal thrust flag
+        bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
+
+        // combine internal + external
+        bool thrusting = IsThrustingEffective(internalThrusting);
+
+        // Rising edge: capture sign (if h is valid), start grace
+        if (thrusting && !_prevThrusting)
+        {
+            _paritySignForBurn = okH ? liveSign
+                                     : (_paritySignForBurn != 0 ? _paritySignForBurn : liveSign);
+            _thrustGraceCounter = thrustGraceFrames;
+        }
+
+        // While thrusting, keep grace full
+        if (thrusting) _thrustGraceCounter = thrustGraceFrames;
+
+        // Update previous state
+        _prevThrusting = thrusting;
+
+        // Tick grace
+        if (_thrustGraceCounter > 0) _thrustGraceCounter--;
+
+        // Treat "within grace" as thrusting for mapping
+        bool holdParity = thrusting || (_thrustGraceCounter > 0);
+
+        // Final parity used for mapping
+        int parityForMapping = holdParity ? EffectiveParity(liveSign) : liveSign;
+        bool progradeForMapping = (parityForMapping > 0);
+        // -------------------------------------------------------------
 
         switch (mode)
         {
@@ -168,7 +221,7 @@ public class AttitudeController : MonoBehaviour
 
             case PointingMode.Retrograde:
                 xHat = -(okV ? vHat : vCache);
-                yUp = rHat;  // right = (-v) × r = +h
+                yUp = rHat; // right = (-v) × r = +h
                 break;
 
             case PointingMode.Nadir:
@@ -182,55 +235,35 @@ public class AttitudeController : MonoBehaviour
                 break;
 
             case PointingMode.Normal:
+                if (okH)
                 {
-                    if (okH)
-                    {
-                        var p = OrbitalCalculations.TryParams(nbody, bodyService);
-                        if (p.inclination <= 90)
-                        {
-                            xHat = -hHat;                      // forward ~ +h   (FIX: was -hHat)
-                        }
-                        else
-                        {
-                            xHat = hHat;                      // forward ~ +h   (FIX: was -hHat)
-                        }
-                        yUp = okV ? vHat : vCache;       // roll with velocity
-                    }
-                    else
-                    {
-                        BuildTangentFrame(rHat, out var tHat, out var nFb);
-                        xHat = nFb;                        // fallback +normal
-                        Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
-                        yUp = (vT.sqrMagnitude > 1e-10f) ? vT.normalized : tHat;
-                    }
+                    // swap at 90°, but parity is latched during thrust/grace
+                    xHat = progradeForMapping ? -hHat : hHat;
+                    yUp = okV ? vHat : vCache;
+                }
+                else
+                {
+                    BuildTangentFrame(rHat, out var tHat, out var nFb);
+                    xHat = nFb;
+                    Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
+                    yUp = (vT.sqrMagnitude > CROSS_EPS2) ? vT.normalized : tHat;
                 }
                 break;
 
             case PointingMode.AntiNormal:
+                if (okH)
                 {
-                    if (okH)
-                    {
-                        var p = OrbitalCalculations.TryParams(nbody, bodyService);
-                        if (p.inclination <= 90)
-                        {
-                            xHat = hHat;                      // forward ~ +h   (FIX: was -hHat)
-                        }
-                        else
-                        {
-                            xHat = -hHat;                      // forward ~ +h   (FIX: was -hHat)
-                        }
-                        yUp = okV ? vHat : vCache;
-                    }
-                    else
-                    {
-                        BuildTangentFrame(rHat, out var tHat, out var nFb);
-                        xHat = -nFb;                       // fallback -normal
-                        Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
-                        yUp = (vT.sqrMagnitude > 1e-10f) ? vT.normalized : tHat;
-                    }
+                    xHat = progradeForMapping ? hHat : -hHat;
+                    yUp = okV ? vHat : vCache;
+                }
+                else
+                {
+                    BuildTangentFrame(rHat, out var tHat, out var nFb);
+                    xHat = -nFb;
+                    Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
+                    yUp = (vT.sqrMagnitude > CROSS_EPS2) ? vT.normalized : tHat;
                 }
                 break;
-
 
             case PointingMode.Inertial:
                 xHat = SafeNorm(inertialDirection, Vector3.right);
@@ -249,37 +282,9 @@ public class AttitudeController : MonoBehaviour
 
         if (rollHold < 1f && rollHold > 0f)
         {
-            Vector3 worldUp = Vector3.up;
-            yUp = Vector3.Slerp(worldUp, yUp, rollHold).normalized;
+            // blend roll toward world up for stability if desired
+            yUp = Vector3.Slerp(Vector3.up, yUp, rollHold).normalized;
         }
-    }
-
-    // Add near the bottom of AttitudeController
-    private static void BuildTangentFrame(Vector3 rHat, out Vector3 tHat, out Vector3 nFallback)
-    {
-        // pick a world reference that isn't parallel to rHat
-        Vector3 refUp = (Mathf.Abs(Vector3.Dot(rHat, Vector3.up)) < 0.9f) ? Vector3.up : Vector3.forward;
-
-        // tHat lies in the local horizontal plane (perpendicular to rHat)
-        tHat = Vector3.Cross(refUp, rHat);
-        if (tHat.sqrMagnitude < 1e-12f)
-        {
-            // super edge case: try another axis
-            refUp = Vector3.right;
-            tHat = Vector3.Cross(refUp, rHat);
-        }
-        tHat.Normalize();
-
-        // fallback orbit normal
-        nFallback = Vector3.Cross(rHat, tHat);
-        nFallback.Normalize();
-    }
-
-
-    private static Vector3 SafeNorm(Vector3 v, Vector3 fallback)
-    {
-        float m = v.magnitude;
-        return (m > 1e-8f) ? v / m : (fallback.sqrMagnitude > 0f ? fallback.normalized : Vector3.forward);
     }
 
     // Public API for thrust: returns world burnDir and whether it's a lateral burn
@@ -287,12 +292,10 @@ public class AttitudeController : MonoBehaviour
     {
         lateral = false;
 
-        // local r, v for THIS body
         if (!nbody) nbody = GetComponent<NBody>();
         Vector3 r = transform.position - center;
         Vector3 v = nbody ? nbody.velocity : Vector3.zero;
 
-        // Reuse the exact same logic/fallbacks you use to aim the vehicle
         Vector3 rHat = SafeNorm(r, Vector3.up);
         Vector3 vHat = SafeNorm(v, vCache);
         Vector3 h = Vector3.Cross(r, v);
@@ -302,8 +305,15 @@ public class AttitudeController : MonoBehaviour
         bool okV = v.magnitude > V_MIN;
         bool okH = h.magnitude > H_MIN && alpha > ANG_MIN_DEG;
 
-        // For fallback normal/tangent, use the same helper your attitude uses
         BuildTangentFrame(rHat, out var tHat, out var nFallback);
+
+        // >>> Use the exact same parity logic as attitude <<<
+        int liveSign = (h.y < 0f) ? +1 : -1;
+        bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
+        bool thrusting = IsThrustingEffective(internalThrusting);
+        bool holdParity = thrusting || (_thrustGraceCounter > 0);
+        int parityForMapping = holdParity ? EffectiveParity(liveSign) : liveSign;
+        bool progradeForMapping = (parityForMapping > 0);
 
         switch (mode)
         {
@@ -314,19 +324,54 @@ public class AttitudeController : MonoBehaviour
 
             case PointingMode.Normal:
                 lateral = true;
-                if (okH) return -hHat;              // your attitude uses -hHat for +Normal
+                if (okH) return progradeForMapping ? -hHat : hHat;
                 return -nFallback;
 
             case PointingMode.AntiNormal:
                 lateral = true;
-                if (okH) return hHat;
+                if (okH) return progradeForMapping ? hHat : -hHat;
                 return nFallback;
 
             case PointingMode.Inertial: return SafeNorm(inertialDirection, Vector3.right);
-            case PointingMode.HoldCurrent: return transform.forward; // frozen direction
+            case PointingMode.HoldCurrent:
             case PointingMode.Manual:
-            default: return transform.forward; // don't second-guess manual
+            default: return transform.forward;
         }
     }
 
+    // ---- helpers ----
+
+    private bool IsThrustingEffective(bool internalThrusting)
+    {
+        if (useThrustParityWhenThrusting && _thrustingExternal) return true;
+        return internalThrusting;
+    }
+
+    private int EffectiveParity(int liveSign) // +1 prograde-side, -1 retro-side
+    {
+        if (_latchedParityExternal != 0) return _latchedParityExternal;
+        if (_paritySignForBurn != 0) return _paritySignForBurn;
+        return liveSign;
+    }
+
+    private static void BuildTangentFrame(Vector3 rHat, out Vector3 tHat, out Vector3 nFallback)
+    {
+        Vector3 refUp = (Mathf.Abs(Vector3.Dot(rHat, Vector3.up)) < 0.9f) ? Vector3.up : Vector3.forward;
+        tHat = Vector3.Cross(refUp, rHat);
+        if (tHat.sqrMagnitude < EPS)
+        {
+            refUp = Vector3.right;
+            tHat = Vector3.Cross(refUp, rHat);
+        }
+        tHat.Normalize();
+
+        nFallback = Vector3.Cross(rHat, tHat);
+        nFallback.Normalize();
+    }
+
+    private static Vector3 SafeNorm(Vector3 v, Vector3 fallback)
+    {
+        float m = v.magnitude;
+        return (m > EPS) ? (v / m) : (fallback.sqrMagnitude > 0f ? fallback.normalized : Vector3.forward);
+    }
 }
