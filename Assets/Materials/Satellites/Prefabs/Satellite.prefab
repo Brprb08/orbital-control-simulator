@@ -48,6 +48,22 @@ PrefabInstance:
       propertyPath: m_LocalEulerAnglesHint.z
       value: 0
       objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 11dc3fed99ef2f041b6f037f488c77cd, type: 3}
+      propertyPath: m_Materials.Array.size
+      value: 4
+      objectReference: {fileID: 0}
+    - target: {fileID: -7511558181221131132, guid: 11dc3fed99ef2f041b6f037f488c77cd, type: 3}
+      propertyPath: 'm_Materials.Array.data[2]'
+      value: 
+      objectReference: {fileID: 2100000, guid: f63adeff536519e46bbbc4ffeedde4a4, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 11dc3fed99ef2f041b6f037f488c77cd, type: 3}
+      propertyPath: 'm_Materials.Array.data[3]'
+      value: 
+      objectReference: {fileID: 2100000, guid: 936ea7d91052a82448af9f68ce0689b1, type: 2}
+    - target: {fileID: -7511558181221131132, guid: 11dc3fed99ef2f041b6f037f488c77cd, type: 3}
+      propertyPath: 'm_Materials.Array.data[4]'
+      value: 
+      objectReference: {fileID: 0}
     - target: {fileID: 919132149155446097, guid: 11dc3fed99ef2f041b6f037f488c77cd, type: 3}
       propertyPath: m_Name
       value: Satellite

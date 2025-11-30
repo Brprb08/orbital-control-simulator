@@ -1,3 +1,5 @@
+using System;
+
 public class SimContext
 {
     public BodyService BodyService { get; set; }
@@ -18,6 +20,7 @@ public class SimContext
     public RocketThrustAudio RocketThrustAudio { get; set; }
     public TutorialController TutorialController { get; set; }
     public ICameraTracker CameraTracker => CameraController;
+    public RandomSatelliteSpawner RandomSatelliteSpawner { get; set; }
     public CameraButtonProxy CameraButtonProxy { get; set; }
     public AttitudeUIBinder AttitudeUIBinder { get; set; }
 }

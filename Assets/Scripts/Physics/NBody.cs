@@ -45,18 +45,20 @@ public class NBody : MonoBehaviour
     public bool isThrusting = false;
 
     [Header("Constants")]
-    private const float EarthRotationRate = 360f / (24f * 60f * 60f);
+    private const float EarthRotationRate = 360f / 86164f; // deg/sec, sidereal
     const double EarthRadiusUnits = 637.8137;
     private const float MaxDistanceFromEarth = 40000f;
+
+    [Header("Flags")]
+    public bool isReferenceOrbit = false;
 
     public float cumulativeDeltaVUsed = 0f;
 
     public bool projectLateralPerSubstep = false;
 
-    private double[] otherMassCache;   // UPDATED: masses rarely change
+    private double[] otherMassCache;
 
-    // NEW: cache component lookups
-    private AttitudeController att;    // UPDATED: cached once
+    private AttitudeController att;
 
 
     private SimContext ctx;
@@ -96,10 +98,9 @@ public class NBody : MonoBehaviour
             Vector3.zero
         );
 
-        // UPDATED: cache AttitudeController once
-        att = GetComponent<AttitudeController>(); // NEW (cached)
+        att = GetComponent<AttitudeController>();
 
-        // Build relevantBodies and caches once here (and rebuild if the set changes)
+        // Build relevantBodies and caches once here
         var all = bodyService != null ? bodyService.Bodies : null;
         if (all != null)
         {
@@ -117,7 +118,7 @@ public class NBody : MonoBehaviour
             relevantBodies = new List<NBody>();
         }
 
-        AllocateRelevantCaches(); // NEW
+        AllocateRelevantCaches();
     }
 
     private void AllocateRelevantCaches()
@@ -145,7 +146,6 @@ public class NBody : MonoBehaviour
     /// </remarks>
     void FixedUpdate()
     {
-        // --- Service-driven path: BodyService integrates all satellites in a batch ---
         if (ctx != null && ctx.BodyService != null && ctx.BodyService.DrivePhysics)
         {
             if (HasNaNPosition())
@@ -154,11 +154,13 @@ public class NBody : MonoBehaviour
             if (isCentralBody)
             {
                 RotateCentralBody();
-                return; // nothing else for the center
+                return;
             }
 
-            // Update maneuver node logic + audio; leave state.force for the batch to consume.
-            CheckForNodeBurns();
+            if (!isReferenceOrbit)
+            {
+                CheckForNodeBurns();
+            }
             return;
         }
     }
@@ -170,15 +172,12 @@ public class NBody : MonoBehaviour
     /// </summary>
     public void SyncAfterBatch()
     {
-        // Sync cached transform state
         transform.position = state.position.ToVector3();
         velocity = state.velocity.ToVector3();
 
-        // Post-step checks (same as in legacy path)
         CheckCollisionWithEarth();
         CheckEscapeFromEarth();
 
-        // Batch consumed the force; clear for the next tick
         state.force = Vector3.zero;
     }
 
@@ -196,7 +195,9 @@ public class NBody : MonoBehaviour
     /// </summary>
     void RotateCentralBody()
     {
-        transform.Rotate(Vector3.up, -EarthRotationRate * Time.fixedDeltaTime);
+        // float dtSim = Time.fixedDeltaTime * Time.timeScale;
+        float deltaAngle = -EarthRotationRate * Time.deltaTime;
+        transform.Rotate(Vector3.up, deltaAngle);
     }
 
     /// <summary>
@@ -410,8 +411,7 @@ public class NBody : MonoBehaviour
         {
             this.position = position;
             this.velocity = velocity;
-            // UPDATED: use the parameter or remove it from the signature.
-            this.centralBodyMass = (centralBodyMass > 0f) ? centralBodyMass : 5.972e24f; // UPDATED
+            this.centralBodyMass = (centralBodyMass > 0f) ? centralBodyMass : 5.972e24f;
             this.mass = mass;
             this.radius = radius;
             this.dragCoefficient = dragCoefficient;

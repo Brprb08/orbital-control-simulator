@@ -421,24 +421,4 @@ public class CameraController : MonoBehaviour, ICameraTracker
     private void EmitModeChanged(CameraMode m) { if (!_suppressUiSignals) OnModeChanged?.Invoke(m); }
     private void EmitTrackedBody(NBody b) { if (!_suppressUiSignals) OnTrackedBodyChanged?.Invoke(b); }
     private void EmitTrackedPlaceholder(Transform t) { if (!_suppressUiSignals) OnTrackedPlaceholderChanged?.Invoke(t); }
-
-    /// <summary>Tracks the next satellite in the current ordered list, if any.</summary>
-    // public void TrackNextBody()
-    // {
-    //     var sats = _bodyService?.GetSatellites();
-    //     if (sats == null || sats.Count == 0) return;
-
-    //     _currentIndex = Mathf.Clamp(_currentIndex + 1, 0, sats.Count - 1);
-    //     TrackBody(sats[_currentIndex]);
-    // }
-
-    /// <summary>Tracks the previous satellite in the current ordered list, if any.</summary>
-    // public void TrackPrevBody()
-    // {
-    //     var sats = _bodyService?.GetSatellites();
-    //     if (sats == null || sats.Count == 0) return;
-
-    //     _currentIndex = Mathf.Clamp(_currentIndex - 1, 0, sats.Count - 1);
-    //     TrackBody(sats[_currentIndex]);
-    // }
 }

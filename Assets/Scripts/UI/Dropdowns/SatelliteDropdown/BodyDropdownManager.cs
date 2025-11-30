@@ -25,7 +25,7 @@ public class BodyDropdownManager : MonoBehaviour
     // index -> NBody map (avoids name lookups)
     private readonly List<NBody> _optionsMap = new List<NBody>();
 
-    // Event handler refs (so we can unhook cleanly)
+    // Event handler refs 
     private System.Action<NBody> _onBodyAddedHandler;
     private System.Action<NBody> _onBodyRemovedHandler;
 
@@ -56,7 +56,6 @@ public class BodyDropdownManager : MonoBehaviour
 
     private void OnEnable()
     {
-        // BodyService events → rebuild on membership changes
         if (bodyService != null)
         {
             _onBodyAddedHandler = OnBodyAdded;
@@ -66,7 +65,6 @@ public class BodyDropdownManager : MonoBehaviour
             bodyService.BodyRemoved += _onBodyRemovedHandler;
         }
 
-        // Camera events (until ICameraTracker exposes events, use concrete controller)
         if (cameraTracker is CameraController controller)
         {
             _onTrackedBodyChangedHandler = OnTrackedBodyChanged;
@@ -78,14 +76,12 @@ public class BodyDropdownManager : MonoBehaviour
             controller.OnModeChanged += _onModeChangedHandler;
         }
 
-        // ObservableTMPDropdown popup lifecycle
         if (dropdownObserver != null)
         {
             dropdownObserver.OnDropdownShown += HandleDropdownShown;
             dropdownObserver.OnDropdownHidden += HandleDropdownHidden;
         }
 
-        // UI listener (guarded so Initialize + re-enables don't duplicate)
         if (bodyDropdown != null && !_valueListenerAdded)
         {
             bodyDropdown.onValueChanged.AddListener(HandleDropdownValueChanged);
@@ -131,8 +127,6 @@ public class BodyDropdownManager : MonoBehaviour
             bodyDropdown.onValueChanged.RemoveListener(HandleDropdownValueChanged);
     }
 
-    // ---------- UI -> Sim ----------
-
     /// <summary>
     /// Tracks the selected body when the user chooses an option.
     /// </summary>
@@ -152,8 +146,6 @@ public class BodyDropdownManager : MonoBehaviour
         Debug.Log($"[BodyDropdown] Tracking switched to: {target.name}");
     }
 
-    // ---------- Sim -> UI (event handlers) ----------
-
     private void OnTrackedBodyChanged(NBody _) => UpdateDropdownSelection();
     private void OnTrackedPlaceholderChanged(Transform _) => SetDropdownNoSelection();
 
@@ -167,12 +159,8 @@ public class BodyDropdownManager : MonoBehaviour
     private void OnBodyRemoved(NBody _) => RebuildOptionsAndSelection();
     private void OnCentralBodyChanged(NBody _) => RebuildOptionsAndSelection();
 
-    // ---------- Dropdown popup lifecycle (from ObservableTMPDropdown) ----------
-
     private void HandleDropdownShown(RectTransform listRt) => _openListRt = listRt;
     private void HandleDropdownHidden() => _openListRt = null;
-
-    // ---------- Build / Sync ----------
 
     /// <summary>
     /// Rebuilds the option list and syncs selection to the tracked body.
@@ -202,7 +190,6 @@ public class BodyDropdownManager : MonoBehaviour
             {
                 if (b == null) continue;
 
-                // Centralized inclusion rule
                 if (!b.CompareTag("Planet") && !b.CompareTag("Satellite")) continue;
 
                 _optionsMap.Add(b);

@@ -21,7 +21,7 @@ public class TimeController : MonoBehaviour
 
     [Header("Pause State")]
     private bool isPaused = false;
-    private float previousTimeScale = 1.0f; // Last non-zero scale used before pausing
+    private float previousTimeScale = 1.0f;
 
     private BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private TutorialController tutorialController;
@@ -193,6 +193,7 @@ public class TimeController : MonoBehaviour
                 uIManager.maneuverNodePanel.SetActive(show);
             }
 
+            uIManager.attitudeControlPanel.SetActive(show);
             uIManager.burnControlsPanel.SetActive(show);
             uIManager.toggleOptionsPanel.SetActive(show);
             uIManager.dropdown.SetActive(show);

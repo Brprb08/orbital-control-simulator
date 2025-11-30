@@ -5,25 +5,21 @@ using UnityEngine.UI;
 using System;
 
 /// <summary>
-/// Manages user-driven object placement via three workflows:
-/// 1) Manual placement with drag-to-set-velocity
-/// 2) Keplerian element placement
-/// 3) TLE-based placement
-///
-/// The manager validates inputs, spawns placeholder bodies, coordinates the
-/// velocity-drag flow, and updates UI feedback. It requires Free camera mode
-/// before placement begins and temporarily locks UI where appropriate.
+/// Handles satellite placement from three paths:
+/// 1) Manual position/mass/radius
+/// 2) Keplerian elements
+/// 3) TLE
+/// Also manages the “ghost” preview, simple validation, and interaction with
+/// camera tracking and the velocity-drag flow.
 /// </summary>
 public class ObjectPlacementManager : MonoBehaviour
 {
     [Header("References - Core")]
     [SerializeField] private Camera mainCamera;
-    [SerializeField] private GameObject spherePrefab;                 // Visual placeholder prefab (no NBody component)
-    [SerializeField] private TrajectoryRenderer trajectoryRenderer;
+    [SerializeField] private SatelliteSpawner satelliteSpawner;
     [SerializeField] private VelocityDragManager velocityDragManager;
     [SerializeField] private TutorialController tutorialController;
 
-    // Set at runtime (Initialize)
     private ICameraTracker cameraTracker;
     private UIManager uIManager;
     private SimContext ctx;
@@ -33,7 +29,7 @@ public class ObjectPlacementManager : MonoBehaviour
     [SerializeField] private TMP_InputField massInput;
     [SerializeField] private TMP_InputField radiusInput;
     [SerializeField] private TMP_InputField positionInput;
-    [SerializeField] private Button placeObjectButton;                // Optional hookup
+    [SerializeField] private Button placeObjectButton;
     [SerializeField] private TextMeshProUGUI feedbackText;
 
     [Header("References - UI (Kepler)")]
@@ -45,7 +41,7 @@ public class ObjectPlacementManager : MonoBehaviour
     [SerializeField] private TMP_InputField kepRAANDegInputField;        // Ω (deg)
     [SerializeField] private TMP_InputField kepArgPDegInputField;        // ω (deg)
     [SerializeField] private TMP_InputField kepTrueAnomDegInputField;    // ν (deg)
-    [SerializeField] private Button placeKeplerObjectButton;             // Optional hookup
+    [SerializeField] private Button placeKeplerObjectButton;
 
     [Header("References - UI (TLE)")]
     [SerializeField] private TMP_InputField tleNameInputField;
@@ -67,44 +63,30 @@ public class ObjectPlacementManager : MonoBehaviour
     [Header("Ghost Preview")]
     [SerializeField] private GameObject ghostPreviewPrefab;
     private GameObject ghostInstance;
-    private bool ghostObjectPlaced = false;
-    private bool clearingPosition = false;
+    private bool ghostObjectPlaced;
+    private bool clearingPosition;
 
     [Header("Placement State")]
-    [SerializeField] private GameObject lastPlacedGameObject;         // Active manual-placement blocker
-    private int satelliteCount = 0;
+    [SerializeField] private GameObject lastPlacedGameObject;   // manual-placement blocker
 
     private const int MaxSatelliteNameLength = 15;
 
-    // Centralized validation ranges (mirrors PlacementValidators)
-    private static readonly PlacementValidators.RangeF MassRange = new(500f, 1_000_000f);
+    private static readonly PlacementValidators.RangeF MassRange = new(500f, 1000000f);
     private static readonly PlacementValidators.RangeF RadiusClamp = new(0.5f, 1.0f);
     private static readonly PlacementValidators.DistanceBoundsF PosBounds = new(638f, 5000f);
 
-    // ========= Stress Test Spawner =========
-    [Header("Stress Test Spawner")]
-    [SerializeField] private Button randomSatButton;
-    [SerializeField] private int clickCount = 1;
-    [SerializeField] private int shiftClickCount = 10;
-    [SerializeField] private int ctrlClickCount = 100;
-    [SerializeField] private Vector2 eccentricityRange = new Vector2(0.0f, 0.10f); // mostly circular
-    [SerializeField] private Vector2 altitudeKmRange = new Vector2(700f, 35000f);   // perigee above ~200 km
-    [SerializeField] private Vector2 massRangeKg = new Vector2(500f, 50_000);  // mirrors MassRange
-    [SerializeField] private int maxRetries = 8; // retries per sat if a random draw intersects Earth
-
-    // Keep for testing and add button for this when needed
-    [SerializeField] private Button burstButton;
-    [SerializeField] private int burstCount = 500;
+    // Public for RandomSatelliteSpawner
+    public double Mu => mu;
+    public double EarthRadiusMeters => earthRadiusMeters;
+    public double MetersPerUnit => metersPerUnit;
 
     /// <summary>
-    /// Injects the simulation context and wires dependencies and UI listeners.
+    /// Injects the simulation context and wires dependencies + UI listeners.
     /// Also creates and hides the ghost preview if a prefab is provided.
     /// </summary>
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
-        trajectoryRenderer = ctx.TrajectoryRenderer;
-        tutorialController = ctx.TutorialController;
         cameraTracker = ctx.CameraTracker;
         uIManager = ctx.UIManager;
 
@@ -113,17 +95,8 @@ public class ObjectPlacementManager : MonoBehaviour
             massInput.onValueChanged.AddListener(OnMassInputChanged);
             radiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
         }
+
         positionInput.onValueChanged.AddListener(OnPositionInputChanged);
-
-        // NEW: random spawner click
-        // if (randomSatButton != null)
-        //     randomSatButton.onClick.AddListener(OnRandomSatButtonClicked);
-
-        // if (burstButton != null)
-        //     burstButton.onClick.AddListener(SpawnRandomBurst100);
-
-        if (randomSatButton != null)
-            randomSatButton.onClick.AddListener(SpawnRandomBurst100);
 
         if (ghostPreviewPrefab != null)
         {
@@ -132,319 +105,200 @@ public class ObjectPlacementManager : MonoBehaviour
         }
     }
 
-    // ========== 1) Manual placement ==========
-
     /// <summary>
-    /// Begins manual placement after validating state and inputs. Spawns a satellite
-    /// placeholder, enters the velocity-drag step, and locks related UI until the
-    /// user completes or cancels.
+    /// Manual placement flow: validates manual fields, spawns a placeholder,
+    /// hooks it up to the velocity-drag manager, and locks the inputs.
     /// </summary>
     public void StartPlacement()
     {
-        if (!CanStartPlacement(out var gateErr)) { feedbackText.text = gateErr; return; }
+        if (!CanStartPlacement(out var gateErr))
+        {
+            SetFeedback(gateErr);
+            return;
+        }
 
-        if (!PlacementValidators.TryGetName(objectNameInputField, "Satellite", satelliteCount, MaxSatelliteNameLength, out var name, out var err)) { feedbackText.text = err; return; }
-        if (!PlacementValidators.TryGetPositionOrDefault(positionInput, mainCamera.transform, 10f, PosBounds, out var pos, out err)) { feedbackText.text = err; return; }
-        if (!PlacementValidators.TryGetRadius(radiusInput, RadiusClamp, out var radius, out err)) { feedbackText.text = err; return; }
-        if (!PlacementValidators.TryGetMass(massInput, MassRange, out var mass, out err)) { feedbackText.text = err; return; }
+        if (!PlacementValidators.TryGetName(objectNameInputField, "Satellite", satelliteSpawner.SatelliteCount, MaxSatelliteNameLength, out var name, out var err))
+        {
+            SetFeedback(err);
+            return;
+        }
+
+        if (!PlacementValidators.TryGetPositionOrDefault(positionInput, mainCamera.transform, 10f, PosBounds, out var pos, out err))
+        {
+            SetFeedback(err);
+            return;
+        }
+
+        if (!PlacementValidators.TryGetRadius(radiusInput, RadiusClamp, out var radius, out err))
+        {
+            SetFeedback(err);
+            return;
+        }
+
+        if (!PlacementValidators.TryGetMass(massInput, MassRange, out var mass, out err))
+        {
+            SetFeedback(err);
+            return;
+        }
 
         HideGhost();
 
-        // TODO - TEMP Radius default
+        // radius currently unused visually; using default scale
         Vector3 radiusDefault = Vector3.one;
 
-        lastPlacedGameObject = CreateSatellite(name, pos, radiusDefault, mass, null);
+        lastPlacedGameObject = satelliteSpawner.CreatePlaceholder(name, pos, radiusDefault, mass, velocityDragManager);
         PreviewSilently(lastPlacedGameObject.transform);
 
-        // Manual placement expects a drag-to-set-velocity step -> lock inputs until user finishes/cancels
         LockManualPlacementInputs(true);
         ClearAllFields();
 
         tutorialController.hasSatelliteBeenPlaced = true;
-        feedbackText.text =
+        SetFeedback(
             "Setting Satellite Velocity:\n\n" +
             "• Click the satellite and drag.\n" +
             "• Set the desired direction.\n" +
-            "• Use input field to adjust speed.";
+            "• Use input field to adjust speed."
+        );
+
         EventSystem.current.SetSelectedGameObject(null);
     }
 
-    // ========== 2) Keplerian placement ==========
-
     /// <summary>
-    /// Places an object using Keplerian orbital elements. Validates elements,
-    /// converts to ECI position/velocity, transforms into Unity space, and spawns
-    /// a fully-initialized satellite (no velocity-drag step).
+    /// Keplerian placement flow: validates elements, converts to ECI position/velocity,
+    /// checks for Earth intersection, then spawns a tracked satellite.
     /// </summary>
     public void PlaceObjectFromKepler()
     {
-        if (!CanStartPlacement(out var gateErr)) { feedbackText.text = gateErr; return; }
+        if (!CanStartPlacement(out var gateErr))
+        {
+            SetFeedback(gateErr);
+            return;
+        }
 
-        if (!PlacementValidators.TryGetName(kepNameInputField, "Kepler Sat", satelliteCount + 1, MaxSatelliteNameLength, out var name, out var err)) { feedbackText.text = err; return; }
-        if (!PlacementValidators.TryGetMass(kepMassInputField, MassRange, out var mass, out err)) { feedbackText.text = err; return; }
+        if (!PlacementValidators.TryGetName(kepNameInputField, "Kepler Sat", satelliteSpawner.SatelliteCount + 1, MaxSatelliteNameLength, out var name, out var err))
+        {
+            SetFeedback(err);
+            return;
+        }
 
-        if (!PlacementValidators.TryGetDouble(kepADegOrMetersInputField, out double aMeters)) { feedbackText.text = "Invalid semi-major axis 'a'."; return; }
-        if (!PlacementValidators.TryGetDouble(kepEccInputField, out double e) || e < 0.0 || e >= 1.0) { feedbackText.text = "Invalid eccentricity 'e'. Use 0 ≤ e < 1."; return; }
+        if (!PlacementValidators.TryGetMass(kepMassInputField, MassRange, out var mass, out err))
+        {
+            SetFeedback(err);
+            return;
+        }
+
+        if (!PlacementValidators.TryGetDouble(kepADegOrMetersInputField, out double aMeters))
+        {
+            SetFeedback("Invalid semi-major axis 'a'.");
+            return;
+        }
+
+        if (!PlacementValidators.TryGetDouble(kepEccInputField, out double e) || e < 0.0 || e >= 1.0)
+        {
+            SetFeedback("Invalid eccentricity 'e'. Use 0 ≤ e < 1.");
+            return;
+        }
+
         if (!PlacementValidators.TryGetDouble(kepIncDegInputField, out double iDeg) ||
             !PlacementValidators.TryGetDouble(kepRAANDegInputField, out double raanDeg) ||
             !PlacementValidators.TryGetDouble(kepArgPDegInputField, out double argpDeg) ||
             !PlacementValidators.TryGetDouble(kepTrueAnomDegInputField, out double trueAnomDeg))
-        { feedbackText.text = "Invalid angle(s): i / RAAN / ω / ν."; return; }
+        {
+            SetFeedback("Invalid angle(s): i / RAAN / ω / ν.");
+            return;
+        }
 
         try
         {
             var (rEci, vEci) = KeplerUtils.FromElements(aMeters, e, iDeg, raanDeg, argpDeg, trueAnomDeg, mu);
 
-            // Perigee must remain above Earth
             double rp = aMeters * (1.0 - e);
             if (rp <= earthRadiusMeters * 1.001)
             {
-                feedbackText.text = $"Orbit intersects Earth (perigee alt {(rp - earthRadiusMeters) / 1000.0:F1} km). Increase 'a' or reduce 'e'.";
+                double altKm = (rp - earthRadiusMeters) / 1000.0;
+                SetFeedback($"Orbit intersects Earth (perigee alt {altKm:F1} km). Increase 'a' or reduce 'e'.");
                 return;
             }
 
             var pos = FrameUtils.EciToUnity(rEci, metersPerUnit);
             var vel = FrameUtils.VelEciToUnity(vEci, metersPerUnit);
 
-            lastPlacedGameObject = CreateSatellite(name, pos, null, mass, vel);
-            ClearAllFields();
-            feedbackText.text = $"Placed '{name}' from Keplerian elements.";
+            satelliteSpawner.SpawnSatellite(name, pos, mass, vel, trackAfterSpawn: true);
 
-            // Complete immediately (no manual drag step)
+            ClearAllFields();
+            SetFeedback($"Placed '{name}' from Keplerian elements.");
+
             lastPlacedGameObject = null;
-            UpdateTrackCamButtonState();
+            UpdateTrackCamButtonState(false);
         }
         catch (Exception ex)
         {
-            feedbackText.text = $"Kepler placement failed: {ex.Message}";
+            SetFeedback($"Kepler placement failed: {ex.Message}");
         }
     }
 
-    // ========== 3) TLE placement ==========
-
     /// <summary>
-    /// Places an object using TLE lines propagated to the current UTC time.
-    /// Validates TLE input, converts the propagated ECI state to Unity space,
-    /// and spawns a fully-initialized satellite (no velocity-drag step).
+    /// TLE placement flow: parses and propagates the TLE to "now", converts to Unity,
+    /// and spawns a tracked satellite if the position is valid.
     /// </summary>
     public void PlaceObjectFromTLE()
     {
-        if (!CanStartPlacement(out var gateErr)) { feedbackText.text = gateErr; return; }
-
-        if (!PlacementValidators.TryGetMass(tleMassInputField, MassRange, out var mass, out var err)) { feedbackText.text = err; return; }
-
-        string name = !string.IsNullOrWhiteSpace(tleNameInputField?.text)
-            ? tleNameInputField.text.Trim()
-            : $"TLE Satellite {satelliteCount + 1}";
-
-        DateTime whenUtc = DateTime.UtcNow;
-
-        if (!TLEParser.TryPropagate(tleLine1InputField.text, tleLine2InputField.text, whenUtc,
-                                    out Vector3d rEci_m, out Vector3d vEci_mps, out DateTime epochUtc))
+        if (!CanStartPlacement(out var gateErr))
         {
-            feedbackText.text = "Invalid TLE input or propagation failed.";
+            SetFeedback(gateErr);
             return;
         }
 
-        // Basic safety: current radius must be above Earth
+        if (!PlacementValidators.TryGetMass(tleMassInputField, MassRange, out var mass, out var err))
+        {
+            SetFeedback(err);
+            return;
+        }
+
+        string name = !string.IsNullOrWhiteSpace(tleNameInputField?.text)
+            ? tleNameInputField.text.Trim()
+            : $"TLE Satellite {satelliteSpawner.NextSatelliteIndex}";
+
+        DateTime whenUtc = DateTime.UtcNow;
+
+        if (!TLEParser.TryPropagate(
+                tleLine1InputField.text,
+                tleLine2InputField.text,
+                whenUtc,
+                out Vector3d rEci_m,
+                out Vector3d vEci_mps,
+                out DateTime epochUtc))
+        {
+            SetFeedback("Invalid TLE input or propagation failed.");
+            return;
+        }
+
         if (rEci_m.magnitude <= earthRadiusMeters * 1.001)
         {
-            feedbackText.text = "Computed position intersects Earth. Check TLE/time.";
+            SetFeedback("Computed position intersects Earth. Check TLE/time.");
             return;
         }
 
         var spawnPos = FrameUtils.EciToUnity(rEci_m, metersPerUnit);
         var spawnVel = FrameUtils.VelEciToUnity(vEci_mps, metersPerUnit);
 
-        // Clear any pre-maneuver line from manual flow
         velocityDragManager?.trajectoryRenderer?.preManeuverLine?.Clear();
 
-        lastPlacedGameObject = CreateSatellite(name, spawnPos, null, mass, spawnVel);
+        satelliteSpawner.SpawnSatellite(name, spawnPos, mass, spawnVel, trackAfterSpawn: true);
+
         ClearAllFields();
-        feedbackText.text = $"Placed '{name}' from TLE at {whenUtc:yyyy-MM-dd HH:mm:ss}Z (epoch {epochUtc:yyyy-MM-dd HH:mm:ss}Z).";
+        SetFeedback(
+            $"Placed '{name}' from TLE at {whenUtc:yyyy-MM-dd HH:mm:ss}Z " +
+            $"(epoch {epochUtc:yyyy-MM-dd HH:mm:ss}Z)."
+        );
 
-        // Complete immediately (no manual drag step)
         lastPlacedGameObject = null;
-        UpdateTrackCamButtonState();
-    }
-
-    private void OnRandomSatButtonClicked()
-    {
-        if (!CanStartPlacement(out _)) return;
-
-        int count = clickCount;
-        if (Input.GetKey(KeyCode.LeftShift) || Input.GetKey(KeyCode.RightShift))
-            count = shiftClickCount;
-#if UNITY_EDITOR_OSX || UNITY_STANDALONE_OSX
-    bool ctrlOrCmd = Input.GetKey(KeyCode.LeftCommand) || Input.GetKey(KeyCode.RightCommand);
-#else
-        bool ctrlOrCmd = Input.GetKey(KeyCode.LeftControl) || Input.GetKey(KeyCode.RightControl);
-#endif
-        if (ctrlOrCmd) count = ctrlClickCount;
-
-        int placed = 0;
-        NBody last = null;
-
-        for (int n = 0; n < count; n++)
-        {
-            if (TryPlaceOneRandomSatellite(out var created))
-            {
-                placed++;
-                last = created; // remember last one
-            }
-        }
-
-        if (last != null)
-        {
-            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(last);
-            uIManager?.OnTrackCamPressed();
-        }
-
-        feedbackText.text = $"Spawned {placed}/{count} random satellite(s).{(last != null ? " Tracking latest." : "")}";
-    }
-
-    //DELETE THIS FOR TESTING
-    private void SpawnRandomBurst100()
-    {
-        int count = Mathf.Max(1, burstCount); // default 100
-        int placed = 0;
-        NBody last = null;
-
-        for (int i = 0; i < count; i++)
-        {
-            if (TryPlaceOneRandomSatellite(out var created))
-            {
-                placed++;
-                last = created;
-            }
-        }
-
-        if (last != null)
-        {
-            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(last);
-            uIManager?.OnTrackCamPressed();
-        }
-
-        feedbackText.text = $"Spawned {placed}/{count} random satellite(s).{(last != null ? " Tracking latest." : "")}";
-    }
-
-
-
-    // Change signature + call the spawner with trackAfterSpawn=false (we track once at the end)
-    private bool TryPlaceOneRandomSatellite(out NBody created)
-    {
-        created = null;
-
-        for (int r = 0; r < maxRetries; r++)
-        {
-            float mass = UnityEngine.Random.Range(massRangeKg.x, massRangeKg.y);
-
-            float ecc = UnityEngine.Random.Range(eccentricityRange.x, eccentricityRange.y);
-            float incDeg = UnityEngine.Random.Range(0f, 180f);
-            float raanDeg = UnityEngine.Random.Range(0f, 360f);
-            float argpDeg = UnityEngine.Random.Range(0f, 360f);
-            float truDeg = UnityEngine.Random.Range(0f, 360f);
-
-            double perigeeAlt_m = UnityEngine.Random.Range(altitudeKmRange.x, altitudeKmRange.y) * 1000.0;
-            double rp = earthRadiusMeters + perigeeAlt_m;
-            double a = rp / Math.Max(1e-6, (1.0 - ecc));
-
-            try
-            {
-                var (rEci, vEci) = KeplerUtils.FromElements(a, ecc, incDeg, raanDeg, argpDeg, truDeg, mu);
-                if (rEci.magnitude <= earthRadiusMeters * 1.001) continue;
-
-                var pos = FrameUtils.EciToUnity(rEci, metersPerUnit);
-                var vel = FrameUtils.VelEciToUnity(vEci, metersPerUnit);
-
-                string name = $"Rand Sat {satelliteCount + 1}";
-                if (name.Length > MaxSatelliteNameLength) name = name.Substring(0, MaxSatelliteNameLength);
-
-                created = SpawnSatelliteDirect(name, pos, mass, vel, trackAfterSpawn: false);
-                return true;
-            }
-            catch { /* retry on numeric edge */ }
-        }
-        return false;
-    }
-
-
-    // Replace your existing SpawnSatelliteDirect with this version:
-    private NBody SpawnSatelliteDirect(string name, Vector3 position, float mass, Vector3 initialVelocity, bool trackAfterSpawn)
-    {
-        satelliteCount++;
-
-        var go = Instantiate(spherePrefab);
-        go.name = name;
-        go.tag = "Satellite";
-        go.transform.position = position;
-        go.transform.localScale = Vector3.one;
-
-        var nbody = go.GetComponent<NBody>();
-        if (nbody == null) nbody = go.AddComponent<NBody>();
-        nbody.mass = mass;
-        nbody.trueMass = (double)mass;
-        nbody.radius = 0.002f;
-        nbody.cameraDistanceRadius = 1f;
-        nbody.isCentralBody = false;
-        nbody.Initialize(ctx);
-        nbody.velocity = initialVelocity;
-
-        var attitude = go.GetComponent<AttitudeController>();
-        if (attitude == null)
-        {
-            attitude = go.AddComponent<AttitudeController>();
-            attitude.mode = AttitudeController.PointingMode.Velocity;
-            attitude.snapAttitude = false;
-            attitude.maxSlewRateDegPerSec = 60f;
-        }
-
-        ctx.BodyService.Register(nbody);
-        cameraTracker.RefreshBodiesList();
-
-        trajectoryRenderer?.RequestFullOrbitPass();
-
-        if (trackAfterSpawn)
-        {
-            (cameraTracker ?? ctx.CameraTracker)?.TrackBody(nbody);
-            uIManager?.OnTrackCamPressed(); // keep your UI in "Track" mode
-        }
-
-        return nbody;
-    }
-
-
-    /// <summary>
-    /// Instantiates the satellite placeholder, updates VelocityDragManager, and refreshes
-    /// the camera tracker's body list. Applies an initial velocity if provided.
-    /// </summary>
-    private GameObject CreateSatellite(string name, Vector3 position, Vector3? scale, float mass, Vector3? initialVelocity)
-    {
-        satelliteCount++;
-        var go = Instantiate(spherePrefab);
-        go.name = name;
-        go.tag = "Satellite";    // Ensure consistent tagging
-        go.transform.position = position;
-        go.transform.localScale = scale ?? Vector3.one;
-
-        cameraTracker.RefreshBodiesList();
-
-        if (velocityDragManager != null)
-        {
-            velocityDragManager.ResetDragManager();
-            velocityDragManager.planet = go;
-            velocityDragManager.placeholderMass = mass;
-            if (initialVelocity.HasValue)
-                velocityDragManager.ApplyVelocityToPlanet(initialVelocity.Value);
-        }
-        return go;
+        UpdateTrackCamButtonState(false);
     }
 
     /// <summary>
-    /// Validates that a placement can begin:
-    /// - No unfinished manual placement is active
-    /// - CameraTracker is available
-    /// - Camera is in Free mode
+    /// Checks whether a new placement can start (no pending velocity-set,
+    /// and camera in Free mode).
     /// </summary>
     private bool CanStartPlacement(out string error)
     {
@@ -453,22 +307,25 @@ public class ObjectPlacementManager : MonoBehaviour
             error = $"Finish setting velocity for '{lastPlacedGameObject.name}' first.";
             return false;
         }
+
         if (cameraTracker == null)
         {
             error = "CameraTracker not set.";
             return false;
         }
+
         if (cameraTracker.Mode != CameraMode.Free)
         {
             error = $"Switch to FreeCam (current: {cameraTracker.Mode}).";
             return false;
         }
+
         error = null;
         return true;
     }
 
     /// <summary>
-    /// Enables/disables manual placement inputs and related UI controls during the drag step.
+    /// Locks or unlocks manual placement inputs and related UI controls.
     /// </summary>
     private void LockManualPlacementInputs(bool locked)
     {
@@ -477,33 +334,45 @@ public class ObjectPlacementManager : MonoBehaviour
         if (massInput != null) massInput.interactable = !locked;
         if (radiusInput != null) radiusInput.interactable = !locked;
         if (placeObjectButton != null) placeObjectButton.interactable = !locked;
-        if (uIManager.placementModeButton != null) uIManager.placementModeButton.interactable = !locked;
-        UpdateTrackCamButtonState();
+        if (uIManager?.placementModeButton != null) uIManager.placementModeButton.interactable = !locked;
+        if (uIManager?.randomSatelliteButton != null) uIManager.randomSatelliteButton.interactable = !locked;
+
+        UpdateTrackCamButtonState(false);
     }
 
     /// <summary>
-    /// Disables the track-cam button when placement locks the UI.
+    /// Enables or disables the track camera button.
     /// </summary>
-    private void UpdateTrackCamButtonState()
+    private void UpdateTrackCamButtonState(bool state)
     {
         if (uIManager?.trackCamButton == null) return;
-        uIManager.trackCamButton.interactable = false;
+        uIManager.trackCamButton.interactable = state;
     }
 
     /// <summary>
-    /// Clears a TMP input field and removes focus to avoid accidental re-entry.
+    /// Sets feedback text into the UI panel.
+    /// </summary>
+    private void SetFeedback(string msg)
+    {
+        if (feedbackText != null)
+            feedbackText.text = msg ?? string.Empty;
+    }
+
+    /// <summary>
+    /// Clears an input field and removes focus.
     /// </summary>
     private void ClearAndUnfocusInputField(TMP_InputField inputField)
     {
         if (inputField == null) return;
+
         clearingPosition = true;
-        inputField.text = "";
+        inputField.text = string.Empty;
         EventSystem.current.SetSelectedGameObject(null);
         clearingPosition = false;
     }
 
     /// <summary>
-    /// Clears all supported input fields across Manual, TLE, and Kepler tabs.
+    /// Clears all input fields for manual, Kepler, and TLE placement.
     /// </summary>
     public void ClearAllFields()
     {
@@ -528,8 +397,7 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Cancels an in-progress manual placement, removes the placeholder, clears
-    /// feedback and drag visuals, and returns the camera to its prior tracking state.
+    /// Cancels the current placement, if any, and returns camera to its previous tracking target.
     /// </summary>
     public void CancelPlacement()
     {
@@ -539,28 +407,25 @@ public class ObjectPlacementManager : MonoBehaviour
             lastPlacedGameObject = null;
         }
 
-        feedbackText.text = "";
+        SetFeedback(string.Empty);
 
-        // if (velocityDragManager != null && velocityDragManager.dragLineRenderer != null)
-        //     velocityDragManager.dragLineRenderer.positionCount = 0;
-
-        if (cameraTracker != null) cameraTracker.ReturnToTracking();
+        cameraTracker?.ReturnToTracking();
     }
 
     /// <summary>
-    /// Previews a transform for the camera tracker without UI side effects,
-    /// maintaining Free mode.
+    /// Runs a "silent" camera preview of a transform in free cam mode.
     /// </summary>
     private void PreviewSilently(Transform t)
     {
         if (cameraTracker == null || t == null) return;
+
         cameraTracker.BeginUiSuppress();
-        cameraTracker.PreviewPlaceholderInFree(t);   // Stays in Free mode
+        cameraTracker.PreviewPlaceholderInFree(t);
         cameraTracker.EndUiSuppress();
     }
 
     /// <summary>
-    /// Tutorial hook: validates mass input and updates tutorial flags and feedback.
+    /// Tutorial hook: validates mass entry and updates tutorial flags/feedback.
     /// </summary>
     private void OnMassInputChanged(string input)
     {
@@ -568,24 +433,23 @@ public class ObjectPlacementManager : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(input))
         {
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
             return;
         }
 
         if (ParsingUtils.TryParseMass(input, out _))
         {
             tutorialController.hasMassBeenEnteredForSatellite = true;
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
         }
         else
         {
-            feedbackText.text = "Invalid Mass: Should be between 500-1,000,000. Units are in kg by default.";
+            SetFeedback("Invalid Mass: Should be between 500-1,000,000. Units are in kg by default.");
         }
     }
 
     /// <summary>
-    /// Tutorial hook: validates radius input and updates tutorial flags and feedback.
-    /// Expects a numeric Vector3 format.
+    /// Tutorial hook: validates radius entry and updates tutorial flags/feedback.
     /// </summary>
     private void OnRadiusInputChanged(string input)
     {
@@ -593,24 +457,24 @@ public class ObjectPlacementManager : MonoBehaviour
 
         if (string.IsNullOrWhiteSpace(input))
         {
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
             return;
         }
 
         if (ParsingUtils.TryParseVector3(input, out _))
         {
             tutorialController.hasRadiusBeenEnteredForSatellite = true;
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
         }
         else
         {
-            feedbackText.text = "Invalid Radius: Format is x,y,x. Ex. 1,2,1";
+            SetFeedback("Invalid Radius: Format is x,y,z. Example 1,2,1");
         }
     }
 
     /// <summary>
-    /// Validates manual position input, manages ghost preview visibility/position,
-    /// and breaks to FreeCam when the user edits the field during an active preview.
+    /// Handles manual position changes, drives ghost preview visibility,
+    /// and enforces a simple radial distance constraint.
     /// </summary>
     private void OnPositionInputChanged(string input)
     {
@@ -624,7 +488,7 @@ public class ObjectPlacementManager : MonoBehaviour
         if (string.IsNullOrWhiteSpace(input))
         {
             HideGhost();
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
             return;
         }
 
@@ -638,28 +502,30 @@ public class ObjectPlacementManager : MonoBehaviour
             {
                 ghostObjectPlaced = false;
                 if (ghostInstance != null) ghostInstance.SetActive(false);
-                feedbackText.text = $" Position must have a magnitude greater than 640, otherwise your inside Earth. Ex. 641,0,0";
+
+                SetFeedback("Position magnitude must be between 640 and 5000. Example: 641,0,0");
                 return;
             }
 
             tutorialController.hasPositionBeenEnteredForSatellite = true;
 
             ShowGhostAt(targetPosition);
-            feedbackText.text = "";
+            SetFeedback(string.Empty);
         }
         else
         {
             HideGhost();
-            feedbackText.text = "Invalid Position: Format is x,y,x. Example 1000,200,30";
+            SetFeedback("Invalid Position: Format is x,y,z. Example 1000,200,30");
         }
     }
 
     /// <summary>
-    /// Activates and positions the ghost preview, and requests a silent camera preview.
+    /// Shows or moves the ghost preview to a world-space position and previews it in the camera.
     /// </summary>
     private void ShowGhostAt(Vector3 pos)
     {
         if (!ghostInstance) return;
+
         ghostInstance.SetActive(true);
         ghostInstance.transform.position = pos;
         PreviewSilently(ghostInstance.transform);
@@ -667,7 +533,7 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Hides the ghost preview and resets its active state flag.
+    /// Hides the ghost preview, if present.
     /// </summary>
     private void HideGhost()
     {
@@ -676,12 +542,11 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears the active manual-placement blocker without destroying the object.
-    /// Useful when external flows complete placement.
+    /// Clears any "pending placement" state so another manual placement can start.
     /// </summary>
     public void ResetLastPlacedGameObject()
     {
-        feedbackText.text = "";
+        SetFeedback(string.Empty);
         lastPlacedGameObject = null;
     }
 }

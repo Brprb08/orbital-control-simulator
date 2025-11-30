@@ -84,41 +84,34 @@ public class ThrustController : MonoBehaviour
         Transform t = ship.transform;
         Vector3 fwd = t.forward;
 
-        // Central body
         Vector3 center = Vector3.zero;
         var svc = ctx?.BodyService;
         if (svc != null && svc.CentralBody)
             center = svc.CentralBody.transform.position;
 
-        // Local orbital state
         Vector3 r = ship.transform.position - center;
         Vector3 v = ship.velocity;
 
-        // Safe norms
         Vector3 rHat = (r.sqrMagnitude > 1e-12f) ? r.normalized : Vector3.up;
         Vector3 vHat = (v.sqrMagnitude > 1e-12f) ? v.normalized : Vector3.right;
 
         // Orbit angular momentum
         Vector3 h = Vector3.Cross(r, v);
-        // Live parity from current side of 90°: +1 if h.y < 0, else -1 (to match your AttitudeController)
         sbyte liveParity = (h.y < 0f) ? (sbyte)+1 : (sbyte)-1;
 
         bool isThrustingNow = false;
         bool lateralActive = false;
 
-        // --- Thrust modes (yours only has forward right now) ---
         if (isForwardThrustActive)
         {
             ApplyThrust(ship, maxForwardThrustMagnitude, fwd);
             isThrustingNow = true;
         }
 
-        // NEW: parity latch with grace window
         if (isThrustingNow && !_prevThrusting)
         {
-            // rising edge: capture current side (+1 / -1)
             _latchedParity = liveParity;
-            _graceCounter = thrustGraceFrames; // start/refresh grace
+            _graceCounter = thrustGraceFrames;
         }
 
         if (isThrustingNow)
@@ -128,26 +121,21 @@ public class ThrustController : MonoBehaviour
         }
         else if (_prevThrusting)
         {
-            // falling edge: don't clear latch immediately; grace handles it
-            // (no-op here; we decrement below)
+            // falling edge: don't clear latch immediately, grace handles it
+
         }
 
-        // tick grace once per frame
         if (_graceCounter > 0) _graceCounter--;
 
-        // Treat "within grace" as thrusting for attitude purposes
         bool thrustingForAttitude = isThrustingNow || (_graceCounter > 0);
 
-        // If we’re within grace, send the latched parity; otherwise send 0 (no latch)
         sbyte parityForAttitude = thrustingForAttitude ? _latchedParity : (sbyte)0;
 
-        // >>> This is the key line: keep AttitudeController from flipping during a burn <<<
         if (attitude)
             attitude.SyncThrustParity(thrustingForAttitude, parityForAttitude);
 
         _prevThrusting = isThrustingNow;
 
-        // --- Your existing integrator + VFX cleanup ---
         bool holdCurrent = attitude != null &&
                            attitude.mode == AttitudeController.PointingMode.HoldCurrent;
 
@@ -179,7 +167,6 @@ public class ThrustController : MonoBehaviour
 
         Vector3 F = adjustedThrustDirection * scaledMagnitude;
 
-        // Optional diagnostics in orbital basis
         Vector3 r = targetBody.transform.position - Vector3.zero;
         Vector3 v = targetBody.velocity - Vector3.zero;
 
@@ -212,11 +199,8 @@ public class ThrustController : MonoBehaviour
     {
         if (!thrustParticles) return;
 
-        // Build rotation first
         var rot = Quaternion.LookRotation(-thrustDirection.normalized, targetBody.transform.up);
 
-        // Offset "back" relative to the particle system's forward (which is -thrustDirection)
-        // rot * (Vector3.forward) == +thrustDirection (toward the craft)
         Vector3 pos = targetBody.transform.position + rot * Vector3.forward * backOffset;
 
         thrustParticles.transform.SetPositionAndRotation(pos, rot);
@@ -234,9 +218,7 @@ public class ThrustController : MonoBehaviour
     /// </summary>
     public void SetDirectionalThrust(string burnDirection)
     {
-        // Reset all
         isForwardThrustActive = false;
-
 
         switch (burnDirection)
         {

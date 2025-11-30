@@ -24,6 +24,8 @@ public class SimulationBootstrap : MonoBehaviour
     public RocketThrustAudio rocketThrustAudio;
     public TutorialController tutorialController;
     public CameraButtonProxy cameraButtonProxy;
+    public RandomSatelliteSpawner randomSatelliteSpawner;
+    public SatelliteSpawner satelliteSpawner;
     public BodyService bodyService;
     public AttitudeUIBinder attitudeUIBinder;
     private SimContext ctx;
@@ -52,6 +54,7 @@ public class SimulationBootstrap : MonoBehaviour
             RocketThrustAudio = rocketThrustAudio,
             TutorialController = tutorialController,
             CameraButtonProxy = cameraButtonProxy,
+            RandomSatelliteSpawner = randomSatelliteSpawner,
             BodyService = bodyService,
             AttitudeUIBinder = attitudeUIBinder,
         };
@@ -73,6 +76,8 @@ public class SimulationBootstrap : MonoBehaviour
         trajectoryComputeController.Initialize(ctx);
         objectPlacementManager.Initialize(ctx);
         velocityDragManager.Initialize(ctx);
+        randomSatelliteSpawner.Initialize(ctx);
+        satelliteSpawner.Initialize(ctx);
         rocketThrustAudio.Initialize(ctx);
         tutorialController.Initialize(ctx);
         attitudeUIBinder.Initialize(ctx);

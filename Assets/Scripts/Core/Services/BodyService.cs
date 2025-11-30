@@ -94,7 +94,6 @@ public class BodyService : MonoBehaviour, IBodyService
         StepAllBodiesBatch();
     }
 
-    // Call this after you know the central body:
     private void SetCentralBody(NBody earth)
     {
         double massEarthKg = (earth != null) ? earth.trueMass : 5.972e24;
@@ -116,11 +115,10 @@ public class BodyService : MonoBehaviour, IBodyService
             _isThrustingBuf = new byte[n]; // zeroed
 
         if (_latchedParityBuf == null || _latchedParityBuf.Length != n)
-            _latchedParityBuf = new sbyte[n]; // zeroed (0 = no latch)
+            _latchedParityBuf = new sbyte[n]; // zeroed 
 
     }
 
-    // BodyService.cs (replace the method body)
     private void StepAllBodiesBatch()
     {
         if (_satCache == null || _satCache.Count == 0) return;
@@ -155,8 +153,6 @@ public class BodyService : MonoBehaviour, IBodyService
             else if (att != null && att.mode == AttitudeController.PointingMode.AntiNormal) normalSign[i] = -1;
             else normalSign[i] = 0;
 
-            // NEW: isThrusting. If you already have a boolean, use it here.
-            // Fallback heuristic: thrusting if Non-free mode AND thrust magnitude > ε
             bool thrusting =
                 (normalSign[i] != 0) &&
                 (_thrustBuf[i].sqrMagnitude > 1e-12f); // adjust ε to taste
@@ -178,11 +174,10 @@ public class BodyService : MonoBehaviour, IBodyService
         const float dtMax = 0.02f;
         int substeps = Mathf.Max(1, Mathf.CeilToInt(Time.fixedDeltaTime / dtMax));
 
-        // One call — native handles RK7 + per-stage normal projection
         NativePhysics.BatchTwoBodyIntegrateMuEx(
             _posBuf, _velBuf, _massBuf, _thrustBuf,
             _cdBuf, _areaBuf, normalSign,
-            _isThrustingBuf, _latchedParityBuf,       // NEW
+            _isThrustingBuf, _latchedParityBuf,
             n, _muUnity, Time.fixedDeltaTime, substeps
         );
 
@@ -210,7 +205,7 @@ public class BodyService : MonoBehaviour, IBodyService
 
         int n = _satCache.Count;
 
-        // Allocate SoA buffers for current native signature
+        // Allocate buffers for current native signature
         _posBuf = (n > 0) ? new double3[n] : Array.Empty<double3>();
         _velBuf = (n > 0) ? new double3[n] : Array.Empty<double3>();
         _massBuf = (n > 0) ? new double[n] : Array.Empty<double>();
@@ -230,7 +225,16 @@ public class BodyService : MonoBehaviour, IBodyService
 
         if (!body.TryGetComponent(out AttitudeController att))
             att = body.gameObject.AddComponent<AttitudeController>();
-        if (!body.isCentralBody) att.Initialize(ctx);
+
+        if (!body.isCentralBody)
+        {
+            att.Initialize(ctx);
+        }
+        else
+        {
+            // Central body, no attitude logic
+            att.enabled = false;
+        }
 
         ctx.LineVisibilityController?.RegisterNBody(body);
         BodyAdded?.Invoke(body);

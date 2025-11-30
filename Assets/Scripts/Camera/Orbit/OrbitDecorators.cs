@@ -50,10 +50,6 @@ public class OrbitDecorators : MonoBehaviour
     /// <summary>Updates trajectory and line visibility when the tracked body changes.</summary>
     private void HandleTrackedBodyChanged(NBody body)
     {
-        if (trajectoryRenderer != null)
-        {
-            // trajectoryRenderer.SetTrackedBody(body);
-        }
         if (lineVisibilityController != null)
         {
             lineVisibilityController.SetTrackedBody(body);
@@ -98,7 +94,6 @@ public class OrbitDecorators : MonoBehaviour
 
         if (mode == CameraMode.Earth)
         {
-            // Optionally call Clear() if Earth view should hide trajectories.
             return;
         }
 

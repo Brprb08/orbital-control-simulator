@@ -31,6 +31,7 @@ public class UIManager : MonoBehaviour
     public GameObject dropdown;
     public GameObject placeTLEPanel;
     public GameObject placementSelectPanel;
+    public GameObject randomPlacementPanel;
     public GameObject cameraControls;
     public GameObject placeKeplerPanel;
     public GameObject confirmRemoveSatPanel;
@@ -46,6 +47,7 @@ public class UIManager : MonoBehaviour
     [Header("UI - Buttons")]
     public Button placeObjectButton;
     public Button placementModeButton;
+    public Button randomSatelliteButton;
     public Button burnControlButton;
 
     [Header("UI - Text Displays")]
@@ -59,7 +61,10 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI orbitalPeriodText;
     public TextMeshProUGUI inclinationText;
     public TextMeshProUGUI raanText;
+    public TextMeshProUGUI meanAnomalyText;
     public TextMeshProUGUI deltaVText;
+    public TextMeshProUGUI timeToPerigeeText;
+    public TextMeshProUGUI timeToApogeeText;
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
@@ -126,7 +131,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // --------- PUBLIC BUTTON HANDLERS (wire these in the Inspector) ----------
+    // --------- PUBLIC BUTTON HANDLERS ----------
 
     /// <summary>
     /// Switches to Free Cam; UI updates via camera mode event.
@@ -203,7 +208,7 @@ public class UIManager : MonoBehaviour
             ShowThrustPanels(true);
     }
 
-    // --------- CAMERA EVENT HANDLERS (authoritative state) ----------
+    // --------- CAMERA EVENT HANDLERS ----------
 
     /// <summary>
     /// Handles camera mode changes and reapplies the UI layout.
@@ -228,8 +233,6 @@ public class UIManager : MonoBehaviour
             if (freeCamButton) freeCamButton.interactable = true;
         }
     }
-
-    // --------- CORE UI LAYOUT LOGIC ----------
 
     /// <summary>
     /// Applies panel visibility, instructions text, and button states for the given camera mode.
@@ -290,6 +293,7 @@ public class UIManager : MonoBehaviour
         if (cameraControls) cameraControls.SetActive(true);
 
         if (placementModeButton) placementModeButton.interactable = isFreeCam;
+        if (randomSatelliteButton) randomSatelliteButton.interactable = isFreeCam;
     }
 
     /// <summary>
@@ -298,6 +302,7 @@ public class UIManager : MonoBehaviour
     private void ShowPlacementSelect(bool show)
     {
         if (placementSelectPanel) placementSelectPanel.SetActive(show);
+        if (randomPlacementPanel) randomPlacementPanel.SetActive(show);
 
         bool manual = placementMode == PlacementMode.Manual;
 
@@ -369,7 +374,7 @@ public class UIManager : MonoBehaviour
         }
     }
 
-    // --------- SMALL HELPERS / DISPLAY ----------
+    // --------- HELPERS / DISPLAY ----------
 
     /// <summary>
     /// Returns the instructional text for Free Cam mode.
@@ -472,7 +477,7 @@ public class UIManager : MonoBehaviour
     /// <summary>
     /// Updates orbit statistics text fields with formatted values.
     /// </summary>
-    public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod, float inclination, float RAAN)
+    public void UpdateOrbitUI(float apogee, float perigee, float semiMajorAxis, float eccentricity, float orbitalPeriod, float inclination, float RAAN, float meanAnomaly, float timeToPerigee, float timeToApogee)
     {
         SetText(apogeeText, "Apogee", apogee);
         SetText(perigeeText, "Perigee", perigee);
@@ -481,6 +486,12 @@ public class UIManager : MonoBehaviour
         SetText(orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
         SetText(inclinationText, "Inclination", inclination, "°", "F1");
         SetText(raanText, "RAAN", RAAN, "°", "F1");
+        SetText(meanAnomalyText, "Mean Anomaly", meanAnomaly, "rad", "F2");
+
+        var (valPeri, unitPeri) = TimeFormatUtils.GetBestTimeUnit(timeToPerigee);
+        var (valApo, unitApo) = TimeFormatUtils.GetBestTimeUnit(timeToApogee);
+        SetText(timeToPerigeeText, "Time to Perigee", valPeri, unitPeri, "F2");
+        SetText(timeToApogeeText, "Time to Apogee", valApo, unitApo, "F2");
     }
 
     /// <summary>

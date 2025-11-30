@@ -34,7 +34,6 @@ public class AttitudeController : MonoBehaviour
     private Vector3 vCache = Vector3.right;
     private Vector3 hCache = Vector3.up;
 
-    // thresholds
     private const float V_MIN = 0.01f;
     private const float H_MIN = 1e-5f;
     private const float ANG_MIN_DEG = 5f;
@@ -48,18 +47,15 @@ public class AttitudeController : MonoBehaviour
 
     private bool wasTracked = false;
 
-    // ---- Hold state ----
     private bool holdValid;
-    private Vector3 holdX, holdY; // frozen axes (for inspector/debug)
+    private Vector3 holdX, holdY;
 
     [Header("Thrust parity sync")]
     public bool useThrustParityWhenThrusting = true;
 
-    // external sync (from ThrustController.SyncThrustParity)
     private bool _thrustingExternal;      // set by caller each frame
     private sbyte _latchedParityExternal; // −1/0/+1 (0 = no latch)
 
-    // internal parity + grace
     [SerializeField] private int thrustGraceFrames = 6; // ~0.1s @60 Hz
     private int _thrustGraceCounter = 0;
     private bool _prevThrusting = false;
@@ -83,16 +79,14 @@ public class AttitudeController : MonoBehaviour
         if (!nbody) nbody = GetComponent<NBody>();
         if (!nbody) return;
 
-        // === Track-aware gate using CameraTracker.CurrentBody ===
         bool isTracked = (cameraTracker == null) || (cameraTracker.CurrentBody == nbody);
         if (!isTracked)
         {
             wasTracked = false;
             return;
         }
-        bool snapNow = !wasTracked; // first frame after becoming tracked -> snap
+        bool snapNow = !wasTracked;
         wasTracked = true;
-        // === end track-aware gate ===
 
         if (!bodyService)
             bodyService = FindFirstObjectByType<BodyService>();
@@ -109,7 +103,7 @@ public class AttitudeController : MonoBehaviour
 
         if (mode == PointingMode.HoldCurrent)
         {
-            if (!holdValid) CaptureHoldFromCurrent(); // capture on entry
+            if (!holdValid) CaptureHoldFromCurrent();
             xTarget = holdX;
             yUpHint = holdY;
         }
@@ -119,7 +113,6 @@ public class AttitudeController : MonoBehaviour
             holdValid = false;
         }
 
-        // Store for inspector
         primaryWorld = xTarget;
         upHintWorld = yUpHint;
 
@@ -177,17 +170,13 @@ public class AttitudeController : MonoBehaviour
         bool okV = v.magnitude > V_MIN;
         bool okH = h.magnitude > H_MIN && alpha > ANG_MIN_DEG;
 
-        // ---- Parity decision (unified for both attitude & burns) ----
         // live sign from current side of 90° boundary
         int liveSign = (h.y < 0f) ? +1 : -1;
 
-        // internal thrust flag
         bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
 
-        // combine internal + external
         bool thrusting = IsThrustingEffective(internalThrusting);
 
-        // Rising edge: capture sign (if h is valid), start grace
         if (thrusting && !_prevThrusting)
         {
             _paritySignForBurn = okH ? liveSign
@@ -195,22 +184,16 @@ public class AttitudeController : MonoBehaviour
             _thrustGraceCounter = thrustGraceFrames;
         }
 
-        // While thrusting, keep grace full
         if (thrusting) _thrustGraceCounter = thrustGraceFrames;
 
-        // Update previous state
         _prevThrusting = thrusting;
 
-        // Tick grace
         if (_thrustGraceCounter > 0) _thrustGraceCounter--;
 
-        // Treat "within grace" as thrusting for mapping
         bool holdParity = thrusting || (_thrustGraceCounter > 0);
 
-        // Final parity used for mapping
         int parityForMapping = holdParity ? EffectiveParity(liveSign) : liveSign;
         bool progradeForMapping = (parityForMapping > 0);
-        // -------------------------------------------------------------
 
         switch (mode)
         {
@@ -282,12 +265,11 @@ public class AttitudeController : MonoBehaviour
 
         if (rollHold < 1f && rollHold > 0f)
         {
-            // blend roll toward world up for stability if desired
             yUp = Vector3.Slerp(Vector3.up, yUp, rollHold).normalized;
         }
     }
 
-    // Public API for thrust: returns world burnDir and whether it's a lateral burn
+    // Public API for thrust, returns world burnDir and whether it's a lateral burn
     public Vector3 GetBurnDirection(Vector3 center, out bool lateral)
     {
         lateral = false;
@@ -307,7 +289,6 @@ public class AttitudeController : MonoBehaviour
 
         BuildTangentFrame(rHat, out var tHat, out var nFallback);
 
-        // >>> Use the exact same parity logic as attitude <<<
         int liveSign = (h.y < 0f) ? +1 : -1;
         bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
         bool thrusting = IsThrustingEffective(internalThrusting);

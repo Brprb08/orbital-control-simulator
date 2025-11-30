@@ -10,8 +10,6 @@ using System;
 /// </summary>
 public class TrajectoryComputeController : MonoBehaviour
 {
-    // public static TrajectoryComputeController Instance { get; private set; }
-
     [Header("Compute Shader")]
     public ComputeShader trajectoryComputeShader;
 
@@ -65,7 +63,7 @@ public class TrajectoryComputeController : MonoBehaviour
         lodFactor = Mathf.Max(1, steps / maxPoints);
         outputCount = (int)Mathf.Ceil((float)steps / lodFactor);
 
-        // Create GPU buffers
+        // GPU buffers
         initialPositionBuffer = new ComputeBuffer(1, sizeof(float) * 3);
         initialVelocityBuffer = new ComputeBuffer(1, sizeof(float) * 3);
         massBuffer = new ComputeBuffer(1, sizeof(float));
@@ -86,7 +84,6 @@ public class TrajectoryComputeController : MonoBehaviour
 
         // Find kernel & bind buffers
         int kernelIndex = trajectoryComputeShader.FindKernel("RungeKutta");
-        // int kernelIndex = trajectoryComputeShader.FindKernel("LeapFrog");
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialPosition", initialPositionBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "initialVelocity", initialVelocityBuffer);
         trajectoryComputeShader.SetBuffer(kernelIndex, "mass", massBuffer);

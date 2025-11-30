@@ -24,7 +24,7 @@ public class NodeDragHandle : MonoBehaviour
         dragging = true;
     }
 
-    void OnMouseUp()  { dragging = false; }
+    void OnMouseUp() { dragging = false; }
 
     void Update()
     {
@@ -44,9 +44,8 @@ public class NodeDragHandle : MonoBehaviour
             Vector3 a = traj[i];
             Vector3 b = traj[i + 1];
             // closest point between ray and segment (approximate: project ray origin to segment direction in screen space)
-            // robust 3D approach: minimize distance between line (ray) and segment
             ClosestPointsRaySegment(ray, a, b, out float segT, out Vector3 segPoint);
-            float d2 = (segPoint - ray.origin).sqrMagnitude; // proxy error; good enough for interact
+            float d2 = (segPoint - ray.origin).sqrMagnitude;
             if (d2 < bestDist2)
             {
                 bestDist2 = d2;

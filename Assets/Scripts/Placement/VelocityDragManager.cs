@@ -4,6 +4,10 @@ using TMPro;
 using UnityEngine.EventSystems;
 using System.Collections;
 
+/// <summary>
+/// Handles click-and-drag velocity input for a body, keeps the UI in sync,
+/// and drives short/long trajectory previews through the TrajectoryRenderer.
+/// </summary>
 public class VelocityDragManager : MonoBehaviour
 {
     [Header("References - Components")]
@@ -40,7 +44,6 @@ public class VelocityDragManager : MonoBehaviour
     private GameObject dragSphereObject;
     private SphereCollider dragSphereCollider;
 
-    // --- Long preview configuration (debounced) ---
     [Header("Preview Settings")]
     [Tooltip("Delay (seconds) after input stops before running the long preview.")]
     [SerializeField] private float longPreviewDelay = 0.2f;
@@ -60,7 +63,6 @@ public class VelocityDragManager : MonoBehaviour
 
     public bool HasAppliedVelocity => isVelocitySet;
 
-    // --- NEW: throttling & change thresholds for quick preview ---
     [Header("Performance Tuning")]
     [Tooltip("Minimum time (seconds) between quick preview recomputes while dragging.")]
     [SerializeField] private float minPreviewInterval = 0.05f; // 20 Hz
@@ -73,9 +75,12 @@ public class VelocityDragManager : MonoBehaviour
     private Vector3 lastPreviewVel;
     private Vector3 lastPreviewDir;
 
-    // --- NEW: cache for arrow to avoid redundant redraws ---
     private Vector3 lastArrowStart, lastArrowEnd;
 
+    /// <summary>
+    /// Binds references from the sim context, wires up UI and input handlers,
+    /// and sets up the temporary drag sphere and runtime arrow.
+    /// </summary>
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -118,6 +123,9 @@ public class VelocityDragManager : MonoBehaviour
         lastPreviewTime = -999f;
     }
 
+    /// <summary>
+    /// Makes sure there is a RuntimeArrow instance and applies basic styling.
+    /// </summary>
     private void EnsureDragArrow()
     {
         if (dragArrow == null)
@@ -129,6 +137,10 @@ public class VelocityDragManager : MonoBehaviour
         dragArrow.Hide();
     }
 
+    /// <summary>
+    /// Handles mouse input for starting/continuing/ending the drag gesture and
+    /// keeps the initial "hint" arrow visible when no velocity is set.
+    /// </summary>
     private void Update()
     {
         if (!isVelocitySet && planet != null && !dragArrow.gameObject.activeSelf)
@@ -162,6 +174,10 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Begins a drag session: enables the drag sphere, shows a default arrow,
+    /// and kicks off an initial preview.
+    /// </summary>
     private void StartDrag()
     {
         if (planet == null || mainCamera == null) return;
@@ -181,11 +197,15 @@ public class VelocityDragManager : MonoBehaviour
         SetUIInteractable(true);
         dragDirection = Vector3.forward;
 
-        lastPreviewTime = -999f;     // bypass min interval
-                                     // If speed is zero, still preview with zero velocity (a fall-line), which is fine.
+        // force a preview immediately at drag start
+        lastPreviewTime = -999f;
         TryQuickPreview();
     }
 
+    /// <summary>
+    /// Updates drag direction based on mouse position on a virtual sphere
+    /// and pushes that into the arrow and quick preview.
+    /// </summary>
     private void UpdateDrag()
     {
         Vector3 sphereCenter = planet.transform.position;
@@ -196,22 +216,29 @@ public class VelocityDragManager : MonoBehaviour
         dragDirection = (intersection - sphereCenter).normalized;
         currentVelocity = dragDirection * sliderSpeed;
 
-        // FIXED SIZE ARROW: only rotate, don't resize
         Vector3 arrowEnd = sphereCenter + dragDirection * arrowLength;
         ShowArrowCached(sphereCenter, arrowEnd);
 
-        // Throttled quick preview (no long preview scheduling while dragging)
+        // quick preview (no long preview scheduling while dragging)
         TryQuickPreview();
     }
 
+    /// <summary>
+    /// Ends the drag gesture but keeps the ghost arrow around
+    /// and schedules a long preview after a short idle.
+    /// </summary>
     private void EndDrag()
     {
         isDragging = false;
         dragSphereObject.SetActive(false);
         // keep arrow visible to indicate direction
-        ScheduleLongPreviewForGhost(); // run long preview once when input settles
+        ScheduleLongPreviewForGhost();
     }
 
+    /// <summary>
+    /// Called when the speed slider changes. Updates current velocity,
+    /// UI display, arrow, and triggers a new preview.
+    /// </summary>
     public void OnSpeedSliderChanged(float value)
     {
         sliderSpeed = value;
@@ -227,7 +254,7 @@ public class VelocityDragManager : MonoBehaviour
             velocityDisplayText.onValueChanged.AddListener(OnVelocityInputChanged);
         }
 
-        // Throttled quick preview and cached arrow update
+        // quick preview and cached arrow update
         TryQuickPreview();
         UpdateArrowFromCurrent();
 
@@ -238,11 +265,17 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Formats velocity for the text field. Note: values are scaled into km/s-ish.
+    /// </summary>
     private string FormatVelocityForUI(Vector3 v)
     {
         return $"{(v.x * 10f):F2}, {(v.z * 10f):F2}, {(v.y * 10f):F2}";
     }
 
+    /// <summary>
+    /// Parses manual velocity input and refreshes the ghost arrow and preview.
+    /// </summary>
     private void OnVelocityInputChanged(string inputText)
     {
         if (string.IsNullOrWhiteSpace(inputText)) return;
@@ -252,7 +285,7 @@ public class VelocityDragManager : MonoBehaviour
             currentVelocity = newVelocity;
             setVelocityButton.interactable = true;
             UpdateArrowFromCurrent();
-            // no immediate long preview; will be scheduled on mouse up or after idle if needed
+            // preview immediately when user types a valid vector
             TryQuickPreview();
         }
 
@@ -263,6 +296,9 @@ public class VelocityDragManager : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Button callback: applies the currently staged velocity to the planet.
+    /// </summary>
     public void callApplyVelocity()
     {
         trajectoryRenderer?.ClearPreview();
@@ -270,6 +306,10 @@ public class VelocityDragManager : MonoBehaviour
         EventSystem.current.SetSelectedGameObject(null);
     }
 
+    /// <summary>
+    /// Makes sure the planet has an NBody (and attitude) and then
+    /// actually applies the velocity, registers it, and hands it off to tracking.
+    /// </summary>
     public void ApplyVelocityToPlanet(Vector3 velocityToApply)
     {
         if (planet == null) return;
@@ -282,7 +322,7 @@ public class VelocityDragManager : MonoBehaviour
             nbody.trueMass = (placeholderMass > 0f) ? (double)placeholderMass : 400000d;
             nbody.radius = 0.0002f;
             nbody.cameraDistanceRadius = 1f;
-            nbody.isCentralBody = false;                // important for moving craft
+            nbody.isCentralBody = false;
             nbody.Initialize(ctx);
         }
 
@@ -291,9 +331,8 @@ public class VelocityDragManager : MonoBehaviour
         if (attitude == null)
         {
             attitude = planet.AddComponent<AttitudeController>();
-            // Nice defaults:
-            attitude.mode = AttitudeController.PointingMode.Velocity; // "Prograde" pointing
-            attitude.snapAttitude = false;                             // smooth slew
+            attitude.mode = AttitudeController.PointingMode.Velocity; // Prograde pointing
+            attitude.snapAttitude = false;                            // smooth slew
             attitude.maxSlewRateDegPerSec = 60f;
         }
 
@@ -318,6 +357,10 @@ public class VelocityDragManager : MonoBehaviour
         if (setVelocityButton != null) setVelocityButton.interactable = false;
     }
 
+    /// <summary>
+    /// Returns the intersection on the far side of a sphere along the given ray.
+    /// Used to project mouse drags onto a virtual sphere around the planet.
+    /// </summary>
     private Vector3 GetFarSideIntersection(Ray ray, Vector3 sphereCenter, float radius)
     {
         Vector3 d = ray.direction.normalized;
@@ -339,6 +382,9 @@ public class VelocityDragManager : MonoBehaviour
         return ray.origin + d * chosenT;
     }
 
+    /// <summary>
+    /// Rebuilds the arrow from the current direction and planet position.
+    /// </summary>
     private void UpdateArrowFromCurrent()
     {
         if (planet == null || dragArrow == null) return;
@@ -349,6 +395,9 @@ public class VelocityDragManager : MonoBehaviour
         ShowArrowCached(startPos, end);
     }
 
+    /// <summary>
+    /// Enables or disables the velocity UI controls as a group.
+    /// </summary>
     private void SetUIInteractable(bool enable)
     {
         if (velocityDisplayText != null) velocityDisplayText.interactable = enable;
@@ -356,13 +405,14 @@ public class VelocityDragManager : MonoBehaviour
         if (setVelocityButton != null) setVelocityButton.interactable = enable;
     }
 
-    // -------- NEW: throttled quick preview helpers --------
-
+    /// <summary>
+    /// Returns true if the drag direction or speed has changed enough
+    /// to justify another quick preview.
+    /// </summary>
     private bool ChangedEnough()
     {
         if (dragDirection == Vector3.zero) return false;
 
-        // First-time sentinel → trigger
         bool firstDir = float.IsNaN(lastPreviewDir.x);
         bool firstVel = float.IsNaN(lastPreviewVel.x);
         if (firstDir || firstVel) return true;
@@ -373,7 +423,9 @@ public class VelocityDragManager : MonoBehaviour
         return dirChanged || spdChanged;
     }
 
-
+    /// <summary>
+    /// Schedules a short, cheap preview trajectory, throttled by time and input deltas.
+    /// </summary>
     private void TryQuickPreview()
     {
         if (trajectoryRenderer == null || planet == null) return;
@@ -391,8 +443,9 @@ public class VelocityDragManager : MonoBehaviour
         lastPreviewVel = currentVelocity;
     }
 
-    // -------- NEW: cached arrow drawing --------
-
+    /// <summary>
+    /// Shows the arrow only when its endpoints have actually changed.
+    /// </summary>
     private void ShowArrowCached(Vector3 start, Vector3 end)
     {
         if ((start - lastArrowStart).sqrMagnitude < 1e-6f &&
@@ -403,8 +456,10 @@ public class VelocityDragManager : MonoBehaviour
         lastArrowEnd = end;
     }
 
-    // -------- UPDATED: long preview debounce --------
-
+    /// <summary>
+    /// Starts a timer that will trigger a longer, cheaper trajectory preview
+    /// after the user stops interacting.
+    /// </summary>
     private void ScheduleLongPreviewForGhost()
     {
         if (planet == null || trajectoryRenderer == null) return;
@@ -412,12 +467,16 @@ public class VelocityDragManager : MonoBehaviour
         longPreviewCo = StartCoroutine(LongPreviewAfterIdle());
     }
 
+    /// <summary>
+    /// Waits for a small idle window, then kicks off a longer preview
+    /// using the current velocity as a ghost orbit.
+    /// </summary>
     private IEnumerator LongPreviewAfterIdle()
     {
         float t = 0f;
         while (t < longPreviewDelay)
         {
-            // If user starts interacting again, cancel this long preview
+            // If interacting again, cancel this long preview
             if (isDragging) yield break;
             t += Time.unscaledDeltaTime;
             yield return null;
@@ -426,21 +485,27 @@ public class VelocityDragManager : MonoBehaviour
 
         float massForPreview = (placeholderMass > 0f) ? placeholderMass : 400000f;
         trajectoryRenderer.QuickPreviewOnceLong(
-    planet.transform.position,
-    currentVelocity,
-    massForPreview,
-    longPreviewSteps,
-    longPreviewDt,
-    singleOrbit: false);
+            planet.transform.position,
+            currentVelocity,
+            massForPreview,
+            longPreviewSteps,
+            longPreviewDt,
+            singleOrbit: false);
         longPreviewCo = null;
     }
 
+    /// <summary>
+    /// Cancels any pending long-preview debounce coroutine.
+    /// </summary>
     private void CancelLongPreviewDebounce()
     {
         if (longPreviewCo != null) StopCoroutine(longPreviewCo);
         longPreviewCo = null;
     }
 
+    /// <summary>
+    /// Clears drag-related state, hides visuals, and throws away any ghost previews.
+    /// </summary>
     public void ClearManualArtifacts()
     {
         CancelLongPreviewDebounce();
@@ -456,9 +521,12 @@ public class VelocityDragManager : MonoBehaviour
         planet = null;
 
         trajectoryRenderer?.ClearPreview();
-        trajectoryRenderer?.ClearPreManeuverLine();
+        trajectoryRenderer?.ClearPreManeuverOrbit();
     }
 
+    /// <summary>
+    /// Resets high-level state so the drag flow can run again for a new body.
+    /// </summary>
     public void ResetDragManager()
     {
         isVelocitySet = false;

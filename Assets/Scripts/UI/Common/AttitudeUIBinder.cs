@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems; // NEW: for clearing selection
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 public class AttitudeUIBinder : MonoBehaviour
@@ -25,7 +25,7 @@ public class AttitudeUIBinder : MonoBehaviour
             ? cameraTracker.CurrentBody.GetComponent<AttitudeController>()
             : null;
 
-    // NEW: track changes to body and mode so we can auto-refresh
+    // track changes to body and mode for auto-refresh
     private NBody _lastBody;
     private AttitudeController.PointingMode _lastModeMirror;
     private bool _haveMirror = false;
@@ -49,7 +49,7 @@ public class AttitudeUIBinder : MonoBehaviour
     {
         if (btnHold) btnText = btnHold.GetComponentInChildren<TextMeshProUGUI>();
         SetHoldUI(false); // start in auto
-        ForceFullRefresh(); // NEW: makes sure first frame is correct
+        ForceFullRefresh();
     }
 
     void OnEnable()
@@ -66,7 +66,7 @@ public class AttitudeUIBinder : MonoBehaviour
         if (tSnap) tSnap.onValueChanged.AddListener(SetSnap);
         if (slewRate) slewRate.onValueChanged.AddListener(SetSlew);
 
-        ForceFullRefresh(); // NEW
+        ForceFullRefresh();
     }
 
     void OnDisable()
@@ -83,7 +83,6 @@ public class AttitudeUIBinder : MonoBehaviour
         if (slewRate) slewRate.onValueChanged.RemoveAllListeners();
     }
 
-    // NEW: watch for body and external mode changes
     void Update()
     {
         var currentBody = cameraTracker?.CurrentBody;
@@ -99,7 +98,7 @@ public class AttitudeUIBinder : MonoBehaviour
 
         if (!_haveMirror || att.mode != _lastModeMirror)
         {
-            // Someone changed the mode elsewhere → reflect it
+            // mode changed somewhere else, reflect it
             _lastModeMirror = att.mode;
             _haveMirror = true;
             RefreshUIFrom(att);
@@ -107,14 +106,14 @@ public class AttitudeUIBinder : MonoBehaviour
         }
     }
 
-    // ----- MODE CHANGES -----
+    // ----- MODE -----
 
     void SetMode(AttitudeController.PointingMode m)
     {
         var att = CurrentAtt;
         if (!att) return;
 
-        // if we were holding and user selects an auto mode, exit hold
+        // if holding and user selects an auto mode, exit hold
         if (att.mode == AttitudeController.PointingMode.HoldCurrent &&
             m != AttitudeController.PointingMode.HoldCurrent)
         {
@@ -126,7 +125,7 @@ public class AttitudeUIBinder : MonoBehaviour
 
         att.SetMode(m);
 
-        // mirror state immediately so Update() doesn’t fight us this frame
+        // mirror state immediately so Update() doesn’t stop it
         _lastModeMirror = att.mode;
         _haveMirror = true;
 
@@ -143,28 +142,28 @@ public class AttitudeUIBinder : MonoBehaviour
 
         if (goingToHold)
         {
-            // entering Hold: remember current auto mode, then freeze
+            // entering hold remember current auto mode, then freeze
             if (att.mode != AttitudeController.PointingMode.HoldCurrent)
                 lastAutoMode = att.mode;
 
-            att.FreezeCurrentAttitude(); // sets HoldCurrent
+            att.FreezeCurrentAttitude();
             SetHoldUI(true);
         }
         else
         {
-            // leaving Hold: restore last auto mode
+            // leaving hold restore last auto mode
             att.SetMode(lastAutoMode);
             SetHoldUI(false);
         }
 
-        _lastModeMirror = att.mode; // NEW: keep mirror in sync
+        _lastModeMirror = att.mode; // keep mirror in sync
         _haveMirror = true;
 
         RefreshUIFrom(att);
         UpdateModeButtons(att.mode);
     }
 
-    // ----- UI SYNC -----
+    // ----- UI -----
 
     void SetHoldUI(bool isLocked)
     {
@@ -176,7 +175,7 @@ public class AttitudeUIBinder : MonoBehaviour
 
     void UpdateModeButtons(AttitudeController.PointingMode active)
     {
-        // reset all first so old craft's disabled button doesn't linger
+        // reset all first so old satellite disabled button doesn't stay
         foreach (var kv in modeToButton)
         {
             var b = kv.Value;
@@ -192,7 +191,7 @@ public class AttitudeUIBinder : MonoBehaviour
 
             if (holding)
             {
-                b.interactable = true;   // in Hold, none is "selected"
+                b.interactable = true;   // in Hold, none are selected
             }
             else
             {
@@ -200,10 +199,10 @@ public class AttitudeUIBinder : MonoBehaviour
             }
         }
 
-        // Lock/Auto button never changes color; always interactable
+        // Lock/Auto button never changes color, always interactable
         if (btnHold) btnHold.interactable = true;
 
-        // NEW: clear Unity's current selection to avoid ghost highlight from previous satellite
+        // clear Unity's current selection to avoid ghost highlight from previous satellite
         if (EventSystem.current && EventSystem.current.currentSelectedGameObject)
             EventSystem.current.SetSelectedGameObject(null);
     }
@@ -219,7 +218,7 @@ public class AttitudeUIBinder : MonoBehaviour
         if (!lockedNow)
             lastAutoMode = att.mode;
 
-        _lastModeMirror = att.mode; // NEW
+        _lastModeMirror = att.mode;
         _haveMirror = true;
 
         RefreshUIFrom(att);
@@ -237,7 +236,7 @@ public class AttitudeUIBinder : MonoBehaviour
     void SetSnap(bool snap) { var att = CurrentAtt; if (att) att.snapAttitude = snap; }
     void SetSlew(float degs) { var att = CurrentAtt; if (att) att.maxSlewRateDegPerSec = degs; }
 
-    // NEW: force a full refresh (used on Start/OnEnable/body switch)
+    // force a full refresh (used on Start/OnEnable/body switch)
     void ForceFullRefresh()
     {
         // clear old selection visuals
