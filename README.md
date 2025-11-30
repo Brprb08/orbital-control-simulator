@@ -5,7 +5,7 @@ A real-time orbital mechanics simulator built in Unity with a native C++ physics
 You can load real TLE data, apply thrust, and visualize trajectory changes as they happen. The Unity layer handles visualization and camera controls; all physics runs natively in the C++ backend for accuracy.
 
 [Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
-![Track Cam](./Assets/Images/11-30rack.png)
+![Track Cam](./Assets/Images/11-30Track.png)
 ![Elliptical Orbit](./Assets/Images/11-30SatelliteUpClose.png)
 ![Free Cam](./Assets/Images/11-30Free.png)
 
