@@ -1,17 +1,19 @@
-using UnityEngine;
+using System;
 using System.Collections.Generic;
 using System.Linq;
-using System;
 using Unity.Mathematics;
+using UnityEngine;
 
 /// <summary>
-/// Dynamic body in the gravity sim: integrates motion (gravity, thrust, drag),
-/// coordinates with maneuver nodes/trajectory prediction, and handles collision/escape.
+/// Dynamic body in the gravity sim:
+/// - Integrates motion (gravity, thrust, drag) via the batch integrator
+/// - Coordinates with maneuver nodes and trajectory prediction
+/// - Handles collision/escape with the central body
 /// </summary>
 public class NBody : MonoBehaviour
 {
     [Header("Celestial Body Properties")]
-    public Vector3 velocity = new Vector3(0, 0, 20);
+    public Vector3 velocity = new Vector3(0f, 0f, 20f);
     public float mass = 5.0e21f;
     public double trueMass = 5.0e21;
     public float radius = 637.8137f;
@@ -23,62 +25,64 @@ public class NBody : MonoBehaviour
     public float predictionDeltaTime = 0.5f;
 
     [Header("References - Scripts")]
-    private TrajectoryComputeController tcc;
-    private BodyRuntimeCoordinator bodyRuntimeCoordinator;
-    private ManeuverNodeManager maneuverNodeManager;
+    private TrajectoryComputeController _tcc;
+    private BodyRuntimeCoordinator _bodyRuntimeCoordinator;
+    private ManeuverNodeManager _maneuverNodeManager;
     public ThrustController thrustController;
-    private LineVisibilityController lineVisibilityController;
-    private RocketThrustAudio rocketThrustAudio;
-    private BodyService bodyService;
+    private LineVisibilityController _lineVisibilityController;
+    private RocketThrustAudio _rocketThrustAudio;
+    private BodyService _bodyService;
 
     [Header("References - Relevant Bodies")]
-    private List<NBody> relevantBodies;
+    private List<NBody> _relevantBodies;
 
     [Header("Atmosphere & Drag")]
     [Tooltip("Sea-level density (kg/km³)")]
     public float atmosphericDensity0 = 1.225e9f;
+
     [Tooltip("Scale height (km)")]
     public float atmosphericScaleHeight = 8.5f;
+
     [Tooltip("Dimensionless drag coefficient")]
     public float dragCoefficient = 2.2f;
 
+    [Header("Thrust State")]
     public bool isThrusting = false;
 
     [Header("Constants")]
     private const float EarthRotationRate = 360f / 86164f; // deg/sec, sidereal
-    const double EarthRadiusUnits = 637.8137;
+    private const double EarthRadiusUnits = 637.8137;
     private const float MaxDistanceFromEarth = 40000f;
 
     [Header("Flags")]
     public bool isReferenceOrbit = false;
-
-    public float cumulativeDeltaVUsed = 0f;
-
     public bool projectLateralPerSubstep = false;
 
-    private double[] otherMassCache;
+    [Header("Telemetry")]
+    public float cumulativeDeltaVUsed = 0f;
 
-    private AttitudeController att;
-
-
-    private SimContext ctx;
+    // Caches & components
+    private double[] _otherMassCache;
+    // private AttitudeController _attitudeController;
+    private SimContext _ctx;
 
     /// <summary>
     /// Injects context dependencies used by integration, prediction, and UI systems.
     /// </summary>
     public void Initialize(SimContext ctx)
     {
-        this.ctx = ctx;
-        this.bodyRuntimeCoordinator = ctx.BodyRuntimeCoordinator;
-        this.maneuverNodeManager = ctx.ManeuverNodeManager;
-        this.lineVisibilityController = ctx.LineVisibilityController;
-        this.tcc = ctx.TrajectoryComputeController;
-        this.thrustController = ctx.ThrustController;
-        this.rocketThrustAudio = ctx.RocketThrustAudio;
-        this.bodyService = ctx.BodyService;
+        _ctx = ctx;
+
+        _bodyRuntimeCoordinator = ctx.BodyRuntimeCoordinator;
+        _maneuverNodeManager = ctx.ManeuverNodeManager;
+        _lineVisibilityController = ctx.LineVisibilityController;
+        _tcc = ctx.TrajectoryComputeController;
+        thrustController = ctx.ThrustController;
+        _rocketThrustAudio = ctx.RocketThrustAudio;
+        _bodyService = ctx.BodyService;
     }
 
-    void Start()
+    private void Start()
     {
         if (isCentralBody)
         {
@@ -98,38 +102,43 @@ public class NBody : MonoBehaviour
             Vector3.zero
         );
 
-        att = GetComponent<AttitudeController>();
+        // _attitudeController = GetComponent<AttitudeController>();
 
-        // Build relevantBodies and caches once here
-        var all = bodyService != null ? bodyService.Bodies : null;
-        if (all != null)
+        // Build relevantBodies and caches once here.
+        var allBodies = _bodyService != null ? _bodyService.Bodies : null;
+        if (allBodies != null)
         {
-            relevantBodies = new List<NBody>();
-            for (int i = 0; i < all.Count; i++)
+            _relevantBodies = new List<NBody>();
+            for (int i = 0; i < allBodies.Count; i++)
             {
-                var b = all[i];
-                if (b == null || b == this) continue;
-                if (b.isCentralBody || b.name == "Moon")
-                    relevantBodies.Add(b);
+                var body = allBodies[i];
+                if (body == null || body == this)
+                    continue;
+
+                if (body.isCentralBody || body.name == "Moon")
+                    _relevantBodies.Add(body);
             }
         }
         else
         {
-            relevantBodies = new List<NBody>();
+            _relevantBodies = new List<NBody>();
         }
 
         AllocateRelevantCaches();
     }
 
+    /// <summary>
+    /// Allocates caches for relevant body data (e.g., masses).
+    /// </summary>
     private void AllocateRelevantCaches()
     {
-        int n = (relevantBodies != null) ? relevantBodies.Count : 0;
-        otherMassCache = (n > 0) ? new double[n] : Array.Empty<double>();
+        int count = _relevantBodies != null ? _relevantBodies.Count : 0;
+        _otherMassCache = count > 0 ? new double[count] : Array.Empty<double>();
 
-        for (int i = 0; i < n; i++)
+        for (int i = 0; i < count; i++)
         {
-            var b = relevantBodies[i];
-            otherMassCache[i] = (b != null) ? b.trueMass : 0.0;
+            var body = _relevantBodies[i];
+            _otherMassCache[i] = body != null ? body.trueMass : 0.0;
         }
     }
 
@@ -137,31 +146,41 @@ public class NBody : MonoBehaviour
     /// One physics tick for this body.
     /// If <see cref="BodyService.DrivePhysics"/> is <c>true</c>, this method only
     /// updates burns/audio and leaves integration to the central batch step.
-    /// If <c>false</c>, it performs the legacy per-body integration path.
+    /// If <c>false</c>, it performs the legacy per-body integration path (currently disabled).
     /// </summary>
     /// <remarks>
     /// - In service-driven mode, we do <b>not</b> zero <see cref="state.force"/> here;
     ///   the batch step consumes it and clears it afterward.
     /// - Central body still rotates here in both modes (visual spin only).
     /// </remarks>
-    void FixedUpdate()
+    private void FixedUpdate()
     {
-        if (ctx != null && ctx.BodyService != null && ctx.BodyService.DrivePhysics)
-        {
-            if (HasNaNPosition())
-                Debug.LogError($"[NBODY]: {name} has NaN transform.position! velocity={velocity}, force={state.force}");
-
-            if (isCentralBody)
-            {
-                RotateCentralBody();
-                return;
-            }
-
-            if (!isReferenceOrbit)
-            {
-                CheckForNodeBurns();
-            }
+        if (_ctx == null || _ctx.BodyService == null)
             return;
+
+        if (!_ctx.BodyService.DrivePhysics)
+        {
+            // Legacy per-body integration path would go here if re-enabled.
+            return;
+        }
+
+        if (HasNaNPosition())
+        {
+            Debug.LogError(
+                $"[NBODY]: {name} has NaN transform.position! " +
+                $"velocity={velocity}, force={state.force}"
+            );
+        }
+
+        if (isCentralBody)
+        {
+            RotateCentralBody();
+            return;
+        }
+
+        if (!isReferenceOrbit)
+        {
+            CheckForNodeBurns();
         }
     }
 
@@ -184,18 +203,17 @@ public class NBody : MonoBehaviour
     /// <summary>
     /// NaN guard for transform position (useful for detecting numerical blow-ups).
     /// </summary>
-    bool HasNaNPosition()
+    private bool HasNaNPosition()
     {
         Vector3 pos = transform.position;
         return float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z);
     }
 
     /// <summary>
-    /// Simple Earth-like rotation for the central body.
+    /// Simple Earth-like rotation for the central body (visual-only).
     /// </summary>
-    void RotateCentralBody()
+    private void RotateCentralBody()
     {
-        // float dtSim = Time.fixedDeltaTime * Time.timeScale;
         float deltaAngle = -EarthRotationRate * Time.deltaTime;
         transform.Rotate(Vector3.up, deltaAngle);
     }
@@ -204,16 +222,19 @@ public class NBody : MonoBehaviour
     /// Executes finalized maneuver nodes whose burn windows overlap the current sim time.
     /// Manages thrust audio/UI and prunes completed nodes.
     /// </summary>
-    void CheckForNodeBurns()
+    private void CheckForNodeBurns()
     {
-        if (isCentralBody || maneuverNodeManager == null)
+        if (isCentralBody || _maneuverNodeManager == null)
             return;
 
-        float simTime = bodyRuntimeCoordinator.simulationTime;
-        bool burnInProgress = false;
-        var toExecute = new List<ManeuverNode>();
+        if (_bodyRuntimeCoordinator == null)
+            return;
 
-        foreach (var node in maneuverNodeManager.nodes)
+        float simTime = _bodyRuntimeCoordinator.simulationTime;
+        bool burnInProgress = false;
+        var nodesToRemove = new List<ManeuverNode>();
+
+        foreach (var node in _maneuverNodeManager.nodes)
         {
             if (ShouldSkipNode(node, this, simTime))
                 continue;
@@ -225,8 +246,8 @@ public class NBody : MonoBehaviour
             }
             else
             {
-                thrustController.StopAllThrust();
-                toExecute.Add(node); // burn complete
+                thrustController?.StopAllThrust();
+                nodesToRemove.Add(node); // burn complete
             }
         }
 
@@ -234,7 +255,7 @@ public class NBody : MonoBehaviour
         {
             if (!isThrusting)
             {
-                rocketThrustAudio.StartThrust();
+                _rocketThrustAudio?.StartThrust();
                 isThrusting = true;
             }
         }
@@ -242,20 +263,22 @@ public class NBody : MonoBehaviour
         {
             if (isThrusting)
             {
-                rocketThrustAudio.StopThrust();
-                thrustController.StopAllThrust();
+                _rocketThrustAudio?.StopThrust();
+                thrustController?.StopAllThrust();
                 isThrusting = false;
             }
         }
 
-        foreach (var node in toExecute)
-            maneuverNodeManager.RemoveNode(node);
+        foreach (var node in nodesToRemove)
+        {
+            _maneuverNodeManager.RemoveNode(node);
+        }
     }
 
     /// <summary>
     /// Skip if node targets another body, isn’t finalized, or hasn’t reached its burn time.
     /// </summary>
-    bool ShouldSkipNode(ManeuverNode node, NBody body, float simTime)
+    private bool ShouldSkipNode(ManeuverNode node, NBody body, float simTime)
     {
         return node.targetBody != body || !node.isFinalized || simTime < node.burnTime;
     }
@@ -263,7 +286,7 @@ public class NBody : MonoBehaviour
     /// <summary>
     /// True while the current sim time remains inside the node’s burn duration.
     /// </summary>
-    bool IsBurnOngoing(ManeuverNode node, float simTime)
+    private bool IsBurnOngoing(ManeuverNode node, float simTime)
     {
         float timeSinceStart = simTime - node.burnTime;
         return timeSinceStart < node.duration;
@@ -272,9 +295,12 @@ public class NBody : MonoBehaviour
     /// <summary>
     /// Applies thrust per node burn type/direction for this frame.
     /// </summary>
-    void ExecuteNodeBurn(ManeuverNode node, NBody body)
+    private void ExecuteNodeBurn(ManeuverNode node, NBody body)
     {
-        Vector3 burnDirection = maneuverNodeManager.GetBurnDirectionFromDropdown(body);
+        if (thrustController == null || _maneuverNodeManager == null)
+            return;
+
+        Vector3 burnDirection = _maneuverNodeManager.GetBurnDirectionFromDropdown(body);
 
         thrustController.ApplyThrust(body, 10f, burnDirection);
         thrustController.SetDirectionalThrust(node.burnType);
@@ -283,10 +309,14 @@ public class NBody : MonoBehaviour
     /// <summary>
     /// Collision with central body → delegate removal to the coordinator.
     /// </summary>
-    void CheckCollisionWithEarth()
+    private void CheckCollisionWithEarth()
     {
-        NBody earth = bodyService != null ? bodyService.CentralBody : null;
-        if (earth == null || earth == this) return;
+        if (_bodyService == null)
+            return;
+
+        NBody earth = _bodyService.CentralBody;
+        if (earth == null || earth == this)
+            return;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);
         float collisionThreshold = cameraDistanceRadius + earth.radius;
@@ -294,23 +324,31 @@ public class NBody : MonoBehaviour
         if (distance < collisionThreshold)
         {
             Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
-            bodyRuntimeCoordinator.HandleCollision(this, earth);
+            _bodyRuntimeCoordinator?.HandleCollision(this, earth);
         }
     }
 
     /// <summary>
     /// Exceeded sim boundary → treat as escape and delegate removal.
     /// </summary>
-    void CheckEscapeFromEarth()
+    private void CheckEscapeFromEarth()
     {
-        NBody earth = bodyService != null ? bodyService.CentralBody : null;
-        if (earth == null || earth == this) return;
+        if (_bodyService == null)
+            return;
+
+        NBody earth = _bodyService.CentralBody;
+        if (earth == null || earth == this)
+            return;
 
         float distance = Vector3.Distance(transform.position, earth.transform.position);
         if (distance > MaxDistanceFromEarth)
         {
-            Debug.Log($"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed.");
-            bodyRuntimeCoordinator.HandleCollision(this, earth); // replace with a dedicated escape handler if desired
+            Debug.Log(
+                $"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed."
+            );
+
+            // TODO: replace with a dedicated escape handler if desired.
+            _bodyRuntimeCoordinator?.HandleCollision(this, earth);
         }
     }
 
@@ -319,15 +357,20 @@ public class NBody : MonoBehaviour
     /// </summary>
     private void OnDestroy()
     {
-        if (lineVisibilityController != null)
+        if (_lineVisibilityController != null)
         {
-            lineVisibilityController.DeregisterNBody(this);
+            _lineVisibilityController.DeregisterNBody(this);
         }
     }
 
     /// <summary>
     /// Asynchronously samples a forward trajectory (GPU) from a given state with external bodies.
     /// </summary>
+    /// <param name="steps">Number of integration steps.</param>
+    /// <param name="deltaTime">Step size.</param>
+    /// <param name="onComplete">Callback with sampled positions.</param>
+    /// <param name="overrideStartPosition">Optional start position override.</param>
+    /// <param name="overrideStartVelocity">Optional start velocity override.</param>
     public void CalculatePredictedTrajectoryGPU_Async(
         int steps,
         float deltaTime,
@@ -336,18 +379,23 @@ public class NBody : MonoBehaviour
         Vector3? overrideStartVelocity = null
     )
     {
-        if (relevantBodies == null || relevantBodies.Count == 0) return;
-        Vector3[] otherPositions = relevantBodies.Select(b => b.transform.position).ToArray();
-        float[] otherMasses = relevantBodies.Select(b => (float)b.mass).ToArray();
+        if (_relevantBodies == null || _relevantBodies.Count == 0)
+            return;
 
-        if (tcc == null)
+        Vector3[] otherPositions = _relevantBodies.Select(b => b.transform.position).ToArray();
+        float[] otherMasses = _relevantBodies.Select(b => (float)b.mass).ToArray();
+
+        if (_tcc == null)
         {
-            Debug.LogError("[NBODY]: TrajectoryComputeController (tcc) is null. Ensure it is assigned before calling this method.");
+            Debug.LogError(
+                "[NBODY]: TrajectoryComputeController (_tcc) is null. " +
+                "Ensure it is assigned before calling this method."
+            );
             onComplete?.Invoke(null);
             return;
         }
 
-        tcc.CalculateTrajectoryGPU_Async(
+        _tcc.CalculateTrajectoryGPU_Async(
             startPos: overrideStartPosition ?? transform.position,
             startVel: overrideStartVelocity ?? velocity,
             bodyMass: mass,
@@ -355,7 +403,7 @@ public class NBody : MonoBehaviour
             otherBodyMasses: otherMasses,
             dt: deltaTime,
             steps: steps,
-            onComplete: (positionsArray) =>
+            onComplete: positionsArray =>
             {
                 if (positionsArray == null)
                 {
@@ -389,6 +437,9 @@ public class NBody : MonoBehaviour
         }
     }
 
+    /// <summary>
+    /// Lightweight orbital state used by the batch integrator.
+    /// </summary>
     public struct OrbitalState
     {
         public double3 position;
@@ -407,18 +458,17 @@ public class NBody : MonoBehaviour
             double mass,
             double radius,
             float dragCoefficient,
-            Vector3 force)
+            Vector3 force
+        )
         {
             this.position = position;
             this.velocity = velocity;
-            this.centralBodyMass = (centralBodyMass > 0f) ? centralBodyMass : 5.972e24f;
+            this.centralBodyMass = centralBodyMass > 0f ? centralBodyMass : 5.972e24f;
             this.mass = mass;
             this.radius = radius;
             this.dragCoefficient = dragCoefficient;
             this.force = force;
-            this.crossSectionArea = Math.PI * radius * radius;
+            crossSectionArea = Math.PI * radius * radius;
         }
     }
 }
-
-

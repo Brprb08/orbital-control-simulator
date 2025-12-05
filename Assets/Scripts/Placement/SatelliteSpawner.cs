@@ -110,6 +110,8 @@ public class SatelliteSpawner : MonoBehaviour
 
         if (velocityDragManager != null)
         {
+            Debug.Log("[Spawner] Wiring drag manager with planet + mass");
+
             velocityDragManager.ResetDragManager();
             velocityDragManager.planet = go;
             velocityDragManager.placeholderMass = mass;

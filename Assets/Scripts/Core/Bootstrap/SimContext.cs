@@ -23,4 +23,5 @@ public class SimContext
     public RandomSatelliteSpawner RandomSatelliteSpawner { get; set; }
     public CameraButtonProxy CameraButtonProxy { get; set; }
     public AttitudeUIBinder AttitudeUIBinder { get; set; }
+    public NBodyVectorOverlayController NBodyVectorOverlayController { get; set; }
 }

@@ -1,5 +1,5 @@
-using UnityEngine;
 using System;
+using UnityEngine;
 
 /// <summary>
 /// Defines camera tracking behavior, including mode switching and target management.
@@ -8,29 +8,35 @@ using System;
 /// </summary>
 public interface ICameraTracker
 {
+    // Mode + state
     CameraMode Mode { get; }
-    event Action<CameraMode> OnModeChanged;
-
-    event Action<NBody> OnTrackedBodyChanged;
-    event Action<Transform> OnTrackedPlaceholderChanged;
-
-    // state
     bool IsFree { get; }
     bool IsEarthView { get; }
+    bool IsTrackingPlaceholder { get; }
+
     NBody CurrentBody { get; }
     Transform CurrentPlaceholder { get; }
 
-    bool IsTrackingPlaceholder { get; }
+    // Events
+    event Action<CameraMode> OnModeChanged;
+    event Action<NBody> OnTrackedBodyChanged;
+    event Action<Transform> OnTrackedPlaceholderChanged;
 
-    // Calls to CameraController
+    // Core camera control
     void TrackBody(NBody body);
     void TrackPlaceholder(Transform placeholder);
     void SwitchToEarthCam();
     void BreakToFreeCam();
     void ReturnToTracking();
+
+    // Satellite list maintenance
     void RefreshBodiesList();
+
+    // UI-signal suppression (for placement flows)
     void BeginUiSuppress();
     void EndUiSuppress();
+
+    // Placement preview helpers
     void PreviewPlaceholderInFree(Transform placeholder);
     void EndPreviewPlaceholder();
 }

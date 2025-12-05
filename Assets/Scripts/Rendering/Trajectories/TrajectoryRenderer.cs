@@ -1,18 +1,23 @@
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using TMPro;
 using UnityEngine;
 
 public class TrajectoryRenderer : MonoBehaviour
 {
+    // ---------------------- Constants ----------------------
     private const int MAX_STEPS = 100000;
     private const float DAY = 24f * 60f * 60f;
     private const float MAX_HORIZON_SECONDS = 10f * DAY;
     private const float MIN_HORIZON_SECONDS = 20000f;
     private const float MAX_FAST_HORIZON = 2f * DAY;
-    private const float uiInterval = 0.5f;
+    private const int FAST_MIN_STEPS = 2000;
+    private const int FAST_MAX_STEPS = 12000;
+    private const float UI_INTERVAL_SECONDS = 0.5f;
+    private const float FAST_TIMESCALE_THRESHOLD = 5f; // timeScale above which we consider "fast mode"
+    private const float EARTH_RADIUS_UNITY = 637.8f;
 
+    // ---------------------- Prediction Settings ----------------------
     [Header("Prediction")]
     [Min(1)] public int predictionSteps = 5000;
     [Min(0.0001f)] public float predictionDeltaTime = 7f;
@@ -21,11 +26,12 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Debounce")]
     [Tooltip("Coalesce rapid orbitIsDirty toggles to avoid churn.")]
     [SerializeField, Range(0, 5)] private int dirtyDebounceFrames = 2;
-    private int _dirtyDebounceCounter = 0;
+    private int _dirtyDebounceCounter;
 
+    // ---------------------- References ----------------------
     [Header("Refs")]
-    public TextMeshProUGUI apogeeText;
-    public TextMeshProUGUI perigeeText;
+    // public TextMeshProUGUI apogeeText;
+    // public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
     public CameraMovement cameraMovement;
     public BodyRuntimeCoordinator bodyRuntimeCoordinator;
@@ -36,6 +42,7 @@ public class TrajectoryRenderer : MonoBehaviour
     private UIManager ui;
     private Camera mainCamera;
 
+    // ---------------------- Line Renderers ----------------------
     [Header("Lines")]
     public ProceduralLineRenderer predictionLine;
     public ProceduralLineRenderer originLine;
@@ -49,11 +56,12 @@ public class TrajectoryRenderer : MonoBehaviour
     public Color originColor = Color.white;
     public Color apogeeColor = new Color32(0xFF, 0xB3, 0x00, 255);     // orange
     public Color perigeeColor = new Color32(0x00, 0xBF, 0xA5, 255);    // teal
-    public Color previewColor = new Color32(0x29, 0x78, 0xFF, 255);
     public Color burnColor = new Color32(0xFF, 0x3B, 0x30, 255);       // red
 
+    [Tooltip("Hide lines when the camera is closer than this distance to the tracked body.")]
     public float lineDisableDistance = 20f;
 
+    // ---------------------- State ----------------------
     [Header("State")]
     private bool isThrusting;
     private bool savedOriginalOrbit;
@@ -61,38 +69,43 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool fullPassRequested;
     private bool wasThrusting;
 
+    // ---------------------- Burn Trace Settings ----------------------
     [Header("Burn Trace State")]
     [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.1f; // seconds, unscaled
     [SerializeField, Min(0f)] private float burnMinDistance = 0.05f;      // world units (~0.5 km if 1u=10km)
     [SerializeField, Min(128)] private int burnMaxPoints = 8192;
 
-    private readonly List<Vector3> burnPoints = new();
-    private float burnNextSampleTime;
-    private bool burnTracingActive;
+    [Header("Orbit UI Smoothing")]
+    [SerializeField] private float orbitUISnapThresholdKm = 50f;   // snap if change > this
+    [SerializeField, Range(0f, 1f)] private float orbitUISmoothAlpha = 0.4f; // 0.4 => settles in ~1–2s
 
-    private Coroutine predictionCo;
+    private float _smoothedAp_km;
+    private float _smoothedPe_km;
+    private bool _haveSmoothedOrbitUI;
+
+    // new: external module instead of local lists
+    private BurnTraceModule burnTrace;
+
     private float uiNextTick;
 
+    // ---------------------- Outputs ----------------------
     [Header("Outputs")]
     public List<Vector3> latestPrediction = new();
     public float latestPredictionDeltaTime;
     public float latestPredictionStartTime;
     private List<Vector3> preManeuverSnapshot;
 
+    // ---------------------- Preview ----------------------
     [Header("Preview")]
     public ProceduralLineRenderer previewLine;
 
-    private Coroutine previewCo;
-    private Vector3 previewPos, previewVel;
-    private float previewMass;
-    private bool previewDirty;
+    private TrajectoryPreviewModule previewModule;
 
     public NBody referenceOrbitBody;
-
     public event Action<NBody, NBody> TrackedBodyChanged;
-
     private SimContext ctx;
 
+    // ---------------------- Single Orbit Clipping ----------------------
     [Header("Single Orbit Clipping")]
     [Tooltip("Enable clipping of rendered trajectories to a single revolution.")]
     [SerializeField] private bool clipToSingleOrbit = true;
@@ -101,10 +114,21 @@ public class TrajectoryRenderer : MonoBehaviour
     [Tooltip("Ignore very small steps when summing angles (prevents jitter).")]
     [SerializeField, Range(0f, 0.05f)] private float minStepAngleRad = 0.0015f;
 
-    /// <summary>
-    /// Sets up references from the simulation context, creates the line renderers, subscribes to camera events,
-    /// and syncs to the current tracked body.
-    /// </summary>
+    // ---------------------- Cached Central Body ----------------------
+    private NBody centralBody;
+    private Transform centralBodyTransform;
+    private float centralBodyRadiusWorld;
+    private bool centralBodyCached;
+
+    // ---------------------- Small reusable buffers ----------------------
+    private readonly Vector3[] _originLinePoints = new Vector3[2];
+    private readonly Vector3[] _apogeeLinePoints = new Vector3[2];
+    private readonly Vector3[] _perigeeLinePoints = new Vector3[2];
+
+    // =====================================================================
+    // Initialization / Lifecycle
+    // =====================================================================
+
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -116,23 +140,45 @@ public class TrajectoryRenderer : MonoBehaviour
         bodyService = ctx.BodyService;
 
         mainCamera = Camera.main;
+        centralBody = bodyService != null ? bodyService.CentralBody : null;
+        RefreshCentralBodyCache();
 
-        predictionLine = CreateProceduralLineRenderer("Prediction1Line", predictionColor);
-        originLine = CreateProceduralLineRenderer("OriginLine", originColor);
-        apogeeLine = CreateProceduralLineRenderer("ApogeeLine", apogeeColor);
-        perigeeLine = CreateProceduralLineRenderer("PerigeeLine", perigeeColor);
-        preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC");
-        previewLine = CreateProceduralLineRenderer("PreviewLine", "#FFD166");
-        burnLine = CreateProceduralLineRenderer("BurnLine", burnColor);
+        // tidy hierarchy
+        Transform lineRoot = new GameObject("TrajectoryLines").transform;
+        lineRoot.SetParent(transform, false);
+        lineRoot.gameObject.layer = gameObject.layer;
 
-        if (!bodyRuntimeCoordinator) Debug.LogError("[TrajectoryRenderer] missing BodyRuntimeCoordinator");
-        if (!cameraMovement) Debug.LogError("[TrajectoryRenderer] missing CameraMovement");
-        if (!thrustController) Debug.LogError("[TrajectoryRenderer] missing ThrustController");
-        if (!ui) Debug.LogError("[TrajectoryRenderer] missing UIManager");
+        predictionLine = CreateProceduralLineRenderer("PredictionLine", predictionColor, lineRoot);
+        originLine = CreateProceduralLineRenderer("OriginLine", originColor, lineRoot);
+        apogeeLine = CreateProceduralLineRenderer("ApogeeLine", apogeeColor, lineRoot);
+        perigeeLine = CreateProceduralLineRenderer("PerigeeLine", perigeeColor, lineRoot);
+        preManeuverLine = CreateProceduralLineRenderer("PreManeuverLine", "#CCCCCC", lineRoot);
+        previewLine = CreateProceduralLineRenderer("PreviewLine", "#FFD166", lineRoot);
+        burnLine = CreateProceduralLineRenderer("BurnLine", burnColor, lineRoot);
+
+        // modules
+        burnTrace = new BurnTraceModule(
+            burnLine,
+            burnSampleInterval,
+            burnMinDistance,
+            burnMaxPoints
+        );
+
+        previewModule = new TrajectoryPreviewModule(
+            owner: this,
+            previewLine: previewLine,
+            ctx: ctx,
+            clipper: ClipTrajectorySphere
+        );
+
+        if (!bodyRuntimeCoordinator) Debug.LogError("[TrajectoryRenderer] Missing BodyRuntimeCoordinator");
+        if (!cameraMovement) Debug.LogError("[TrajectoryRenderer] Missing CameraMovement");
+        if (!thrustController) Debug.LogError("[TrajectoryRenderer] Missing ThrustController");
+        if (!ui) Debug.LogError("[TrajectoryRenderer] Missing UIManager");
 
         if (!cameraController)
         {
-            Debug.LogError("[TrajectoryRenderer] missing CameraController");
+            Debug.LogError("[TrajectoryRenderer] Missing CameraController");
             return;
         }
 
@@ -141,22 +187,30 @@ public class TrajectoryRenderer : MonoBehaviour
         var current = cameraController.CurrentBody;
         if (current != null && current != trackedBody)
             SetTrackedBody(current);
+
+        if (ui != null && ui.removePreManeuverLineButton != null)
+        {
+            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked); // safety
+            ui.removePreManeuverLineButton.onClick.AddListener(OnClearPreManeuverClicked);
+        }
     }
 
-    /// <summary>
-    /// Responds to camera-tracked body changes and updates internal state.
-    /// </summary>
-    private void HandleTrackedBodyChanged(NBody newBody)
+    private void OnDestroy()
     {
-        if (newBody == trackedBody) return;
-        SetTrackedBody(newBody);
+        if (cameraController != null)
+            cameraController.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
+
+        if (ui != null && ui.removePreManeuverLineButton != null)
+            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked);
     }
 
-    /// <summary>
-    /// Handles prediction timing, long-pass scheduling, UI updates, line visibility, and the origin line.
-    /// </summary>
+    // =====================================================================
+    // Main Update Loop
+    // =====================================================================
+
     private void Update()
     {
+        // debounce dirtiness
         if (orbitIsDirty && _dirtyDebounceCounter == 0)
             _dirtyDebounceCounter = dirtyDebounceFrames;
         else if (_dirtyDebounceCounter > 0)
@@ -169,10 +223,15 @@ public class TrajectoryRenderer : MonoBehaviour
             apogeeLine?.Clear();
             perigeeLine?.Clear();
             preManeuverLine?.Clear();
+            burnLine?.Clear();
             ui?.ShowApogeePerigeePanel(false);
+
+            burnTrace?.Reset();
+            previewModule?.Reset();
             return;
         }
 
+        // thrust state + pre-maneuver snapshot
         if (thrustController)
         {
             bool nowThrusting = thrustController.IsThrusting;
@@ -188,20 +247,28 @@ public class TrajectoryRenderer : MonoBehaviour
             isThrusting = nowThrusting;
         }
 
-        // If thrust just stopped, queue a full pass
+        // detect thrust stop → long pass
         if (wasThrusting && !isThrusting)
             fullPassRequested = true;
-
         wasThrusting = isThrusting;
 
-        UpdateBurnTrace(isThrusting);
+        // burn trace module
+        burnTrace?.Update(
+            thrusting: isThrusting,
+            bodyTransform: trackedBody.transform,
+            unscaledTime: Time.unscaledTime
+        );
 
+        // Δv UI
         if (trackedBody.cumulativeDeltaVUsed != 0f)
             ui?.UpdateDeltaV(trackedBody.cumulativeDeltaVUsed);
 
-        // Prefer long horizon when idle and focused on this body
-        if (fullPassRequested && !isThrusting && !isComputingPrediction
-            && cameraMovement?.targetBody == trackedBody)
+        // when idle on this body, do long horizon pass
+        bool cameraOnTrackedBody =
+            cameraMovement != null &&
+            cameraMovement.targetBody == trackedBody;
+
+        if (fullPassRequested && !isThrusting && !isComputingPrediction && cameraOnTrackedBody)
         {
             ComputeFinalLongPass(trackedBody);
         }
@@ -209,20 +276,22 @@ public class TrajectoryRenderer : MonoBehaviour
         if (ShouldComputePrediction(trackedBody))
             KickOrRefreshPrediction(trackedBody);
 
+        // apsis lines + orbit UI at lower rate
         if (Time.unscaledTime >= uiNextTick)
         {
             var p = OrbitalCalculations.TryParams(trackedBody, bodyService);
             if (p.isValid) ShowApogeePerigeeLines(p);
-            uiNextTick = Time.unscaledTime + uiInterval;
+            uiNextTick = Time.unscaledTime + UI_INTERVAL_SECONDS;
         }
 
         ToggleLinesByDistance();
         DrawOriginLine();
     }
 
-    /// <summary>
-    /// Returns true if a new prediction should be computed for the given body.
-    /// </summary>
+    // =====================================================================
+    // Prediction / Orbit Management
+    // =====================================================================
+
     private bool ShouldComputePrediction(NBody body)
     {
         if (fullPassRequested && !isThrusting) return false;
@@ -233,27 +302,29 @@ public class TrajectoryRenderer : MonoBehaviour
         return isThrusting || dirtyReady;
     }
 
-    private void OnDestroy()
-    {
-        if (cameraController != null)
-            cameraController.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
-    }
-
     /// <summary>
     /// Sets the tracked body and resets prediction + line state.
+    /// Re-tracking the same body (e.g. Free → Track) will request a fresh
+    /// orbit pass without nuking all state.
     /// </summary>
     public void SetTrackedBody(NBody body)
     {
-        if (predictionCo != null)
+        // Same-body re-track (ReturnToTracking)
+        if (body == trackedBody && body != null)
         {
-            StopCoroutine(predictionCo);
-            predictionCo = null;
+            RequestFullOrbitPass();
+            orbitIsDirty = true;
+            _dirtyDebounceCounter = dirtyDebounceFrames;
+            return;
         }
 
         preManeuverSnapshot = null;
         ClearAllLines();
+
         var old = trackedBody;
         trackedBody = body;
+
+        ResetOrbitUISmoothing();
 
         TrackedBodyChanged?.Invoke(old, trackedBody);
 
@@ -271,35 +342,40 @@ public class TrajectoryRenderer : MonoBehaviour
         _dirtyDebounceCounter = dirtyDebounceFrames;
     }
 
-    /// <summary>
-    /// Requests a full long-horizon prediction
-    /// </summary>
     public void RequestFullOrbitPass() => fullPassRequested = true;
 
-    /// <summary>
-    /// Starts or refreshes a fast prediction pass.
-    /// </summary>
     private void KickOrRefreshPrediction(NBody body)
     {
         if (isComputingPrediction) return;
+
         var p = OrbitalCalculations.TryParams(body, bodyService);
         if (!p.isValid) return;
 
-        bool fast = isThrusting || Time.timeScale > 5f;
-        float horizonSeconds = ComputeHorizonSeconds(body, fast);
+        bool fast = isThrusting || Time.timeScale > FAST_TIMESCALE_THRESHOLD;
+        float horizonSeconds = ComputeHorizonSeconds(body, fast, p);
 
         float effectiveDt = predictionDeltaTime;
         int stepsNeeded = Mathf.CeilToInt(horizonSeconds / effectiveDt);
 
-        predictionSteps = Mathf.Clamp(stepsNeeded, 500, MAX_STEPS);
+        if (fast)
+        {
+            stepsNeeded = Mathf.Clamp(stepsNeeded, FAST_MIN_STEPS, FAST_MAX_STEPS);
+            effectiveDt = Mathf.Max(0.0001f, horizonSeconds / stepsNeeded);
+        }
+        else
+        {
+            stepsNeeded = Mathf.Clamp(stepsNeeded, 500, MAX_STEPS);
+        }
 
+        predictionSteps = stepsNeeded;
         isComputingPrediction = true;
+
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: predictionSteps,
             deltaTime: effectiveDt,
             onComplete: resultList =>
             {
-                if (!this || !gameObject) return; // component destroyed
+                if (!this || !gameObject) return;
                 if (trackedBody != body) { isComputingPrediction = false; return; }
                 if (predictionLine == null) { isComputingPrediction = false; return; }
 
@@ -318,18 +394,16 @@ public class TrajectoryRenderer : MonoBehaviour
         );
     }
 
-    /// <summary>
-    /// Computes a single long-horizon pass, increasing dt to stay within MAX_STEPS.
-    /// </summary>
     private void ComputeFinalLongPass(NBody body)
     {
         var p = OrbitalCalculations.TryParams(body, bodyService);
         if (!p.isValid) return;
 
-        float horizonSeconds = ComputeHorizonSeconds(body, fast: false);
+        float horizonSeconds = ComputeHorizonSeconds(body, fast: false, p);
 
         float effectiveDt = predictionDeltaTime;
         int stepsNeeded = Mathf.CeilToInt(horizonSeconds / effectiveDt);
+
         if (stepsNeeded > MAX_STEPS)
         {
             effectiveDt = horizonSeconds / MAX_STEPS;
@@ -337,8 +411,8 @@ public class TrajectoryRenderer : MonoBehaviour
         }
 
         stepsNeeded = Mathf.Clamp(stepsNeeded + 8, 1500, MAX_STEPS);
-
         isComputingPrediction = true;
+
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: stepsNeeded,
             deltaTime: effectiveDt,
@@ -363,12 +437,8 @@ public class TrajectoryRenderer : MonoBehaviour
         fullPassRequested = false;
     }
 
-    /// <summary>
-    /// Computes the time horizon (seconds) for fast or final passes based on current orbital parameters.
-    /// </summary>
-    private float ComputeHorizonSeconds(NBody body, bool fast)
+    private float ComputeHorizonSeconds(NBody body, bool fast, OrbitalParameters p)
     {
-        var p = OrbitalCalculations.TryParams(body, bodyService);
         if (!p.isValid)
             return Mathf.Clamp(30_000f, MIN_HORIZON_SECONDS, MAX_HORIZON_SECONDS);
 
@@ -381,89 +451,51 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (fast)
         {
-            float h = Mathf.Clamp(T * 0.4f, 8_000f, MAX_FAST_HORIZON);
+            float h = Mathf.Clamp(T * 1.2f, 10_000f, MAX_FAST_HORIZON);
             return Mathf.Min(h, MAX_HORIZON_SECONDS);
         }
-        else
-        {
-            float h = Mathf.Clamp(T * 1.25f, MIN_HORIZON_SECONDS, MAX_HORIZON_SECONDS);
-            return h;
-        }
+
+        float hFinal = Mathf.Clamp(T * 1.25f, MIN_HORIZON_SECONDS, MAX_HORIZON_SECONDS);
+        return hFinal;
     }
 
-    /// <summary>
-    /// Maintains a red trace of the spacecraft path while thrust is active.
-    /// </summary>
-    private void UpdateBurnTrace(bool thrusting)
-    {
-        if (!trackedBody || burnLine == null) return;
+    // =====================================================================
+    // Line Visibility / Origin
+    // =====================================================================
 
-        if (!burnTracingActive && thrusting)
-        {
-            burnTracingActive = true;
-            burnPoints.Clear();
-            burnNextSampleTime = Time.unscaledTime;
-            burnPoints.Add(trackedBody.transform.position);
-            burnLine.UpdateLine(burnPoints.ToArray());
-        }
-
-        if (burnTracingActive && thrusting)
-        {
-            if (Time.unscaledTime >= burnNextSampleTime)
-            {
-                var pos = trackedBody.transform.position;
-
-                bool farEnough =
-                    burnPoints.Count == 0 ||
-                    (pos - burnPoints[burnPoints.Count - 1]).sqrMagnitude >= burnMinDistance * burnMinDistance;
-
-                if (farEnough)
-                {
-                    burnPoints.Add(pos);
-                    if (burnPoints.Count > burnMaxPoints)
-                        burnPoints.RemoveRange(0, burnPoints.Count - burnMaxPoints);
-
-                    burnLine.UpdateLine(burnPoints.ToArray());
-                }
-
-                burnNextSampleTime = Time.unscaledTime + burnSampleInterval;
-            }
-        }
-
-        // finalize the segment and leave it drawn
-        if (burnTracingActive && !thrusting)
-        {
-            var pos = trackedBody.transform.position;
-            if (burnPoints.Count == 0 ||
-                (pos - burnPoints[burnPoints.Count - 1]).sqrMagnitude >= burnMinDistance * burnMinDistance)
-            {
-                burnPoints.Add(pos);
-                if (burnPoints.Count > burnMaxPoints)
-                    burnPoints.RemoveRange(0, burnPoints.Count - burnMaxPoints);
-                burnLine.UpdateLine(burnPoints.ToArray());
-            }
-
-            burnTracingActive = false;
-        }
-    }
-
-    /// <summary>
-    /// Draws a line from the tracked body to the central body (origin).
-    /// </summary>
     private void DrawOriginLine()
     {
-        if (originLine == null || trackedBody == null || ctx?.BodyService?.CentralBody == null) return;
+        if (originLine == null || trackedBody == null || !centralBodyCached) return;
 
-        var center = ctx.BodyService.CentralBody.transform.position;
-        originLine.UpdateLine(new[] { trackedBody.transform.position, center });
+        _originLinePoints[0] = trackedBody.transform.position;
+        _originLinePoints[1] = centralBodyTransform.position;
+
+        originLine.UpdateLine(_originLinePoints);
     }
 
-    /// <summary>
-    /// Shows or hides lines based on camera distance to the tracked body.
-    /// </summary>
     private void ToggleLinesByDistance()
     {
-        if (mainCamera == null || trackedBody == null) return;
+        if (trackedBody == null) return;
+
+        bool cameraOnTrackedBody =
+            cameraMovement != null &&
+            cameraMovement.targetBody == trackedBody;
+
+        if (!cameraOnTrackedBody)
+        {
+            predictionLine?.SetVisibility(false);
+            originLine?.SetVisibility(false);
+            apogeeLine?.SetVisibility(false);
+            perigeeLine?.SetVisibility(false);
+            preManeuverLine?.SetVisibility(false);
+
+            // DO NOT TOUCH PREVIEW LINE HERE
+
+            burnLine?.SetVisibility(false);
+            return;
+        }
+
+        if (mainCamera == null) return;
 
         float d = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
         bool show = d > lineDisableDistance;
@@ -477,33 +509,39 @@ public class TrajectoryRenderer : MonoBehaviour
         burnLine?.SetVisibility(show);
     }
 
-    /// <summary>
-    /// Creates and configures a procedural line using a Unity Color.
-    /// </summary>
-    private ProceduralLineRenderer CreateProceduralLineRenderer(string name, Color color)
-    {
-        GameObject go = new GameObject(name);
-        ProceduralLineRenderer lr = go.AddComponent<ProceduralLineRenderer>();
+    // =====================================================================
+    // Line Creation
+    // =====================================================================
 
+    private ProceduralLineRenderer CreateProceduralLineRenderer(string name, Color color, Transform parent)
+    {
+        var go = new GameObject(name)
+        {
+            layer = gameObject.layer
+        };
+
+        go.transform.SetParent(parent, false);
+
+        var lr = go.AddComponent<ProceduralLineRenderer>();
         string hex = ColorUtility.ToHtmlStringRGB(color);
         lr.SetLineColor("#" + hex);
         lr.SetLineWidth(0.1f);
+
         return lr;
     }
 
-    /// <summary>
-    /// Creates and configures a procedural line using a hex color string (#RRGGBB).
-    /// </summary>
-    private ProceduralLineRenderer CreateProceduralLineRenderer(string name, string hexColor)
+    private ProceduralLineRenderer CreateProceduralLineRenderer(string name, string hexColor, Transform parent)
     {
         if (!ColorUtility.TryParseHtmlString(hexColor, out var col))
             col = Color.white;
-        return CreateProceduralLineRenderer(name, col);
+
+        return CreateProceduralLineRenderer(name, col, parent);
     }
 
-    /// <summary>
-    /// Captures a copy of the latest prediction for pre-maneuver display.
-    /// </summary>
+    // =====================================================================
+    // Pre-Maneuver Orbit
+    // =====================================================================
+
     private void CapturePreManeuverFromLatest()
     {
         if (latestPrediction != null && latestPrediction.Count > 1)
@@ -518,21 +556,64 @@ public class TrajectoryRenderer : MonoBehaviour
             preManeuverLine.Clear();
             preManeuverSnapshot = null;
         }
+
+        bool hasPreOrbit = preManeuverSnapshot != null;
+        if (ui != null && ui.removePreManeuverLineButton != null)
+            ui.removePreManeuverLineButton.gameObject.SetActive(hasPreOrbit);
     }
 
-    /// <summary>
-    /// Clips a polyline trajectory against the central body sphere; stops at the first hit.
-    /// Uses analytic segment–sphere intersection instead of Physics.Raycast.
-    /// </summary>
+    private void OnClearPreManeuverClicked()
+    {
+        ClearPreManeuverOrbit();
+        ClearBurnTrace();
+
+        // optional: hide the button after use
+        if (ui != null && ui.removePreManeuverLineButton != null)
+            ui.removePreManeuverLineButton.gameObject.SetActive(false);
+    }
+
+    public void ClearPreManeuverOrbit()
+    {
+        preManeuverLine?.Clear();
+
+        if (referenceOrbitBody != null)
+        {
+            Destroy(referenceOrbitBody.gameObject);
+            referenceOrbitBody = null;
+        }
+    }
+
+    public void ClearBurnTrace()
+    {
+        burnTrace?.Reset();
+    }
+
+    // =====================================================================
+    // Central Body / Clipping
+    // =====================================================================
+
+    private void RefreshCentralBodyCache()
+    {
+        if (centralBody == null)
+        {
+            centralBodyCached = false;
+            return;
+        }
+
+        centralBodyTransform = centralBody.transform;
+        centralBodyRadiusWorld = GetCentralBodyRadiusWorld(centralBody);
+        centralBodyCached = true;
+    }
+
     private Vector3[] ClipTrajectorySphere(Vector3[] points)
     {
         if (points == null || points.Length < 2) return points;
-        if (ctx?.BodyService?.CentralBody == null) return points;
+        if (!centralBodyCached) return points;
 
-        Vector3 center = ctx.BodyService.CentralBody.transform.position;
-        float radius = GetCentralBodyRadiusWorld(ctx.BodyService.CentralBody);
-
+        Vector3 center = centralBodyTransform.position;
+        float radius = centralBodyRadiusWorld;
         float r2 = radius * radius;
+
         var clipped = new List<Vector3>(points.Length) { points[0] };
 
         for (int i = 1; i < points.Length; i++)
@@ -541,7 +622,6 @@ public class TrajectoryRenderer : MonoBehaviour
             Vector3 b = points[i];
             Vector3 d = b - a;
 
-            // Segment-sphere intersection: ||a + t d - C||^2 = R^2, t in [0,1]
             Vector3 m = a - center;
             float A = Vector3.Dot(d, d);
             float B = 2f * Vector3.Dot(m, d);
@@ -559,7 +639,6 @@ public class TrajectoryRenderer : MonoBehaviour
             float t0 = (-B - sqrt) * inv2A;
             float t1 = (-B + sqrt) * inv2A;
 
-            // Pick the earliest hit within [0,1]
             bool hit = false;
             float tHit = float.PositiveInfinity;
             if (t0 >= 0f && t0 <= 1f) { hit = true; tHit = Mathf.Min(tHit, t0); }
@@ -579,10 +658,6 @@ public class TrajectoryRenderer : MonoBehaviour
         return clipped.ToArray();
     }
 
-    /// <summary>
-    /// Tries to get the central body radius (world units). Prefers SphereCollider,
-    /// then a 'radius' field/property, otherwise falls back to Earth-ish value at 1u = 10km.
-    /// </summary>
     private float GetCentralBodyRadiusWorld(NBody central)
     {
         var sc = central.GetComponent<SphereCollider>();
@@ -599,6 +674,7 @@ public class TrajectoryRenderer : MonoBehaviour
         try
         {
             var t = central.GetType();
+
             var f = t.GetField("radius");
             if (f != null && f.FieldType == typeof(float))
                 return (float)f.GetValue(central);
@@ -613,12 +689,13 @@ public class TrajectoryRenderer : MonoBehaviour
         }
 
         // Fallback for Earth-scale worlds at 1u=10km
-        return 637.8f;
+        return EARTH_RADIUS_UNITY;
     }
 
-    /// <summary>
-    /// Draws apogee/perigee lines and updates orbit stats in the UI.
-    /// </summary>
+    // =====================================================================
+    // UI: Apogee / Perigee
+    // =====================================================================
+
     private void ShowApogeePerigeeLines(OrbitalParameters op)
     {
         if (!apogeeLine || !perigeeLine) return;
@@ -626,59 +703,88 @@ public class TrajectoryRenderer : MonoBehaviour
         var apo = op.apogeePosition;
         var per = op.perigeePosition;
 
-        float circularUnitsThreshold = 0.1f; // ~1 km / 10 km/u
+        float circularUnitsThreshold = 0.5f; // ~1 km / 10 km/u
         bool nearCircular = Mathf.Abs(apo.magnitude - per.magnitude) < circularUnitsThreshold;
 
         if (!nearCircular)
         {
-            apogeeLine.UpdateLine(new[] { apo, Vector3.zero });
-            perigeeLine.UpdateLine(new[] { per, Vector3.zero });
+            _apogeeLinePoints[0] = apo;
+            _apogeeLinePoints[1] = Vector3.zero;
+            _perigeeLinePoints[0] = per;
+            _perigeeLinePoints[1] = Vector3.zero;
+
+            apogeeLine.UpdateLine(_apogeeLinePoints);
+            perigeeLine.UpdateLine(_perigeeLinePoints);
         }
 
         if (ui != null)
         {
-            double ap_km = (apo.magnitude - 637.8) * 10.0;
-            double pe_km = (per.magnitude - 637.8) * 10.0;
+            // Raw values from geometry
+            double ap_km_raw = (apo.magnitude - EARTH_RADIUS_UNITY) * 10.0;
+            double pe_km_raw = (per.magnitude - EARTH_RADIUS_UNITY) * 10.0;
+
+            float ap_km = (float)ap_km_raw;
+            float pe_km = (float)pe_km_raw;
+
+            // --- Fast snap on big changes / first time ---
+            if (!_haveSmoothedOrbitUI ||
+                Mathf.Abs(ap_km - _smoothedAp_km) > orbitUISnapThresholdKm ||
+                Mathf.Abs(pe_km - _smoothedPe_km) > orbitUISnapThresholdKm)
+            {
+                _smoothedAp_km = ap_km;
+                _smoothedPe_km = pe_km;
+                _haveSmoothedOrbitUI = true;
+            }
+            else
+            {
+                // --- Only smooth small jitter ---
+                float a = orbitUISmoothAlpha;
+                _smoothedAp_km = Mathf.Lerp(_smoothedAp_km, ap_km, a);
+                _smoothedPe_km = Mathf.Lerp(_smoothedPe_km, pe_km, a);
+            }
 
             ui.UpdateOrbitUI(
-                (float)ap_km, (float)pe_km,
+                _smoothedAp_km, _smoothedPe_km,
                 op.semiMajorAxis, op.eccentricity, op.orbitalPeriod,
                 op.inclination, op.RAAN, op.meanAnomaly, op.timeToPerigee, op.timeToApogee
             );
         }
     }
 
-    /// <summary>
-    /// Clears all line renderers and resets tracked state.
-    /// </summary>
+    private void ResetOrbitUISmoothing()
+    {
+        _haveSmoothedOrbitUI = false;
+        _smoothedAp_km = 0f;
+        _smoothedPe_km = 0f;
+    }
+
+    // =====================================================================
+    // Bulk Control
+    // =====================================================================
+
     public void ClearAllLines()
     {
-        predictionLine.Clear();
-        originLine.Clear();
-        apogeeLine.Clear();
-        perigeeLine.Clear();
-        preManeuverLine.Clear();
-        previewLine.Clear();
-        burnLine.Clear();
-        burnPoints.Clear();
-        burnTracingActive = false;
-        trackedBody = null;
+        predictionLine?.Clear();
+        originLine?.Clear();
+        apogeeLine?.Clear();
+        perigeeLine?.Clear();
+        preManeuverLine?.Clear();
+        previewLine?.Clear();
+        burnLine?.Clear();
+
+        burnTrace?.Reset();
+        previewModule?.Reset();
+        // trackedBody left; SetTrackedBody controls it
     }
 
-    /// <summary>
-    /// Bulk visibility toggle for key renderers.
-    /// </summary>
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
     {
-        SetVisible(predictionLine.GetComponent<Renderer>(), showPrediction);
-        SetVisible(originLine.GetComponent<Renderer>(), showOrigin);
-        SetVisible(apogeeLine.GetComponent<Renderer>(), showApogeePerigee);
-        SetVisible(perigeeLine.GetComponent<Renderer>(), showApogeePerigee);
+        SetVisible(predictionLine ? predictionLine.GetComponent<Renderer>() : null, showPrediction);
+        SetVisible(originLine ? originLine.GetComponent<Renderer>() : null, showOrigin);
+        SetVisible(apogeeLine ? apogeeLine.GetComponent<Renderer>() : null, showApogeePerigee);
+        SetVisible(perigeeLine ? perigeeLine.GetComponent<Renderer>() : null, showApogeePerigee);
     }
 
-    /// <summary>
-    /// Sets renderer visibility without disabling component behaviour.
-    /// </summary>
     private static void SetVisible(Renderer r, bool visible)
     {
         if (!r) return;
@@ -689,79 +795,20 @@ public class TrajectoryRenderer : MonoBehaviour
 #endif
     }
 
-    // ---------------------- Preview methods used by VelocityDragManager ----------------------
+    // =====================================================================
+    // Preview API (VelocityDragManager) – forwards to module
+    // =====================================================================
 
-    /// <summary>
-    /// Starts or refreshes a lightweight continuous trajectory preview from a given state.
-    /// </summary>
     public void QuickPreviewFromState(Vector3 startPos, Vector3 startVel, float bodyMass)
     {
-        previewPos = startPos;
-        previewVel = startVel;
-        previewMass = Mathf.Max(1f, bodyMass);
-        previewDirty = true;
-
-        if (previewCo == null) previewCo = StartCoroutine(QuickPreviewLoop());
+        previewModule?.QuickPreviewFromState(startPos, startVel, bodyMass);
     }
 
-    /// <summary>
-    /// Clears the preview line and stops the preview worker if running.
-    /// </summary>
     public void ClearPreview()
     {
-        previewDirty = false;
-        previewLine.Clear();
-        if (previewCo != null) { StopCoroutine(previewCo); previewCo = null; }
+        previewModule?.ClearPreview();
     }
 
-    private IEnumerator QuickPreviewLoop()
-    {
-        const float tick = 0.1f;
-        while (true)
-        {
-            if (!previewDirty)
-            {
-                yield return new WaitForSecondsRealtime(tick);
-                continue;
-            }
-
-            previewDirty = false;
-
-            var svc = ctx.BodyService;
-            if (svc == null || svc.CentralBody == null)
-            {
-                previewLine.Clear();
-                yield return new WaitForSecondsRealtime(tick);
-                continue;
-            }
-
-            var cb = svc.CentralBody;
-            Vector3[] attractorPos = { cb.transform.position };
-            float[] attractorMass = { (float)cb.mass };
-
-            ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
-                previewPos, previewVel, previewMass,
-                attractorPos, attractorMass,
-                dt: 2f, steps: 1500,
-                points =>
-                {
-                    if (points == null || points.Length < 2)
-                    {
-                        previewLine.Clear();
-                        return;
-                    }
-
-                    var clipped = ClipTrajectorySphere(points);
-                    previewLine.UpdateLine(clipped);
-                });
-
-            yield return new WaitForSecondsRealtime(tick);
-        }
-    }
-
-    /// <summary>
-    /// Runs a one-off longer preview, then leaves the line until updated again.
-    /// </summary>
     public void QuickPreviewOnceLong(
         Vector3 startPos,
         Vector3 startVel,
@@ -770,65 +817,26 @@ public class TrajectoryRenderer : MonoBehaviour
         float dt = 2f,
         bool singleOrbit = true)
     {
-        if (previewCo != null) { StopCoroutine(previewCo); previewCo = null; }
-
-        var svc = ctx?.BodyService;
-        if (svc == null || svc.CentralBody == null)
-        {
-            Debug.LogWarning("[QuickPreview] No BodyService or CentralBody.");
-            previewLine?.Clear();
-            return;
-        }
-
-        var cb = svc.CentralBody;
-        Vector3[] attractorPos = { cb.transform.position };
-        float[] attractorMass = { (float)cb.mass };
-
-        ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
-            startPos, startVel, Mathf.Max(1f, bodyMass),
-            attractorPos, attractorMass,
-            dt, steps,
-            points =>
-            {
-                if (points == null || points.Length < 2)
-                {
-                    previewLine?.Clear();
-                    return;
-                }
-
-                var clipped = ClipTrajectorySphere(points);
-                if (singleOrbit && clipToSingleOrbit)
-                    clipped = ClipToSingleOrbit(clipped);
-
-                previewLine.UpdateLine(clipped);
-                previewDirty = false;
-            });
+        previewModule?.QuickPreviewOnceLong(
+            startPos,
+            startVel,
+            bodyMass,
+            steps,
+            dt,
+            singleOrbit && clipToSingleOrbit
+        );
     }
 
-    /// <summary>
-    /// Clears the pre-maneuver line and destroys any reference orbit body.
-    /// </summary>
-    public void ClearPreManeuverOrbit()
-    {
-        if (preManeuverLine != null)
-            preManeuverLine.Clear();
+    // =====================================================================
+    // Orbit Clipping Helpers
+    // =====================================================================
 
-        if (referenceOrbitBody != null)
-        {
-            Destroy(referenceOrbitBody.gameObject);
-            referenceOrbitBody = null;
-        }
-    }
-
-    /// <summary>
-    /// Clips the trajectory to (approximately) a single revolution.
-    /// </summary>
     private Vector3[] ClipToSingleOrbit(Vector3[] points)
     {
-        if (!clipToSingleOrbit || points == null || points.Length < 3 || ctx?.BodyService?.CentralBody == null)
+        if (!clipToSingleOrbit || points == null || points.Length < 3 || !centralBodyCached)
             return points;
 
-        Vector3 center = ctx.BodyService.CentralBody.transform.position;
+        Vector3 center = centralBodyTransform.position;
         Vector3 r0 = points[0] - center;
         if (r0.sqrMagnitude < 1e-8f) return points;
 
@@ -868,14 +876,12 @@ public class TrajectoryRenderer : MonoBehaviour
                 Vector3 nb = rb.normalized;
                 float ang = SignedAngleDelta(na, nb, n);
                 Quaternion q = Quaternion.AngleAxis((ang * frac) * Mathf.Rad2Deg, n);
-                Vector3 dirCut = q * na;
+                Vector3 dir = q * na;
                 float rLen = Mathf.Lerp(ra.magnitude, rb.magnitude, Mathf.Clamp01(frac));
 
-                Vector3 cutPos = center + dirCut * rLen;
+                Vector3 cutPos = center + dir * rLen;
                 outPts.Add(cutPos);
-
-                // close loop so the line has no tiny gap
-                outPts.Add(outPts[0]);
+                outPts.Add(outPts[0]); // close loop
 
                 return outPts.ToArray();
             }
@@ -888,13 +894,11 @@ public class TrajectoryRenderer : MonoBehaviour
         return outPts.ToArray();
     }
 
-    /// <summary>
-    /// Tries to compute an approximate orbit normal from the sample points.
-    /// </summary>
     private bool TryComputeOrbitNormal(Vector3[] pts, Vector3 center, out Vector3 n)
     {
         n = Vector3.zero;
         Vector3? rPrev = null;
+
         for (int i = 1; i < pts.Length; i++)
         {
             Vector3 a = rPrev ?? (pts[i - 1] - center);
@@ -908,12 +912,10 @@ public class TrajectoryRenderer : MonoBehaviour
             }
             rPrev = b;
         }
+
         return false;
     }
 
-    /// <summary>
-    /// Signed angle from 'a' to 'b' about normal 'n', in radians. Range (-π, π].
-    /// </summary>
     private float SignedAngleDelta(Vector3 a, Vector3 b, Vector3 n)
     {
         a.Normalize();
@@ -921,5 +923,14 @@ public class TrajectoryRenderer : MonoBehaviour
         float sin = Vector3.Dot(n, Vector3.Cross(a, b));
         float cos = Mathf.Clamp(Vector3.Dot(a, b), -1f, 1f);
         return Mathf.Atan2(sin, cos);
+    }
+
+    // =====================================================================
+    // Camera Body Change
+    // =====================================================================
+
+    private void HandleTrackedBodyChanged(NBody newBody)
+    {
+        SetTrackedBody(newBody);
     }
 }

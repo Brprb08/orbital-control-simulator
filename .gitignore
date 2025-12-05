@@ -22,6 +22,8 @@ UserSettings/
 # Exclude IDE-specific files
 .idea/
 
+Overview.md
+
 TECHNICAL_README.md
 PHYSICS_BREAKDOWN.md
 

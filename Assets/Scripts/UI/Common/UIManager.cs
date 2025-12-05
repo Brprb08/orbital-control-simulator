@@ -12,6 +12,7 @@ public class UIManager : MonoBehaviour
     public TutorialController tutorialController;
     private ICameraTracker cameraTracker;
     private ObjectPlacementManager objectPlacementManager;
+    public NBodyVectorOverlayController vectorOverlayController;
 
     [Header("Buttons")]
     public Button freeCamButton;
@@ -49,6 +50,8 @@ public class UIManager : MonoBehaviour
     public Button placementModeButton;
     public Button randomSatelliteButton;
     public Button burnControlButton;
+    public Button removePreManeuverLineButton;
+    public Button vectorToggleButton;
 
     [Header("UI - Text Displays")]
     public TMP_Text earthCamButtonText;
@@ -65,11 +68,13 @@ public class UIManager : MonoBehaviour
     public TextMeshProUGUI deltaVText;
     public TextMeshProUGUI timeToPerigeeText;
     public TextMeshProUGUI timeToApogeeText;
+    public TextMeshProUGUI vectorToggleButtonText;
 
     [Header("UI Flags")]
     public bool showInstructionText = false;
     public bool isTracking = false;
     public bool earthCamPressed = true;
+    private bool _vectorsVisible = true;
 
     [Header("Tutorial")]
     public GameObject tutorialPanel;
@@ -103,8 +108,8 @@ public class UIManager : MonoBehaviour
             _onModeChangedHandler = HandleModeChanged;
             cameraTracker.OnModeChanged += _onModeChangedHandler;
 
-            _onTrackedBodyHandler = _ => EnsureTrackUiConsistency();
-            _onTrackedPlaceholderHandler = _ => EnsureTrackUiConsistency();
+            _onTrackedBodyHandler = _ => HandleTrackedBodyChanged();
+            _onTrackedPlaceholderHandler = _ => HandleTrackedBodyChanged();
             cameraTracker.OnTrackedBodyChanged += _onTrackedBodyHandler;
             cameraTracker.OnTrackedPlaceholderChanged += _onTrackedPlaceholderHandler;
 
@@ -114,6 +119,17 @@ public class UIManager : MonoBehaviour
         if (instructionsPanel) instructionsPanel.SetActive(showInstructionText);
         if (cameraControls) cameraControls.SetActive(true);
         if (deltaVText) deltaVText.text = "";
+        if (removePreManeuverLineButton) removePreManeuverLineButton.gameObject.SetActive(false);
+
+        if (vectorToggleButton != null)
+        {
+            vectorToggleButton.onClick.AddListener(OnVectorTogglePressed);
+        }
+
+        if (vectorOverlayController != null)
+        {
+            _vectorsVisible = vectorOverlayController.showVectors;
+        }
 
         UpdateInstructionToggleButton();
     }
@@ -218,9 +234,16 @@ public class UIManager : MonoBehaviour
         if (earthCamButtonText != null)
             earthCamButtonText.text = (mode == CameraMode.Earth) ? "Satellite Cam" : "Earth Cam";
 
+        placementModeButton.interactable = mode == CameraMode.Free;
+
         ApplyModeUi(mode);
     }
 
+    private void HandleTrackedBodyChanged()
+    {
+        if (removePreManeuverLineButton) removePreManeuverLineButton.gameObject.SetActive(false);
+        EnsureTrackUiConsistency();
+    }
     /// <summary>
     /// Ensures button interactivity reflects tracking state when targets change.
     /// </summary>
@@ -262,6 +285,7 @@ public class UIManager : MonoBehaviour
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
             if (confirmRemoveSatPanel) confirmRemoveSatPanel.SetActive(false);
             if (dropdown) dropdown.SetActive(false);
+            if (removePreManeuverLineButton) removePreManeuverLineButton.gameObject.SetActive(false);
 
             if (feedbackText != null)
             {
@@ -294,6 +318,7 @@ public class UIManager : MonoBehaviour
 
         if (placementModeButton) placementModeButton.interactable = isFreeCam;
         if (randomSatelliteButton) randomSatelliteButton.interactable = isFreeCam;
+        if (vectorToggleButton) vectorToggleButton.gameObject.SetActive(!isFreeCam);
     }
 
     /// <summary>
@@ -522,5 +547,31 @@ public class UIManager : MonoBehaviour
     {
         tutorialController.inTutorialMode = false;
         if (tutorialPanel != null) tutorialPanel.SetActive(false);
+    }
+
+    /// <summary>
+    /// Toggles all orbit vector lines on/off via the NBodyVectorOverlayController.
+    /// </summary>
+    public void OnVectorTogglePressed()
+    {
+        if (vectorOverlayController == null)
+            return;
+
+        vectorOverlayController.ToggleFromUI();
+
+        _vectorsVisible = vectorOverlayController.showVectors;
+
+        UpdateVectorToggleButtonLabel();
+
+        EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    private void UpdateVectorToggleButtonLabel()
+    {
+        if (vectorToggleButton == null) return;
+
+        if (vectorToggleButtonText == null) return;
+
+        vectorToggleButtonText.text = _vectorsVisible ? "Hide Vectors" : "Show Vectors";
     }
 }

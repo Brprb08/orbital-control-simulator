@@ -28,6 +28,7 @@ public class SimulationBootstrap : MonoBehaviour
     public SatelliteSpawner satelliteSpawner;
     public BodyService bodyService;
     public AttitudeUIBinder attitudeUIBinder;
+    public NBodyVectorOverlayController nBodyVectorOverlayController;
     private SimContext ctx;
 
     /// <summary>
@@ -57,6 +58,7 @@ public class SimulationBootstrap : MonoBehaviour
             RandomSatelliteSpawner = randomSatelliteSpawner,
             BodyService = bodyService,
             AttitudeUIBinder = attitudeUIBinder,
+            NBodyVectorOverlayController = nBodyVectorOverlayController,
         };
 
         // Initialize in dependency order
@@ -81,5 +83,6 @@ public class SimulationBootstrap : MonoBehaviour
         rocketThrustAudio.Initialize(ctx);
         tutorialController.Initialize(ctx);
         attitudeUIBinder.Initialize(ctx);
+        nBodyVectorOverlayController.Initialize(ctx);
     }
 }
