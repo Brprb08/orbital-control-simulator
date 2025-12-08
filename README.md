@@ -14,11 +14,9 @@ You can load real TLE data, apply thrust, and immediately see how the trajectory
 
 ## Why I Built This
 
-## Why I Built This
-
 I got interested in orbital mechanics after watching a few SpaceX launches and realizing I didn’t actually understand what happens once a rocket reaches orbit. Things like rendezvous, station keeping, maneuvers, or even maintaining a stable orbit were unknown to me, and I wanted to understand them in a more hands on way.
 
-At the time, I didn’t have a background in orbital dynamics or game development. I did have a computer science background, and I was looking for a project that would force me to work with real physics, and performance constraints instead of just writing another small application.
+At the time, I didn’t have a background in orbital dynamics or game development. I did have a computer science background, and I was looking for a project that would force me to work with real physics and performance constraints instead of just writing another small application.
 
 It started as a basic scene with a few objects moving under gravity. As I worked on it, I kept tightening the simulation and adding features as I improved. That gradually led to thrust modeling, attitude control, drag, better integration methods, and a lot of effort spent keeping everything stable and responsive at runtime.
 
