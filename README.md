@@ -1,8 +1,8 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics simulator built in Unity with a native C++ physics core. It computes satellite motion using a double-precision Dormand–Prince integrator and supports live thrust, drag, and orbital propagation.
+This is a real-time orbital mechanics simulator I built in Unity, with most of the physics handled in a native C++ backend. It started as a way to see if I could realistically simulate satellite motion, and gradually turned into a full real-time system with live thrust, drag, and orbital propagation.
 
-You can load real TLE data, apply thrust, and visualize trajectory changes as they happen. The Unity layer handles visualization and camera controls; all physics runs natively in the C++ backend for accuracy.
+You can load real TLE data, apply thrust, and immediately see how the trajectory responds. Unity handles visualization and camera controls, while the physics runs natively in C++ to keep things accurate and stable at runtime.
 
 [Watch the Demo Video on Youtube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 ![Track Cam](./Assets/Images/12-5Track.png)
@@ -14,9 +14,13 @@ You can load real TLE data, apply thrust, and visualize trajectory changes as th
 
 ## Why I Built This
 
-I got curious about orbital mechanics after watching a few SpaceX launches and wondering what really happens once the second stage reaches orbit, and how things like rendezvous or satellite parking actually work. I didn’t have a background in orbital dynamics or game development, but I did have one in computer science and wanted a project that would be a real challenge and strong enough to show in a portfolio.
+## Why I Built This
 
-It started as a simple scene with a few moving spheres, and eventually I was adding new features, fixing bugs, and improving performance to make it smoother and more fun to use. It turned into a great way to learn by building, figuring out how to simulate spacecraft motion while keeping everything running smoothly. I just got addicted to working on it.
+I got interested in orbital mechanics after watching a few SpaceX launches and realizing I didn’t actually understand what happens once a rocket reaches orbit. Things like rendezvous, station keeping, maneuvers, or even maintaining a stable orbit were unknown to me, and I wanted to understand them in a more hands on way.
+
+At the time, I didn’t have a background in orbital dynamics or game development. I did have a computer science background, and I was looking for a project that would force me to work with real physics, and performance constraints instead of just writing another small application.
+
+It started as a basic scene with a few objects moving under gravity. As I worked on it, I kept tightening the simulation and adding features as I improved. That gradually led to thrust modeling, attitude control, drag, better integration methods, and a lot of effort spent keeping everything stable and responsive at runtime.
 
 ---
 
@@ -24,45 +28,33 @@ It started as a simple scene with a few moving spheres, and eventually I was add
 
 _All functionality runs live at runtime._
 
-1. Live computation of orbital parameters: apogee, perigee, altitude, velocity, period, inclination, eccentricity, semi-major axis, RAAN, mean anomaly, and time until perigee/apogee.
-2. Real-time orbital decay using an atmospheric drag model
-3. Thrust in the direction you’re pointing (prograde, retrograde, nadir/zenith, normal/antinormal)
-4. Attitude control system with selectable pointing modes and smooth or snap slewing
-5. GPU-predicted trajectories rendered with async RK4 integration (separate from the live sim)
-6. Runtime placement of satellites with configurable mass, radius, velocity, and direction
-   - **Cartesian Placement:** position + velocity vectors
-   - **TLE Placement:** import real satellites via Two-Line Elements
-   - **Keplerian Placement:** create orbits from classical elements (a, e, i, Ω, ω, ν)
-   - **Randomized Placement:** spawn satellites in random orbits
-7. Adjustable time scale from 1× to 100× for long-run propagation
-8. Dual camera modes (free roam and tracking)
-9. Vector Overlay System
-  - Velocity, radial, and normal vectors rendered in real time
-  - World-space labels that face the camera
-  - Smooth distance-based scaling and fade-out
-  - Minimal, unobtrusive scene visualization
+- Continuous computation of orbital parameters such as apogee, perigee, altitude, velocity, inclination, eccentricity, period, and related quantities as the orbit evolves
+- Orbital decay in low orbits using a simplified atmospheric drag model
+- Thrust applied in the current pointing direction (prograde, retrograde, radial, and normal), taking effect immediately in the simulation
+- Attitude control with selectable pointing modes, supporting both smooth slews and instant changes depending on use case
+- GPU-based trajectory prediction using RK4 integration, run asynchronously from the main simulation so it doesn’t interfere with real-time behavior
+- Runtime placement and resetting of satellites with configurable mass, size, velocity, and orientation  
+  - **Cartesian placement:** direct position and velocity vectors  
+  - **TLE placement:** import real satellites from Two-Line Element data  
+  - **Keplerian placement:** initialize orbits from classical elements (a, e, i, Ω, ω, ν)  
+  - **Randomized placement:** spawn objects into random orbits for quick testing
+- Adjustable simulation time scale from 1× up to 100× for observing longer-term effects
+- Two camera modes (free roam and target tracking), depending on whether you want to inspect the scene or follow a specific body
+- Optional vector overlays for velocity, radial, and normal directions, rendered in world space with camera-facing labels and distance-based scaling to reduce visual clutter
 
 ---
 
-## Architecture Overview
+## Architecture Notes
 
-- **Physics Core (C++ DLL):** Dormand–Prince 5(4) integrator, double-precision, real-time execution
-- **Unity Frontend:** UI, scene management, camera controls, and GPU-based line rendering
-- **Thrust Model:** Continuous force integration (F = m·a, scaled by mass)
-- **Interop Layer:** Unity communicates with the C++ backend via `DllImport`
+Physics and integration run in a native C++ DLL to avoid Unity’s single-precision limits and to keep numerical drift under control at higher time scales. Unity is used for visualization, input, and camera control, while trajectory previews are computed separately on the GPU so they don’t interfere with the main simulation. Communication between the two layers happens through a small interop layer using `DllImport`.
 
 ---
 
-## Unit Testing
+## Testing
 
-**Total:** 50 Edit-Mode Tests
+The project includes a set of Unity edit-mode tests focused on areas where small mistakes would cause noticeable problems. Most of the tests cover orbital parameter calculations, camera behavior, TLE parsing, and object lifecycle handling, along with a few checks around precision and UI state.
 
-- Camera logic (angles, clamping, tracking)
-- Orbital parameters (apogee, perigee, eccentricity, etc.)
-- Body registration and lifecycle
-- TLE parsing and validation
-- Vector precision conversions
-- UI state handling
+The goal wasn’t exhaustive coverage, but catching regressions and making sure the core math and controls behaved consistently as the project grew.
 
 ---
 
@@ -80,42 +72,24 @@ _All functionality runs live at runtime._
    git clone https://github.com/Brprb08/space-orbit-simulation.git
    ```
 2. Open the project in Unity Hub
-3. Load the scene: `Assets/Scenes/OrbitSimulation.unity`
-4. Press `Play` in the Unity Editor
+3. Load `Assets/Scenes/OrbitSimulation.unity`
+4. Press `Play`
 
-The native physics backend is provided as a precompiled 64-bit DLL in `Assets/Plugins/x86_64/`.  
-You do not need to compile the DLL yourself.
+The physics backend is included as a precompiled 64-bit DLL in Assets/Plugins/x86_64/, so you don’t need to build it yourself.
 
-The following runtime dependencies are also included to support the C++ plugin:
+A few runtime DLLs are included alongside it (libgcc, libstdc++, etc.) to avoid dependency issues on systems without a local GCC install.
 
-- `libgcc_s_seh-1.dll`
-- `libstdc++-6.dll`
-- `libwinpthread-1.dll`
+### Standalone Build (Windows)
 
-These are required on systems that do not have the GCC installed.
+If you want to run it as a standalone app
 
-### Build and Run (Standalone Executable)
+1. Open build settings in Unity
+2. Select **Windows** as the target platform (64 bit)
+4. Make sure the `OrbitSimulation` scene is included
+5. Build and run the generated executable
 
-To build and run the simulator as a Windows application:
-
-1. In Unity, open the menu:
-
-   - File → Build Settings (or Build Profiles, depending on your version)
-
-2. Select **Windows** as the target platform
-3. Check these settings:
-
-   - **Architecture**: `Intel 64-bit`
-   - **Build and Run on**: `Local Machine`
-   - Make sure `Scenes/OrbitSimulation` is checked in the Scene List
-
-4. Click **Build**, then select a folder to save the build output.
-5. After the build completes, open the output folder and run the `SpaceOrbit.exe` file
-
-All required DLLs (including the native physics plugin and its runtime dependencies) are included automatically, as long as they are in `Assets/Plugins/x86_64/`.
+All required DLLs are included automatically, as long as they are in `Assets/Plugins/x86_64/`.
 
 ---
-
-_This project was designed as a technical demonstration of my abilities in simulation engineering, physics programming, and real-time system development._
 
 [⬆ Back to Top](#orbital-control-simulator)
