@@ -66,6 +66,13 @@ The two layers communicate through a minimal interop boundary using DllImport.
 
 ---
 
+## Performance Characteristics
+
+On typical desktop hardware, the simulator can handle approximately 200 satellites in real time comfortably. It can support closer to 300 active bodies, though frame time begins to degrade at that point due to increased integration and rendering load.
+
+Performance scales primarily with satellite count and simulation speed, as all bodies are integrated continuously even when not under thrust.
+
+
 ## Design Constraints and Tradeoffs
 
 This is a single-central-body simulation. All satellites are integrated relative to one body to keep behavior predictable and performance consistent.
