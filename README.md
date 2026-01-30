@@ -2,13 +2,13 @@
 
 A real-time orbital mechanics simulator built in Unity, with the simulation running in a native C++ backend.
 
-The system runs continuously. Satellites can be added, reset, or thrust at any point, and the simulation responds immediately. There is no pause-and-recompute step.
+The system runs continuously. Satellites can be added, reset, or thrust at any point, and the simulation responds immediately.
 
 Unity is responsible for rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to maintain numerical stability under time acceleration and sustained thrust.
 
 Real satellite TLEs can be loaded. Thrust is applied live, and trajectories update without stopping the simulation.
 
-[Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
+[Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be) (Old version of sim, needs an update)
 
 ![Track Cam](./Assets/Images/12-5Track.png)
 ![Track Cam with Vectors](./Assets/Images/12-5Vectors.png)
@@ -23,7 +23,7 @@ This started because I realized I didn’t actually understand orbits as well as
 
 I knew the high-level ideas, go fast sideways at a high altitude and you are in an orbit. But I had no real understanding of how maneuvers are performed, how missions like getting to the Moon actually work, how drag is managed, or how satellite constellations are maintained.
 
-This project gave me something I could use to answer those questions while also improving at writing code. It began as a gray sphere moving around another gray sphere, and changed significantly over time as I learned more about both game development and orbital mechanics.
+This project gave me something I could use to answer those questions. It began as a gray sphere moving around another gray sphere, and changed significantly over time as I learned more about both game development and orbital mechanics.
 
 ---
 
