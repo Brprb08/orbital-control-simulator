@@ -5,6 +5,7 @@ A real-time orbital mechanics simulator built in Unity, with the simulation runn
 The system runs continuously. Satellites can be added, reset, or thrust at any point, and the simulation responds immediately.
 
 Unity is responsible for rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to maintain numerical stability under time acceleration and sustained thrust.
+Core orbital motion is integrated using a batched Dormand–Prince 5th-order (DoPri5) solver, while trajectory previews are computed separately using an RK4 integrator on the GPU.
 
 Real satellite TLEs can be loaded. Thrust is applied live, and trajectories update without stopping the simulation.
 
@@ -35,6 +36,7 @@ Everything runs live.
 - Simplified atmospheric drag modeling for low orbits, causing visible orbital decay over time
 - Live thrust application in directions including prograde, retrograde, radial, and normal, with instant trajectory updates
 - Attitude control with selectable pointing modes, supporting both smooth slews and instant reorientation
+- Core orbital motion integrated in a batched Dormand–Prince 5th-order (DoPri5) solver in native C++
 - GPU-based trajectory prediction using RK4 integration, computed asynchronously so previews do not cause stutters in the simulation
 - Runtime creation and reset of satellites with configurable parameters
   - Cartesian placement using direct position and velocity vectors
@@ -55,6 +57,8 @@ Everything runs live.
 The simulation is split between Unity and native code.
 
 All physics integration and force run inside a native C++ DLL. This avoids Unity’s single-precision limitations and keeps numerical drift stable, especially when increasing the simulation time scale or applying sustained thrust.
+
+The main simulation step uses a fixed-timestep, batched Dormand–Prince 5th-order (DoPri5) integrator in native C++, with gravity, thrust, and drag evaluated inside the same integration loop. Trajectory previews use a separate RK4 integrator on the GPU to prioritize responsiveness over absolute accuracy.
 
 Unity is responsible for visualization, input handling, UI state, and camera behavior. Trajectory previews are computed separately on the GPU using compute shaders so that prediction does not stutter or interfere with the main physics step.
 
