@@ -1,12 +1,12 @@
 # Orbital Control Simulator
 
-A real-time orbital mechanics simulator built in Unity, with the core physics running in a native C++ backend.
+A real-time orbital mechanics simulator built in Unity, with the simulation running in a native C++ backend.
 
-This project made to learn what actually happens after a payload reaches orbit. Not the launch profile, but everything after: maintaining stability, performing maneuvers, small velocity changes, and watching how each affects an orbit.
+The system runs continuously. Satellites can be added, reset, or thrust at any point, and the simulation responds immediately. There is no pause-and-recompute step.
 
-The system runs continuously at runtime. Satellites can be added, modified, or thrust at any point, and the simulation responds immediately. Unity handles rendering, input, UI, and camera control. Physics, integration, and force accumulation run natively to maintain numerical stability as time scales increase.
+Unity is responsible for rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to maintain numerical stability under time acceleration and sustained thrust.
 
-You can load real satellite TLEs, apply thrust, and see trajectories update live without pausing or precomputing.
+Real satellite TLEs can be loaded. Thrust is applied live, and trajectories update without stopping the simulation.
 
 [Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be)
 
@@ -19,34 +19,34 @@ You can load real satellite TLEs, apply thrust, and see trajectories update live
 
 ## Why This Exists
 
-I started this project after realizing that I did not actually understand orbital motion beyond the basic idea of going fast sideways. Concepts like rendezvous, station keeping, and orbit shaping were mostly just words to me, and I wanted something interactive that forced me to learn these concepts.
+This started because I realized I didn’t actually understand orbits as well as I thought I did. I was watching a lot of SpaceX launches and seeing the boosters come back and land, but it always made me curious what happens to the payload once it's in space.
 
-I did not come from an orbital mechanics background or a game development background. I had a computer science background and an interest in building a system involving real-time orbital physics, and numerical accuracy.
+I knew the high-level ideas, go fast sideways at a high altitude and you are in an orbit. But I had no real understanding of how maneuvers are performed, how missions like getting to the Moon actually work, how drag is managed, or how satellite constellations are maintained.
 
-The project began as a simple gravity simulation. As it improved, I added thrust, attitude control, drag, better integration methods, and increasing separation between simulation and visualization. A lot of the work went into keeping everything stable while allowing the simulation to keep running at all times.
+This project gave me something I could use to answer those questions while also improving at writing code. It began as a gray sphere moving around another gray sphere, and changed significantly over time as I learned more about both game development and orbital mechanics.
 
 ---
 
 ## What It Can Do
 
-Everything operates live at runtime.
+Everything runs live.
 
 - Continuous computation of orbital parameters such as apogee, perigee, altitude, velocity, inclination, eccentricity, and orbital period
 - Simplified atmospheric drag modeling for low orbits, causing visible orbital decay over time
 - Live thrust application in directions including prograde, retrograde, radial, and normal, with instant trajectory updates
 - Attitude control with selectable pointing modes, supporting both smooth slews and instant reorientation
-- GPU-based trajectory prediction using RK4 integration, computed asynchronously so previews do not cause stutters to the sim
-- Runtime creation and reset of satellites with configurable parameters:
+- GPU-based trajectory prediction using RK4 integration, computed asynchronously so previews do not cause stutters in the simulation
+- Runtime creation and reset of satellites with configurable parameters
   - Cartesian placement using direct position and velocity vectors
   - TLE placement using real Two-Line Element data
   - Keplerian placement from classical orbital elements such as semi-major axis and inclination
   - Randomized placement for quick testing and experimentation
-- Adjustable simulation speed from 1x up to 100x to observe long-term behavior
+- Adjustable simulation speed from 1x up to 100x
 - Multiple camera modes:
-  - Free camera for inspection and placement
+  - Free camera for placement
   - Target tracking for following a specific body
-  - Earth camera for better view of an orbit
-- Optional vector overlays for velocity and orbital reference frames
+  - Earth camera for better visualization of an orbit
+- Optional vector overlays for velocity and orbital reference frames (prograde, normal, radial)
 
 ---
 
@@ -56,27 +56,27 @@ The simulation is split between Unity and native code.
 
 All physics integration and force run inside a native C++ DLL. This avoids Unity’s single-precision limitations and keeps numerical drift stable, especially when increasing the simulation time scale or applying sustained thrust.
 
-Unity is responsible for visualization, input handling, UI state, and camera behavior. Trajectory previews are computed separately on the GPU using compute shaders so that prediction does not stall or interfere with the main physics step.
+Unity is responsible for visualization, input handling, UI state, and camera behavior. Trajectory previews are computed separately on the GPU using compute shaders so that prediction does not stutter or interfere with the main physics step.
 
-The two layers communicate through a interop boundary using DllImport. The intent is to have Unity manage interaction and UI, and native code control integration and physics state.
+The two layers communicate through a minimal interop boundary using DllImport.
 
 ---
 
 ## Design Constraints and Tradeoffs
 
-This is intentionally a single-central-body simulation. All satellites are integrated relative to one central body. This keeps the system fast, predictable, and easy to reason about while still supporting realistic maneuvers and long-duration orbits.
+This is a single-central-body simulation. All satellites are integrated relative to one body to keep behavior predictable and performance consistent.
 
-The focus is on stability and responsiveness rather than perfect physical accuracy with N-Body interactions. Some models such as drag and thrust ramping, are simplified to keep the system interactive in real time.
+The focus is on stability and responsiveness rather than full physical completeness. Some models, such as drag and thrust ramping, are simplified to keep the system interactive in real time.
 
 ---
 
 ## Testing
 
-The project includes a focused set of Unity edit-mode tests targeting areas where small mistakes become immediately visible or extremely difficult to debug later.
+The project includes a set of Unity edit-mode tests for areas where mistakes become immediately visible or difficult to debug later.
 
 Most tests cover orbital parameter calculations, camera behavior and transitions, TLE parsing and validation, object lifecycle edge cases, and math tied to UI state.
 
-The goal is not exhaustive coverage. The goal is to catch regressions early and keep the core simulation behavior consistent as features are added.
+The goal is not full coverage. The goal is to catch regressions early and keep the core simulation behavior consistent as features are added.
 
 ---
 
@@ -94,7 +94,10 @@ The goal is not exhaustive coverage. The goal is to catch regressions early and 
   git clone https://github.com/Brprb08/space-orbit-simulation.git
 ```
 2. Open the project in Unity Hub
-3. Load Assets/Scenes/OrbitSimulation.unity
+3. Load 
+```  
+   Assets/Scenes/OrbitSimulation.unity
+```
 4. Press Play
 
 The physics backend is included as a precompiled 64-bit DLL in Assets/Plugins/x86_64/, so no separate build step is required.
@@ -116,8 +119,7 @@ All required DLLs are included automatically as long as they remain in Assets/Pl
 
 This is not a full n-body simulator. It does not attempt to model multi-body perturbations or full mission planning.
 
-It is also not a game. The focus is on experimentation and understanding orbital behavior.
-
+The focus is on experimentation and understanding orbital behavior.
 
 ---
 
