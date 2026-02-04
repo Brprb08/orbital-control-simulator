@@ -76,7 +76,7 @@ Everything runs live.
 - **Simplified atmospheric drag modeling**
   - Visible orbital decay for low-altitude orbits
 
-### Time Control & Camera Systems (least important, still useful)
+### Time Control & Camera Systems
 - **Adjustable simulation speed**
   - Real-time up to 100× time acceleration
 - **Multiple camera modes**
