@@ -4,15 +4,15 @@ public class AttitudeController : MonoBehaviour
 {
     public enum PointingMode
     {
-        Velocity,        // prograde
+        Velocity,
         Retrograde,
-        Nadir,           // toward Earth
-        Zenith,          // away from Earth
-        Normal,          // +h (with 90°-swap behavior by design)
-        AntiNormal,      // -h (with 90°-swap behavior by design)
-        Inertial,        // fixed world vector
-        Manual,          // leave rotation as-is
-        HoldCurrent      // freeze current world orientation
+        Nadir,
+        Zenith,
+        Normal,
+        AntiNormal,
+        Inertial,
+        Manual,
+        HoldCurrent
     }
 
     [Header("Mode")]
@@ -27,10 +27,9 @@ public class AttitudeController : MonoBehaviour
     [Range(0f, 1f)] public float rollHold = 1.0f;
 
     [Header("Debug")]
-    public Vector3 primaryWorld; // x-axis target
-    public Vector3 upHintWorld;  // y-axis roll reference
+    public Vector3 primaryWorld;
+    public Vector3 upHintWorld;
 
-    // caches to survive degeneracy
     private Vector3 vCache = Vector3.right;
     private Vector3 hCache = Vector3.up;
 
@@ -50,22 +49,15 @@ public class AttitudeController : MonoBehaviour
     private bool holdValid;
     private Vector3 holdX, holdY;
 
-    [Header("Thrust parity sync")]
-    public bool useThrustParityWhenThrusting = true;
-
-    private bool _thrustingExternal;      // set by caller each frame
-    private sbyte _latchedParityExternal; // −1/0/+1 (0 = no latch)
-
-    [SerializeField] private int thrustGraceFrames = 6; // ~0.1s @60 Hz
+    [SerializeField] private int thrustGraceFrames = 6;
     private int _thrustGraceCounter = 0;
     private bool _prevThrusting = false;
-    private int _paritySignForBurn = 0; // +1 “prograde side”, -1 “retro side”, 0 = unset
+    private int _paritySignForBurn = 0;
 
-    public void SyncThrustParity(bool isThrusting, sbyte latchedParity)
-    {
-        _thrustingExternal = isThrusting;
-        _latchedParityExternal = latchedParity;
-    }
+    private const float POLAR_INCL_TOL_DEG = 0.1f;
+    private static readonly Vector3 WORLD_NORTH = Vector3.up;
+    private const float NORTH_VEL_EPS = 1e-4f;
+    private int _lastPolarSign = +1;
 
     public void Initialize(SimContext ctx)
     {
@@ -95,7 +87,6 @@ public class AttitudeController : MonoBehaviour
             ? bodyService.CentralBody.transform.position
             : Vector3.zero;
 
-        // THIS craft only
         Vector3 r = transform.position - center;
         Vector3 v = nbody.velocity;
 
@@ -116,7 +107,6 @@ public class AttitudeController : MonoBehaviour
         primaryWorld = xTarget;
         upHintWorld = yUpHint;
 
-        // Build orthonormal basis
         Vector3 x = xTarget.normalized;
         Vector3 z = Vector3.Cross(x, yUpHint);
         if (z.sqrMagnitude < CROSS_EPS2) z = Vector3.Cross(x, Vector3.up);
@@ -124,7 +114,7 @@ public class AttitudeController : MonoBehaviour
         Vector3 y = Vector3.Cross(z, x);
 
         var target = Quaternion.LookRotation(x, y);
-        float maxStep = maxSlewRateDegPerSec * Time.unscaledDeltaTime;
+        float maxStep = maxSlewRateDegPerSec * Time.deltaTime;
         bool doSnap = snapAttitude || snapNow;
 
         transform.rotation = doSnap
@@ -155,40 +145,38 @@ public class AttitudeController : MonoBehaviour
         if (worldDir.sqrMagnitude > EPS) inertialDirection = worldDir.normalized;
     }
 
-    /// <summary>
-    /// Compute target primary (x̂) and roll up-hint (ŷ) in world space with safe fallbacks.
-    /// </summary>
     private void ComputeTargetAxes(Vector3 r, Vector3 v, out Vector3 xHat, out Vector3 yUp)
     {
         Vector3 rHat = SafeNorm(r, Vector3.up);
         Vector3 vHat = SafeNorm(v, vCache);
 
-        float alpha = Vector3.Angle(rHat, vHat); // deg
+        float alpha = Vector3.Angle(rHat, vHat);
         Vector3 h = Vector3.Cross(r, v);
         Vector3 hHat = SafeNorm(h, hCache);
 
         bool okV = v.magnitude > V_MIN;
         bool okH = h.magnitude > H_MIN && alpha > ANG_MIN_DEG;
 
-        // live sign from current side of 90° boundary
-        int liveSign = (h.y < 0f) ? +1 : -1;
+        int liveSign = ComputeLiveSign(vHat, h, hHat);
 
-        bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
-
+        bool internalThrusting = nbody && nbody.thrustController != null && nbody.thrustController.IsThrusting;
         bool thrusting = IsThrustingEffective(internalThrusting);
 
         if (thrusting && !_prevThrusting)
         {
-            _paritySignForBurn = okH ? liveSign
-                                     : (_paritySignForBurn != 0 ? _paritySignForBurn : liveSign);
+            _paritySignForBurn = liveSign;
             _thrustGraceCounter = thrustGraceFrames;
         }
 
-        if (thrusting) _thrustGraceCounter = thrustGraceFrames;
+        if (thrusting)
+        {
+            _thrustGraceCounter = thrustGraceFrames;
+        }
 
         _prevThrusting = thrusting;
 
-        if (_thrustGraceCounter > 0) _thrustGraceCounter--;
+        if (_thrustGraceCounter > 0)
+            _thrustGraceCounter--;
 
         bool holdParity = thrusting || (_thrustGraceCounter > 0);
 
@@ -199,12 +187,12 @@ public class AttitudeController : MonoBehaviour
         {
             case PointingMode.Velocity:
                 xHat = okV ? vHat : vCache;
-                yUp = rHat; // right = v × (-r) = +h
+                yUp = rHat;
                 break;
 
             case PointingMode.Retrograde:
                 xHat = -(okV ? vHat : vCache);
-                yUp = rHat; // right = (-v) × r = +h
+                yUp = rHat;
                 break;
 
             case PointingMode.Nadir:
@@ -220,7 +208,6 @@ public class AttitudeController : MonoBehaviour
             case PointingMode.Normal:
                 if (okH)
                 {
-                    // swap at 90°, but parity is latched during thrust/grace
                     xHat = progradeForMapping ? -hHat : hHat;
                     yUp = okV ? vHat : vCache;
                 }
@@ -269,68 +256,24 @@ public class AttitudeController : MonoBehaviour
         }
     }
 
-    // Public API for thrust, returns world burnDir and whether it's a lateral burn
     public Vector3 GetBurnDirection(Vector3 center, out bool lateral)
     {
-        lateral = false;
+        lateral = (mode == PointingMode.Normal || mode == PointingMode.AntiNormal);
 
-        if (!nbody) nbody = GetComponent<NBody>();
-        Vector3 r = transform.position - center;
-        Vector3 v = nbody ? nbody.velocity : Vector3.zero;
+        Vector3 fwd = transform.forward;
+        if (fwd.sqrMagnitude < EPS)
+            fwd = Vector3.forward;
 
-        Vector3 rHat = SafeNorm(r, Vector3.up);
-        Vector3 vHat = SafeNorm(v, vCache);
-        Vector3 h = Vector3.Cross(r, v);
-        Vector3 hHat = SafeNorm(h, hCache);
-
-        float alpha = Vector3.Angle(rHat, vHat);
-        bool okV = v.magnitude > V_MIN;
-        bool okH = h.magnitude > H_MIN && alpha > ANG_MIN_DEG;
-
-        BuildTangentFrame(rHat, out var tHat, out var nFallback);
-
-        int liveSign = (h.y < 0f) ? +1 : -1;
-        bool internalThrusting = (nbody && nbody.thrustController != null) && nbody.thrustController.IsThrusting;
-        bool thrusting = IsThrustingEffective(internalThrusting);
-        bool holdParity = thrusting || (_thrustGraceCounter > 0);
-        int parityForMapping = holdParity ? EffectiveParity(liveSign) : liveSign;
-        bool progradeForMapping = (parityForMapping > 0);
-
-        switch (mode)
-        {
-            case PointingMode.Velocity: return okV ? vHat : vCache;
-            case PointingMode.Retrograde: return -(okV ? vHat : vCache);
-            case PointingMode.Nadir: return -rHat;
-            case PointingMode.Zenith: return rHat;
-
-            case PointingMode.Normal:
-                lateral = true;
-                if (okH) return progradeForMapping ? -hHat : hHat;
-                return -nFallback;
-
-            case PointingMode.AntiNormal:
-                lateral = true;
-                if (okH) return progradeForMapping ? hHat : -hHat;
-                return nFallback;
-
-            case PointingMode.Inertial: return SafeNorm(inertialDirection, Vector3.right);
-            case PointingMode.HoldCurrent:
-            case PointingMode.Manual:
-            default: return transform.forward;
-        }
+        return fwd.normalized;
     }
-
-    // ---- helpers ----
 
     private bool IsThrustingEffective(bool internalThrusting)
     {
-        if (useThrustParityWhenThrusting && _thrustingExternal) return true;
         return internalThrusting;
     }
 
-    private int EffectiveParity(int liveSign) // +1 prograde-side, -1 retro-side
+    private int EffectiveParity(int liveSign)
     {
-        if (_latchedParityExternal != 0) return _latchedParityExternal;
         if (_paritySignForBurn != 0) return _paritySignForBurn;
         return liveSign;
     }
@@ -354,5 +297,34 @@ public class AttitudeController : MonoBehaviour
     {
         float m = v.magnitude;
         return (m > EPS) ? (v / m) : (fallback.sqrMagnitude > 0f ? fallback.normalized : Vector3.forward);
+    }
+
+    private int ComputeLiveSign(Vector3 vHat, Vector3 h, Vector3 hHat)
+    {
+        int defaultSign = (h.y < 0f) ? +1 : -1;
+
+        if (h.sqrMagnitude <= H_MIN * H_MIN)
+            return defaultSign;
+
+        bool nearPolar = IsNearPolar(hHat);
+
+        if (!nearPolar)
+            return defaultSign;
+
+        float vNorth = Vector3.Dot(vHat, WORLD_NORTH);
+
+        if (Mathf.Abs(vNorth) < NORTH_VEL_EPS)
+            return _lastPolarSign;
+
+        int sign = (vNorth > 0f) ? -1 : +1;
+        _lastPolarSign = sign;
+        return sign;
+    }
+
+    private bool IsNearPolar(Vector3 hHat)
+    {
+        float cosI = Mathf.Clamp(Vector3.Dot(hHat, Vector3.up), -1f, 1f);
+        float inclDeg = Mathf.Acos(Mathf.Abs(cosI)) * Mathf.Rad2Deg;
+        return Mathf.Abs(inclDeg - 90f) <= POLAR_INCL_TOL_DEG;
     }
 }

@@ -106,8 +106,6 @@ public class AttitudeUIBinder : MonoBehaviour
         }
     }
 
-    // ----- MODE -----
-
     void SetMode(AttitudeController.PointingMode m)
     {
         var att = CurrentAtt;
@@ -162,8 +160,6 @@ public class AttitudeUIBinder : MonoBehaviour
         RefreshUIFrom(att);
         UpdateModeButtons(att.mode);
     }
-
-    // ----- UI -----
 
     void SetHoldUI(bool isLocked)
     {
@@ -230,8 +226,6 @@ public class AttitudeUIBinder : MonoBehaviour
         if (tSnap) tSnap.SetIsOnWithoutNotify(att.snapAttitude);
         if (slewRate) slewRate.SetValueWithoutNotify(att.maxSlewRateDegPerSec);
     }
-
-    // ----- other controls -----
 
     void SetSnap(bool snap) { var att = CurrentAtt; if (att) att.snapAttitude = snap; }
     void SetSlew(float degs) { var att = CurrentAtt; if (att) att.maxSlewRateDegPerSec = degs; }

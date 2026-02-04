@@ -12,5 +12,5 @@ public interface IBodyService
 
     void Register(NBody body);
     void Deregister(NBody body);
-    IReadOnlyList<NBody> GetSatellites(); // convenience
+    IReadOnlyList<NBody> GetSatellites();
 }

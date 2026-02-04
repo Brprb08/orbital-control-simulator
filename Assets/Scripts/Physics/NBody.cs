@@ -32,6 +32,7 @@ public class NBody : MonoBehaviour
     private LineVisibilityController _lineVisibilityController;
     private RocketThrustAudio _rocketThrustAudio;
     private BodyService _bodyService;
+    private AttitudeController _attitudeController;
 
     [Header("References - Relevant Bodies")]
     private List<NBody> _relevantBodies;
@@ -61,9 +62,10 @@ public class NBody : MonoBehaviour
     [Header("Telemetry")]
     public float cumulativeDeltaVUsed = 0f;
 
+    private const float AttitudeLeadTime = 20f;
+
     // Caches & components
     private double[] _otherMassCache;
-    // private AttitudeController _attitudeController;
     private SimContext _ctx;
 
     /// <summary>
@@ -102,7 +104,7 @@ public class NBody : MonoBehaviour
             Vector3.zero
         );
 
-        // _attitudeController = GetComponent<AttitudeController>();
+        _attitudeController = GetComponent<AttitudeController>();
 
         // Build relevantBodies and caches once here.
         var allBodies = _bodyService != null ? _bodyService.Bodies : null;
@@ -160,7 +162,7 @@ public class NBody : MonoBehaviour
 
         if (!_ctx.BodyService.DrivePhysics)
         {
-            // Legacy per-body integration path would go here if re-enabled.
+            // Legacy per-body integration path could go here
             return;
         }
 
@@ -236,8 +238,23 @@ public class NBody : MonoBehaviour
 
         foreach (var node in _maneuverNodeManager.nodes)
         {
-            if (ShouldSkipNode(node, this, simTime))
+            if (node.targetBody != this || !node.isFinalized)
                 continue;
+
+            // Start slewing Attitude BEFORE burnTime
+            if (_attitudeController != null)
+            {
+                if (simTime >= node.burnTime - AttitudeLeadTime && simTime < node.burnTime + node.duration)
+                {
+                    var desiredMode = MapBurnTypeToAttitude(node.burnType);
+                    if (_attitudeController.mode != desiredMode)
+                        _attitudeController.SetMode(desiredMode);
+                }
+            }
+
+            // Actual burn window check
+            if (simTime < node.burnTime)
+                continue; // not burning yet, just slewing
 
             if (IsBurnOngoing(node, simTime))
             {
@@ -300,10 +317,7 @@ public class NBody : MonoBehaviour
         if (thrustController == null || _maneuverNodeManager == null)
             return;
 
-        Vector3 burnDirection = _maneuverNodeManager.GetBurnDirectionFromDropdown(body);
-
-        thrustController.ApplyThrust(body, 10f, burnDirection);
-        thrustController.SetDirectionalThrust(node.burnType);
+        thrustController.SetDirectionalThrust();
     }
 
     /// <summary>
@@ -347,7 +361,6 @@ public class NBody : MonoBehaviour
                 $"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed."
             );
 
-            // TODO: replace with a dedicated escape handler if desired.
             _bodyRuntimeCoordinator?.HandleCollision(this, earth);
         }
     }
@@ -417,6 +430,35 @@ public class NBody : MonoBehaviour
         );
     }
 
+    private AttitudeController.PointingMode MapBurnTypeToAttitude(BurnType burnType)
+    {
+        switch (burnType)
+        {
+            case BurnType.Prograde:
+                return AttitudeController.PointingMode.Velocity;
+
+            case BurnType.Retrograde:
+                return AttitudeController.PointingMode.Retrograde;
+
+            case BurnType.RadialIn:
+                // pointing toward planet
+                return AttitudeController.PointingMode.Nadir;
+
+            case BurnType.RadialOut:
+                // away from planet
+                return AttitudeController.PointingMode.Zenith;
+
+            case BurnType.Normal:
+                return AttitudeController.PointingMode.Normal;
+
+            case BurnType.AntiNormal:
+                return AttitudeController.PointingMode.AntiNormal;
+
+            default:
+                return AttitudeController.PointingMode.Velocity;
+        }
+    }
+
     /// <summary>
     /// Accumulates an external force to be applied this physics step (e.g., thrust).
     /// </summary>
@@ -471,4 +513,35 @@ public class NBody : MonoBehaviour
             crossSectionArea = Math.PI * radius * radius;
         }
     }
+
+
+    public void ComputePredictionForNodes(
+    int steps,
+    float dt,
+    System.Action<List<Vector3>, float, float> onComplete)
+    {
+        float startTime = _bodyRuntimeCoordinator != null
+            ? _bodyRuntimeCoordinator.simulationTime
+            : 0f;
+
+        // sample spacing must match what the GPU outputs
+        // This must mirror TrajectoryComputeController.CalculateTrajectoryGPU_Async.
+        const int maxPoints = 2500;
+        int lodFactor = Mathf.Max(1, steps / maxPoints);
+        float sampleDt = dt * lodFactor;
+
+        CalculatePredictedTrajectoryGPU_Async(
+            steps,
+            dt,
+            positions =>
+            {
+                // positions.Length == outputCount (≈ steps / lodFactor)
+                onComplete?.Invoke(
+                    positions ?? new List<Vector3>(),
+                    startTime,
+                    sampleDt   // NOT 'dt' – this is the time between output samples
+                );
+            });
+    }
+
 }

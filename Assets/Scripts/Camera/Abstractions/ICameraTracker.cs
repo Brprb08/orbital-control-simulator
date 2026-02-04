@@ -13,6 +13,7 @@ public interface ICameraTracker
     bool IsFree { get; }
     bool IsEarthView { get; }
     bool IsTrackingPlaceholder { get; }
+    bool switchedToPrevTrackedSat { get; }
 
     NBody CurrentBody { get; }
     Transform CurrentPlaceholder { get; }

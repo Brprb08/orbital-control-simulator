@@ -9,12 +9,21 @@ public class ThrustController : MonoBehaviour
 {
     [Header("Thrust Settings")]
     public float maxForwardThrustMagnitude = 10f;
+    [Range(0f, 5f)]
+    public float thrustPowerScale = 1f;
+
+    /// <summary>
+    /// Effective thrust magnitude after scaling; use this instead of maxForwardThrustMagnitude.
+    /// </summary>
+    public float EffectiveForwardThrustMagnitude => maxForwardThrustMagnitude * thrustPowerScale;
 
     [Header("Visual Feedback")]
     public ParticleSystem thrustParticles;
 
     [Header("Thrust Flags")]
     public bool isForwardThrustActive = false;
+
+    [SerializeField] float backOffset = 0.6f;
 
     [Header("References - Scripts")]
     public CameraController cameraController;
@@ -24,12 +33,6 @@ public class ThrustController : MonoBehaviour
     private TutorialController tutorialController;
 
     private AttitudeController attitude;
-
-    [Header("Thrust Parity Sync")]
-    [SerializeField] private int thrustGraceFrames = 6; // ~0.1s @60fps
-    private int _graceCounter = 0;
-    private bool _prevThrusting = false;
-    private sbyte _latchedParity = 0;
 
     [Header("Thrust Configs")]
     private bool thrustStopped = false;
@@ -42,9 +45,6 @@ public class ThrustController : MonoBehaviour
     public bool IsThrusting =>
         isForwardThrustActive;
 
-    /// <summary>
-    /// Injects context, resolves dependencies, and initializes thrust VFX.
-    /// </summary>
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -69,7 +69,6 @@ public class ThrustController : MonoBehaviour
 
         thrustParticles.Stop();
         thrustParticles.Clear();
-
     }
 
     void FixedUpdate()
@@ -82,64 +81,25 @@ public class ThrustController : MonoBehaviour
         if (!attitude) attitude = ship.GetComponent<AttitudeController>();
 
         Transform t = ship.transform;
-        Vector3 fwd = t.forward;
-
-        Vector3 center = Vector3.zero;
-        var svc = ctx?.BodyService;
-        if (svc != null && svc.CentralBody)
-            center = svc.CentralBody.transform.position;
-
-        Vector3 r = ship.transform.position - center;
-        Vector3 v = ship.velocity;
-
-        Vector3 rHat = (r.sqrMagnitude > 1e-12f) ? r.normalized : Vector3.up;
-        Vector3 vHat = (v.sqrMagnitude > 1e-12f) ? v.normalized : Vector3.right;
-
-        // Orbit angular momentum
-        Vector3 h = Vector3.Cross(r, v);
-        sbyte liveParity = (h.y < 0f) ? (sbyte)+1 : (sbyte)-1;
 
         bool isThrustingNow = false;
-        bool lateralActive = false;
+
+        Vector3 burnDir = t.forward;
 
         if (isForwardThrustActive)
         {
-            ApplyThrust(ship, maxForwardThrustMagnitude, fwd);
+            ApplyThrust(ship, EffectiveForwardThrustMagnitude, burnDir);
             isThrustingNow = true;
         }
 
-        if (isThrustingNow && !_prevThrusting)
-        {
-            _latchedParity = liveParity;
-            _graceCounter = thrustGraceFrames;
-        }
-
-        if (isThrustingNow)
-        {
-            // while thrusting, keep extending the grace
-            _graceCounter = thrustGraceFrames;
-        }
-        else if (_prevThrusting)
-        {
-            // falling edge: don't clear latch immediately, grace handles it
-
-        }
-
-        if (_graceCounter > 0) _graceCounter--;
-
-        bool thrustingForAttitude = isThrustingNow || (_graceCounter > 0);
-
-        sbyte parityForAttitude = thrustingForAttitude ? _latchedParity : (sbyte)0;
-
-        if (attitude)
-            attitude.SyncThrustParity(thrustingForAttitude, parityForAttitude);
-
-        _prevThrusting = isThrustingNow;
+        bool lateralFromAttitude = attitude != null &&
+            (attitude.mode == AttitudeController.PointingMode.Normal ||
+             attitude.mode == AttitudeController.PointingMode.AntiNormal);
 
         bool holdCurrent = attitude != null &&
                            attitude.mode == AttitudeController.PointingMode.HoldCurrent;
 
-        ship.projectLateralPerSubstep = lateralActive && !holdCurrent;
+        ship.projectLateralPerSubstep = lateralFromAttitude && !holdCurrent;
 
         if (!isThrustingNow)
         {
@@ -148,10 +108,12 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Applies a world-space thrust force to the target body and updates visuals/trajectory.
-    /// </summary>
-    public void ApplyThrust(NBody targetBody, float magnitude, Vector3 thrustDirection, float rampedThrustFactor = 1f)
+    public void ApplyThrust(
+        NBody targetBody,
+        float magnitude,
+        Vector3 thrustDirection,
+        float rampedThrustFactor = 1f
+    )
     {
         if (targetBody == null) return;
 
@@ -163,35 +125,22 @@ public class ThrustController : MonoBehaviour
         }
 
         // Scale (world is 1 unit = 10 km)
-        float scaledMagnitude = magnitude / 10f;
+        float scaledMagnitude = (magnitude * rampedThrustFactor) / 10f;
 
         Vector3 F = adjustedThrustDirection * scaledMagnitude;
-
-        Vector3 r = targetBody.transform.position - Vector3.zero;
-        Vector3 v = targetBody.velocity - Vector3.zero;
-
-        Vector3 rHat = r.normalized;
-        Vector3 vHat = v.normalized;
-        Vector3 nHat = Vector3.Cross(rHat, vHat).normalized;
-
-        float Fr = Vector3.Dot(F, rHat);
-        float Fp = Vector3.Dot(F, vHat);
-        float Fn = Vector3.Dot(F, nHat);
-        float cos_n_v = Vector3.Dot(nHat, vHat); // ~0 for a clean basis
-        float power = Vector3.Dot(v, F);         // ≈ 0 for pure normal
 
         targetBody.AddForce(F);
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
         trajectoryRenderer.orbitIsDirty = true;
 
-        if (tutorialController.inTutorialMode)
+        if (tutorialController != null && tutorialController.inTutorialMode)
         {
             tutorialController.hasAppliedThrust = true;
         }
     }
 
-    [SerializeField] float backOffset = 0.6f;
+
     /// <summary>
     /// Positions/orients the thrust particle system and plays it when thrust starts.
     /// </summary>
@@ -214,22 +163,30 @@ public class ThrustController : MonoBehaviour
     }
 
     /// <summary>
+    /// Sets a multiplier on top of maxForwardThrustMagnitude (1 = default behavior).
+    /// </summary>
+    public void SetThrustPowerScale(float scale)
+    {
+        thrustPowerScale = Mathf.Max(0f, scale);
+    }
+
+    /// <summary>
+    /// Directly sets the base forward thrust magnitude in "game units".
+    /// </summary>
+    public void SetForwardThrustMagnitude(float magnitude)
+    {
+        maxForwardThrustMagnitude = Mathf.Max(0f, magnitude);
+    }
+
+
+    /// <summary>
     /// Activates a single thrust mode by name; used by node-driven burns.
     /// </summary>
-    public void SetDirectionalThrust(string burnDirection)
+    public void SetDirectionalThrust()
     {
-        isForwardThrustActive = false;
-
-        switch (burnDirection)
-        {
-            case "Prograde":
-                isForwardThrustActive = true; break;
-            default:
-                isForwardThrustActive = true;
-                Debug.LogWarning($"Unknown burn direction: {burnDirection}. Defaulting to Prograde.");
-                break;
-        }
+        isForwardThrustActive = true;
     }
+
 
     /// <summary>Clears all thrust flags.</summary>
     public void StopAllThrust()
@@ -237,7 +194,9 @@ public class ThrustController : MonoBehaviour
         isForwardThrustActive = false;
     }
 
-    // UI Button Handlers
+    /// <summary>
+    /// UI Button Handlers
+    /// </summary>
     public void StartForwardThrust()
     {
         isForwardThrustActive = true;

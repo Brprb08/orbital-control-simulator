@@ -15,6 +15,7 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
 {
     /// <summary>Invoked when the popup list appears. Argument is the list RectTransform.</summary>
     public event Action<RectTransform> OnDropdownShown;
+
     /// <summary>Invoked when the popup list is hidden or destroyed.</summary>
     public event Action OnDropdownHidden;
 
@@ -25,7 +26,7 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
     private TMP_Dropdown _dropdown;
     private Coroutine _probeCo;
     private RectTransform _activeList;
-    private Transform _rootCanvas; // nearest root Canvas for scoped lookup
+    private Transform _rootCanvas;
 
     // Cached reflection handle to TMP_Dropdown.m_Dropdown (private)
     private static readonly FieldInfo s_mDropdownField =
@@ -34,9 +35,6 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
     /// <summary>True while the popup is currently open.</summary>
     public bool IsOpen => _activeList != null;
 
-    /// <summary>
-    /// Caches local references and locates the nearest root canvas for scoped searches.
-    /// </summary>
     private void Awake()
     {
         _dropdown = GetComponent<TMP_Dropdown>();
@@ -45,9 +43,6 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
         _rootCanvas = (canvas != null ? canvas.rootCanvas.transform : transform.root);
     }
 
-    /// <summary>
-    /// Stops any active probe and clears state if disabled mid-popup.
-    /// </summary>
     private void OnDisable()
     {
         if (_probeCo != null)
@@ -55,33 +50,20 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
             StopCoroutine(_probeCo);
             _probeCo = null;
         }
+
         _activeList = null;
     }
 
-    /// <summary>
-    /// Starts a popup probe on pointer click.
-    /// </summary>
     public void OnPointerClick(PointerEventData _) => StartProbe();
 
-    /// <summary>
-    /// Starts a popup probe on keyboard/gamepad submit.
-    /// </summary>
     public void OnSubmit(BaseEventData _) => StartProbe();
 
-    /// <summary>
-    /// Begins the coroutine that detects the spawned popup list.
-    /// </summary>
     private void StartProbe()
     {
         if (!isActiveAndEnabled || _probeCo != null) return;
         _probeCo = StartCoroutine(ProbeForPopup());
     }
 
-    /// <summary>
-    /// Waits a frame for TMP to spawn the list, then resolves the popup via:
-    /// reflection → scoped find under root canvas → optional global find.
-    /// Emits open/close events accordingly.
-    /// </summary>
     private IEnumerator ProbeForPopup()
     {
         yield return null;
@@ -105,9 +87,6 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
         _probeCo = null;
     }
 
-    /// <summary>
-    /// Reads TMP_Dropdown.m_Dropdown (GameObject) via reflection and returns its RectTransform if active.
-    /// </summary>
     private RectTransform TryGetPopupViaReflection()
     {
         if (s_mDropdownField == null || _dropdown == null) return null;
@@ -119,9 +98,6 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
         return null;
     }
 
-    /// <summary>
-    /// Searches for a child named “Dropdown List” under the nearest root canvas.
-    /// </summary>
     private RectTransform TryGetPopupScoped()
     {
         if (_rootCanvas == null) return null;
@@ -132,9 +108,6 @@ public class ObservableTMPDropdown : MonoBehaviour, IPointerClickHandler, ISubmi
             : null;
     }
 
-    /// <summary>
-    /// Global scene search for “Dropdown List” (expensive; optional).
-    /// </summary>
     private static RectTransform TryGetPopupGlobal()
     {
         var go = GameObject.Find("Dropdown List");

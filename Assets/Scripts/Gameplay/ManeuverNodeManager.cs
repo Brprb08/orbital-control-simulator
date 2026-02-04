@@ -1,11 +1,16 @@
 using UnityEngine;
 using UnityEngine.UI;
 using System.Collections.Generic;
-using System.Linq;
 using TMPro;
+using Unity.Mathematics;
+using System;
 
 public class ManeuverNodeManager : MonoBehaviour
 {
+    // ------------------------------------------------------------
+    // Fields / Inspector
+    // ------------------------------------------------------------
+
     [Header("Maneuver Nodes")]
     public List<ManeuverNode> nodes = new();
 
@@ -14,32 +19,51 @@ public class ManeuverNodeManager : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
     public TimeController timeController;
     private BodyService bodyService;
+    public ThrustController thrustController;
+    public TrajectoryComputeController trajectoryComputeController;
 
     [Header("References - UI")]
-    public Slider maneuverTimeSlider;  // time-adjust slider
+    public Slider maneuverTimeSlider;
     public TMP_Dropdown burnDropdown;
     public Button setupButton;
-    public Slider adjustNodeSlider;    // legacy / optional; we just toggle interactable
+    public Slider adjustNodeSlider;
     public Button placeNodeButton;
+    public Button removeNodeButton;
 
     [Header("Materials")]
     [SerializeField] Material green;
     [SerializeField] Material red;
 
     [Header("UX Settings")]
-    [SerializeField] float sliderUpdateMinInterval = 0.02f; // debounce
+    [SerializeField] float sliderUpdateMinInterval = 0.02f;
     [SerializeField] float nodeVisualScale = 1f;
-    [SerializeField] bool allowSlider = true;               // keep slider visible/usable
-    private float _nextSliderAllowed;
+    [SerializeField] bool allowSlider = true;
+
+    public OrbitPreviewUI orbitPreviewUI;
+
     public bool isSliderActive = false;
 
-    // gating "Place" until user actually adjusts
+    private float _nextSliderAllowed;
+    private Vector3 previewVCcache = Vector3.right;
+    private Vector3 previewHCache = Vector3.up;
+    private int previewLastPolarSign = +1;
+
+    [Header("Burn Tuning")]
+    float burnDuration = 20f;
+    private float thrustPowerScale = 1f;
+    public BurnTuningController burnTuningController;
+
     private bool nodeAdjusted = false;
+
+    private OrbitalParameters _previewOrbitParams = new OrbitalParameters(false);
+    public OrbitalParameters PreviewOrbitParams => _previewOrbitParams;
 
     public BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private TutorialController tutorialController;
     private SimContext ctx;
 
+    // ------------------------------------------------------------
+    // Lifecycle
     // ------------------------------------------------------------
 
     public void Initialize(SimContext ctx)
@@ -49,20 +73,42 @@ public class ManeuverNodeManager : MonoBehaviour
         trajectoryRenderer = ctx.TrajectoryRenderer;
         timeController = ctx.TimeController;
         tutorialController = ctx.TutorialController;
+        thrustController = ctx.ThrustController;
+        trajectoryComputeController = ctx.TrajectoryComputeController;
         bodyService = ctx.BodyService;
 
+        if (burnTuningController != null)
+        {
+            burnTuningController.defaultBurnDuration = burnDuration;
+            burnTuningController.defaultThrustScale = thrustPowerScale;
+
+            burnTuningController.BurnDurationChanged += OnBurnDurationChangedFromUI;
+            burnTuningController.ThrustScaleChanged += OnThrustScaleChangedFromUI;
+
+            burnTuningController.SetSlidersInteractable(false);
+        }
+
         burnDropdown.ClearOptions();
-        List<string> burnOptions = new() { "Prograde", "Retrograde", "Radial In", "Radial Out", "Normal", "Anti-Normal" };
-        burnDropdown.AddOptions(burnOptions.Select(dir => new TMP_Dropdown.OptionData(dir)).ToList());
+        var burnOptions = Enum.GetValues(typeof(BurnType));
+        foreach (BurnType t in burnOptions)
+        {
+            burnDropdown.options.Add(new TMP_Dropdown.OptionData(t.ToDisplayName()));
+        }
 
         if (trajectoryRenderer != null)
             trajectoryRenderer.TrackedBodyChanged += OnTrackedBodyChanged;
 
-        if (!allowSlider && maneuverTimeSlider != null)
-            maneuverTimeSlider.gameObject.SetActive(false);
+        if (maneuverTimeSlider != null)
+        {
+            maneuverTimeSlider.interactable = false;
+            maneuverTimeSlider.onValueChanged.RemoveAllListeners();
+        }
 
-        if (placeNodeButton != null) placeNodeButton.interactable = false; // always gated
+        if (placeNodeButton != null) placeNodeButton.interactable = false;
         if (adjustNodeSlider != null) adjustNodeSlider.interactable = false;
+        if (removeNodeButton != null) removeNodeButton.interactable = false;
+
+        isSliderActive = false;
     }
 
     void LateUpdate()
@@ -70,7 +116,6 @@ public class ManeuverNodeManager : MonoBehaviour
         if (nodes.Count == 0) return;
         var node = nodes[0];
 
-        // Keep finalized nodes pinned
         if (node.isFinalized && node.isPinned && node.marker != null)
         {
             if (node.marker.transform.position != node.pinnedWorldPosition)
@@ -79,12 +124,11 @@ public class ManeuverNodeManager : MonoBehaviour
                 node.marker.transform.SetParent(null, true);
         }
 
-        // Update T± label
         if (node.marker != null && bodyRuntimeCoordinator != null)
         {
             float tMinus = node.burnTime - bodyRuntimeCoordinator.simulationTime;
             var giz = node.marker.GetComponent<NodeGizmo>();
-            if (giz) giz.SetTimeToNode(tMinus);
+            if (giz) giz.SetTimeToNode(node.burnType.ToDisplayName(), tMinus);
         }
     }
 
@@ -95,6 +139,12 @@ public class ManeuverNodeManager : MonoBehaviour
 
         if (maneuverTimeSlider != null)
             maneuverTimeSlider.onValueChanged.RemoveListener(OnSliderChanged);
+
+        if (burnTuningController != null)
+        {
+            burnTuningController.BurnDurationChanged -= OnBurnDurationChangedFromUI;
+            burnTuningController.ThrustScaleChanged -= OnThrustScaleChangedFromUI;
+        }
     }
 
     private void OnTrackedBodyChanged(NBody oldBody, NBody newBody)
@@ -104,104 +154,146 @@ public class ManeuverNodeManager : MonoBehaviour
         if (adjustNodeSlider != null) adjustNodeSlider.interactable = active;
     }
 
-    // ------------------------------------------------------------
-    // Node Creation / Finalization
-    // ------------------------------------------------------------
-
+    /// <summary>
+    /// Creates a maneuver node ~20 seconds ahead along the tracked body's trajectory.
+    /// </summary>
     public void OnAddManeuverNode()
     {
         timeController.SetTimeScale(1f);
         timeController.timeSlider.value = Time.timeScale;
 
         var body = trajectoryRenderer.trackedBody;
-        if (body == null || trajectoryRenderer.latestPrediction == null || trajectoryRenderer.latestPrediction.Count == 0)
+        if (body == null)
             return;
 
-        // initial placement ~20s ahead of current sim time
-        float initialOffsetTime = 20f;
-        float desiredBurnTime = bodyRuntimeCoordinator.simulationTime + initialOffsetTime;
-        float dt = trajectoryRenderer.latestPredictionDeltaTime;
+        int steps = 6000;
+        float dt = trajectoryRenderer != null
+            ? trajectoryRenderer.predictionDeltaTime
+            : 2f;
 
-        float timeFromPredictionStart = desiredBurnTime - trajectoryRenderer.latestPredictionStartTime;
-        if (timeFromPredictionStart < 0) timeFromPredictionStart = 0;
+        body.ComputePredictionForNodes(steps, dt, (traj, startTime, usedDt) =>
+        {
+            if (traj == null || traj.Count < 2)
+                return;
 
-        float floatIndex = timeFromPredictionStart / dt;
-        int index = Mathf.Clamp(Mathf.FloorToInt(floatIndex), 0, trajectoryRenderer.latestPrediction.Count - 2);
-        float t = floatIndex - index;
+            float initialOffsetTime = 20f;
+            float desiredBurnTime = bodyRuntimeCoordinator.simulationTime + initialOffsetTime;
 
-        Vector3 a = trajectoryRenderer.latestPrediction[index];
-        Vector3 b = trajectoryRenderer.latestPrediction[index + 1];
-        Vector3 burnPos = Vector3.Lerp(a, b, t);
+            float timeFromPredictionStart = desiredBurnTime - startTime;
+            if (timeFromPredictionStart < 0f)
+                timeFromPredictionStart = 0f;
 
-        Vector3 deltaV = body.velocity.normalized * 1f;
-        float burnDuration = 5f;
+            float floatIndex = timeFromPredictionStart / usedDt;
+            int index = Mathf.Clamp(Mathf.FloorToInt(floatIndex), 0, traj.Count - 2);
+            float t = floatIndex - index;
 
-        CreatePreviewNode(burnPos, desiredBurnTime, deltaV, burnDuration);
+            Vector3 a = traj[index];
+            Vector3 b = traj[index + 1];
+            Vector3 burnPos = Vector3.Lerp(a, b, t);
 
-        // Reset gating — user must adjust before "Place" becomes available
-        nodeAdjusted = false;
-        if (placeNodeButton != null) placeNodeButton.interactable = false;
+            Vector3 deltaV = body.velocity.normalized * 1f;
 
-        // Keep slider as an option
-        var node = nodes[0];
-        SetupSlider(node.trajectorySnapshot, node.burnTime, node.snapshotDeltaTime);
+            ClearAllNodes();
 
-        // allow time adjustments
-        isSliderActive = true;
-        if (adjustNodeSlider != null) adjustNodeSlider.interactable = true;
+            var node = new ManeuverNode
+            {
+                position = burnPos,
+                burnTime = desiredBurnTime,
+                deltaV = deltaV,
+                targetBody = body,
+                duration = burnDuration,
+                isFinalized = false,
+                burnType = GetBurnChoice(),
+                trajectorySnapshot = new List<Vector3>(traj),
+                snapshotStartTime = startTime,
+                snapshotDeltaTime = usedDt
+            };
 
-        if (tutorialController != null && tutorialController.inTutorialMode)
-            tutorialController.hasSetupNode = true;
+            SetupNodeVisuals(node, isPreview: true);
+            nodes.Add(node);
+
+            UpdateManeuverPrediction(node);
+            UpdatePreviewOrbit(node);
+
+            if (placeNodeButton != null)
+                placeNodeButton.interactable = true;
+            if (removeNodeButton != null)
+                removeNodeButton.interactable = true;
+
+            SetupSlider(node.trajectorySnapshot, node.burnTime, node.snapshotDeltaTime);
+
+            isSliderActive = true;
+            if (adjustNodeSlider != null)
+                adjustNodeSlider.interactable = true;
+            if (maneuverTimeSlider != null)
+                maneuverTimeSlider.interactable = true;
+
+            if (burnTuningController != null)
+                burnTuningController.SetSlidersInteractable(true);
+
+            if (tutorialController != null && tutorialController.inTutorialMode)
+                tutorialController.hasSetupNode = true;
+        });
     }
 
+    /// <summary>
+    /// Finalizes the current maneuver node, pins it, and disables further interaction.
+    /// </summary>
     public void FinalizeManeuver()
     {
         if (nodes.Count == 0) return;
         var node = nodes[0];
+        if (node == null || node.marker == null) return;
 
         node.isFinalized = true;
-        node.marker.name = "ManeuverNode";
-        var r = node.marker.GetComponent<Renderer>();
-        r.material = new Material(red);
-        CopyColorIfPresent(red, r.material);
 
         node.marker.transform.SetParent(null, true);
         node.pinnedWorldPosition = node.marker.transform.position;
         node.isPinned = true;
 
-        // Calm the pulse
-        var giz = node.marker.GetComponent<NodeGizmo>();
-        if (giz) giz.SetPulse(false);
+        SetupNodeVisuals(node, isPreview: false);
 
-        // Disable adjustments
         isSliderActive = false;
         maneuverTimeSlider?.onValueChanged.RemoveListener(OnSliderChanged);
-        if (adjustNodeSlider != null) adjustNodeSlider.interactable = false;
-        if (placeNodeButton != null) placeNodeButton.interactable = false; // placed
 
-        // Wrap burn time to future orbit if needed
-        var central = bodyService.CentralBody;
-        var orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            central.mass,
-            central.transform.position,
-            node.targetBody.state.position,
-            node.targetBody.state.velocity
-        );
+        if (maneuverTimeSlider != null)
+            maneuverTimeSlider.interactable = false;
+        if (adjustNodeSlider != null)
+            adjustNodeSlider.interactable = false;
+        if (placeNodeButton != null)
+            placeNodeButton.interactable = false;
 
-        if (orbit.isValid && orbit.eccentricity < 1f && orbit.orbitalPeriod > 0f)
+        if (burnTuningController != null)
+            burnTuningController.SetSlidersInteractable(false);
+
+        if (bodyService != null && bodyService.CentralBody != null)
         {
-            float simTime = bodyRuntimeCoordinator.simulationTime;
-            while (node.burnTime < simTime) node.burnTime += orbit.orbitalPeriod;
+            var central = bodyService.CentralBody;
+            var orbit = OrbitalCalculations.CalculateOrbitalParameters(
+                central.mass,
+                central.transform.position,
+                node.targetBody.state.position,
+                node.targetBody.state.velocity
+            );
+
+            if (orbit.isValid && orbit.eccentricity < 1f && orbit.orbitalPeriod > 0f)
+            {
+                float simTime = bodyRuntimeCoordinator.simulationTime;
+                while (node.burnTime < simTime)
+                    node.burnTime += orbit.orbitalPeriod;
+            }
         }
 
         if (tutorialController != null && tutorialController.inTutorialMode)
             tutorialController.hasPlacedNode = true;
+
+        if (trajectoryRenderer != null)
+            trajectoryRenderer.ClearPreview();
     }
 
-    // ------------------------------------------------------------
-    // Node Creation Helpers
-    // ------------------------------------------------------------
-
+    /// <summary>
+    /// Creates a preview node using the latest trajectory prediction.
+    /// </summary>
     public void CreatePreviewNode(Vector3 position, float burnTime, Vector3 deltaV, float duration)
     {
         ClearAllNodes();
@@ -213,7 +305,6 @@ public class ManeuverNodeManager : MonoBehaviour
             position = position,
             burnTime = burnTime,
             deltaV = deltaV,
-            marker = GameObject.CreatePrimitive(PrimitiveType.Sphere),
             targetBody = trackedBody,
             duration = duration,
             isFinalized = false,
@@ -223,32 +314,71 @@ public class ManeuverNodeManager : MonoBehaviour
             snapshotDeltaTime = Mathf.Max(1e-5f, trajectoryRenderer.latestPredictionDeltaTime)
         };
 
-        node.marker.name = "ManeuverNodePreview";
-        node.marker.transform.position = position;
-        node.marker.transform.localScale = Vector3.one * (5f * nodeVisualScale);
-
-        var rend = node.marker.GetComponent<Renderer>();
-        rend.material = new Material(green);
-        CopyColorIfPresent(green, rend.material);
-        rend.material.renderQueue = 5000;
-
-        var col = node.marker.GetComponent<SphereCollider>();
-        col.isTrigger = true;
-        col.radius = 0.9f;
-
-        // Billboard/label
-        var giz = node.marker.AddComponent<NodeGizmo>();
-        if (green.HasProperty("_BaseColor"))
-            giz.baseColor = green.GetColor("_BaseColor");
-
-        // Drag handle (screen-space picking)
-        var drag = node.marker.AddComponent<NodeDragHandle>();
-        drag.Init(this);
-
+        SetupNodeVisuals(node, isPreview: true);
         nodes.Add(node);
+
         UpdateManeuverPrediction(node);
 
         FocusCameraOn(node.marker.transform.position);
+        UpdatePreviewOrbit(node);
+    }
+
+    private void SetupNodeVisuals(ManeuverNode node, bool isPreview)
+    {
+        if (node.marker == null)
+            node.marker = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+
+        node.marker.name = isPreview ? "ManeuverNodePreview" : "ManeuverNode";
+        node.marker.transform.position = node.position;
+        node.marker.transform.localScale = Vector3.one * (5f * nodeVisualScale);
+
+        var rend = node.marker.GetComponent<Renderer>();
+        if (isPreview)
+        {
+            rend.material = new Material(green);
+            CopyColorIfPresent(green, rend.material);
+        }
+        else
+        {
+            rend.material = new Material(red);
+            CopyColorIfPresent(red, rend.material);
+        }
+        rend.material.renderQueue = 5000;
+
+        var col = node.marker.GetComponent<SphereCollider>();
+        if (col != null)
+        {
+            col.isTrigger = isPreview;
+            col.radius = 0.9f;
+        }
+
+        var giz = node.marker.GetComponent<NodeGizmo>();
+        if (giz == null)
+            giz = node.marker.AddComponent<NodeGizmo>();
+
+        if (isPreview && green.HasProperty("_BaseColor"))
+            giz.baseColor = green.GetColor("_BaseColor");
+
+        if (isPreview)
+        {
+            var drag = node.marker.GetComponent<NodeDragHandle>();
+            if (drag == null)
+            {
+                drag = node.marker.AddComponent<NodeDragHandle>();
+                drag.Init(this);
+            }
+        }
+        else
+        {
+            giz.SetPulse(false);
+
+            var drag = node.marker.GetComponent<NodeDragHandle>();
+            if (drag != null)
+                Destroy(drag);
+
+            if (col != null)
+                col.enabled = false;
+        }
     }
 
     public void ClearAllNodes()
@@ -256,11 +386,85 @@ public class ManeuverNodeManager : MonoBehaviour
         foreach (var n in nodes)
             if (n.marker != null) Destroy(n.marker);
         nodes.Clear();
+        trajectoryRenderer?.ClearPreview();
+
+        isSliderActive = false;
+
+        if (maneuverTimeSlider != null)
+        {
+            maneuverTimeSlider.interactable = false;
+            maneuverTimeSlider.onValueChanged.RemoveListener(OnSliderChanged);
+        }
+
+        if (adjustNodeSlider != null)
+            adjustNodeSlider.interactable = false;
+
+        if (placeNodeButton != null)
+            placeNodeButton.interactable = false;
+        if (removeNodeButton != null)
+            removeNodeButton.interactable = false;
+
+        if (burnTuningController != null)
+            burnTuningController.SetSlidersInteractable(false);
     }
 
-    // ------------------------------------------------------------
-    // Core Updates
-    // ------------------------------------------------------------
+    public void RemoveNode(ManeuverNode node)
+    {
+        if (node.marker != null) Destroy(node.marker);
+        nodes.Remove(node);
+        UpdateManeuverPrediction(node);
+        if (nodes.Count == 0)
+        {
+            trajectoryRenderer?.ClearPreview();
+
+            isSliderActive = false;
+
+            if (maneuverTimeSlider != null)
+            {
+                maneuverTimeSlider.interactable = false;
+                maneuverTimeSlider.onValueChanged.RemoveListener(OnSliderChanged);
+            }
+
+            if (adjustNodeSlider != null)
+                adjustNodeSlider.interactable = false;
+            if (placeNodeButton != null)
+                placeNodeButton.interactable = false;
+            if (removeNodeButton != null)
+                removeNodeButton.interactable = false;
+
+            if (burnTuningController != null)
+                burnTuningController.SetSlidersInteractable(false);
+        }
+    }
+
+    /// <summary>
+    /// Used by drag handle to move the node along its trajectory.
+    /// </summary>
+    public void DragNodeToFloatIndex(float floatIndex)
+    {
+        SetNodeAtFloatIndex(floatIndex);
+    }
+
+    public bool TryGetCurrentNodeIndex(out float currentFloatIndex)
+    {
+        currentFloatIndex = 0f;
+
+        if (nodes.Count == 0) return false;
+        var node = nodes[0];
+        if (node == null || node.trajectorySnapshot == null || node.trajectorySnapshot.Count < 2)
+            return false;
+
+        float dt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
+        currentFloatIndex = (node.burnTime - node.snapshotStartTime) / dt;
+        currentFloatIndex = Mathf.Clamp(currentFloatIndex, 0f, node.trajectorySnapshot.Count - 1.0001f);
+        return true;
+    }
+
+    public void OnDeltaVChanged(float newDv)
+    {
+        if (!float.IsFinite(newDv)) return;
+        MarkAdjusted();
+    }
 
     public void UpdateManeuverPrediction(ManeuverNode node = null)
     {
@@ -268,25 +472,164 @@ public class ManeuverNodeManager : MonoBehaviour
         node ??= nodes.Count > 0 ? nodes[0] : null;
         if (node == null || node.isFinalized) return;
 
-        var traj = node.trajectorySnapshot;
-        if (traj == null || traj.Count < 2) return;
+        if (!TrajectorySampler.TrySampleAtBurnTime(node, out var pos, out _, out _))
+            return;
 
-        int burnStep = Mathf.FloorToInt((node.burnTime - node.snapshotStartTime) / Mathf.Max(1e-5f, node.snapshotDeltaTime));
-        burnStep = Mathf.Clamp(burnStep, 0, traj.Count - 1);
-
-        // keep node.position consistent with timing to avoid "fires at different point"
-        node.position = traj[burnStep];
+        node.position = pos;
     }
 
-    public Vector3 EstimateVelocity(List<Vector3> trajectory, int step, float dt)
+    private void UpdatePreviewOrbit(ManeuverNode node)
     {
-        if (step <= 0 || step >= trajectory.Count - 1) return Vector3.zero;
-        return (trajectory[step + 1] - trajectory[step - 1]) / (2f * dt);
-    }
+        if (trajectoryRenderer == null || node == null) return;
+        if (node.trajectorySnapshot == null || node.trajectorySnapshot.Count < 3) return;
+        if (node.targetBody == null) return;
 
-    // ------------------------------------------------------------
-    // Slider support (kept and synced)
-    // ------------------------------------------------------------
+        var traj = node.trajectorySnapshot;
+        float sampleDt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
+
+        if (!TrajectorySampler.TrySampleAtBurnTime(node, out var burnPos, out var velAtBurn, out var floatIndex))
+            return;
+
+        var central = bodyService != null ? bodyService.CentralBody : null;
+        Vector3 center = central != null ? central.transform.position : Vector3.zero;
+        double mu = (central != null) ? PhysicsConstants.G * central.mass : 0.0;
+
+        const float EPS = 1e-8f;
+
+        Vector3 r = burnPos - center;
+        Vector3 v = velAtBurn;
+        Vector3 rHat = r.sqrMagnitude > EPS ? r.normalized : Vector3.up;
+        Vector3 vHat = v.sqrMagnitude > EPS ? v.normalized : node.targetBody.velocity.normalized;
+
+        Vector3 h = Vector3.Cross(r, v);
+        Vector3 hHat = (h.sqrMagnitude > EPS) ? h.normalized : Vector3.up;
+
+        Vector3 burnDirRaw = AttitudeMath.ComputeBurnDirection(
+            node.burnType,
+            burnPos,
+            velAtBurn,
+            center,
+            ref previewVCcache,
+            ref previewHCache,
+            ref previewLastPolarSign
+        );
+
+        if (burnDirRaw.sqrMagnitude < EPS)
+            burnDirRaw = vHat;
+        burnDirRaw.Normalize();
+
+        Vector3 burnDirConstant = burnDirRaw;
+
+        float normalSign = 1f;
+        if (node.burnType == BurnType.Normal || node.burnType == BurnType.AntiNormal)
+        {
+            float dot = Vector3.Dot(burnDirRaw, hHat);
+            if (dot < 0f) normalSign = -1f;
+        }
+
+        float mass = node.targetBody.mass;
+
+        float thrustMag = 10f;
+        if (thrustController != null)
+            thrustMag = thrustController.EffectiveForwardThrustMagnitude;
+
+        float F = thrustMag / 10f;
+        float aThrust = (mass > 0f) ? F / mass : 0f;
+
+        float burnDuration = Mathf.Max(0f, node.duration > 0f ? node.duration : this.burnDuration);
+
+        float dtBurn = Mathf.Min(0.25f, sampleDt);
+        int burnSteps = Mathf.Max(1, Mathf.CeilToInt(burnDuration / dtBurn));
+
+        Vector3 pos = burnPos;
+        Vector3 vel = velAtBurn;
+
+        for (int i = 0; i < burnSteps; i++)
+        {
+            Vector3 rStep = pos - center;
+            float rMag = rStep.magnitude;
+            Vector3 aGrav = Vector3.zero;
+
+            if (mu > 0.0 && rMag > 1e-3f)
+            {
+                float invR3 = 1.0f / (rMag * rMag * rMag);
+                aGrav = (float)(-mu) * invR3 * rStep;
+            }
+
+            Vector3 burnDirStep;
+
+            if (node.burnType == BurnType.Normal || node.burnType == BurnType.AntiNormal)
+            {
+                Vector3 rHatStep = rStep.sqrMagnitude > EPS ? rStep.normalized : rHat;
+                Vector3 vHatStep = vel.sqrMagnitude > EPS ? vel.normalized : vHat;
+
+                Vector3 hStep = Vector3.Cross(rStep, vel);
+                Vector3 nHatStep = (hStep.sqrMagnitude > EPS)
+                    ? hStep.normalized
+                    : hHat;
+
+                Vector3 nSigned = normalSign > 0f ? nHatStep : -nHatStep;
+
+                Vector3 lateral = nSigned - Vector3.Dot(nSigned, vHatStep) * vHatStep;
+
+                if (lateral.sqrMagnitude < 1e-6f)
+                {
+                    burnDirStep = nSigned;
+                }
+                else
+                {
+                    burnDirStep = lateral.normalized;
+                }
+            }
+            else
+            {
+                burnDirStep = burnDirConstant;
+            }
+
+            burnDirStep.Normalize();
+
+            Vector3 aTotal = aGrav + burnDirStep * aThrust;
+
+            vel += aTotal * dtBurn;
+            pos += vel * dtBurn;
+        }
+
+        _previewOrbitParams = new OrbitalParameters(false);
+
+        if (central != null)
+        {
+            double3 posD = new double3(pos.x, pos.y, pos.z);
+            double3 velD = new double3(vel.x, vel.y, vel.z);
+
+            _previewOrbitParams = OrbitalCalculations.CalculateOrbitalParameters(
+                central.mass,
+                central.transform.position,
+                posD,
+                velD
+            );
+
+            if (orbitPreviewUI != null)
+            {
+                if (_previewOrbitParams.isValid)
+                    orbitPreviewUI.Show(_previewOrbitParams, central);
+                else
+                    orbitPreviewUI.ShowInvalid();
+            }
+        }
+        else
+        {
+            orbitPreviewUI?.ShowInvalid();
+        }
+
+        trajectoryRenderer.QuickPreviewOnceLong(
+            startPos: pos,
+            startVel: vel,
+            bodyMass: mass,
+            steps: 6000,
+            dt: trajectoryRenderer.predictionDeltaTime,
+            singleOrbit: true
+        );
+    }
 
     public void SetupSlider(List<Vector3> trajectory, float burnTime, float predictionDeltaTime)
     {
@@ -298,7 +641,8 @@ public class ManeuverNodeManager : MonoBehaviour
         maneuverTimeSlider.maxValue = trajectory.Count - 1;
 
         var node = nodes[0];
-        float floatIndex = (burnTime - node.snapshotStartTime) / node.snapshotDeltaTime;
+        float dt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
+        float floatIndex = (burnTime - node.snapshotStartTime) / dt;
         maneuverTimeSlider.value = Mathf.Clamp(floatIndex, 0f, maneuverTimeSlider.maxValue);
 
         maneuverTimeSlider.onValueChanged.RemoveAllListeners();
@@ -310,12 +654,8 @@ public class ManeuverNodeManager : MonoBehaviour
         if (Time.unscaledTime < _nextSliderAllowed) return;
         _nextSliderAllowed = Time.unscaledTime + sliderUpdateMinInterval;
         SetNodeAtFloatIndex(value);
-        MarkAdjusted(); // enable "Place" after first user move
+        MarkAdjusted();
     }
-
-    // ------------------------------------------------------------
-    // Shared movement helper (used by slider & drag)
-    // ------------------------------------------------------------
 
     public void SetNodeAtFloatIndex(float floatIndex)
     {
@@ -325,21 +665,57 @@ public class ManeuverNodeManager : MonoBehaviour
         var traj = node.trajectorySnapshot;
         if (traj == null || traj.Count < 2) return;
 
-        floatIndex = Mathf.Clamp(floatIndex, 0f, traj.Count - 1.0001f);
-        int idx = Mathf.Clamp(Mathf.FloorToInt(floatIndex), 0, traj.Count - 2);
-        float t = Mathf.Clamp01(floatIndex - idx);
+        int count = traj.Count;
+        floatIndex = Mathf.Clamp(floatIndex, 0f, count - 1.0001f);
 
-        Vector3 p = Vector3.Lerp(traj[idx], traj[idx + 1], t);
-        float newBurnTime = node.snapshotStartTime + floatIndex * node.snapshotDeltaTime;
+        float sampleDt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
+        float newBurnTime = node.snapshotStartTime + floatIndex * sampleDt;
+
+        Vector3 p = TrajectorySampler.SampleAtIndex(traj, floatIndex);
 
         node.burnTime = newBurnTime;
         node.position = p;
         if (node.marker) node.marker.transform.position = p;
 
         UpdateManeuverPrediction(node);
+        UpdatePreviewOrbit(node);
 
         if (allowSlider && maneuverTimeSlider != null && isSliderActive)
             maneuverTimeSlider.SetValueWithoutNotify(floatIndex);
+    }
+
+    private void OnBurnDurationChangedFromUI(float newDuration)
+    {
+        burnDuration = newDuration;
+
+        if (nodes.Count > 0)
+        {
+            var node = nodes[0];
+            if (!node.isFinalized)
+            {
+                node.duration = burnDuration;
+                UpdatePreviewOrbit(node);
+                MarkAdjusted();
+            }
+        }
+    }
+
+    private void OnThrustScaleChangedFromUI(float newScale)
+    {
+        thrustPowerScale = newScale;
+
+        if (thrustController != null)
+            thrustController.SetThrustPowerScale(thrustPowerScale);
+
+        if (nodes.Count > 0)
+        {
+            var node = nodes[0];
+            if (!node.isFinalized)
+            {
+                UpdatePreviewOrbit(node);
+                MarkAdjusted();
+            }
+        }
     }
 
     void MarkAdjusted()
@@ -351,24 +727,11 @@ public class ManeuverNodeManager : MonoBehaviour
         }
     }
 
-    // Call this from your Δv UI if you have one, to also enable Place:
-    public void OnDeltaVChanged(float newDv)
-    {
-        // clamp defensively & snap UI elsewhere (where your slider lives)
-        if (!float.IsFinite(newDv)) return;
-        MarkAdjusted();
-    }
-
-    // ------------------------------------------------------------
-    // Utilities
-    // ------------------------------------------------------------
-
     public Vector3 GetBurnDirectionFromDropdown(NBody targetBody)
     {
         if (targetBody == null) return Vector3.forward;
         if (trajectoryRenderer == null) return targetBody.velocity.normalized;
 
-        string selection = burnDropdown.options[burnDropdown.value].text;
         var central = bodyService != null ? bodyService.CentralBody : null;
         Vector3 r = central != null
             ? (targetBody.transform.position - central.transform.position)
@@ -378,19 +741,24 @@ public class ManeuverNodeManager : MonoBehaviour
         Vector3 radialOut = r.normalized;
         Vector3 right = Vector3.Cross(radialOut, velocity).normalized;
 
-        return selection switch
+        BurnType burnType = GetBurnChoice();
+
+        return burnType switch
         {
-            "Prograde" => velocity,
-            "Retrograde" => -velocity,
-            "Radial In" => -radialOut,
-            "Radial Out" => radialOut,
-            "Normal" => right,
-            "Anti-Normal" => -right,
+            BurnType.Prograde => velocity,
+            BurnType.Retrograde => -velocity,
+            BurnType.RadialIn => -radialOut,
+            BurnType.RadialOut => radialOut,
+            BurnType.Normal => right,
+            BurnType.AntiNormal => -right,
             _ => velocity
         };
     }
 
-    public string GetBurnChoice() => burnDropdown.options[burnDropdown.value].text;
+    public BurnType GetBurnChoice()
+    {
+        return BurnTypeExtensions.FromDropdownIndex(burnDropdown.value);
+    }
 
     void FocusCameraOn(Vector3 worldPos)
     {
@@ -408,94 +776,5 @@ public class ManeuverNodeManager : MonoBehaviour
             dst.SetColor("_BaseColor", src.GetColor("_BaseColor"));
         else if (src.HasProperty("_Color") && dst.HasProperty("_Color"))
             dst.SetColor("_Color", src.GetColor("_Color"));
-    }
-
-    // ------------------------------------------------------------
-    // Inline screen-space drag handle (smooth, no teleport)
-    // ------------------------------------------------------------
-
-    [RequireComponent(typeof(Collider))]
-    private class NodeDragHandle : MonoBehaviour
-    {
-        ManeuverNodeManager mgr;
-        Camera cam;
-        bool dragging;
-
-        public void Init(ManeuverNodeManager manager)
-        {
-            mgr = manager;
-            cam = Camera.main;
-        }
-
-        void OnMouseDown()
-        {
-            if (mgr == null || mgr.nodes.Count == 0) return;
-            if (mgr.nodes[0].isFinalized) return;
-            dragging = true;
-        }
-
-        void OnMouseUp() { dragging = false; }
-
-        void Update()
-        {
-            if (!dragging || mgr == null) return;
-            var node = mgr.nodes.Count > 0 ? mgr.nodes[0] : null;
-            if (node == null || node.isFinalized) return;
-
-            var traj = node.trajectorySnapshot;
-            if (traj == null || traj.Count < 2) return;
-
-            if (cam == null) cam = Camera.main;
-            if (cam == null) return;
-
-            Vector2 mouse = Input.mousePosition;
-
-            // Find the closest screen-space segment
-            int bestSeg = 0; float bestT = 0f; float bestD2 = float.PositiveInfinity;
-            for (int i = 0; i < traj.Count - 1; i++)
-            {
-                Vector3 wa = traj[i];
-                Vector3 wb = traj[i + 1];
-
-                Vector3 sa3 = cam.WorldToScreenPoint(wa);
-                Vector3 sb3 = cam.WorldToScreenPoint(wb);
-
-                // Skip if behind camera (z <= 0)
-                if (sa3.z <= 0f && sb3.z <= 0f) continue;
-
-                Vector2 sa = new Vector2(sa3.x, sa3.y);
-                Vector2 sb = new Vector2(sb3.x, sb3.y);
-
-                float t = ClosestParamOnSegment2D(sa, sb, mouse);
-                Vector2 sp = Vector2.Lerp(sa, sb, t);
-                float d2 = (sp - mouse).sqrMagnitude;
-                if (d2 < bestD2)
-                {
-                    bestD2 = d2;
-                    bestSeg = i;
-                    bestT = t;
-                }
-            }
-
-            // Move node along trajectory by the best segment param
-            mgr.SetNodeAtFloatIndex(bestSeg + bestT);
-            mgr.MarkAdjusted();
-        }
-
-        static float ClosestParamOnSegment2D(Vector2 a, Vector2 b, Vector2 p)
-        {
-            Vector2 ab = b - a;
-            float len2 = Vector2.Dot(ab, ab);
-            if (len2 < 1e-8f) return 0f;
-            float t = Vector2.Dot(p - a, ab) / len2;
-            return Mathf.Clamp01(t);
-        }
-    }
-
-    public void RemoveNode(ManeuverNode node)
-    {
-        if (node.marker != null) Destroy(node.marker);
-        nodes.Remove(node);
-        UpdateManeuverPrediction(node); // no-op if missing data
     }
 }

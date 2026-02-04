@@ -238,57 +238,51 @@ extern "C"
 
             const double Cd = static_cast<double>(dragCoeffs[i]);
             const double Auu = static_cast<double>(areasUU[i]);
-            const int8_t flag = normalSign ? normalSign[i] : 0; // 0=free
-            const uint8_t thrusting = isThrusting ? isThrusting[i] : 0;
-            int8_t latched = latchedParityIO ? latchedParityIO[i] : 0; // −1/0/+1
+            const int8_t flag = normalSign ? normalSign[i] : 0; // 0 = free, ±1 = lateral shaping
+            const bool lateralMode = (flag != 0);
 
             for (int s = 0; s < substeps; ++s)
             {
-                // Compute orbit parity ONCE per substep from the substep-start state
-                const double parity = OrbitParityY(pos, vel); // +1 prograde, -1 retrograde
-
-                // Latch/clear policy
-                if (!thrusting)
-                {
-                    latched = 0; // clear when not thrusting
-                }
-                else if (latched == 0)
-                {
-                    // capture once at burn start
-                    latched = (parity >= 0.0 ? +1 : -1);
-                }
-
-                // Choose which parity to apply to the Normal/AntiNormal request
-                const double useParity = (latched != 0) ? static_cast<double>(latched) : parity;
-
-                // Final desired sign for Normal/AntiNormal this substep:
-                // +1 (Normal) or -1 (AntiNormal), multiplied by parity flip at 90°.
-                const double sgnEff = (flag == 0) ? 0.0 : ((flag > 0 ? +1.0 : -1.0) * useParity);
-
                 Vector3d kx[7], kv[7];
 
-                // Stage 0
+                // ---- Stage 0 ----
                 kx[0] = vel;
                 kv[0] = gravA(pos);
 
-                if (sgnEff == 0.0)
+                if (!lateralMode)
                 {
+                    // Free thrust: use the acceleration from the thrust vector as-is.
                     kv[0].x += thBase.x;
                     kv[0].y += thBase.y;
                     kv[0].z += thBase.z;
                 }
                 else
                 {
+                    // Lateral mode (Normal/AntiNormal): project onto instantaneous orbital normal
                     Vector3d nHat;
                     if (NormalHat(pos, vel, nHat) && thMag > 0.0)
                     {
-                        kv[0].x += nHat.x * (thMag * sgnEff);
-                        kv[0].y += nHat.y * (thMag * sgnEff);
-                        kv[0].z += nHat.z * (thMag * sgnEff);
+                        // Use the ship's actual thrust vector to pick the side:
+                        // side = sign(thBase ⋅ nHat)
+                        const double dotTN =
+                            thBase.x * nHat.x +
+                            thBase.y * nHat.y +
+                            thBase.z * nHat.z;
+
+                        if (std::fabs(dotTN) > 1e-12)
+                        {
+                            const double sgn = (dotTN >= 0.0) ? +1.0 : -1.0;
+                            const double mag = thMag * sgn;
+
+                            kv[0].x += nHat.x * mag;
+                            kv[0].y += nHat.y * mag;
+                            kv[0].z += nHat.z * mag;
+                        }
                     }
+                    // else: degenerate normal => no lateral thrust this substep
                 }
 
-                // drag stage 0
+                // drag at stage 0
                 {
                     Vector3d d0 = ComputeDragAcceleration(vel, pos, msc, Auu, Cd);
                     kv[0].x += d0.x;
@@ -296,7 +290,7 @@ extern "C"
                     kv[0].z += d0.z;
                 }
 
-                // Stages 1..6
+                // ---- Stages 1..6 ----
                 for (int st = 1; st < 7; ++st)
                 {
                     Vector3d pi = pos, vi = vel;
@@ -314,7 +308,7 @@ extern "C"
                     kx[st] = vi;
                     kv[st] = gravA(pi);
 
-                    if (sgnEff == 0.0)
+                    if (!lateralMode)
                     {
                         kv[st].x += thBase.x;
                         kv[st].y += thBase.y;
@@ -325,9 +319,20 @@ extern "C"
                         Vector3d nHat;
                         if (NormalHat(pi, vi, nHat) && thMag > 0.0)
                         {
-                            kv[st].x += nHat.x * (thMag * sgnEff);
-                            kv[st].y += nHat.y * (thMag * sgnEff);
-                            kv[st].z += nHat.z * (thMag * sgnEff);
+                            const double dotTN =
+                                thBase.x * nHat.x +
+                                thBase.y * nHat.y +
+                                thBase.z * nHat.z;
+
+                            if (std::fabs(dotTN) > 1e-12)
+                            {
+                                const double sgn = (dotTN >= 0.0) ? +1.0 : -1.0;
+                                const double mag = thMag * sgn;
+
+                                kv[st].x += nHat.x * mag;
+                                kv[st].y += nHat.y * mag;
+                                kv[st].z += nHat.z * mag;
+                            }
                         }
                     }
 
@@ -337,7 +342,7 @@ extern "C"
                     kv[st].z += ds.z;
                 }
 
-                // Accumulate
+                // ---- Accumulate this substep ----
                 for (int st = 0; st < 7; ++st)
                 {
                     pos.x += dt * b_dp[st] * kx[st].x;
@@ -350,8 +355,8 @@ extern "C"
                 }
             }
 
-            if (latchedParityIO)
-                latchedParityIO[i] = latched;
+            // if (latchedParityIO)
+            //     latchedParityIO[i] = latched;
 
             positions[i] = ToDouble3(pos);
             velocities[i] = ToDouble3(vel);

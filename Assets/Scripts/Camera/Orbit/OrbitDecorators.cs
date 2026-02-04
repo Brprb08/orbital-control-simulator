@@ -80,7 +80,7 @@ public class OrbitDecorators : MonoBehaviour
     private void HandleTrackedPlaceholderChanged(Transform _)
     {
         // Intentionally left blank.
-        // Call Clear() here if placeholder previews should hide orbit visuals.
+        // Call Clear() here if placeholder previews hide orbit visuals.
     }
 
     /// <summary>Handles camera mode changes to update or clear visuals appropriately.</summary>

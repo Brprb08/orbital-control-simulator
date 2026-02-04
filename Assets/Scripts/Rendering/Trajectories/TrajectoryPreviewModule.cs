@@ -23,10 +23,6 @@ public sealed class TrajectoryPreviewModule
     private float previewMass;
     private bool previewDirty;
 
-    // --------------------------------------------------------------------
-    // Constants chosen to mirror TrajectoryRenderer behavior
-    // --------------------------------------------------------------------
-
     // Same DAY / horizon style as TrajectoryRenderer
     private const float DAY = 24f * 60f * 60f;
     private const float MAX_HORIZON_SECONDS = 10f * DAY;
@@ -35,12 +31,9 @@ public sealed class TrajectoryPreviewModule
     // For hyperbolic / weird cases, same fallback as ComputeHorizonSeconds
     private const float HYPERBOLIC_FALLBACK_T = 60000f;
 
-    // We don't want 100k steps for a drag preview; cap lower
     private const int PREVIEW_MIN_STEPS = 500;
     private const int PREVIEW_MAX_STEPS = 6000;
 
-    // Match the renderer's default predictionDeltaTime = 7f
-    // (You can wire this through from TrajectoryRenderer if you want it 100% shared.)
     private const float BASE_DT = 7f;
 
     public TrajectoryPreviewModule(
@@ -54,10 +47,6 @@ public sealed class TrajectoryPreviewModule
         this.ctx = ctx;
         this.clipper = clipper ?? (pts => pts);
     }
-
-    // --------------------------------------------------------------------
-    // Public API
-    // --------------------------------------------------------------------
 
     public void Reset()
     {
@@ -93,9 +82,9 @@ public sealed class TrajectoryPreviewModule
         Vector3 startPos,
         Vector3 startVel,
         float bodyMass,
-        int steps,          // ignored (for compatibility with existing call sites)
-        float dt,           // ignored
-        bool singleOrbit)   // NOTE: 'singleOrbit' is still honored by the clipper if it does that
+        int steps,
+        float dt,
+        bool singleOrbit)
     {
         if (previewCo != null && owner != null)
         {
@@ -137,15 +126,10 @@ public sealed class TrajectoryPreviewModule
             });
     }
 
-    // --------------------------------------------------------------------
-    // Internal helpers – "like TrajectoryRenderer"
-    // --------------------------------------------------------------------
-
     /// <summary>
     /// Compute dt & steps for the preview in the same spirit as
     /// TrajectoryRenderer.ComputeFinalLongPass + ComputeHorizonSeconds.
     /// 
-    /// We:
     /// 1. Use vis-viva to get semi-major axis 'a' from r, v, μ.
     /// 2. Compute period T = 2π sqrt(a^3 / μ) for bound orbits.
     /// 3. Clamp horizon ~1.25 * T into [MIN_HORIZON_SECONDS, MAX_HORIZON_SECONDS].
@@ -208,7 +192,6 @@ public sealed class TrajectoryPreviewModule
             }
         }
 
-        // Now pick dt & steps like ComputeFinalLongPass, but with a lower cap
         float effectiveDt = BASE_DT;
         int stepsNeeded = Mathf.CeilToInt(horizonSeconds / effectiveDt);
 

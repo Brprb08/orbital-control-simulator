@@ -34,11 +34,9 @@ public static class OrbitalCalculations
         if (!(mu > 0.0))
             return result;
 
-        // Relative state (r, v)
         double3 r = position_d - new double3(centralBodyPosition.x, centralBodyPosition.y, centralBodyPosition.z);
         double3 v = velocity_d;
 
-        // Magnitudes (squared)
         double r2 = math.lengthsq(r);
         double v2 = math.lengthsq(v);
 
@@ -48,7 +46,6 @@ public static class OrbitalCalculations
             return result;
         }
 
-        // Angular momentum h = r × v
         double3 h = new double3(
             r.y * v.z - r.z * v.y,
             r.z * v.x - r.x * v.z,
@@ -63,10 +60,8 @@ public static class OrbitalCalculations
 
         double invR = 1.0 / Math.Sqrt(r2);
 
-        // Specific orbital energy: E = v²/2 - μ/|r|
         double energy = 0.5 * v2 - mu * invR;
 
-        // Eccentricity vector direction: e = (v × h)/μ - r/|r|
         double3 cxh = new double3(
             v.y * h.z - v.z * h.y,
             v.z * h.x - v.x * h.z,
@@ -76,7 +71,6 @@ public static class OrbitalCalculations
         double3 eVec = cxh * invMu - r * invR;
         double e2_vec = math.lengthsq(eVec);
 
-        // Eccentricity magnitude + semi-major axis
         bool isOpen = energy >= 0.0;
         double ecc;
         double a = 0.0;
@@ -95,20 +89,16 @@ public static class OrbitalCalculations
 
         result.eccentricity = (float)ecc;
 
-        // Node vector (Y-up)
         double3 n = new double3(h.z, 0.0, -h.x);
         double n2 = math.lengthsq(n);
 
-        // Inclination
         double invH = 1.0 / Math.Sqrt(h2);
         double cosInc = Clamp((-h.y) * invH, -1.0, 1.0);
         double incDeg = Math.Acos(cosInc) * (180.0 / Math.PI);
         result.inclination = (float)incDeg;
 
-        // RAAN (atan2(nz, nx))
         result.RAAN = (float)ComputeRaanDegrees(n, n2);
 
-        // Branch: open vs closed orbit
         if (isOpen)
         {
             PopulateOpenOrbit(
@@ -146,9 +136,6 @@ public static class OrbitalCalculations
         return result;
     }
 
-    /// <summary>
-    /// Computes RAAN in degrees from the node vector (Y-up world).
-    /// </summary>
     private static double ComputeRaanDegrees(double3 n, double n2)
     {
         if (n2 <= H_MIN * H_MIN)
@@ -163,9 +150,6 @@ public static class OrbitalCalculations
         return raan;
     }
 
-    /// <summary>
-    /// Fills parameters for open (hyperbolic/parabolic) cases.
-    /// </summary>
     private static void PopulateOpenOrbit(
         ref OrbitalParameters result,
         double mu,
@@ -180,11 +164,9 @@ public static class OrbitalCalculations
         result.semiMajorAxis = 0f;
         result.isCircular = false;
 
-        // Periapsis distance: rp = h² / (μ (1+e))
         double eSafe = Math.Max(ecc, 1.0);
         double rp = h2 / (mu * (1.0 + eSafe));
 
-        // Periapsis direction: use ê if available, else node, else +X
         double3 dir = SelectPeriapsisDirectionOpen(eVec, e2_vec, n, n2);
 
         Vector3 perigeeOffset = new Vector3(
@@ -194,7 +176,7 @@ public static class OrbitalCalculations
         );
 
         result.perigeePosition = centralBodyPosition + perigeeOffset;
-        result.apogeePosition = Vector3.zero; // not defined for open orbits
+        result.apogeePosition = Vector3.zero;
         result.orbitalPeriod = 0f;
         result.meanAnomaly = 0f;
         result.trueAnomaly = 0f;
@@ -202,9 +184,6 @@ public static class OrbitalCalculations
         result.timeToApogee = 0f;
     }
 
-    /// <summary>
-    /// Fills parameters for closed (elliptical) orbits.
-    /// </summary>
     private static void PopulateClosedOrbit(
         ref OrbitalParameters result,
         double mu,
@@ -222,15 +201,12 @@ public static class OrbitalCalculations
     {
         result.semiMajorAxis = (float)a;
 
-        // Period: T = 2π √(a³ / μ)
         double period = 2.0 * Math.PI * Math.Sqrt((a * a * a) / mu);
         result.orbitalPeriod = (float)period;
 
-        // Radii from h²/μ forms
         double rp = h2 / (mu * (1.0 + ecc));
         double ra = h2 / (mu * Math.Max(1e-15, (1.0 - ecc)));
 
-        // Periapsis direction
         double3 periDir = SelectPeriapsisDirectionClosed(ecc, eVec, e2_vec, n, n2);
         result.isCircular = (ecc < ECC_CIRC);
 
@@ -241,7 +217,6 @@ public static class OrbitalCalculations
         result.perigeePosition = center + periOff;
         result.apogeePosition = center - apoOff;
 
-        // Anomalies and times
         ComputeAnomaliesAndTimes(
             ref result,
             mu,
@@ -254,9 +229,6 @@ public static class OrbitalCalculations
         );
     }
 
-    /// <summary>
-    /// Picks a periapsis direction for open orbits.
-    /// </summary>
     private static double3 SelectPeriapsisDirectionOpen(double3 eVec, double e2_vec, double3 n, double n2)
     {
         if (e2_vec > 1e-18)
@@ -274,9 +246,6 @@ public static class OrbitalCalculations
         return new double3(1.0, 0.0, 0.0);
     }
 
-    /// <summary>
-    /// Picks a periapsis direction for closed orbits.
-    /// </summary>
     private static double3 SelectPeriapsisDirectionClosed(
         double ecc,
         double3 eVec,
@@ -299,9 +268,6 @@ public static class OrbitalCalculations
         return new double3(1.0, 0.0, 0.0);
     }
 
-    /// <summary>
-    /// Computes mean/true anomaly and time to next perigee/apogee for closed orbits.
-    /// </summary>
     private static void ComputeAnomaliesAndTimes(
         ref OrbitalParameters result,
         double mu,
@@ -317,7 +283,6 @@ public static class OrbitalCalculations
 
         if (ecc < ECC_TINY)
         {
-            // Approximate ν ≈ E ≈ M for circular orbits.
             double r_mag = Math.Sqrt(r2);
             M_now = 0.0;
             nu_now = 0.0;
@@ -337,9 +302,8 @@ public static class OrbitalCalculations
         }
         else
         {
-            // True anomaly from eVec and r
             double r_mag = Math.Sqrt(r2);
-            double dotEr = eVecDotR(periDir, ecc, r, r_mag); // helper below
+            double dotEr = eVecDotR(periDir, ecc, r, r_mag);
 
             double cosNu = dotEr / (ecc * r_mag);
             cosNu = Clamp(cosNu, -1.0, 1.0);
@@ -349,7 +313,6 @@ public static class OrbitalCalculations
             if (rv < 0.0)
                 nu_now = TWO_PI - nu_now;
 
-            // Eccentric anomaly
             double cosNuVal = Math.Cos(nu_now);
             double sinNuVal = Math.Sin(nu_now);
 
@@ -367,8 +330,7 @@ public static class OrbitalCalculations
         result.trueAnomaly = (float)nu_now;
         result.meanAnomaly = (float)M_now;
 
-        // Mean motion + times
-        double n_mean = Math.Sqrt(mu / (a * a * a)); // rad/s
+        double n_mean = Math.Sqrt(mu / (a * a * a));
 
         double dM_peri = TWO_PI - M_now;
         double timeToPeri = dM_peri / n_mean;
@@ -381,22 +343,13 @@ public static class OrbitalCalculations
         result.timeToApogee = (float)timeToApo;
     }
 
-    /// <summary>
-    /// Helper for dot(e, r) in the anomaly calculation, keeping it explicit.
-    /// </summary>
     private static double eVecDotR(double3 periDir, double ecc, double3 r, double r_mag)
     {
-        // ê is along periDir when ecc is nonzero, scale back by ecc * |r|.
-        // For stability just compute dot(e, r) directly from direction.
         return ecc * r_mag * (periDir.x * (r.x / r_mag) + periDir.y * (r.y / r_mag) + periDir.z * (r.z / r_mag));
     }
 
     private static double3 ToD3(Vector3 v) => new double3(v.x, v.y, v.z);
 
-    /// <summary>
-    /// Safer wrapper around CalculateOrbitalParameters: validates state/central mass
-    /// and falls back to Transform/velocity when the double state isn’t usable.
-    /// </summary>
     public static OrbitalParameters TryParams(NBody body, BodyService svc)
     {
         if (body == null) return default;
@@ -424,7 +377,7 @@ public static class OrbitalCalculations
         const double V_MIN_TRY = 1e-6;
 
         if (!(centralMass > 0f) || r2 < R_MIN_TRY * R_MIN_TRY || v2 < V_MIN_TRY * V_MIN_TRY)
-            return default; // isValid == false
+            return default;
 
         return CalculateOrbitalParameters(centralMass, centerPos, pos, vel);
     }
@@ -442,10 +395,10 @@ public struct OrbitalParameters
     public bool isCircular;
     public bool isValid;
 
-    public float meanAnomaly;   // radians
-    public float trueAnomaly;   // radians
-    public float timeToPerigee; // seconds
-    public float timeToApogee;  // seconds
+    public float meanAnomaly;
+    public float trueAnomaly;
+    public float timeToPerigee;
+    public float timeToApogee;
 
     public OrbitalParameters(bool valid)
     {

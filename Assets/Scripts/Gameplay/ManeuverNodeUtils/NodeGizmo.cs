@@ -20,6 +20,12 @@ public class NodeGizmo : MonoBehaviour
     public string labelPrefix = "Node";
     public float labelYOffset = 1.2f;
 
+    [Header("Label Size Control")]
+    [Tooltip("Label world size when the node is at its minimum distance scale.")]
+    public float minLabelWorldScale = 0.25f;
+    [Tooltip("Label world size when the node is at its maximum distance scale.")]
+    public float maxLabelWorldScale = 4f;
+
     Renderer rend;
     Camera cam;
     Vector3 baseScale;
@@ -69,31 +75,44 @@ public class NodeGizmo : MonoBehaviour
         // Face camera
         transform.forward = (transform.position - cam.transform.position).normalized;
 
-        // Distance scale + pulse
+        // Distance-based node scale + pulse
         float d = Vector3.Distance(transform.position, cam.transform.position);
         float s = Mathf.Clamp(d * distanceScale, minScreenScale, maxScreenScale);
         float p = pulseEnabled
             ? 1f + Mathf.Sin(Time.unscaledTime * Mathf.PI * 2f * pulseSpeed) * pulseAmplitude
             : 1f;
 
-        transform.localScale = baseScale * s * p;
+        const float nodeSizeFactor = 0.5f; // node is half the old size
+        transform.localScale = baseScale * s * p * nodeSizeFactor;
 
-        // Keep text constant-size and billboarded
         if (worldLabel != null)
         {
-            float cancel = 1f / (s * p);
-            worldLabel.transform.localScale = Vector3.one * cancel;
+            // t = how far between min and max node scale
+            float t = 0f;
+            if (!Mathf.Approximately(maxScreenScale, minScreenScale))
+            {
+                t = Mathf.InverseLerp(minScreenScale, maxScreenScale, s);
+            }
+
+            // World-space size of the label
+            float targetWorldScale = Mathf.Lerp(minLabelWorldScale, maxLabelWorldScale, t);
+
+            // Parent is already scaled by s * p * nodeSizeFactor
+            float parentScale = Mathf.Max(transform.lossyScale.x, 1e-4f);
+            float localScale = targetWorldScale / parentScale;
+
+            worldLabel.transform.localScale = Vector3.one * localScale;
             worldLabel.transform.forward = transform.forward;
         }
     }
 
     public void SetPulse(bool enabled) => pulseEnabled = enabled;
 
-    public void SetTimeToNode(float seconds)
+    public void SetTimeToNode(string prefix, float seconds)
     {
         if (!worldLabel) return;
         string sign = seconds >= 0 ? "T+" : "T–";
-        worldLabel.text = $"{labelPrefix} ({sign}{Mathf.Abs(seconds):0}s)";
+        worldLabel.text = $"{prefix} ({sign}{Mathf.Abs(seconds):0}s)";
     }
 
     void OnMouseEnter() => ApplyColor(hoverColor);

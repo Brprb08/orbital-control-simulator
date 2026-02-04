@@ -122,50 +122,24 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!PlacementValidators.TryGetName(
-                _objectNameInputField,
-                "Satellite",
-                _satelliteSpawner.SatelliteCount,
-                MaxSatelliteNameLength,
-                out var name,
-                out var err))
+        // REFACTORED: pull manual parsing + validation into a helper.
+        if (!TryBuildManualPlaceholderData(
+                out string name,
+                out Vector3 position,
+                out Vector3 radius,
+                out float mass,
+                out string error))
         {
-            SetFeedback(err);
-            return;
-        }
-
-        if (!PlacementValidators.TryGetPositionOrDefault(
-                _positionInput,
-                _mainCamera.transform,
-                10f,
-                PosBounds,
-                out var pos,
-                out err))
-        {
-            SetFeedback(err);
-            return;
-        }
-
-        if (!PlacementValidators.TryGetRadius(_radiusInput, RadiusClamp, out var radius, out err))
-        {
-            SetFeedback(err);
-            return;
-        }
-
-        if (!PlacementValidators.TryGetMass(_massInput, MassRange, out var mass, out err))
-        {
-            SetFeedback(err);
+            SetFeedback(error);
             return;
         }
 
         HideGhost();
 
-        Vector3 radiusDefault = Vector3.one;
-
         _lastPlacedGameObject = _satelliteSpawner.CreatePlaceholder(
             name,
-            pos,
-            radiusDefault,
+            position,
+            radius,
             mass,
             _velocityDragManager
         );
@@ -200,80 +174,25 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!PlacementValidators.TryGetName(
-                _kepNameInputField,
-                "Kepler Sat",
-                _satelliteSpawner.SatelliteCount + 1,
-                MaxSatelliteNameLength,
-                out var name,
-                out var err))
+        // REFACTORED: helper returns fully built spawn data or an error.
+        if (!TryBuildKeplerSpawnData(
+                out string name,
+                out double mass,
+                out Vector3 position,
+                out Vector3 velocity,
+                out string error))
         {
-            SetFeedback(err);
+            SetFeedback(error);
             return;
         }
 
-        if (!PlacementValidators.TryGetMass(_kepMassInputField, MassRange, out var mass, out err))
-        {
-            SetFeedback(err);
-            return;
-        }
+        _satelliteSpawner.SpawnSatellite(name, position, (float)mass, velocity, trackAfterSpawn: true);
 
-        if (!PlacementValidators.TryGetDouble(_kepADegOrMetersInputField, out double aMeters))
-        {
-            SetFeedback("Invalid semi-major axis 'a'.");
-            return;
-        }
+        ClearAllFields();
+        SetFeedback($"Placed '{name}' from Keplerian elements.");
 
-        if (!PlacementValidators.TryGetDouble(_kepEccInputField, out double e) || e < 0.0 || e >= 1.0)
-        {
-            SetFeedback("Invalid eccentricity 'e'. Use 0 ≤ e < 1.");
-            return;
-        }
-
-        if (!PlacementValidators.TryGetDouble(_kepIncDegInputField, out double iDeg) ||
-            !PlacementValidators.TryGetDouble(_kepRAANDegInputField, out double raanDeg) ||
-            !PlacementValidators.TryGetDouble(_kepArgPDegInputField, out double argpDeg) ||
-            !PlacementValidators.TryGetDouble(_kepTrueAnomDegInputField, out double trueAnomDeg))
-        {
-            SetFeedback("Invalid angle(s): i / RAAN / ω / ν.");
-            return;
-        }
-
-        try
-        {
-            var (rEci, vEci) = KeplerUtils.FromElements(
-                aMeters,
-                e,
-                iDeg,
-                raanDeg,
-                argpDeg,
-                trueAnomDeg,
-                _mu
-            );
-
-            double rp = aMeters * (1.0 - e);
-            if (rp <= _earthRadiusMeters * 1.001)
-            {
-                double altKm = (rp - _earthRadiusMeters) / 1000.0;
-                SetFeedback($"Orbit intersects Earth (perigee alt {altKm:F1} km). Increase 'a' or reduce 'e'.");
-                return;
-            }
-
-            var pos = FrameUtils.EciToUnity(rEci, _metersPerUnit);
-            var vel = FrameUtils.VelEciToUnity(vEci, _metersPerUnit);
-
-            _satelliteSpawner.SpawnSatellite(name, pos, mass, vel, trackAfterSpawn: true);
-
-            ClearAllFields();
-            SetFeedback($"Placed '{name}' from Keplerian elements.");
-
-            _lastPlacedGameObject = null;
-            UpdateTrackCamButtonState(false);
-        }
-        catch (Exception ex)
-        {
-            SetFeedback($"Kepler placement failed: {ex.Message}");
-        }
+        _lastPlacedGameObject = null;
+        UpdateTrackCamButtonState(false);
     }
 
     /// <summary>
@@ -288,43 +207,24 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!PlacementValidators.TryGetMass(_tleMassInputField, MassRange, out var mass, out var err))
+        // REFACTORED: helper returns spawn data + timing metadata.
+        if (!TryBuildTleSpawnData(
+                out string name,
+                out double mass,
+                out Vector3 position,
+                out Vector3 velocity,
+                out DateTime whenUtc,
+                out DateTime epochUtc,
+                out string error))
         {
-            SetFeedback(err);
+            SetFeedback(error);
             return;
         }
-
-        string name = !string.IsNullOrWhiteSpace(_tleNameInputField?.text)
-            ? _tleNameInputField.text.Trim()
-            : $"TLE Satellite {_satelliteSpawner.NextSatelliteIndex}";
-
-        DateTime whenUtc = DateTime.UtcNow;
-
-        if (!TLEParser.TryPropagate(
-                _tleLine1InputField.text,
-                _tleLine2InputField.text,
-                whenUtc,
-                out Vector3d rEci_m,
-                out Vector3d vEci_mps,
-                out DateTime epochUtc))
-        {
-            SetFeedback("Invalid TLE input or propagation failed.");
-            return;
-        }
-
-        if (rEci_m.magnitude <= _earthRadiusMeters * 1.001)
-        {
-            SetFeedback("Computed position intersects Earth. Check TLE/time.");
-            return;
-        }
-
-        var spawnPos = FrameUtils.EciToUnity(rEci_m, _metersPerUnit);
-        var spawnVel = FrameUtils.VelEciToUnity(vEci_mps, _metersPerUnit);
 
         if (_velocityDragManager?.trajectoryRenderer?.preManeuverLine != null)
             _velocityDragManager.trajectoryRenderer.preManeuverLine.Clear();
 
-        _satelliteSpawner.SpawnSatellite(name, spawnPos, mass, spawnVel, trackAfterSpawn: true);
+        _satelliteSpawner.SpawnSatellite(name, position, (float)mass, velocity, trackAfterSpawn: true);
 
         ClearAllFields();
         SetFeedback(
@@ -593,6 +493,205 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         error = null;
+        return true;
+    }
+
+    // ----------------- REFACTORED HELPERS -----------------
+
+    /// <summary>
+    /// Validates and builds data for a manual placeholder placement.
+    /// </summary>
+    private bool TryBuildManualPlaceholderData(
+        out string name,
+        out Vector3 position,
+        out Vector3 radius,
+        out float mass,
+        out string error)
+    {
+        name = default;
+        position = default;
+        radius = default;
+        mass = default;
+        error = null;
+
+        if (!PlacementValidators.TryGetName(
+                _objectNameInputField,
+                "Satellite",
+                _satelliteSpawner.SatelliteCount,
+                MaxSatelliteNameLength,
+                out name,
+                out error))
+        {
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetPositionOrDefault(
+                _positionInput,
+                _mainCamera.transform,
+                10f,
+                PosBounds,
+                out position,
+                out error))
+        {
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetRadius(_radiusInput, RadiusClamp, out radius, out error))
+        {
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetMass(_massInput, MassRange, out mass, out error))
+        {
+            return false;
+        }
+
+        if (radius == Vector3.zero)
+        {
+            radius = Vector3.one;
+        }
+
+        return true;
+    }
+
+    /// <summary>
+    /// Validates Kepler inputs and produces Unity-space spawn position/velocity.
+    /// </summary>
+    private bool TryBuildKeplerSpawnData(
+        out string name,
+        out double mass,
+        out Vector3 position,
+        out Vector3 velocity,
+        out string error)
+    {
+        name = default;
+        mass = default;
+        position = default;
+        velocity = default;
+        error = null;
+
+        if (!PlacementValidators.TryGetName(
+                _kepNameInputField,
+                "Kepler Sat",
+                _satelliteSpawner.SatelliteCount + 1,
+                MaxSatelliteNameLength,
+                out name,
+                out error))
+        {
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetMass(_kepMassInputField, MassRange, out var massF, out error))
+        {
+            return false;
+        }
+
+        mass = massF;
+
+        if (!PlacementValidators.TryGetDouble(_kepADegOrMetersInputField, out double aMeters))
+        {
+            error = "Invalid semi-major axis 'a'.";
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetDouble(_kepEccInputField, out double e) || e < 0.0 || e >= 1.0)
+        {
+            error = "Invalid eccentricity 'e'. Use 0 ≤ e < 1.";
+            return false;
+        }
+
+        if (!PlacementValidators.TryGetDouble(_kepIncDegInputField, out double iDeg) ||
+            !PlacementValidators.TryGetDouble(_kepRAANDegInputField, out double raanDeg) ||
+            !PlacementValidators.TryGetDouble(_kepArgPDegInputField, out double argpDeg) ||
+            !PlacementValidators.TryGetDouble(_kepTrueAnomDegInputField, out double trueAnomDeg))
+        {
+            error = "Invalid angle(s): i / RAAN / ω / ν.";
+            return false;
+        }
+
+        try
+        {
+            var (rEci, vEci) = KeplerUtils.FromElements(
+                aMeters,
+                e,
+                iDeg,
+                raanDeg,
+                argpDeg,
+                trueAnomDeg,
+                _mu
+            );
+
+            double rp = aMeters * (1.0 - e);
+            if (rp <= _earthRadiusMeters * 1.001)
+            {
+                double altKm = (rp - _earthRadiusMeters) / 1000.0;
+                error = $"Orbit intersects Earth (perigee alt {altKm:F1} km). Increase 'a' or reduce 'e'.";
+                return false;
+            }
+
+            position = FrameUtils.EciToUnity(rEci, _metersPerUnit);
+            velocity = FrameUtils.VelEciToUnity(vEci, _metersPerUnit);
+            return true;
+        }
+        catch (Exception ex)
+        {
+            error = $"Kepler placement failed: {ex.Message}";
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Validates TLE input, propagates to now, and produces Unity-space spawn data.
+    /// </summary>
+    private bool TryBuildTleSpawnData(
+        out string name,
+        out double mass,
+        out Vector3 spawnPos,
+        out Vector3 spawnVel,
+        out DateTime whenUtc,
+        out DateTime epochUtc,
+        out string error)
+    {
+        name = default;
+        mass = default;
+        spawnPos = default;
+        spawnVel = default;
+        whenUtc = DateTime.UtcNow;
+        epochUtc = default;
+        error = null;
+
+        if (!PlacementValidators.TryGetMass(_tleMassInputField, MassRange, out var massF, out error))
+        {
+            return false;
+        }
+
+        mass = massF;
+
+        name = !string.IsNullOrWhiteSpace(_tleNameInputField?.text)
+            ? _tleNameInputField.text.Trim()
+            : $"TLE Satellite {_satelliteSpawner.NextSatelliteIndex}";
+
+        if (!TLEParser.TryPropagate(
+                _tleLine1InputField.text,
+                _tleLine2InputField.text,
+                whenUtc,
+                out Vector3d rEci_m,
+                out Vector3d vEci_mps,
+                out epochUtc))
+        {
+            error = "Invalid TLE input or propagation failed.";
+            return false;
+        }
+
+        if (rEci_m.magnitude <= _earthRadiusMeters * 1.001)
+        {
+            error = "Computed position intersects Earth. Check TLE/time.";
+            return false;
+        }
+
+        spawnPos = FrameUtils.EciToUnity(rEci_m, _metersPerUnit);
+        spawnVel = FrameUtils.VelEciToUnity(vEci_mps, _metersPerUnit);
+
         return true;
     }
 }

@@ -14,7 +14,7 @@ public class TrajectoryRenderer : MonoBehaviour
     private const int FAST_MIN_STEPS = 2000;
     private const int FAST_MAX_STEPS = 12000;
     private const float UI_INTERVAL_SECONDS = 0.5f;
-    private const float FAST_TIMESCALE_THRESHOLD = 5f; // timeScale above which we consider "fast mode"
+    private const float FAST_TIMESCALE_THRESHOLD = 5f;
     private const float EARTH_RADIUS_UNITY = 637.8f;
 
     // ---------------------- Prediction Settings ----------------------
@@ -30,8 +30,6 @@ public class TrajectoryRenderer : MonoBehaviour
 
     // ---------------------- References ----------------------
     [Header("Refs")]
-    // public TextMeshProUGUI apogeeText;
-    // public TextMeshProUGUI perigeeText;
     public ThrustController thrustController;
     public CameraMovement cameraMovement;
     public BodyRuntimeCoordinator bodyRuntimeCoordinator;
@@ -52,11 +50,11 @@ public class TrajectoryRenderer : MonoBehaviour
     public ProceduralLineRenderer burnLine;
 
     [Header("Appearance")]
-    public Color predictionColor = new Color32(0x29, 0x78, 0xFF, 255); // blue
+    public Color predictionColor = new Color32(0x29, 0x78, 0xFF, 255);
     public Color originColor = Color.white;
-    public Color apogeeColor = new Color32(0xFF, 0xB3, 0x00, 255);     // orange
-    public Color perigeeColor = new Color32(0x00, 0xBF, 0xA5, 255);    // teal
-    public Color burnColor = new Color32(0xFF, 0x3B, 0x30, 255);       // red
+    public Color apogeeColor = new Color32(0xFF, 0xB3, 0x00, 255);
+    public Color perigeeColor = new Color32(0x00, 0xBF, 0xA5, 255);
+    public Color burnColor = new Color32(0xFF, 0x3B, 0x30, 255);
 
     [Tooltip("Hide lines when the camera is closer than this distance to the tracked body.")]
     public float lineDisableDistance = 20f;
@@ -71,19 +69,18 @@ public class TrajectoryRenderer : MonoBehaviour
 
     // ---------------------- Burn Trace Settings ----------------------
     [Header("Burn Trace State")]
-    [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.1f; // seconds, unscaled
-    [SerializeField, Min(0f)] private float burnMinDistance = 0.05f;      // world units (~0.5 km if 1u=10km)
+    [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.1f;
+    [SerializeField, Min(0f)] private float burnMinDistance = 0.05f;
     [SerializeField, Min(128)] private int burnMaxPoints = 8192;
 
     [Header("Orbit UI Smoothing")]
-    [SerializeField] private float orbitUISnapThresholdKm = 50f;   // snap if change > this
-    [SerializeField, Range(0f, 1f)] private float orbitUISmoothAlpha = 0.4f; // 0.4 => settles in ~1–2s
+    [SerializeField] private float orbitUISnapThresholdKm = 50f;
+    [SerializeField, Range(0f, 1f)] private float orbitUISmoothAlpha = 0.4f;
 
     private float _smoothedAp_km;
     private float _smoothedPe_km;
     private bool _haveSmoothedOrbitUI;
 
-    // new: external module instead of local lists
     private BurnTraceModule burnTrace;
 
     private float uiNextTick;
@@ -125,10 +122,6 @@ public class TrajectoryRenderer : MonoBehaviour
     private readonly Vector3[] _apogeeLinePoints = new Vector3[2];
     private readonly Vector3[] _perigeeLinePoints = new Vector3[2];
 
-    // =====================================================================
-    // Initialization / Lifecycle
-    // =====================================================================
-
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -143,7 +136,6 @@ public class TrajectoryRenderer : MonoBehaviour
         centralBody = bodyService != null ? bodyService.CentralBody : null;
         RefreshCentralBodyCache();
 
-        // tidy hierarchy
         Transform lineRoot = new GameObject("TrajectoryLines").transform;
         lineRoot.SetParent(transform, false);
         lineRoot.gameObject.layer = gameObject.layer;
@@ -156,7 +148,6 @@ public class TrajectoryRenderer : MonoBehaviour
         previewLine = CreateProceduralLineRenderer("PreviewLine", "#FFD166", lineRoot);
         burnLine = CreateProceduralLineRenderer("BurnLine", burnColor, lineRoot);
 
-        // modules
         burnTrace = new BurnTraceModule(
             burnLine,
             burnSampleInterval,
@@ -190,7 +181,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (ui != null && ui.removePreManeuverLineButton != null)
         {
-            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked); // safety
+            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked);
             ui.removePreManeuverLineButton.onClick.AddListener(OnClearPreManeuverClicked);
         }
     }
@@ -204,13 +195,8 @@ public class TrajectoryRenderer : MonoBehaviour
             ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked);
     }
 
-    // =====================================================================
-    // Main Update Loop
-    // =====================================================================
-
     private void Update()
     {
-        // debounce dirtiness
         if (orbitIsDirty && _dirtyDebounceCounter == 0)
             _dirtyDebounceCounter = dirtyDebounceFrames;
         else if (_dirtyDebounceCounter > 0)
@@ -231,7 +217,6 @@ public class TrajectoryRenderer : MonoBehaviour
             return;
         }
 
-        // thrust state + pre-maneuver snapshot
         if (thrustController)
         {
             bool nowThrusting = thrustController.IsThrusting;
@@ -247,23 +232,19 @@ public class TrajectoryRenderer : MonoBehaviour
             isThrusting = nowThrusting;
         }
 
-        // detect thrust stop → long pass
         if (wasThrusting && !isThrusting)
             fullPassRequested = true;
         wasThrusting = isThrusting;
 
-        // burn trace module
         burnTrace?.Update(
             thrusting: isThrusting,
             bodyTransform: trackedBody.transform,
             unscaledTime: Time.unscaledTime
         );
 
-        // Δv UI
         if (trackedBody.cumulativeDeltaVUsed != 0f)
             ui?.UpdateDeltaV(trackedBody.cumulativeDeltaVUsed);
 
-        // when idle on this body, do long horizon pass
         bool cameraOnTrackedBody =
             cameraMovement != null &&
             cameraMovement.targetBody == trackedBody;
@@ -276,7 +257,6 @@ public class TrajectoryRenderer : MonoBehaviour
         if (ShouldComputePrediction(trackedBody))
             KickOrRefreshPrediction(trackedBody);
 
-        // apsis lines + orbit UI at lower rate
         if (Time.unscaledTime >= uiNextTick)
         {
             var p = OrbitalCalculations.TryParams(trackedBody, bodyService);
@@ -288,10 +268,6 @@ public class TrajectoryRenderer : MonoBehaviour
         DrawOriginLine();
     }
 
-    // =====================================================================
-    // Prediction / Orbit Management
-    // =====================================================================
-
     private bool ShouldComputePrediction(NBody body)
     {
         if (fullPassRequested && !isThrusting) return false;
@@ -302,14 +278,8 @@ public class TrajectoryRenderer : MonoBehaviour
         return isThrusting || dirtyReady;
     }
 
-    /// <summary>
-    /// Sets the tracked body and resets prediction + line state.
-    /// Re-tracking the same body (e.g. Free → Track) will request a fresh
-    /// orbit pass without nuking all state.
-    /// </summary>
     public void SetTrackedBody(NBody body)
     {
-        // Same-body re-track (ReturnToTracking)
         if (body == trackedBody && body != null)
         {
             RequestFullOrbitPass();
@@ -370,6 +340,8 @@ public class TrajectoryRenderer : MonoBehaviour
         predictionSteps = stepsNeeded;
         isComputingPrediction = true;
 
+        float predictionEpoch = bodyRuntimeCoordinator ? bodyRuntimeCoordinator.simulationTime : 0f;
+
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: predictionSteps,
             deltaTime: effectiveDt,
@@ -380,8 +352,13 @@ public class TrajectoryRenderer : MonoBehaviour
                 if (predictionLine == null) { isComputingPrediction = false; return; }
 
                 latestPrediction = resultList ?? new List<Vector3>();
+                latestPredictionBody = body;
                 latestPredictionStartTime = bodyRuntimeCoordinator ? bodyRuntimeCoordinator.simulationTime : 0f;
-                latestPredictionDeltaTime = effectiveDt;
+                const int maxPoints = 2500;
+                int lodFactor = Mathf.Max(1, predictionSteps / maxPoints);
+
+                latestPredictionStartTime = predictionEpoch;
+                latestPredictionDeltaTime = effectiveDt * lodFactor;
 
                 var pts = latestPrediction.ToArray();
                 pts = ClipTrajectorySphere(pts);
@@ -413,6 +390,8 @@ public class TrajectoryRenderer : MonoBehaviour
         stepsNeeded = Mathf.Clamp(stepsNeeded + 8, 1500, MAX_STEPS);
         isComputingPrediction = true;
 
+        float predictionEpoch = bodyRuntimeCoordinator ? bodyRuntimeCoordinator.simulationTime : 0f;
+
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: stepsNeeded,
             deltaTime: effectiveDt,
@@ -421,8 +400,13 @@ public class TrajectoryRenderer : MonoBehaviour
                 if (trackedBody != body) { isComputingPrediction = false; return; }
 
                 latestPrediction = resultList ?? new List<Vector3>();
+                latestPredictionBody = body;
                 latestPredictionStartTime = bodyRuntimeCoordinator ? bodyRuntimeCoordinator.simulationTime : 0f;
-                latestPredictionDeltaTime = effectiveDt;
+                const int maxPoints = 2500;
+                int lodFactor = Mathf.Max(1, predictionSteps / maxPoints);
+
+                latestPredictionStartTime = predictionEpoch;
+                latestPredictionDeltaTime = effectiveDt * lodFactor;
 
                 var pts = latestPrediction.ToArray();
                 pts = ClipTrajectorySphere(pts);
@@ -447,7 +431,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
         float T = bound
             ? 2f * Mathf.PI * Mathf.Sqrt(Mathf.Pow(p.semiMajorAxis, 3) / mu)
-            : 60000f; // fallback for hyperbolic / weird cases
+            : 60000f;
 
         if (fast)
         {
@@ -458,10 +442,6 @@ public class TrajectoryRenderer : MonoBehaviour
         float hFinal = Mathf.Clamp(T * 1.25f, MIN_HORIZON_SECONDS, MAX_HORIZON_SECONDS);
         return hFinal;
     }
-
-    // =====================================================================
-    // Line Visibility / Origin
-    // =====================================================================
 
     private void DrawOriginLine()
     {
@@ -488,9 +468,6 @@ public class TrajectoryRenderer : MonoBehaviour
             apogeeLine?.SetVisibility(false);
             perigeeLine?.SetVisibility(false);
             preManeuverLine?.SetVisibility(false);
-
-            // DO NOT TOUCH PREVIEW LINE HERE
-
             burnLine?.SetVisibility(false);
             return;
         }
@@ -508,10 +485,6 @@ public class TrajectoryRenderer : MonoBehaviour
         previewLine?.SetVisibility(show);
         burnLine?.SetVisibility(show);
     }
-
-    // =====================================================================
-    // Line Creation
-    // =====================================================================
 
     private ProceduralLineRenderer CreateProceduralLineRenderer(string name, Color color, Transform parent)
     {
@@ -538,10 +511,6 @@ public class TrajectoryRenderer : MonoBehaviour
         return CreateProceduralLineRenderer(name, col, parent);
     }
 
-    // =====================================================================
-    // Pre-Maneuver Orbit
-    // =====================================================================
-
     private void CapturePreManeuverFromLatest()
     {
         if (latestPrediction != null && latestPrediction.Count > 1)
@@ -567,7 +536,6 @@ public class TrajectoryRenderer : MonoBehaviour
         ClearPreManeuverOrbit();
         ClearBurnTrace();
 
-        // optional: hide the button after use
         if (ui != null && ui.removePreManeuverLineButton != null)
             ui.removePreManeuverLineButton.gameObject.SetActive(false);
     }
@@ -587,10 +555,6 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         burnTrace?.Reset();
     }
-
-    // =====================================================================
-    // Central Body / Clipping
-    // =====================================================================
 
     private void RefreshCentralBodyCache()
     {
@@ -685,16 +649,10 @@ public class TrajectoryRenderer : MonoBehaviour
         }
         catch
         {
-            // ignore reflection issues
         }
 
-        // Fallback for Earth-scale worlds at 1u=10km
         return EARTH_RADIUS_UNITY;
     }
-
-    // =====================================================================
-    // UI: Apogee / Perigee
-    // =====================================================================
 
     private void ShowApogeePerigeeLines(OrbitalParameters op)
     {
@@ -703,7 +661,7 @@ public class TrajectoryRenderer : MonoBehaviour
         var apo = op.apogeePosition;
         var per = op.perigeePosition;
 
-        float circularUnitsThreshold = 0.5f; // ~1 km / 10 km/u
+        float circularUnitsThreshold = 0.5f;
         bool nearCircular = Mathf.Abs(apo.magnitude - per.magnitude) < circularUnitsThreshold;
 
         if (!nearCircular)
@@ -719,14 +677,12 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (ui != null)
         {
-            // Raw values from geometry
             double ap_km_raw = (apo.magnitude - EARTH_RADIUS_UNITY) * 10.0;
             double pe_km_raw = (per.magnitude - EARTH_RADIUS_UNITY) * 10.0;
 
             float ap_km = (float)ap_km_raw;
             float pe_km = (float)pe_km_raw;
 
-            // --- Fast snap on big changes / first time ---
             if (!_haveSmoothedOrbitUI ||
                 Mathf.Abs(ap_km - _smoothedAp_km) > orbitUISnapThresholdKm ||
                 Mathf.Abs(pe_km - _smoothedPe_km) > orbitUISnapThresholdKm)
@@ -737,7 +693,6 @@ public class TrajectoryRenderer : MonoBehaviour
             }
             else
             {
-                // --- Only smooth small jitter ---
                 float a = orbitUISmoothAlpha;
                 _smoothedAp_km = Mathf.Lerp(_smoothedAp_km, ap_km, a);
                 _smoothedPe_km = Mathf.Lerp(_smoothedPe_km, pe_km, a);
@@ -758,10 +713,6 @@ public class TrajectoryRenderer : MonoBehaviour
         _smoothedPe_km = 0f;
     }
 
-    // =====================================================================
-    // Bulk Control
-    // =====================================================================
-
     public void ClearAllLines()
     {
         predictionLine?.Clear();
@@ -774,7 +725,11 @@ public class TrajectoryRenderer : MonoBehaviour
 
         burnTrace?.Reset();
         previewModule?.Reset();
-        // trackedBody left; SetTrackedBody controls it
+
+        latestPrediction.Clear();
+        latestPredictionBody = null;
+        latestPredictionStartTime = 0f;
+        latestPredictionDeltaTime = 0f;
     }
 
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
@@ -794,10 +749,6 @@ public class TrajectoryRenderer : MonoBehaviour
         r.enabled = visible;
 #endif
     }
-
-    // =====================================================================
-    // Preview API (VelocityDragManager) – forwards to module
-    // =====================================================================
 
     public void QuickPreviewFromState(Vector3 startPos, Vector3 startVel, float bodyMass)
     {
@@ -826,10 +777,6 @@ public class TrajectoryRenderer : MonoBehaviour
             singleOrbit && clipToSingleOrbit
         );
     }
-
-    // =====================================================================
-    // Orbit Clipping Helpers
-    // =====================================================================
 
     private Vector3[] ClipToSingleOrbit(Vector3[] points)
     {
@@ -881,7 +828,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
                 Vector3 cutPos = center + dir * rLen;
                 outPts.Add(cutPos);
-                outPts.Add(outPts[0]); // close loop
+                outPts.Add(outPts[0]);
 
                 return outPts.ToArray();
             }
@@ -925,12 +872,25 @@ public class TrajectoryRenderer : MonoBehaviour
         return Mathf.Atan2(sin, cos);
     }
 
-    // =====================================================================
-    // Camera Body Change
-    // =====================================================================
-
     private void HandleTrackedBodyChanged(NBody newBody)
     {
         SetTrackedBody(newBody);
+    }
+
+    public NBody latestPredictionBody;
+    public bool HasFreshPredictionFor(NBody body)
+    {
+        if (body == null) return false;
+        if (isComputingPrediction) return false;
+        if (orbitIsDirty) return false;
+        if (latestPredictionBody != body) return false;
+        if (latestPrediction == null || latestPrediction.Count < 2) return false;
+
+        Vector3 first = latestPrediction[0];
+        float dist2 = (first - body.transform.position).sqrMagnitude;
+        if (dist2 > 25f)
+            return false;
+
+        return true;
     }
 }

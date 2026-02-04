@@ -241,6 +241,11 @@ public class UIManager : MonoBehaviour
 
     private void HandleTrackedBodyChanged()
     {
+        // if we switched back to the same tracked sat, don't remove pre maneuver line
+        if (cameraTracker.switchedToPrevTrackedSat)
+        {
+            return;
+        }
         if (removePreManeuverLineButton) removePreManeuverLineButton.gameObject.SetActive(false);
         EnsureTrackUiConsistency();
     }
@@ -281,7 +286,6 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(false);
             ShowApogeePerigeePanel(false);
             ShowTimeControlsPanel(false);
-            attitudeControlPanel.SetActive(false);
             if (toggleOptionsPanel) toggleOptionsPanel.SetActive(false);
             if (confirmRemoveSatPanel) confirmRemoveSatPanel.SetActive(false);
             if (dropdown) dropdown.SetActive(false);
@@ -301,7 +305,6 @@ public class UIManager : MonoBehaviour
             ShowOrbitInfoPanel(true);
             ShowApogeePerigeePanel(true);
             ShowTimeControlsPanel(true);
-            attitudeControlPanel.SetActive(true);
             if (objectPlacementManager != null)
             {
                 objectPlacementManager.ClearAllFields();
@@ -384,17 +387,20 @@ public class UIManager : MonoBehaviour
         {
             thrustButtons.SetActive(false);
             maneuverNodePanel.SetActive(false);
+            attitudeControlPanel.SetActive(false);
             return;
         }
 
         if (thrustUiMode == ThrustUiMode.FreeThrust)
         {
             thrustButtons.SetActive(true);
+            attitudeControlPanel.SetActive(true);
             maneuverNodePanel.SetActive(false);
         }
         else
         {
             thrustButtons.SetActive(false);
+            attitudeControlPanel.SetActive(false);
             maneuverNodePanel.SetActive(true);
         }
     }

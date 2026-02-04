@@ -13,8 +13,8 @@ public class VectorLabel3D : MonoBehaviour
     [SerializeField] private float worldOffset = 0.25f;
 
     [Header("Scale vs distance")]
-    [SerializeField] private float nearDistance = 20f;   // smallest scale here
-    [SerializeField] private float farDistance = 200f;  // largest scale here
+    [SerializeField] private float nearDistance = 20f;   // smallest scale
+    [SerializeField] private float farDistance = 200f;  // largest scale 
     [SerializeField] private float nearScale = 0.2f;
     [SerializeField] private float farScale = 0.8f;
 
@@ -79,7 +79,6 @@ public class VectorLabel3D : MonoBehaviour
         float scale = Mathf.Lerp(nearScale, farScale, scaleT);
         transform.localScale = Vector3.one * scale;
 
-        // fade: 15–20 fade in, 20–200 on, 200–250 fade out
         float nearAlpha = Mathf.InverseLerp(closeFadeEnd, closeFadeStart, dist);
         float farAlpha = Mathf.InverseLerp(farFadeEnd, farFadeStart, dist);
         float alpha = nearAlpha * farAlpha;

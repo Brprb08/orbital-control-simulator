@@ -140,7 +140,7 @@ public class TimeController : MonoBehaviour
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
 
-        // Hide in-simulation UI while paused (context-sensitive to camera mode and thrust UI).
+        // Hide in-simulation UI while paused
         if (cameraController != null)
         {
             SetUIStateOnPause(false);

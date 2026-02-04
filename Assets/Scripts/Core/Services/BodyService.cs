@@ -25,7 +25,7 @@ public class BodyService : MonoBehaviour, IBodyService
     private double[] _mass;
     private Vector3[] _thrust;
 
-    private List<NBody> _satCache = new(); // satellites only (no central)
+    private List<NBody> _satCache = new(); // satellites only
 
     private double3[] _posBuf;
     private double3[] _velBuf;
@@ -38,9 +38,7 @@ public class BodyService : MonoBehaviour, IBodyService
 
     private NBody _central;
     private double _muUnity; // cached μ (= G*M) in Unity units
-                             // Cached satellites (non-null, non-central bodies)
-                             // Physics constants
-    private const double G_unity = 6.67430e-23; // 1u = 10 km, matches native
+    private const double G_unity = 6.67430e-23; // 1u = 10 km
 
     private byte[] _isThrustingBuf;
     private sbyte[] _latchedParityBuf; // −1/0/+1
@@ -74,7 +72,7 @@ public class BodyService : MonoBehaviour, IBodyService
             Register(body);
 
         RebuildSatelliteCache();
-        UpdateMu();  // cache μ now that we know central
+        UpdateMu();
     }
 
     private void EnsureBatchBuffers(int n)
@@ -144,20 +142,31 @@ public class BodyService : MonoBehaviour, IBodyService
             _velBuf[i] = b.state.velocity;
             _massBuf[i] = b.state.mass;
 
-            // Raw commanded thrust
+            // Raw commanded thrust from AttitudeController / ThrustController
             _thrustBuf[i] = b.state.force;
 
-            // Normal/AntiNormal mode → flag
             var att = b.GetComponent<AttitudeController>();
-            if (att != null && att.mode == AttitudeController.PointingMode.Normal) normalSign[i] = +1;
-            else if (att != null && att.mode == AttitudeController.PointingMode.AntiNormal) normalSign[i] = -1;
-            else normalSign[i] = 0;
 
-            bool thrusting =
-                (normalSign[i] != 0) &&
-                (_thrustBuf[i].sqrMagnitude > 1e-12f); // adjust ε to taste
+            if (att != null && att.mode == AttitudeController.PointingMode.Normal)
+            {
+                normalSign[i] = +1;   // Normal
+            }
+            else if (att != null && att.mode == AttitudeController.PointingMode.AntiNormal)
+            {
+                normalSign[i] = -1;   // AntiNormal
+            }
+            else
+            {
+                normalSign[i] = 0;    // Free thrust: native uses thrust vector as-is
+            }
 
+            // any nonzero thrust
+            bool thrusting = _thrustBuf[i].sqrMagnitude > 1e-12f;
             _isThrustingBuf[i] = thrusting ? (byte)1 : (byte)0;
+
+            // going to ignore latched parity in native now, keep it cleared.
+            if (_latchedParityBuf != null)
+                _latchedParityBuf[i] = 0;
 
             // Drag inputs
             _cdBuf[i] = (float)b.dragCoefficient;

@@ -15,7 +15,7 @@ public class ManeuverNode
     public NBody targetBody;
     public float duration;
     public bool isFinalized;
-    public string burnType;
+    public BurnType burnType;
 
     public List<Vector3> trajectorySnapshot;
     public float snapshotStartTime;

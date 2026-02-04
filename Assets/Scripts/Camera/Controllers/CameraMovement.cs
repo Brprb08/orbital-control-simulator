@@ -28,7 +28,7 @@ public class CameraMovement : MonoBehaviour
     public bool isFreeCamMode = false;
     public NBody tempEarthBody;
     private Camera mainCamera;
-    /// <summary>Main Camera reference under this component.</summary>
+
     public Camera MainCamera => mainCamera;
 
     [Header("References - UI")]

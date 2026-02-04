@@ -11,6 +11,12 @@ public class NBodyVectorOverlayController : MonoBehaviour
     private const float H_MIN = 1e-5f;
     private const float ANG_MIN_DEG = 5f;
 
+    // --- match AttitudeController polar logic ---
+    private const float POLAR_INCL_TOL_DEG = 0.1f;
+    private static readonly Vector3 WORLD_NORTH = Vector3.up;
+    private const float NORTH_VEL_EPS = 1e-4f;
+    private int _lastPolarSign = +1;
+
     [Header("Core References")]
     private CameraController _cameraController;
     private CameraMovement _cameraMovement;
@@ -30,7 +36,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
     [SerializeField] private Color normalColor = new(0xFF / 255f, 0x4F / 255f, 0xA8 / 255f, 1f);
 
     [Header("Toggles")]
-    [SerializeField] public bool showVectors = true;
+    [SerializeField] public bool showVectors = false;
     [SerializeField] private bool showVelocity = true;
     [SerializeField] private bool showRadial = true;
     [SerializeField] private bool showNormal = false;
@@ -114,20 +120,15 @@ public class NBodyVectorOverlayController : MonoBehaviour
             return;
         }
 
-        if (_cameraController == null || _cameraController.CurrentBody != _trackedBody)
+        // No camera controller, or not tracking a body
+        if (_cameraMovement != null && _cameraController == null || _cameraController.CurrentBody != _trackedBody)
         {
             InvalidateCachedVectors();
             SetAllVisible(false);
             return;
         }
 
-        if (_cameraMovement != null && _cameraMovement.targetBody != _trackedBody)
-        {
-            InvalidateCachedVectors();
-            SetAllVisible(false);
-            return;
-        }
-
+        // No main camera
         if (_mainCamera == null)
         {
             _mainCamera = Camera.main;
@@ -255,7 +256,6 @@ public class NBodyVectorOverlayController : MonoBehaviour
             radialLine?.SetVisibility(false);
         }
 
-        // normal
         if (showNormal && normalLine != null && haveCentral && vel.sqrMagnitude > EPS)
         {
             Vector3 r = pos - center;
@@ -271,7 +271,12 @@ public class NBodyVectorOverlayController : MonoBehaviour
             if (okH)
             {
                 Vector3 hHat = SafeNorm(h, Vector3.up);
-                int liveSign = (h.y < 0f) ? +1 : -1;
+
+                int liveSign = ComputeLiveSign(vHat, h, hHat);
+
+                // In AttitudeController.Normal:
+                //   progradeForMapping = (parityForMapping > 0)
+                //   xHat = progradeForMapping ? -hHat : hHat;
                 bool progradeForMapping = liveSign > 0;
                 normalDir = progradeForMapping ? -hHat : hHat;
             }
@@ -331,17 +336,6 @@ public class NBodyVectorOverlayController : MonoBehaviour
                 normalLabel3D.UpdateLabel(_posCached, _normalDirCached, _scaledLengthCached, true);
             else
                 normalLabel3D.UpdateLabel(_posCached, Vector3.zero, 0f, false);
-        }
-    }
-
-    /// <summary>Enables or disables all vector drawing and labels.</summary>
-    public void SetAllVectorsEnabled(bool enabled)
-    {
-        showVectors = enabled;
-        if (!enabled)
-        {
-            InvalidateCachedVectors();
-            SetAllVisible(false);
         }
     }
 
@@ -425,5 +419,37 @@ public class NBodyVectorOverlayController : MonoBehaviour
     private void HandleTrackedBodyChanged(NBody newBody)
     {
         _trackedBody = newBody;
+    }
+
+    // --- helpers to mirror AttitudeController liveSign logic ---
+
+    private int ComputeLiveSign(Vector3 vHat, Vector3 h, Vector3 hHat)
+    {
+        int defaultSign = (h.y < 0f) ? +1 : -1;
+
+        if (h.sqrMagnitude <= H_MIN * H_MIN)
+            return defaultSign;
+
+        bool nearPolar = IsNearPolar(hHat);
+        if (!nearPolar)
+            return defaultSign;
+
+        float vNorth = Vector3.Dot(vHat, WORLD_NORTH);
+
+        if (Mathf.Abs(vNorth) < NORTH_VEL_EPS)
+            return _lastPolarSign;
+
+        // Same mapping as AttitudeController
+        // ascending (vNorth > 0) vs descending (vNorth < 0)
+        int sign = (vNorth > 0f) ? -1 : +1;
+        _lastPolarSign = sign;
+        return sign;
+    }
+
+    private bool IsNearPolar(Vector3 hHat)
+    {
+        float cosI = Mathf.Clamp(Vector3.Dot(hHat, Vector3.up), -1f, 1f);
+        float inclDeg = Mathf.Acos(Mathf.Abs(cosI)) * Mathf.Rad2Deg;
+        return Mathf.Abs(inclDeg - 90f) <= POLAR_INCL_TOL_DEG;
     }
 }

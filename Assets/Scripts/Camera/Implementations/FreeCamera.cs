@@ -81,7 +81,7 @@ public class FreeCamera : MonoBehaviour
     {
         isFreeMode = enable;
 
-        if (enable)
+        if (isFreeMode)
         {
             Vector3 currentEuler = transform.rotation.eulerAngles;
             yaw = currentEuler.y;
