@@ -32,23 +32,57 @@ This project gave me something I could use to answer those questions. It began a
 
 Everything runs live.
 
-- Continuous computation of orbital parameters such as apogee, perigee, altitude, velocity, inclination, eccentricity, and orbital period
-- Simplified atmospheric drag modeling for low orbits, causing visible orbital decay over time
-- Live thrust application in directions including prograde, retrograde, radial, and normal, with instant trajectory updates
-- Attitude control with selectable pointing modes, supporting both smooth slews and instant reorientation
-- Core orbital motion integrated in a batched Dormand–Prince 5th-order (DoPri5) solver in native C++
-- GPU-based trajectory prediction using RK4 integration, computed asynchronously so previews do not cause stutters in the simulation
-- Runtime creation and reset of satellites with configurable parameters
-  - Cartesian placement using direct position and velocity vectors
-  - TLE placement using real Two-Line Element data
-  - Keplerian placement from classical orbital elements such as semi-major axis and inclination
-  - Randomized placement for quick testing and experimentation
-- Adjustable simulation speed from 1x up to 100x
-- Multiple camera modes:
+### Real-Time Orbital Control & Planning
+- **Continuous, real-time orbital simulation**
+  - Orbits change continuously under gravity, thrust, and drag
+  - Thrust can be applied freely at any time without stopping the simulation
+  - Trajectories update immediately, even under time acceleration
+
+- **Free thrust with attitude-based control**
+  - Select thrust direction using orbital reference frames
+    (prograde, retrograde, radial in/out, normal, anti-normal)
+  - Supports both smooth attitude slews and instant reorientation
+
+- **Interactive maneuver nodes for mission planning**
+  - Optional planning built on top of free thrust
+  - Nodes are placed along the current predicted orbit
+  - Burn timing can be adjusted via drag or slider
+  - Burns support prograde, retrograde, radial in/out, and normal/anti-normal directions
+  - Burns are simulated as **finite-duration thrust under gravity** (not impulsive Δv)
+  - Post-burn trajectories are previewed in real time
+  - Finalized nodes are pinned and locked to prevent accidental edits
+
+### Physics & Numerical Architecture
+- **Native C++ orbital integration using a batched Dormand–Prince 5th-order (DoPri5) solver**
+  - Designed for numerical stability under long runtimes and high time scales
+
+- **Asynchronous trajectory prediction**
+  - GPU-based RK4 integration for baseline orbit previews
+  - CPU-based integration for maneuver previews involving thrust (Will be moved to GPU)
+  - Prediction runs independently so previews never stall the main simulation
+
+### Satellite Creation & Configuration
+- **Runtime creation and reset of satellites**
+  - Cartesian placement using explicit position and velocity vectors
+  - Real-world TLE loading (Two-Line Element sets)
+  - Keplerian placement from classical orbital elements
+  - Randomized orbits for rapid testing and experimentation
+
+### Orbital Analysis & Visualization
+- **Continuous computation of orbital parameters**
+  - Apogee, perigee, altitude, velocity, inclination, eccentricity, and orbital period
+- **Optional vector overlays**
+  - Velocity, prograde, radial, and normal reference frames
+- **Simplified atmospheric drag modeling**
+  - Visible orbital decay for low-altitude orbits
+
+### Time Control & Camera Systems (least important, still useful)
+- **Adjustable simulation speed**
+  - Real-time up to 100× time acceleration
+- **Multiple camera modes**
   - Free camera for placement
-  - Target tracking for following a specific body
-  - Earth camera for better visualization of an orbit
-- Optional vector overlays for velocity and orbital reference frames (prograde, normal, radial)
+  - Target tracking for following a body
+  - Earth-relative camera for orbit visualization
 
 ---
 
@@ -133,5 +167,60 @@ This is not a full n-body simulator. It does not attempt to model multi-body per
 The focus is on experimentation and understanding orbital behavior.
 
 ---
+
+<details>
+<summary><strong>Codebase Layout</strong></summary>
+
+```text
+OrbitalControlSimulator/
+├── Assets/
+│   ├── Scripts/
+│   │   ├── Core/                // Application core: bootstrapping, time, services, utilities
+│   │   │   ├── Bootstrap/       // Simulation startup, dependency wiring, runtime context
+│   │   │   ├── Data/            // Data helpers, parsing, TLE ingestion, frame utilities
+│   │   │   ├── Extensions/      // Shared extension methods
+│   │   │   ├── Services/        // Runtime services (body lookup, registries, coordination)
+│   │   │   └── Time/            // Simulation time scaling and control
+│   │   │
+│   │   ├── Physics/             // Orbital mechanics, Kepler math, constants, native interop
+│   │   │
+│   │   ├── Gameplay/            // Player-interactable simulation systems
+│   │   │   ├── Abstractions/    // Generic gameplay abstractions and shared interfaces
+│   │   │   ├── ManeuverNodeUtils/ // Maneuver node system: nodes, gizmos, drag handles, manager
+│   │   │   └── System/          // Small gameplay/system helpers
+│   │   │
+│   │   ├── Rendering/           // Trajectory, vector, and orbit visualization
+│   │   │   ├── Lines/           // Procedural line rendering and visibility control
+│   │   │   ├── Vectors/         // Force, velocity, and direction overlays
+│   │   │   └── Trajectories/    // CPU/GPU trajectory prediction and rendering
+│   │   │
+│   │   ├── Placement/           // Satellite spawning and initial-condition tools
+│   │   │
+│   │   ├── Camera/              // Camera modes, tracking, and control systems
+│   │   │   ├── Abstractions/    // Camera mode and tracking interfaces
+│   │   │   ├── Controllers/     // Input handling and camera movement logic
+│   │   │   ├── Implementations/ // Concrete camera behaviors (free, orbit, etc.)
+│   │   │   └── Orbit/           // Orbit-specific camera helpers and decorators
+│   │   │
+│   │   ├── UI/                  // UI state, bindings, and interaction helpers
+│   │   │   ├── Common/          // Shared UI components and navigation
+│   │   │   ├── Dropdowns/       // Observable and data-driven dropdowns
+│   │   │   ├── Helpers/         // Formatting, camera math, and UI utilities
+│   │   │   └── Camera/          // Camera-related UI proxies
+│   │   │
+│   │   ├── Audio/               // Ambient and feedback audio systems
+│   │   │
+│   │   └── Tutorial/            // Guided onboarding and tutorial flow
+│   │
+│   ├── Plugins/
+│   │   ├── Source/              // Native C++ physics backend source
+│   │   └── x86_64/              // Precompiled native physics binaries
+│   │
+│   └── Tests/
+│       └── EditMode/            // Edit-mode tests for math, UI, and core logic
+
+
+```
+</details>
 
 [⬆ Back to Top](#orbital-control-simulator)
