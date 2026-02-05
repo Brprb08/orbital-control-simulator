@@ -244,13 +244,24 @@ public class NBody : MonoBehaviour
             // Start slewing Attitude BEFORE burnTime
             if (_attitudeController != null)
             {
-                if (simTime >= node.burnTime - AttitudeLeadTime && simTime < node.burnTime + node.duration)
+                bool inBurnPhase = simTime >= node.burnTime - AttitudeLeadTime &&
+                                   simTime < node.burnTime + node.duration;
+
+                if (inBurnPhase)
                 {
                     var desiredMode = MapBurnTypeToAttitude(node.burnType);
                     if (_attitudeController.mode != desiredMode)
                         _attitudeController.SetMode(desiredMode);
+
+                    // Freeze parity sign while preparing & burning
+                    _attitudeController.lockNormalParity = true;
+                }
+                else
+                {
+                    _attitudeController.lockNormalParity = false;
                 }
             }
+
 
             // Actual burn window check
             if (simTime < node.burnTime)

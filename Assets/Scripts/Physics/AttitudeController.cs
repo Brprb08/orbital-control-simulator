@@ -1,3 +1,4 @@
+using System;
 using UnityEngine;
 
 public class AttitudeController : MonoBehaviour
@@ -53,6 +54,8 @@ public class AttitudeController : MonoBehaviour
     private int _thrustGraceCounter = 0;
     private bool _prevThrusting = false;
     private int _paritySignForBurn = 0;
+
+    [NonSerialized] public bool lockNormalParity;
 
     private const float POLAR_INCL_TOL_DEG = 0.1f;
     private static readonly Vector3 WORLD_NORTH = Vector3.up;
@@ -114,7 +117,7 @@ public class AttitudeController : MonoBehaviour
         Vector3 y = Vector3.Cross(z, x);
 
         var target = Quaternion.LookRotation(x, y);
-        float maxStep = maxSlewRateDegPerSec * Time.deltaTime;
+        float maxStep = maxSlewRateDegPerSec * Time.fixedDeltaTime;
         bool doSnap = snapAttitude || snapNow;
 
         transform.rotation = doSnap
@@ -160,7 +163,7 @@ public class AttitudeController : MonoBehaviour
         int liveSign = ComputeLiveSign(vHat, h, hHat);
 
         bool internalThrusting = nbody && nbody.thrustController != null && nbody.thrustController.IsThrusting;
-        bool thrusting = IsThrustingEffective(internalThrusting);
+        bool thrusting = IsThrustingEffective(internalThrusting) || lockNormalParity;
 
         if (thrusting && !_prevThrusting)
         {
