@@ -9,13 +9,6 @@ public class NBodyVectorOverlayController : MonoBehaviour
 {
     private const float EPS = 1e-8f;
     private const float H_MIN = 1e-5f;
-    private const float ANG_MIN_DEG = 5f;
-
-    // --- match AttitudeController polar logic ---
-    private const float POLAR_INCL_TOL_DEG = 0.1f;
-    private static readonly Vector3 WORLD_NORTH = Vector3.up;
-    private const float NORTH_VEL_EPS = 1e-4f;
-    private int _lastPolarSign = +1;
 
     [Header("Core References")]
     private CameraController _cameraController;
@@ -256,32 +249,22 @@ public class NBodyVectorOverlayController : MonoBehaviour
             radialLine?.SetVisibility(false);
         }
 
+        // normal (right-hand-rule orbit normal)
         if (showNormal && normalLine != null && haveCentral && vel.sqrMagnitude > EPS)
         {
             Vector3 r = pos - center;
-
-            Vector3 rHat = SafeNorm(r, Vector3.up);
-            Vector3 vHat = SafeNorm(vel, Vector3.right);
-            Vector3 h = Vector3.Cross(r, vel);
-
-            float angle = Vector3.Angle(rHat, vHat);
-            bool okH = h.magnitude > H_MIN && angle > ANG_MIN_DEG;
+            Vector3 h = Vector3.Cross(r, vel);   // r × v
 
             Vector3 normalDir;
-            if (okH)
+            if (h.sqrMagnitude > H_MIN * H_MIN)
             {
-                Vector3 hHat = SafeNorm(h, Vector3.up);
-
-                int liveSign = ComputeLiveSign(vHat, h, hHat);
-
-                // In AttitudeController.Normal:
-                //   progradeForMapping = (parityForMapping > 0)
-                //   xHat = progradeForMapping ? -hHat : hHat;
-                bool progradeForMapping = liveSign > 0;
-                normalDir = progradeForMapping ? -hHat : hHat;
+                // ALWAYS +h = right-hand-rule orbit normal
+                normalDir = -h.normalized;
             }
             else
             {
+                // Degenerate fallback if orbit normal is tiny or undefined
+                Vector3 rHat = SafeNorm(r, Vector3.up);
                 BuildTangentFrame(rHat, out _, out var nFallback);
                 normalDir = nFallback;
             }
@@ -419,37 +402,5 @@ public class NBodyVectorOverlayController : MonoBehaviour
     private void HandleTrackedBodyChanged(NBody newBody)
     {
         _trackedBody = newBody;
-    }
-
-    // --- helpers to mirror AttitudeController liveSign logic ---
-
-    private int ComputeLiveSign(Vector3 vHat, Vector3 h, Vector3 hHat)
-    {
-        int defaultSign = (h.y < 0f) ? +1 : -1;
-
-        if (h.sqrMagnitude <= H_MIN * H_MIN)
-            return defaultSign;
-
-        bool nearPolar = IsNearPolar(hHat);
-        if (!nearPolar)
-            return defaultSign;
-
-        float vNorth = Vector3.Dot(vHat, WORLD_NORTH);
-
-        if (Mathf.Abs(vNorth) < NORTH_VEL_EPS)
-            return _lastPolarSign;
-
-        // Same mapping as AttitudeController
-        // ascending (vNorth > 0) vs descending (vNorth < 0)
-        int sign = (vNorth > 0f) ? -1 : +1;
-        _lastPolarSign = sign;
-        return sign;
-    }
-
-    private bool IsNearPolar(Vector3 hHat)
-    {
-        float cosI = Mathf.Clamp(Vector3.Dot(hHat, Vector3.up), -1f, 1f);
-        float inclDeg = Mathf.Acos(Mathf.Abs(cosI)) * Mathf.Rad2Deg;
-        return Mathf.Abs(inclDeg - 90f) <= POLAR_INCL_TOL_DEG;
     }
 }

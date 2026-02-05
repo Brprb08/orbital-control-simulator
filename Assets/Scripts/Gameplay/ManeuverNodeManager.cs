@@ -46,7 +46,6 @@ public class ManeuverNodeManager : MonoBehaviour
     private float _nextSliderAllowed;
     private Vector3 previewVCcache = Vector3.right;
     private Vector3 previewHCache = Vector3.up;
-    private int previewLastPolarSign = +1;
 
     [Header("Burn Tuning")]
     float burnDuration = 20f;
@@ -504,14 +503,14 @@ public class ManeuverNodeManager : MonoBehaviour
         Vector3 h = Vector3.Cross(r, v);
         Vector3 hHat = (h.sqrMagnitude > EPS) ? h.normalized : Vector3.up;
 
+        // Initial burn direction suggestion (for non-normal types)
         Vector3 burnDirRaw = AttitudeMath.ComputeBurnDirection(
             node.burnType,
             burnPos,
             velAtBurn,
             center,
             ref previewVCcache,
-            ref previewHCache,
-            ref previewLastPolarSign
+            ref previewHCache
         );
 
         if (burnDirRaw.sqrMagnitude < EPS)
@@ -519,13 +518,6 @@ public class ManeuverNodeManager : MonoBehaviour
         burnDirRaw.Normalize();
 
         Vector3 burnDirConstant = burnDirRaw;
-
-        float normalSign = 1f;
-        if (node.burnType == BurnType.Normal || node.burnType == BurnType.AntiNormal)
-        {
-            float dot = Vector3.Dot(burnDirRaw, hHat);
-            if (dot < 0f) normalSign = -1f;
-        }
 
         float mass = node.targetBody.mass;
 
@@ -568,8 +560,13 @@ public class ManeuverNodeManager : MonoBehaviour
                     ? hStep.normalized
                     : hHat;
 
-                Vector3 nSigned = normalSign > 0f ? nHatStep : -nHatStep;
+                // FIX: sign is determined purely by BurnType,
+                // not by some evolving "normalSign"
+                Vector3 nSigned = (node.burnType == BurnType.Normal)
+                    ? -nHatStep      // +hStep
+                    : nHatStep;    // -hStep
 
+                // Project out any along-track component to make it a pure plane-change
                 Vector3 lateral = nSigned - Vector3.Dot(nSigned, vHatStep) * vHatStep;
 
                 if (lateral.sqrMagnitude < 1e-6f)
