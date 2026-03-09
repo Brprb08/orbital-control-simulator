@@ -178,21 +178,25 @@ OrbitalControlSimulator/
 │   │   ├── Core/                // Application core: bootstrapping, time, services, utilities
 │   │   │   ├── Bootstrap/       // Simulation startup, dependency wiring, runtime context
 │   │   │   ├── Data/            // Data helpers, parsing, TLE ingestion, frame utilities
+│   │   │   │   └── Parsing/     // TLE and data parsing utilities
 │   │   │   ├── Extensions/      // Shared extension methods
 │   │   │   ├── Services/        // Runtime services (body lookup, registries, coordination)
+│   │   │   │   └── Abstractions/
 │   │   │   └── Time/            // Simulation time scaling and control
 │   │   │
 │   │   ├── Physics/             // Orbital mechanics, Kepler math, constants, native interop
 │   │   │
 │   │   ├── Gameplay/            // Player-interactable simulation systems
 │   │   │   ├── Abstractions/    // Generic gameplay abstractions and shared interfaces
-│   │   │   ├── ManeuverNodeUtils/ // Maneuver node system: nodes, gizmos, drag handles, manager
+│   │   │   ├── ManeuverNodeUtils/ // Maneuver node system: nodes, gizmos, drag handles
 │   │   │   └── System/          // Small gameplay/system helpers
 │   │   │
 │   │   ├── Rendering/           // Trajectory, vector, and orbit visualization
 │   │   │   ├── Lines/           // Procedural line rendering and visibility control
 │   │   │   ├── Vectors/         // Force, velocity, and direction overlays
 │   │   │   └── Trajectories/    // CPU/GPU trajectory prediction and rendering
+│   │   │       ├── Helpers/
+│   │   │       └── Utils/
 │   │   │
 │   │   ├── Placement/           // Satellite spawning and initial-condition tools
 │   │   │
@@ -203,8 +207,10 @@ OrbitalControlSimulator/
 │   │   │   └── Orbit/           // Orbit-specific camera helpers and decorators
 │   │   │
 │   │   ├── UI/                  // UI state, bindings, and interaction helpers
+│   │   │   ├── Buttons/         // UI button behaviors and tab navigation
 │   │   │   ├── Common/          // Shared UI components and navigation
 │   │   │   ├── Dropdowns/       // Observable and data-driven dropdowns
+│   │   │   │   └── SatelliteDropdown/
 │   │   │   ├── Helpers/         // Formatting, camera math, and UI utilities
 │   │   │   └── Camera/          // Camera-related UI proxies
 │   │   │
@@ -213,12 +219,17 @@ OrbitalControlSimulator/
 │   │   └── Tutorial/            // Guided onboarding and tutorial flow
 │   │
 │   ├── Plugins/
-│   │   ├── Source/              // Native C++ physics backend source
+│   │   ├── Source/              // Native C++ physics backend (Dormand–Prince integrator)
 │   │   └── x86_64/              // Precompiled native physics binaries
 │   │
 │   └── Tests/
-│       └── EditMode/            // Edit-mode tests for math, UI, and core logic
-
+│       └── EditMode/
+│           ├── CameraTests/
+│           ├── PhysicsTests/
+│           ├── PlacementTests/
+│           ├── RenderingTests/
+│           ├── UITests/
+│           └── UtilsTests/
 
 ```
 </details>
