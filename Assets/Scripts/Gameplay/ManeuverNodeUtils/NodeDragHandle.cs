@@ -4,12 +4,16 @@ using System.Collections.Generic;
 [RequireComponent(typeof(Collider))]
 public class NodeDragHandle : MonoBehaviour
 {
+    [Header("Optional")]
+    [SerializeField] private ManeuverNodeIndicator indicator;
+    [SerializeField] private float indicatorPickupPaddingPixels = 24f;
+
     ManeuverNodeManager mgr;
     Camera cam;
     bool dragging;
 
     ManeuverNode CurrentNode =>
-        (mgr != null && mgr.nodes.Count > 0) ? mgr.nodes[0] : null;
+        (mgr != null && mgr.HasNode) ? mgr.CurrentNode : null;
 
     List<Vector3> Traj =>
         CurrentNode != null ? CurrentNode.trajectorySnapshot : null;
@@ -18,6 +22,9 @@ public class NodeDragHandle : MonoBehaviour
     {
         mgr = manager;
         cam = Camera.main;
+
+        if (indicator == null)
+            indicator = FindFirstObjectByType<ManeuverNodeIndicator>();
     }
 
     void OnMouseDown()
@@ -36,7 +43,7 @@ public class NodeDragHandle : MonoBehaviour
 
     void Update()
     {
-        if (!dragging || mgr == null) return;
+        if (mgr == null) return;
 
         var node = CurrentNode;
         var traj = Traj;
@@ -48,6 +55,26 @@ public class NodeDragHandle : MonoBehaviour
 
         if (cam == null) cam = Camera.main;
         if (cam == null) return;
+
+        // Added: allow starting drag from the maneuver indicator
+        if (!dragging && Input.GetMouseButtonDown(0))
+        {
+            if (indicator != null &&
+                indicator.IsIndicatorVisible() &&
+                indicator.IsPointerOverIndicator(Input.mousePosition, indicatorPickupPaddingPixels))
+            {
+                dragging = true;
+            }
+        }
+
+        if (!dragging)
+            return;
+
+        if (!Input.GetMouseButton(0))
+        {
+            dragging = false;
+            return;
+        }
 
         if (!mgr.TryGetCurrentNodeIndex(out float currentFloatIndex))
             return;
@@ -89,7 +116,7 @@ public class NodeDragHandle : MonoBehaviour
         }
 
         if (bestSeg < 0)
-            return; // nothing valid found (e.g. very far from orbit)
+            return;
 
         float newFloatIndex = bestSeg + bestSegT;
 

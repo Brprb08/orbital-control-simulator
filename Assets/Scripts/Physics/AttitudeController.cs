@@ -44,11 +44,15 @@ public class AttitudeController : MonoBehaviour
     private BodyService bodyService;
     private SimContext ctx;
 
+    private bool loggedMissingBodyService = false;
+
     private bool wasTracked = false;
 
     private bool holdValid;
     private Vector3 holdX, holdY;
 
+    // Reserved for future parity-lock behavior during burns.
+    // Currently not consumed by attitude math directly.
     [NonSerialized] public bool lockNormalParity;
 
     public void Initialize(SimContext ctx)
@@ -73,7 +77,14 @@ public class AttitudeController : MonoBehaviour
         wasTracked = true;
 
         if (!bodyService)
-            bodyService = FindFirstObjectByType<BodyService>();
+        {
+            if (!loggedMissingBodyService)
+            {
+                Debug.LogWarning($"[AttitudeController] {name} missing BodyService reference. Skipping attitude update.");
+                loggedMissingBodyService = true;
+            }
+            return;
+        }
 
         Vector3 center = (bodyService && bodyService.CentralBody)
             ? bodyService.CentralBody.transform.position
@@ -139,68 +150,65 @@ public class AttitudeController : MonoBehaviour
 
     private void ComputeTargetAxes(Vector3 r, Vector3 v, out Vector3 xHat, out Vector3 yUp)
     {
-        // Unit vectors for radial and velocity
-        Vector3 rHat = SafeNorm(r, Vector3.up);
-        Vector3 vHat = SafeNorm(v, vCache);
+        Vector3 center = Vector3.zero;
+        Vector3 worldPos = center + r;
 
-        // Right-hand-rule orbit normal: h = r × v
-        Vector3 h = Vector3.Cross(r, v);
-        Vector3 hHat = SafeNorm(h, hCache);
-
-        bool okV = v.magnitude > V_MIN;
-        bool okH = h.magnitude > H_MIN;
+        OrbitalFrame frame = OrbitalFrameUtility.Build(
+            worldPos,
+            v,
+            center,
+            ref vCache,
+            ref hCache
+        );
 
         switch (mode)
         {
             case PointingMode.Velocity:
-                xHat = okV ? vHat : vCache;
-                yUp = rHat;
+                xHat = frame.prograde;
+                yUp = frame.radialOut;
                 break;
 
             case PointingMode.Retrograde:
-                xHat = -(okV ? vHat : vCache);
-                yUp = rHat;
+                xHat = frame.retrograde;
+                yUp = frame.radialOut;
                 break;
 
             case PointingMode.Nadir:
-                xHat = -rHat;
-                yUp = okV ? vHat : vCache;
+                xHat = frame.radialIn;
+                yUp = frame.prograde;
                 break;
 
             case PointingMode.Zenith:
-                xHat = rHat;
-                yUp = okV ? vHat : vCache;
+                xHat = frame.radialOut;
+                yUp = frame.prograde;
                 break;
 
             case PointingMode.Normal:
-                if (okH)
+                if (frame.hasNormal)
                 {
-                    // ALWAYS +h = r × v  (right-hand rule normal)
-                    xHat = -hHat;
-                    yUp = okV ? vHat : vCache;
+                    xHat = frame.normal;
+                    yUp = frame.prograde;
                 }
                 else
                 {
-                    // Degenerate fallback if orbit normal is crap
-                    BuildTangentFrame(rHat, out var tHat, out var nFb);
+                    BuildTangentFrame(frame.radialOut, out var tHat, out var nFb);
                     xHat = nFb;
-                    Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
+                    Vector3 vT = v - Vector3.Dot(v, frame.radialOut) * frame.radialOut;
                     yUp = (vT.sqrMagnitude > CROSS_EPS2) ? vT.normalized : tHat;
                 }
                 break;
 
             case PointingMode.AntiNormal:
-                if (okH)
+                if (frame.hasNormal)
                 {
-                    // ALWAYS -h = opposite of normal
-                    xHat = hHat;
-                    yUp = okV ? vHat : vCache;
+                    xHat = frame.antiNormal;
+                    yUp = frame.prograde;
                 }
                 else
                 {
-                    BuildTangentFrame(rHat, out var tHat, out var nFb);
+                    BuildTangentFrame(frame.radialOut, out var tHat, out var nFb);
                     xHat = -nFb;
-                    Vector3 vT = v - Vector3.Dot(v, rHat) * rHat;
+                    Vector3 vT = v - Vector3.Dot(v, frame.radialOut) * frame.radialOut;
                     yUp = (vT.sqrMagnitude > CROSS_EPS2) ? vT.normalized : tHat;
                 }
                 break;
@@ -217,17 +225,11 @@ public class AttitudeController : MonoBehaviour
                 break;
         }
 
-        // Update caches for SafeNorm fallbacks
-        if (okV) vCache = vHat;
-        if (okH) hCache = hHat;
-
-        // Optional: blend roll toward 'up'
         if (rollHold < 1f && rollHold > 0f)
         {
             yUp = Vector3.Slerp(Vector3.up, yUp, rollHold).normalized;
         }
     }
-
 
     public Vector3 GetBurnDirection(Vector3 center, out bool lateral)
     {

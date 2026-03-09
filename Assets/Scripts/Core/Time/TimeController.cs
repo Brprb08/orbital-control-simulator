@@ -106,7 +106,8 @@ public class TimeController : MonoBehaviour
     public void SetTimeScale(float scale)
     {
         Time.timeScale = scale;
-        Time.fixedDeltaTime = 0.02f * Time.timeScale;
+        // Time.fixedDeltaTime = 0.02f * Time.timeScale;
+        Time.fixedDeltaTime = 0.02f;
     }
 
     /// <summary>
@@ -140,7 +141,6 @@ public class TimeController : MonoBehaviour
         previousTimeScale = Time.timeScale;
         Time.timeScale = 0f;
 
-        // Hide in-simulation UI while paused
         if (cameraController != null)
         {
             SetUIStateOnPause(false);
@@ -159,16 +159,12 @@ public class TimeController : MonoBehaviour
         Time.timeScale = previousTimeScale;
 
         if (timeScaleText != null)
-        {
             timeScaleText.text = $"{previousTimeScale:F1}x";
-        }
 
-        Time.fixedDeltaTime = 0.02f * Time.timeScale;
+        Time.fixedDeltaTime = 0.02f;
 
         if (cameraController != null)
-        {
             SetUIStateOnPause(true);
-        }
 
         uIManager.cameraControls.SetActive(true);
 

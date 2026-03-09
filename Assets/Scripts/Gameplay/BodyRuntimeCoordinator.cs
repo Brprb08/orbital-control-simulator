@@ -23,8 +23,9 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     public List<NBody> Bodies => bodies;
 
     [Header("Simulation Settings")]
-    public float simulationTime = 0f;
     public float minCollisionDistance = 0.5f;
+    public int simulationStep = 0;
+    public float simulationTime => simulationStep * Time.fixedDeltaTime;
 
     [Header("References - UI")]
     public TMP_Dropdown bodyDropdown;
@@ -48,7 +49,10 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// <summary>
     /// Advances internal simulation time based on Unity’s fixed update step.
     /// </summary>
-    void FixedUpdate() => simulationTime += Time.fixedDeltaTime;
+    void FixedUpdate()
+    {
+        simulationStep++;
+    }
 
     /// <summary>
     /// Returns all satellite bodies from the <see BodyService.

@@ -8,9 +8,7 @@ using UnityEngine;
 /// </summary>
 public class ExtensionTests_EditModeTests
 {
-    /// <summary>
-    /// Tests that converting a double3 to Vector3 returns correct float values.
-    /// </summary>
+
     [Test]
     public void ToVector3_ConvertsCorrectly()
     {
@@ -22,9 +20,6 @@ public class ExtensionTests_EditModeTests
         Assert.That(v.z, Is.EqualTo(3.3f).Within(0.0001f));
     }
 
-    /// <summary>
-    /// Tests that converting a Vector3 to double3 returns matching double values.
-    /// </summary>
     [Test]
     public void ToDouble3_ConvertsCorrectly()
     {

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using UnityEngine.EventSystems;
 
 /// <summary>
 /// Tests-only scene builder for integration-style EditMode tests.
@@ -11,15 +12,10 @@ using TMPro;
 /// </summary>
 public static class SimTestBootstrap
 {
-    /// <summary>
-    /// Builds a minimal simulation rig without UI and initializes camera/controller/services.
-    /// Registers Earth as the central body and creates the requested number of satellites.
-    /// </summary>
     public static SimTestRig CreateBasic(int satelliteCount = 2, bool ensureSatelliteTag = true)
     {
         var root = new GameObject($"TestRig_{Guid.NewGuid():N}");
 
-        // --- Core components
         var controller = new GameObject("CameraController").AddComponent<CameraController>();
         controller.transform.SetParent(root.transform, false);
 
@@ -46,7 +42,6 @@ public static class SimTestBootstrap
         tut.transform.SetParent(root.transform, false);
         tut.inTutorialMode = false;
 
-        // Build context
         var ctx = new SimContext
         {
             CameraController = controller,
@@ -57,17 +52,23 @@ public static class SimTestBootstrap
             UIManager = null
         };
 
-        // Initialize deps (order mirrors runtime, pared down)
+        // Initialize deps (order mirrors runtime)
         bodyService.Initialize(ctx);
         camMove.Initialize(ctx);
         freeCam.Initialize(ctx);
 
-        // Bodies
-        var earth = MakeBody(root.transform, "Earth", central: true, radius: 637f, camRadius: 637f, tag: "Untagged");
+        var earth = MakeCentralBody(root.transform, "Earth", radius: 637f, camRadius: 637f);
+
         var satellites = new List<NBody>();
         for (int i = 0; i < satelliteCount; i++)
         {
-            var sat = MakeBody(root.transform, $"Sat{i + 1}", central: false, radius: 5f + i, camRadius: 10f + i, tag: ensureSatelliteTag ? "Satellite" : "Untagged");
+            var sat = MakeSatelliteBody(
+                root.transform,
+                $"Sat{i + 1}",
+                radius: 5f + i,
+                camRadius: 10f + i,
+                ensureSatelliteTag: ensureSatelliteTag
+            );
             satellites.Add(sat);
         }
 
@@ -81,26 +82,22 @@ public static class SimTestBootstrap
         return new SimTestRig(root, ctx, controller, camMove, freeCam, bodyService, earth, satellites, null);
     }
 
-    /// <summary>
-    /// Builds a simulation rig with a minimal UI tree and wires UIManager into the SimContext.
-    /// </summary>
     public static SimTestRig CreateWithUI(int satelliteCount = 2, bool withTMP = true)
     {
         var rig = CreateBasic(satelliteCount);
 
-        // Add UIManager + minimal UI graph
         var ui = new GameObject("UIManager").AddComponent<UIManager>();
         ui.transform.SetParent(rig.Root.transform, false);
 
-        // Buttons
         ui.freeCamButton = MakeButton(rig.Root.transform, "FreeBtn");
         ui.trackCamButton = MakeButton(rig.Root.transform, "TrackBtn");
         ui.instructionsButton = MakeButton(rig.Root.transform, "InstructionsBtn");
         ui.placementModeButton = MakeButton(rig.Root.transform, "PlacementModeBtn");
         ui.placeObjectButton = MakeButton(rig.Root.transform, "PlaceObjectBtn");
         ui.burnControlButton = MakeButton(rig.Root.transform, "BurnControlBtn");
+        ui.randomSatelliteButton = MakeButton(rig.Root.transform, "RandomSatelliteBtn");
+        ui.removePreManeuverLineButton = MakeButton(rig.Root.transform, "RemovePreManeuverBtn");
 
-        // Panels
         ui.objectPlacementPanel = MakePanel(rig.Root.transform, "Placement");
         ui.objectInfoPanel = MakePanel(rig.Root.transform, "Info");
         ui.thrustButtons = MakePanel(rig.Root.transform, "ThrustButtons");
@@ -116,7 +113,6 @@ public static class SimTestBootstrap
         ui.cameraControls = MakePanel(rig.Root.transform, "CameraControls");
         ui.attitudeControlPanel = MakePanel(rig.Root.transform, "AttitudeController");
 
-        // Texts
         if (withTMP)
         {
             ui.earthCamButtonText = new GameObject("EarthCamText").AddComponent<TextMeshProUGUI>();
@@ -131,7 +127,6 @@ public static class SimTestBootstrap
             ui.raanText = new GameObject("RAAN").AddComponent<TextMeshProUGUI>();
         }
 
-        // Reuse context but now with UI
         rig.Ctx.UIManager = ui;
 
         // Initialize UI last (it will subscribe to ctx.CameraTracker = controller)
@@ -140,27 +135,32 @@ public static class SimTestBootstrap
         return new SimTestRig(rig.Root, rig.Ctx, rig.Controller, rig.CamMove, rig.FreeCam, rig.BodyService, rig.Earth, rig.Satellites, ui);
     }
 
-    // ---------- helpers ----------
-
-    /// <summary>
-    /// Creates an NBody GameObject with basic radii and optional tag, and parents it under the given transform.
-    /// </summary>
-    private static NBody MakeBody(Transform parent, string name, bool central, float radius, float camRadius, string tag)
+    private static NBody MakeCentralBody(Transform parent, string name, float radius, float camRadius)
     {
         var go = new GameObject(name);
         go.transform.SetParent(parent, false);
-        if (!string.IsNullOrEmpty(tag)) go.tag = tag;
+        go.tag = "Untagged";
 
         var nb = go.AddComponent<NBody>();
-        nb.isCentralBody = central;
+        nb.isCentralBody = true;
         nb.radius = radius;
         nb.cameraDistanceRadius = camRadius;
         return nb;
     }
 
-    /// <summary>
-    /// Creates a minimal Button with a RectTransform and a child TMP text element.
-    /// </summary>
+    private static NBody MakeSatelliteBody(Transform parent, string name, float radius, float camRadius, bool ensureSatelliteTag)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        go.tag = ensureSatelliteTag ? "Satellite" : "Untagged";
+
+        var nb = go.AddComponent<NBody>();
+        nb.isCentralBody = false;
+        nb.radius = radius;
+        nb.cameraDistanceRadius = camRadius;
+        return nb;
+    }
+
     private static Button MakeButton(Transform parent, string name)
     {
         var go = new GameObject(name);
@@ -174,9 +174,6 @@ public static class SimTestBootstrap
         return btn;
     }
 
-    /// <summary>
-    /// Creates a simple panel GameObject with a RectTransform and parents it under the given transform.
-    /// </summary>
     private static GameObject MakePanel(Transform parent, string name)
     {
         var go = new GameObject(name);
@@ -184,11 +181,17 @@ public static class SimTestBootstrap
         go.AddComponent<RectTransform>();
         return go;
     }
+
+    public static EventSystem MakeEventSystem(Transform parent)
+    {
+        var go = new GameObject("EventSystem");
+        go.transform.SetParent(parent, false);
+        go.AddComponent<EventSystem>();
+        go.AddComponent<StandaloneInputModule>();
+        return go.GetComponent<EventSystem>();
+    }
 }
 
-/// <summary>
-/// Disposable handle that exposes references to the built test rig and cleans up on Dispose.
-/// </summary>
 public sealed class SimTestRig : IDisposable
 {
     public GameObject Root { get; }
@@ -215,9 +218,6 @@ public sealed class SimTestRig : IDisposable
         UI = ui;
     }
 
-    /// <summary>
-    /// Destroys the entire rig hierarchy immediately.
-    /// </summary>
     public void Dispose()
     {
         if (Root != null)

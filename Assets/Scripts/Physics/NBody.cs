@@ -226,26 +226,25 @@ public class NBody : MonoBehaviour
     /// </summary>
     private void CheckForNodeBurns()
     {
-        if (isCentralBody || _maneuverNodeManager == null)
-            return;
-
-        if (_bodyRuntimeCoordinator == null)
+        if (isCentralBody || _maneuverNodeManager == null || _bodyRuntimeCoordinator == null)
             return;
 
         float simTime = _bodyRuntimeCoordinator.simulationTime;
+        int currentStep = _bodyRuntimeCoordinator.simulationStep;
+
         bool burnInProgress = false;
-        var nodesToRemove = new List<ManeuverNode>();
+        bool shouldRemoveNode = false;
 
-        foreach (var node in _maneuverNodeManager.nodes)
+        var node = _maneuverNodeManager.CurrentNode;
+
+        if (node != null && node.targetBody == this && node.isFinalized)
         {
-            if (node.targetBody != this || !node.isFinalized)
-                continue;
-
-            // Start slewing Attitude BEFORE burnTime
+            // Start slewing attitude before burnTime
             if (_attitudeController != null)
             {
-                bool inBurnPhase = simTime >= node.burnTime - AttitudeLeadTime &&
-                                   simTime < node.burnTime + node.duration;
+                bool inBurnPhase =
+                    simTime >= node.burnTime - AttitudeLeadTime &&
+                    currentStep < node.burnStartStep + node.burnStepCount;
 
                 if (inBurnPhase)
                 {
@@ -253,7 +252,6 @@ public class NBody : MonoBehaviour
                     if (_attitudeController.mode != desiredMode)
                         _attitudeController.SetMode(desiredMode);
 
-                    // Freeze parity sign while preparing & burning
                     _attitudeController.lockNormalParity = true;
                 }
                 else
@@ -262,21 +260,25 @@ public class NBody : MonoBehaviour
                 }
             }
 
-
-            // Actual burn window check
-            if (simTime < node.burnTime)
-                continue; // not burning yet, just slewing
-
-            if (IsBurnOngoing(node, simTime))
+            // Only check actual burn execution once the burn start step is reached
+            if (currentStep >= node.burnStartStep)
             {
-                ExecuteNodeBurn(node, this);
-                burnInProgress = true;
+                if (IsBurnOngoing(node, currentStep))
+                {
+                    ExecuteNodeBurn(node, this);
+                    burnInProgress = true;
+                }
+                else
+                {
+                    thrustController?.StopAllThrust();
+                    shouldRemoveNode = true; // burn complete
+                }
             }
-            else
-            {
-                thrustController?.StopAllThrust();
-                nodesToRemove.Add(node); // burn complete
-            }
+        }
+        else
+        {
+            if (_attitudeController != null)
+                _attitudeController.lockNormalParity = false;
         }
 
         if (burnInProgress)
@@ -297,27 +299,17 @@ public class NBody : MonoBehaviour
             }
         }
 
-        foreach (var node in nodesToRemove)
-        {
+        if (shouldRemoveNode)
             _maneuverNodeManager.RemoveNode(node);
-        }
     }
 
     /// <summary>
-    /// Skip if node targets another body, isn’t finalized, or hasn’t reached its burn time.
+    /// Runtime burn execution is step-based, not float-time-based.
     /// </summary>
-    private bool ShouldSkipNode(ManeuverNode node, NBody body, float simTime)
+    private bool IsBurnOngoing(ManeuverNode node, int currentStep)
     {
-        return node.targetBody != body || !node.isFinalized || simTime < node.burnTime;
-    }
-
-    /// <summary>
-    /// True while the current sim time remains inside the node’s burn duration.
-    /// </summary>
-    private bool IsBurnOngoing(ManeuverNode node, float simTime)
-    {
-        float timeSinceStart = simTime - node.burnTime;
-        return timeSinceStart < node.duration;
+        return currentStep >= node.burnStartStep &&
+               currentStep < node.burnStartStep + node.burnStepCount;
     }
 
     /// <summary>
@@ -328,7 +320,7 @@ public class NBody : MonoBehaviour
         if (thrustController == null || _maneuverNodeManager == null)
             return;
 
-        thrustController.SetDirectionalThrust();
+        thrustController.StartNodeBurn(node);
     }
 
     /// <summary>
@@ -420,8 +412,8 @@ public class NBody : MonoBehaviour
         }
 
         _tcc.CalculateTrajectoryGPU_Async(
-            startPos: overrideStartPosition ?? transform.position,
-            startVel: overrideStartVelocity ?? velocity,
+            startPos: overrideStartPosition ?? state.position.ToVector3(),
+            startVel: overrideStartVelocity ?? state.velocity.ToVector3(),
             bodyMass: mass,
             otherBodyPositions: otherPositions,
             otherBodyMasses: otherMasses,
@@ -452,11 +444,9 @@ public class NBody : MonoBehaviour
                 return AttitudeController.PointingMode.Retrograde;
 
             case BurnType.RadialIn:
-                // pointing toward planet
                 return AttitudeController.PointingMode.Nadir;
 
             case BurnType.RadialOut:
-                // away from planet
                 return AttitudeController.PointingMode.Zenith;
 
             case BurnType.Normal:
@@ -485,7 +475,7 @@ public class NBody : MonoBehaviour
     {
         get
         {
-            double rUnits = transform.position.magnitude;
+            double rUnits = math.length(state.position);
             return rUnits - EarthRadiusUnits;
         }
     }
@@ -535,7 +525,6 @@ public class NBody : MonoBehaviour
             ? _bodyRuntimeCoordinator.simulationTime
             : 0f;
 
-        // sample spacing must match what the GPU outputs
         // This must mirror TrajectoryComputeController.CalculateTrajectoryGPU_Async.
         const int maxPoints = 2500;
         int lodFactor = Mathf.Max(1, steps / maxPoints);
@@ -550,7 +539,7 @@ public class NBody : MonoBehaviour
                 onComplete?.Invoke(
                     positions ?? new List<Vector3>(),
                     startTime,
-                    sampleDt   // NOT 'dt' – this is the time between output samples
+                    sampleDt
                 );
             });
     }

@@ -34,6 +34,13 @@ public class ThrustController : MonoBehaviour
 
     private AttitudeController attitude;
 
+    private bool nodeBurnActive;
+    private BurnType activeBurnType;
+    private NBody activeBurnBody;
+
+    private Vector3 burnVCache = Vector3.right;
+    private Vector3 burnHCache = Vector3.up;
+
     [Header("Thrust Configs")]
     private bool thrustStopped = false;
 
@@ -73,39 +80,79 @@ public class ThrustController : MonoBehaviour
 
     void FixedUpdate()
     {
-        if (cameraMovement == null) return;
-
-        NBody ship = cameraMovement.targetBody;
+        NBody ship = ResolveActiveShip();
         if (ship == null) return;
 
         if (!attitude) attitude = ship.GetComponent<AttitudeController>();
 
-        Transform t = ship.transform;
-
         bool isThrustingNow = false;
-
-        Vector3 burnDir = t.forward;
 
         if (isForwardThrustActive)
         {
+            Vector3 burnDir = ResolveBurnDirection(ship);
             ApplyThrust(ship, EffectiveForwardThrustMagnitude, burnDir);
             isThrustingNow = true;
         }
 
-        bool lateralFromAttitude = attitude != null &&
-            (attitude.mode == AttitudeController.PointingMode.Normal ||
-             attitude.mode == AttitudeController.PointingMode.AntiNormal);
-
         bool holdCurrent = attitude != null &&
                            attitude.mode == AttitudeController.PointingMode.HoldCurrent;
 
-        ship.projectLateralPerSubstep = lateralFromAttitude && !holdCurrent;
+        ship.projectLateralPerSubstep = IsLateralBurnActive() && !holdCurrent;
 
         if (!isThrustingNow)
         {
-            thrustParticles.Stop();
-            thrustStopped = true;
+            StopThrustVisuals();
         }
+    }
+
+    private NBody ResolveActiveShip()
+    {
+        return nodeBurnActive
+            ? activeBurnBody
+            : (cameraMovement != null ? cameraMovement.targetBody : null);
+    }
+
+    private Vector3 ResolveBurnDirection(NBody ship)
+    {
+        if (ship == null)
+            return Vector3.forward;
+
+        if (!nodeBurnActive)
+            return ship.transform.forward;
+
+        var bodyService = ctx != null ? ctx.BodyService : null;
+        var central = bodyService != null ? bodyService.CentralBody : null;
+        Vector3 center = central != null ? central.transform.position : Vector3.zero;
+
+        Vector3 pos = ship.state.position.ToVector3();
+        Vector3 vel = ship.state.velocity.ToVector3();
+
+        return AttitudeMath.ComputeBurnDirection(
+            activeBurnType,
+            pos,
+            vel,
+            center,
+            ref burnVCache,
+            ref burnHCache
+        );
+    }
+
+    private bool IsLateralBurnActive()
+    {
+        if (nodeBurnActive)
+            return activeBurnType == BurnType.Normal || activeBurnType == BurnType.AntiNormal;
+
+        return attitude != null &&
+               (attitude.mode == AttitudeController.PointingMode.Normal ||
+                attitude.mode == AttitudeController.PointingMode.AntiNormal);
+    }
+
+    private void StopThrustVisuals()
+    {
+        if (!thrustParticles) return;
+
+        thrustParticles.Stop();
+        thrustStopped = true;
     }
 
     public void ApplyThrust(
@@ -182,16 +229,36 @@ public class ThrustController : MonoBehaviour
     /// <summary>
     /// Activates a single thrust mode by name; used by node-driven burns.
     /// </summary>
-    public void SetDirectionalThrust()
+    // public void SetDirectionalThrust()
+    // {
+    //     isForwardThrustActive = true;
+    // }
+
+    public void StartNodeBurn(ManeuverNode node)
     {
+        if (node == null || node.targetBody == null) return;
+
+        activeBurnBody = node.targetBody;
+        activeBurnType = node.burnType;
+        nodeBurnActive = true;
         isForwardThrustActive = true;
     }
 
+    public void StopNodeBurn()
+    {
+        nodeBurnActive = false;
+        activeBurnBody = null;
+        isForwardThrustActive = false;
+        StopThrustVisuals();
+    }
 
     /// <summary>Clears all thrust flags.</summary>
     public void StopAllThrust()
     {
         isForwardThrustActive = false;
+        nodeBurnActive = false;
+        activeBurnBody = null;
+        StopThrustVisuals();
     }
 
     /// <summary>

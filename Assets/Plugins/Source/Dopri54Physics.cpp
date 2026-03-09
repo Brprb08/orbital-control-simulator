@@ -283,12 +283,12 @@ extern "C"
                 }
 
                 // drag at stage 0
-                {
-                    Vector3d d0 = ComputeDragAcceleration(vel, pos, msc, Auu, Cd);
-                    kv[0].x += d0.x;
-                    kv[0].y += d0.y;
-                    kv[0].z += d0.z;
-                }
+                // {
+                //     Vector3d d0 = ComputeDragAcceleration(vel, pos, msc, Auu, Cd);
+                //     kv[0].x += d0.x;
+                //     kv[0].y += d0.y;
+                //     kv[0].z += d0.z;
+                // }
 
                 // ---- Stages 1..6 ----
                 for (int st = 1; st < 7; ++st)
@@ -336,10 +336,10 @@ extern "C"
                         }
                     }
 
-                    Vector3d ds = ComputeDragAcceleration(vi, pi, msc, Auu, Cd);
-                    kv[st].x += ds.x;
-                    kv[st].y += ds.y;
-                    kv[st].z += ds.z;
+                    // Vector3d ds = ComputeDragAcceleration(vi, pi, msc, Auu, Cd);
+                    // kv[st].x += ds.x;
+                    // kv[st].y += ds.y;
+                    // kv[st].z += ds.z;
                 }
 
                 // ---- Accumulate this substep ----

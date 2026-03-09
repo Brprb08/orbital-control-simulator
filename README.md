@@ -43,9 +43,9 @@ Everything runs live.
     (prograde, retrograde, radial in/out, normal, anti-normal)
   - Supports both smooth attitude slews and instant reorientation
 
-- **Interactive maneuver nodes for mission planning**
+- **Interactive maneuver node planning**
   - Optional planning built on top of free thrust
-  - Nodes are placed along the current predicted orbit
+  - A node can be placed along the current predicted orbit
   - Burn timing can be adjusted via drag or slider
   - Burns support prograde, retrograde, radial in/out, and normal/anti-normal directions
   - Burns are simulated as **finite-duration thrust under gravity** (not impulsive Δv)

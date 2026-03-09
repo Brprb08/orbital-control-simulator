@@ -174,7 +174,6 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        // REFACTORED: helper returns fully built spawn data or an error.
         if (!TryBuildKeplerSpawnData(
                 out string name,
                 out double mass,
@@ -207,7 +206,6 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        // REFACTORED: helper returns spawn data + timing metadata.
         if (!TryBuildTleSpawnData(
                 out string name,
                 out double mass,
@@ -268,7 +266,14 @@ public class ObjectPlacementManager : MonoBehaviour
     {
         if (_lastPlacedGameObject != null)
         {
-            Destroy(_lastPlacedGameObject);
+#if UNITY_EDITOR
+            if (!Application.isPlaying)
+                DestroyImmediate(_lastPlacedGameObject);
+            else
+                Destroy(_lastPlacedGameObject);
+#else
+        Destroy(_lastPlacedGameObject);
+#endif
             _lastPlacedGameObject = null;
         }
 
@@ -442,7 +447,10 @@ public class ObjectPlacementManager : MonoBehaviour
 
         _clearingPosition = true;
         inputField.text = string.Empty;
-        EventSystem.current.SetSelectedGameObject(null);
+
+        if (EventSystem.current != null)
+            EventSystem.current.SetSelectedGameObject(null);
+
         _clearingPosition = false;
     }
 
@@ -495,8 +503,6 @@ public class ObjectPlacementManager : MonoBehaviour
         error = null;
         return true;
     }
-
-    // ----------------- REFACTORED HELPERS -----------------
 
     /// <summary>
     /// Validates and builds data for a manual placeholder placement.

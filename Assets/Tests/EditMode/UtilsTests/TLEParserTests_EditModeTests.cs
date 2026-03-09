@@ -17,11 +17,7 @@ public class TLEParserTests_EditModeTests
     // Pick a propagation instant near the TLE epoch (20029.5479... ≈ 2020-01-29T13:08:58Z)
     private static readonly DateTime WhenNearEpochUtc = new DateTime(2020, 1, 29, 13, 8, 58, DateTimeKind.Utc);
 
-    // --- Helpers ---
-
     private static double Mag(Vector3d v) => Math.Sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
-
-    // --- Tests ---
 
     [Test]
     public void TryPropagate_ValidInput_ReturnsTrueAndOutputsVectors()
@@ -34,7 +30,7 @@ public class TLEParserTests_EditModeTests
         Assert.AreNotEqual(default(Vector3d), rEci_m, "Position should be non-zero.");
         Assert.AreNotEqual(default(Vector3d), vEci_mps, "Velocity should be non-zero.");
 
-        // Epoch sanity: parsed epoch should be close to TLE's encoded epoch
+        // parsed epoch should be close to TLE's encoded epoch
         var expectedEpoch = new DateTime(2020, 1, 29, 13, 8, 58, DateTimeKind.Utc);
         Assert.That(Math.Abs((tleEpochUtc - expectedEpoch).TotalSeconds), Is.LessThan(5.0),
             "Parsed TLE epoch should be within a few seconds of expected.");
@@ -73,7 +69,7 @@ public class TLEParserTests_EditModeTests
     [Test]
     public void TryPropagate_PositionWithinExpectedOrbitalRange_InMeters()
     {
-        // LEO orbital radius ~ 6.6e6–7.2e6 m (very rough band; ISS altitude varies)
+        // LEO orbital radius ~ 6.6e6–7.2e6 m
         TLEParser.TryPropagate(
             Line1_Valid, Line2_Valid, WhenNearEpochUtc,
             out Vector3d rEci_m, out _, out _);
@@ -142,7 +138,6 @@ public class TLEParserTests_EditModeTests
         Assert.That(posDiff, Is.LessThan(1e-6), "Positions should be identical (within fp noise).");
         Assert.That(velDiff, Is.LessThan(1e-6), "Velocities should be identical (within fp noise).");
     }
-
 
     [Test]
     public void MalformedArgumentOfPerigee_ReturnsFalse()
