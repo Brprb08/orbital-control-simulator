@@ -21,7 +21,8 @@ public class ObjectPlacementManager : MonoBehaviour
     [SerializeField] private TutorialController _tutorialController;
 
     private ICameraTracker _cameraTracker;
-    private UIManager _uiManager;
+    // private UIManager _uiManager;
+    private UIRoot _uiRoot;
     private SimContext _ctx;
 
     [Header("References - UI (Manual)")]
@@ -88,7 +89,8 @@ public class ObjectPlacementManager : MonoBehaviour
     {
         _ctx = ctx;
         _cameraTracker = ctx.CameraTracker;
-        _uiManager = ctx.UIManager;
+        // _uiManager = ctx.UIManager;
+        _uiRoot = ctx.UIRoot;
         _tutorialController = ctx.TutorialController ?? _tutorialController;
 
         if (_tutorialController != null && _tutorialController.inTutorialMode)
@@ -403,6 +405,23 @@ public class ObjectPlacementManager : MonoBehaviour
     /// <summary>
     /// Locks or unlocks manual placement inputs and related UI controls.
     /// </summary>
+    // private void LockManualPlacementInputs(bool locked)
+    // {
+    //     if (_objectNameInputField != null) _objectNameInputField.interactable = !locked;
+    //     if (_positionInput != null) _positionInput.interactable = !locked;
+    //     if (_massInput != null) _massInput.interactable = !locked;
+    //     if (_radiusInput != null) _radiusInput.interactable = !locked;
+    //     if (_placeObjectButton != null) _placeObjectButton.interactable = !locked;
+
+    //     if (_uiManager?.placementModeButton != null)
+    //         _uiManager.placementModeButton.interactable = !locked;
+
+    //     if (_uiManager?.randomSatelliteButton != null)
+    //         _uiManager.randomSatelliteButton.interactable = !locked;
+
+    //     UpdateTrackCamButtonState(false);
+    // }
+
     private void LockManualPlacementInputs(bool locked)
     {
         if (_objectNameInputField != null) _objectNameInputField.interactable = !locked;
@@ -411,22 +430,22 @@ public class ObjectPlacementManager : MonoBehaviour
         if (_radiusInput != null) _radiusInput.interactable = !locked;
         if (_placeObjectButton != null) _placeObjectButton.interactable = !locked;
 
-        if (_uiManager?.placementModeButton != null)
-            _uiManager.placementModeButton.interactable = !locked;
-
-        if (_uiManager?.randomSatelliteButton != null)
-            _uiManager.randomSatelliteButton.interactable = !locked;
-
+        _uiRoot?.SetPlacementButtonsLocked(locked);
         UpdateTrackCamButtonState(false);
     }
 
     /// <summary>
     /// Enables or disables the track camera button.
     /// </summary>
+    // private void UpdateTrackCamButtonState(bool state)
+    // {
+    //     if (_uiManager?.trackCamButton == null) return;
+    //     _uiManager.trackCamButton.interactable = state;
+    // }
+
     private void UpdateTrackCamButtonState(bool state)
     {
-        if (_uiManager?.trackCamButton == null) return;
-        _uiManager.trackCamButton.interactable = state;
+        _uiRoot?.SetTrackCamButtonInteractable(state);
     }
 
     /// <summary>

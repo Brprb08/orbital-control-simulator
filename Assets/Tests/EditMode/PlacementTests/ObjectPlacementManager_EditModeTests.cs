@@ -92,7 +92,9 @@ public class ObjectPlacementManager_EditModeTests
     private void BuildManager(bool withUIRig = true)
     {
         rig = withUIRig ? SimTestBootstrap.CreateWithUI(1) : SimTestBootstrap.CreateBasic(1);
-        MakeEventSystem(rig.Root.transform);
+
+        if (EventSystem.current == null)
+            MakeEventSystem(rig.Root.transform);
 
         mgr = new GameObject("ObjectPlacementManager").AddComponent<ObjectPlacementManager>();
         mgr.transform.SetParent(rig.Root.transform, false);

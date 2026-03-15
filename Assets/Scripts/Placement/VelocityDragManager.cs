@@ -17,7 +17,7 @@ public class VelocityDragManager : MonoBehaviour
 
     private ICameraTracker _cameraTracker;
     private BodyService _bodyService;
-    private UIManager _uiManager;
+    // private UIManager _uiManager;
     private ObjectPlacementManager _objectPlacementManager;
     private SimContext _ctx;
 
@@ -85,7 +85,7 @@ public class VelocityDragManager : MonoBehaviour
     public void Initialize(SimContext ctx)
     {
         _ctx = ctx;
-        _uiManager = ctx.UIManager;
+        // _uiManager = ctx.UIManager;
         trajectoryRenderer = ctx.TrajectoryRenderer ?? trajectoryRenderer;
         _objectPlacementManager = ctx.ObjectPlacementManager;
         _cameraTracker = ctx.CameraTracker;
@@ -347,14 +347,17 @@ public class VelocityDragManager : MonoBehaviour
 
         CancelLongPreviewDebounce();
 
-        (_cameraTracker ?? _ctx.CameraTracker)?.TrackBody(nbody);
+        var tracker = _cameraTracker ?? _ctx.CameraTracker;
+        tracker?.TrackBody(nbody);
+        tracker?.ReturnToTracking();
+
         trajectoryRenderer?.RequestFullOrbitPass();
         planet = null;
         _isVelocitySet = true;
 
         _dragArrow.Hide();
         _objectPlacementManager?.ResetLastPlacedGameObject();
-        _uiManager?.OnTrackCamPressed();
+        EventSystem.current?.SetSelectedGameObject(null);
 
         if (_velocityInputField != null)
         {

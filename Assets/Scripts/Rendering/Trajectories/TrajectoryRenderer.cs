@@ -26,7 +26,8 @@ public class TrajectoryRenderer : MonoBehaviour
     public NBody trackedBody;
 
     private CameraController cameraController;
-    private UIManager ui;
+    // private UIManager ui;
+    private TrajectoryUI ui;
     private Camera mainCamera;
 
     [Header("Lines")]
@@ -100,7 +101,8 @@ public class TrajectoryRenderer : MonoBehaviour
         cameraController = ctx.CameraController;
         cameraMovement = ctx.CameraMovement;
         thrustController = ctx.ThrustController;
-        ui = ctx.UIManager;
+        // ui = ctx.UIManager;
+        ui = ctx.UIRoot != null ? ctx.UIRoot.TrajectoryUI : null;
         bodyService = ctx.BodyService;
 
         mainCamera = Camera.main;
@@ -172,6 +174,8 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (trackedBody.cumulativeDeltaVUsed != 0f)
             ui?.UpdateDeltaV(trackedBody.cumulativeDeltaVUsed);
+        else
+            ui?.UpdateDeltaV(0f);
 
         bool cameraOnTrackedBody = IsCameraOnTrackedBody();
 
@@ -213,12 +217,12 @@ public class TrajectoryRenderer : MonoBehaviour
         if (trackedBody == null)
         {
             orbitIsDirty = false;
-            ui?.ShowApogeePerigeePanel(false);
+            ui?.SetApogeePerigeePanelVisible(false);
             SetPreManeuverButtonVisible(false);
             return;
         }
 
-        ui?.ShowApogeePerigeePanel(true);
+        ui?.SetApogeePerigeePanelVisible(true);
         RequestFullOrbitPass();
         MarkOrbitDirty();
     }
@@ -294,7 +298,7 @@ public class TrajectoryRenderer : MonoBehaviour
         perigeeLine?.SetVisibility(runtimeVisible && showApogeePerigeeUser);
 
         preManeuverLine?.SetVisibility(runtimeVisible);
-        previewLine?.SetVisibility(runtimeVisible);
+        previewLine?.SetVisibility(true);
         burnLine?.SetVisibility(runtimeVisible);
     }
 
@@ -344,7 +348,7 @@ public class TrajectoryRenderer : MonoBehaviour
         if (!bodyRuntimeCoordinator) Debug.LogError("[TrajectoryRenderer] Missing BodyRuntimeCoordinator");
         if (!cameraMovement) Debug.LogError("[TrajectoryRenderer] Missing CameraMovement");
         if (!thrustController) Debug.LogError("[TrajectoryRenderer] Missing ThrustController");
-        if (!ui) Debug.LogError("[TrajectoryRenderer] Missing UIManager");
+        if (ui == null) Debug.LogError("[TrajectoryRenderer] Missing TrajectoryUI");
         if (!cameraController) Debug.LogError("[TrajectoryRenderer] Missing CameraController");
     }
 
@@ -356,10 +360,10 @@ public class TrajectoryRenderer : MonoBehaviour
             cameraController.OnTrackedBodyChanged += HandleTrackedBodyChanged;
         }
 
-        if (ui != null && ui.removePreManeuverLineButton != null)
+        if (ui != null)
         {
-            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked);
-            ui.removePreManeuverLineButton.onClick.AddListener(OnClearPreManeuverClicked);
+            ui.ClearPreManeuverClicked -= OnClearPreManeuverClicked;
+            ui.ClearPreManeuverClicked += OnClearPreManeuverClicked;
         }
     }
 
@@ -368,8 +372,8 @@ public class TrajectoryRenderer : MonoBehaviour
         if (cameraController != null)
             cameraController.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
 
-        if (ui != null && ui.removePreManeuverLineButton != null)
-            ui.removePreManeuverLineButton.onClick.RemoveListener(OnClearPreManeuverClicked);
+        if (ui != null)
+            ui.ClearPreManeuverClicked -= OnClearPreManeuverClicked;
     }
 
     private void DisposeLineSet()
@@ -418,7 +422,7 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         InvalidatePredictionWork();
         ClearAllLines();
-        ui?.ShowApogeePerigeePanel(false);
+        ui?.SetApogeePerigeePanelVisible(false);
         SetPreManeuverButtonVisible(false);
     }
 
@@ -638,8 +642,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private void SetPreManeuverButtonVisible(bool visible)
     {
-        if (ui != null && ui.removePreManeuverLineButton != null)
-            ui.removePreManeuverLineButton.gameObject.SetActive(visible);
+        ui?.SetRemovePreManeuverButtonVisible(visible);
     }
 
     private void OnClearPreManeuverClicked()
@@ -681,7 +684,7 @@ public class TrajectoryRenderer : MonoBehaviour
             float apogeeKm = (orbitalParameters.apogeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * 10f;
             float perigeeKm = (orbitalParameters.perigeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * 10f;
 
-            ui.UpdateOrbitUI(
+            ui?.UpdateOrbitUI(
                 apogeeKm,
                 perigeeKm,
                 orbitalParameters.semiMajorAxis,

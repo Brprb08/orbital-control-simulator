@@ -9,7 +9,7 @@ public class SatelliteSpawner : MonoBehaviour
 
     private SimContext ctx;
     private ICameraTracker cameraTracker;
-    private UIManager uiManager;
+    // private UIManager uiManager;
 
     private int satelliteCount;
 
@@ -23,7 +23,7 @@ public class SatelliteSpawner : MonoBehaviour
     {
         this.ctx = ctx;
         this.cameraTracker = ctx.CameraTracker;
-        this.uiManager = ctx.UIManager;
+        // this.uiManager = ctx.UIManager;
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
     }
 
@@ -123,11 +123,20 @@ public class SatelliteSpawner : MonoBehaviour
     /// <summary>
     /// Helper to track a given body via camera/UI.
     /// </summary>
+    // public void TrackBody(NBody body)
+    // {
+    //     if (body == null) return;
+
+    //     (cameraTracker ?? ctx?.CameraTracker)?.TrackBody(body);
+    //     uiManager?.OnTrackCamPressed();
+    // }
+
     public void TrackBody(NBody body)
     {
         if (body == null) return;
 
-        (cameraTracker ?? ctx?.CameraTracker)?.TrackBody(body);
-        uiManager?.OnTrackCamPressed();
+        var tracker = cameraTracker ?? ctx?.CameraTracker;
+        tracker?.TrackBody(body);
+        tracker?.ReturnToTracking();
     }
 }

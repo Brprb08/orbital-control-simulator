@@ -31,6 +31,9 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     public TMP_Dropdown bodyDropdown;
     public ConfirmDialog confirmDialog;
 
+    private readonly List<NBody> _pendingRemovals = new();
+    private readonly HashSet<NBody> _pendingRemovalSet = new();
+
     /// <summary>
     /// Initializes connections between body services, visibility controllers,
     /// and dropdown managers. Called by <see SimulationBootstrap.
@@ -66,22 +69,55 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     public void HandleCollision(NBody a, NBody b)
     {
         var remove = (a.mass < b.mass) ? a : b;
+        QueueRemoval(remove);
+    }
+
+    public void QueueRemoval(NBody body)
+    {
+        if (body == null) return;
+
+        if (_pendingRemovalSet.Add(body))
+        {
+            _pendingRemovals.Add(body);
+        }
+    }
+
+    public void FlushPendingRemovals()
+    {
+        if (_pendingRemovals.Count == 0)
+            return;
 
         var tracker = ctx.CameraTracker;
-        if (tracker != null && tracker.CurrentBody == remove)
+
+        for (int i = 0; i < _pendingRemovals.Count; i++)
         {
-            var remaining = bodyService.GetSatellites().Where(x => x != remove).ToList();
-            if (remaining.Count > 0)
-                tracker.TrackBody(remaining[0]);
-            else
-                tracker.BreakToFreeCam();
+            var remove = _pendingRemovals[i];
+            if (remove == null) continue;
+            if (!bodyService.Bodies.Contains(remove)) continue;
+
+            if (tracker != null && tracker.CurrentBody == remove)
+            {
+                var remaining = bodyService
+                    .GetSatellites()
+                    .Where(x => x != remove && !_pendingRemovalSet.Contains(x))
+                    .ToList();
+
+                if (remaining.Count > 0)
+                    tracker.TrackBody(remaining[0]);
+                else
+                    tracker.BreakToFreeCam();
+            }
+
+            bodyService.Deregister(remove);
+            Destroy(remove.gameObject);
+
+            Debug.Log($"[GRAVITY]: Removed {remove.name} due to collision.");
         }
 
-        bodyService.Deregister(remove);
-        Destroy(remove.gameObject);
+        _pendingRemovals.Clear();
+        _pendingRemovalSet.Clear();
 
-        ctx.BodyDropdownManager.UpdateDropdownSelection();
-        Debug.Log($"[GRAVITY]: Removed {remove.name} due to collision.");
+        ctx.BodyDropdownManager?.UpdateDropdownSelection();
     }
 
     public void RemoveSatellite()

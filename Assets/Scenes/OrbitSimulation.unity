@@ -8771,7 +8771,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1134296948}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: ShowFeedbackPanel
         m_Mode: 1
@@ -9563,7 +9563,7 @@ MonoBehaviour:
   maneuverNodeManager: {fileID: 772056303}
   thrustController: {fileID: 772056304}
   timeController: {fileID: 932853253}
-  uIManager: {fileID: 1134296948}
+  uIRoot: {fileID: 1323397340}
   lineVisibilityController: {fileID: 2109498701}
   trajectoryComputeController: {fileID: 2109498700}
   trajectoryRenderer: {fileID: 2109498698}
@@ -9575,7 +9575,7 @@ MonoBehaviour:
   randomSatelliteSpawner: {fileID: 1119227885}
   satelliteSpawner: {fileID: 1119227884}
   bodyService: {fileID: 1354312600}
-  attitudeUIBinder: {fileID: 50726735}
+  attitudeUIController: {fileID: 50726735}
   nBodyVectorOverlayController: {fileID: 2109498702}
 --- !u!1 &544531821
 GameObject:
@@ -9737,7 +9737,7 @@ MonoBehaviour:
   m_VertexBufferAutoSizeReduction: 0
   m_useMaxVisibleDescender: 1
   m_pageToDisplay: 1
-  m_margin: {x: 0, y: 0, z: 0, w: 0}
+  m_margin: {x: 0, y: 0.001953125, z: 0, w: 0}
   m_isUsingLegacyAnimationComponent: 0
   m_isVolumetricText: 0
   _SortingLayer: 0
@@ -13269,7 +13269,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 6d703b1032d8d034a8fe28a8ddbab420, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  orbitPreviewUI: {fileID: 1134296950}
+  orbitPreviewUI: {fileID: 1323397342}
   previewRebuildDelay: 0.08
   fastPreviewSteps: 2000
   fastPreviewDt: 6
@@ -14356,18 +14356,6 @@ MonoBehaviour:
       - m_Target: {fileID: 237235845}
         m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
         m_MethodName: PlayClickSound
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 1134296948}
-        m_TargetAssemblyTypeName: UIManager, CoreRuntime
-        m_MethodName: SwitchBurnMode
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -16005,11 +15993,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 20d9f86bef5ecc44f9178c38095aef26, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  timeSlider: {fileID: 1873310758}
-  timeScaleText: {fileID: 365525810}
-  pauseButton: {fileID: 2112860532}
-  pauseButtonText: {fileID: 60513572}
-  uIManager: {fileID: 0}
+  uiRoot: {fileID: 0}
   cameraController: {fileID: 0}
 --- !u!4 &933124824 stripped
 Transform:
@@ -23578,173 +23562,6 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1127300313}
   m_CullTransparentMesh: 1
---- !u!1 &1134296946
-GameObject:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  serializedVersion: 6
-  m_Component:
-  - component: {fileID: 1134296947}
-  - component: {fileID: 1134296948}
-  - component: {fileID: 1134296949}
-  - component: {fileID: 1134296950}
-  - component: {fileID: 1134296951}
-  m_Layer: 0
-  m_Name: UI
-  m_TagString: Untagged
-  m_Icon: {fileID: 0}
-  m_NavMeshLayer: 0
-  m_StaticEditorFlags: 0
-  m_IsActive: 1
---- !u!4 &1134296947
-Transform:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134296946}
-  serializedVersion: 2
-  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
-  m_LocalScale: {x: 1, y: 1, z: 1}
-  m_ConstrainProportionsScale: 0
-  m_Children: []
-  m_Father: {fileID: 1803650427}
-  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1134296948
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134296946}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: f91ffe0992e74414cb6eba95c46e10d4, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  tutorialController: {fileID: 716810392}
-  vectorOverlayController: {fileID: 2109498702}
-  freeCamButton: {fileID: 1142357709}
-  trackCamButton: {fileID: 1407380277}
-  instructionsButton: {fileID: 499242614}
-  objectPlacementPanel: {fileID: 61829408}
-  objectInfoPanel: {fileID: 223772662}
-  thrustButtons: {fileID: 573697104}
-  maneuverNodePanel: {fileID: 209359998}
-  burnControlsPanel: {fileID: 2034361207}
-  apogeePerigeePanel: {fileID: 397926655}
-  timeControlsPanel: {fileID: 1063296264}
-  instructionsPanel: {fileID: 1138443353}
-  toggleOptionsPanel: {fileID: 1948112842}
-  dropdown: {fileID: 1612063109}
-  placeTLEPanel: {fileID: 2110860975}
-  placementSelectPanel: {fileID: 1861547495}
-  randomPlacementPanel: {fileID: 28241653}
-  cameraControls: {fileID: 790294473}
-  placeKeplerPanel: {fileID: 1609824493}
-  confirmRemoveSatPanel: {fileID: 1867441399}
-  attitudeControlPanel: {fileID: 1226517827}
-  nameInputField: {fileID: 861192241}
-  positionInputField: {fileID: 1784521142}
-  massInputField: {fileID: 916841083}
-  radiusInputField: {fileID: 770696344}
-  velocityInputField: {fileID: 0}
-  placeObjectButton: {fileID: 229281974}
-  placementModeButton: {fileID: 1746140638}
-  randomSatelliteButton: {fileID: 135207881}
-  burnControlButton: {fileID: 844738191}
-  removePreManeuverLineButton: {fileID: 2092976187}
-  vectorToggleButton: {fileID: 1652595124}
-  earthCamButtonText: {fileID: 26694654}
-  instructionText: {fileID: 1138443355}
-  feedbackText: {fileID: 885149437}
-  apogeeText: {fileID: 1715665085}
-  perigeeText: {fileID: 288121592}
-  semiMajorAxisText: {fileID: 1873600792}
-  eccentricityText: {fileID: 1219915336}
-  orbitalPeriodText: {fileID: 289863554}
-  inclinationText: {fileID: 1511272215}
-  raanText: {fileID: 696612674}
-  meanAnomalyText: {fileID: 28634314}
-  deltaVText: {fileID: 444277609}
-  timeToPerigeeText: {fileID: 291051919}
-  timeToApogeeText: {fileID: 1621258852}
-  vectorToggleButtonText: {fileID: 953917742}
-  showInstructionText: 0
-  isTracking: 1
-  earthCamPressed: 1
-  tutorialPanel: {fileID: 1975263423}
-  skipButton: {fileID: 1730640448}
---- !u!114 &1134296949
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134296946}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 5b050a77b13999246b1c3b5bf8115497, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _canvas: {fileID: 294874405}
-  _cameraController: {fileID: 1667378690}
-  _mainCamera: {fileID: 330585545}
-  _iconRect: {fileID: 1793071360}
-  _bodyService: {fileID: 1354312600}
-  _showAtDistance: 500
-  _worldOffset: {x: 0, y: 0, z: 0}
-  _followSmoothing: 0
-  _screenEdgePadding: 0
-  _hideWhenOccludedByCentralBody: 1
-  _earthViewViewportMargin: 0
-  _innerViewportMargin: 0.02
---- !u!114 &1134296950
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134296946}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: d3e6f6d0ffd6c1849a0a9dd8b9a8d5ca, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  previewPeriapsisLabel: {fileID: 340014500}
-  previewApoapsisLabel: {fileID: 2103449599}
-  previewPeriodLabel: {fileID: 1161556911}
-  previewInclinationLabel: {fileID: 627134681}
-  previewEccentricityLabel: {fileID: 646576277}
---- !u!114 &1134296951
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1134296946}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6bf573288a20a0b4ba4f7f4e6427819d, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  _canvas: {fileID: 294874405}
-  _mainCamera: {fileID: 330585545}
-  _iconRect: {fileID: 1964796700}
-  _label: {fileID: 1888941148}
-  _nodeManager: {fileID: 772056303}
-  _bodyService: {fileID: 1354312600}
-  _showAtDistance: 200
-  _worldOffset: {x: 0, y: 0, z: 0}
-  _screenEdgePadding: 16
-  _hideWhenOccludedByCentralBody: 1
-  _hide3DNodeWhenIndicatorActive: 1
-  _innerViewportMargin: 0.02
-  _labelScale: 0.5
-  _labelOffset: {x: 5, y: 40}
 --- !u!1 &1136170321
 GameObject:
   m_ObjectHideFlags: 0
@@ -27083,6 +26900,190 @@ CanvasRenderer:
   m_PrefabAsset: {fileID: 0}
   m_GameObject: {fileID: 1318243056}
   m_CullTransparentMesh: 1
+--- !u!1 &1323397337
+GameObject:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  serializedVersion: 6
+  m_Component:
+  - component: {fileID: 1323397338}
+  - component: {fileID: 1323397339}
+  - component: {fileID: 1323397340}
+  - component: {fileID: 1323397343}
+  - component: {fileID: 1323397342}
+  - component: {fileID: 1323397341}
+  m_Layer: 0
+  m_Name: UI
+  m_TagString: Untagged
+  m_Icon: {fileID: 0}
+  m_NavMeshLayer: 0
+  m_StaticEditorFlags: 0
+  m_IsActive: 1
+--- !u!4 &1323397338
+Transform:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  serializedVersion: 2
+  m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
+  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalScale: {x: 1, y: 1, z: 1}
+  m_ConstrainProportionsScale: 0
+  m_Children: []
+  m_Father: {fileID: 1803650427}
+  m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
+--- !u!114 &1323397339
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b79058b47500004fb8d7eb7333cb370, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  freeCamButton: {fileID: 1142357709}
+  trackCamButton: {fileID: 1407380277}
+  instructionsButton: {fileID: 499242614}
+  placeObjectButton: {fileID: 229281974}
+  placementModeButton: {fileID: 1746140638}
+  randomSatelliteButton: {fileID: 135207881}
+  burnControlButton: {fileID: 844738191}
+  removePreManeuverLineButton: {fileID: 2092976187}
+  vectorToggleButton: {fileID: 1652595124}
+  earthView: {fileID: 1490468289}
+  removeSatellite: {fileID: 1389466305}
+  skipButton: {fileID: 1730640448}
+  pauseButton: {fileID: 2112860532}
+  objectPlacementPanel: {fileID: 61829408}
+  objectInfoPanel: {fileID: 223772662}
+  thrustButtons: {fileID: 573697104}
+  maneuverNodePanel: {fileID: 209359998}
+  burnControlsPanel: {fileID: 2034361207}
+  apogeePerigeePanel: {fileID: 397926655}
+  timeControlsPanel: {fileID: 1063296264}
+  instructionsPanel: {fileID: 1138443353}
+  toggleOptionsPanel: {fileID: 1948112842}
+  dropdown: {fileID: 1612063109}
+  placeTLEPanel: {fileID: 2110860975}
+  placementSelectPanel: {fileID: 1861547495}
+  randomPlacementPanel: {fileID: 28241653}
+  cameraControls: {fileID: 790294473}
+  placeKeplerPanel: {fileID: 1609824493}
+  confirmRemoveSatPanel: {fileID: 1867441399}
+  attitudeControlPanel: {fileID: 1226517827}
+  tutorialPanel: {fileID: 1975263423}
+  nameInputField: {fileID: 861192241}
+  positionInputField: {fileID: 1784521142}
+  massInputField: {fileID: 916841083}
+  radiusInputField: {fileID: 770696344}
+  velocityInputField: {fileID: 151038885}
+  trackedSatellites: {fileID: 1744299771}
+  earthCamButtonText: {fileID: 26694654}
+  instructionText: {fileID: 1138443355}
+  feedbackText: {fileID: 885149437}
+  apogeeText: {fileID: 1715665085}
+  perigeeText: {fileID: 288121592}
+  semiMajorAxisText: {fileID: 1873600792}
+  eccentricityText: {fileID: 1219915336}
+  orbitalPeriodText: {fileID: 289863554}
+  inclinationText: {fileID: 1511272215}
+  raanText: {fileID: 696612674}
+  meanAnomalyText: {fileID: 28634314}
+  deltaVText: {fileID: 444277609}
+  timeToPerigeeText: {fileID: 291051919}
+  timeToApogeeText: {fileID: 1621258852}
+  vectorToggleButtonText: {fileID: 953917742}
+  timeScaleText: {fileID: 365525810}
+  pauseButtonText: {fileID: 60513572}
+  timeSlider: {fileID: 1873310758}
+--- !u!114 &1323397340
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f6aeb9e120e327148826c8e261626998, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  refs: {fileID: 1323397339}
+  vectorOverlayController: {fileID: 2109498702}
+--- !u!114 &1323397341
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 6bf573288a20a0b4ba4f7f4e6427819d, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _canvas: {fileID: 294874405}
+  _mainCamera: {fileID: 330585545}
+  _iconRect: {fileID: 1964796700}
+  _label: {fileID: 1888941148}
+  _nodeManager: {fileID: 772056303}
+  _bodyService: {fileID: 1354312600}
+  _showAtDistance: 200
+  _worldOffset: {x: 0, y: 0, z: 0}
+  _screenEdgePadding: 16
+  _hideWhenOccludedByCentralBody: 1
+  _hide3DNodeWhenIndicatorActive: 1
+  _innerViewportMargin: 0.02
+  _labelScale: 0.5
+  _labelOffset: {x: 5, y: 40}
+--- !u!114 &1323397342
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: d3e6f6d0ffd6c1849a0a9dd8b9a8d5ca, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  previewPeriapsisLabel: {fileID: 340014500}
+  previewApoapsisLabel: {fileID: 2103449599}
+  previewPeriodLabel: {fileID: 1161556911}
+  previewInclinationLabel: {fileID: 627134681}
+  previewEccentricityLabel: {fileID: 646576277}
+--- !u!114 &1323397343
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1323397337}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 5b050a77b13999246b1c3b5bf8115497, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  _canvas: {fileID: 294874405}
+  _cameraController: {fileID: 1667378690}
+  _mainCamera: {fileID: 330585545}
+  _iconRect: {fileID: 1793071360}
+  _bodyService: {fileID: 1354312600}
+  _showAtDistance: 500
+  _worldOffset: {x: 0, y: 0, z: 0}
+  _followSmoothing: 0
+  _screenEdgePadding: 0
+  _hideWhenOccludedByCentralBody: 1
+  _earthViewViewportMargin: 0
+  _innerViewportMargin: 0.02
 --- !u!1 &1345510057
 GameObject:
   m_ObjectHideFlags: 0
@@ -33847,7 +33848,7 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-      - m_Target: {fileID: 1134296948}
+      - m_Target: {fileID: 0}
         m_TargetAssemblyTypeName: UIManager, CoreRuntime
         m_MethodName: OnSkipButtonPressed
         m_Mode: 1
@@ -34359,18 +34360,6 @@ MonoBehaviour:
       - m_Target: {fileID: 237235845}
         m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
         m_MethodName: PlayClickSound
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 1134296948}
-        m_TargetAssemblyTypeName: UIManager, CoreRuntime
-        m_MethodName: SwitchPlacementMode
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -35334,9 +35323,9 @@ Transform:
   - {fileID: 1667378687}
   - {fileID: 1354312598}
   - {fileID: 772056305}
-  - {fileID: 1134296947}
   - {fileID: 2081669842}
   - {fileID: 50726734}
+  - {fileID: 1323397338}
   m_Father: {fileID: 0}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
 --- !u!1 &1835204575
@@ -40049,18 +40038,6 @@ MonoBehaviour:
       - m_Target: {fileID: 237235845}
         m_TargetAssemblyTypeName: UIButtonSound, CoreRuntime
         m_MethodName: PlayClickSound
-        m_Mode: 1
-        m_Arguments:
-          m_ObjectArgument: {fileID: 0}
-          m_ObjectArgumentAssemblyTypeName: UnityEngine.Object, UnityEngine
-          m_IntArgument: 0
-          m_FloatArgument: 0
-          m_StringArgument: 
-          m_BoolArgument: 0
-        m_CallState: 2
-      - m_Target: {fileID: 932853253}
-        m_TargetAssemblyTypeName: TimeController, Assembly-CSharp
-        m_MethodName: TogglePause
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}

@@ -4,7 +4,7 @@ using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
-public class AttitudeUIBinder : MonoBehaviour
+public class AttitudeUIController : MonoBehaviour
 {
     public ICameraTracker cameraTracker;
     public Button btnPrograde, btnRetrograde, btnNadir, btnZenith, btnNormal, btnAntiNormal;

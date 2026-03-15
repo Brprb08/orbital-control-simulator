@@ -15,7 +15,7 @@ public class SimulationBootstrap : MonoBehaviour
     public ManeuverNodeManager maneuverNodeManager;
     public ThrustController thrustController;
     public TimeController timeController;
-    public UIManager uIManager;
+    public UIRoot uIRoot;
     public LineVisibilityController lineVisibilityController;
     public TrajectoryComputeController trajectoryComputeController;
     public TrajectoryRenderer trajectoryRenderer;
@@ -27,7 +27,7 @@ public class SimulationBootstrap : MonoBehaviour
     public RandomSatelliteSpawner randomSatelliteSpawner;
     public SatelliteSpawner satelliteSpawner;
     public BodyService bodyService;
-    public AttitudeUIBinder attitudeUIBinder;
+    public AttitudeUIController attitudeUIController;
     public NBodyVectorOverlayController nBodyVectorOverlayController;
     private SimContext ctx;
 
@@ -47,7 +47,7 @@ public class SimulationBootstrap : MonoBehaviour
             ManeuverNodeManager = maneuverNodeManager,
             ThrustController = thrustController,
             TimeController = timeController,
-            UIManager = uIManager,
+            UIRoot = uIRoot,
             TrajectoryComputeController = trajectoryComputeController,
             TrajectoryRenderer = trajectoryRenderer,
             ObjectPlacementManager = objectPlacementManager,
@@ -57,7 +57,7 @@ public class SimulationBootstrap : MonoBehaviour
             CameraButtonProxy = cameraButtonProxy,
             RandomSatelliteSpawner = randomSatelliteSpawner,
             BodyService = bodyService,
-            AttitudeUIBinder = attitudeUIBinder,
+            AttitudeUIController = attitudeUIController,
             NBodyVectorOverlayController = nBodyVectorOverlayController,
         };
 
@@ -68,13 +68,13 @@ public class SimulationBootstrap : MonoBehaviour
         cameraMovement.Initialize(ctx);
         cameraButtonProxy.Initialize(ctx);
         freeCamera.Initialize(ctx);
+        uIRoot.Initialize(ctx);
         cameraController.Initialize(ctx);
-        trajectoryRenderer.Initialize(ctx);
         bodyDropdownManager.Initialize(ctx);
+        trajectoryRenderer.Initialize(ctx);
         maneuverNodeManager.Initialize(ctx);
         thrustController.Initialize(ctx);
         timeController.Initialize(ctx);
-        uIManager.Initialize(ctx);
         trajectoryComputeController.Initialize(ctx);
         objectPlacementManager.Initialize(ctx);
         velocityDragManager.Initialize(ctx);
@@ -82,7 +82,7 @@ public class SimulationBootstrap : MonoBehaviour
         satelliteSpawner.Initialize(ctx);
         rocketThrustAudio.Initialize(ctx);
         tutorialController.Initialize(ctx);
-        attitudeUIBinder.Initialize(ctx);
+        attitudeUIController.Initialize(ctx);
         nBodyVectorOverlayController.Initialize(ctx);
     }
 }

@@ -72,9 +72,6 @@ public class TrajectoryRenderer_EditModeTests
         rig.Ctx.BodyRuntimeCoordinator = bodyRuntimeCoordinator;
         rig.Ctx.ThrustController = thrustController;
 
-        if (rig.UI.removePreManeuverLineButton == null)
-            rig.UI.removePreManeuverLineButton = MakeButton(rig.Root.transform, "RemovePreManeuverBtn");
-
         tr = new GameObject("TrajectoryRenderer").AddComponent<TrajectoryRenderer>();
         tr.transform.SetParent(rig.Root.transform, false);
 

@@ -199,6 +199,8 @@ public class BodyService : MonoBehaviour, IBodyService
             b.state.velocity = _velBuf[i];
             b.SyncAfterBatch();
         }
+
+        ctx?.BodyRuntimeCoordinator?.FlushPendingRemovals();
     }
 
     private void RebuildSatelliteCache()

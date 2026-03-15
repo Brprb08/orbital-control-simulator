@@ -11,7 +11,8 @@ public class SimContext
     public ManeuverNodeManager ManeuverNodeManager { get; set; }
     public ThrustController ThrustController { get; set; }
     public TimeController TimeController { get; set; }
-    public UIManager UIManager { get; set; }
+    // public UIManager UIManager { get; set; }
+    public UIRoot UIRoot { get; set; }
     public LineVisibilityController LineVisibilityController { get; set; }
     public TrajectoryComputeController TrajectoryComputeController { get; set; }
     public TrajectoryRenderer TrajectoryRenderer { get; set; }
@@ -22,6 +23,6 @@ public class SimContext
     public ICameraTracker CameraTracker => CameraController;
     public RandomSatelliteSpawner RandomSatelliteSpawner { get; set; }
     public CameraButtonProxy CameraButtonProxy { get; set; }
-    public AttitudeUIBinder AttitudeUIBinder { get; set; }
+    public AttitudeUIController AttitudeUIController { get; set; }
     public NBodyVectorOverlayController NBodyVectorOverlayController { get; set; }
 }

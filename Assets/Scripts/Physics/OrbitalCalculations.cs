@@ -42,7 +42,6 @@ public static class OrbitalCalculations
 
         if (r2 < R_MIN * R_MIN || v2 < V_MIN * V_MIN)
         {
-            Debug.LogWarning("OrbitalCalculations: Position or velocity magnitude too small.");
             return result;
         }
 
@@ -54,7 +53,6 @@ public static class OrbitalCalculations
         double h2 = math.lengthsq(h);
         if (h2 < H_MIN * H_MIN)
         {
-            Debug.LogWarning("OrbitalCalculations: Angular momentum too small.");
             return result;
         }
 

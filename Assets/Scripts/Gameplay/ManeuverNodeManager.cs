@@ -137,8 +137,6 @@ public class ManeuverNodeManager : MonoBehaviour
         if (timeController != null)
         {
             timeController.SetTimeScale(1f);
-            if (timeController.timeSlider != null)
-                timeController.timeSlider.value = Time.timeScale;
         }
 
         var body = trajectoryRenderer != null ? trajectoryRenderer.trackedBody : null;
