@@ -175,52 +175,60 @@ The focus is on experimentation and understanding orbital behavior.
 OrbitalControlSimulator/
 ├── Assets/
 │   ├── Scripts/
-│   │   ├── Core/                // Application core: bootstrapping, time, services, utilities
-│   │   │   ├── Bootstrap/       // Simulation startup, dependency wiring, runtime context
-│   │   │   ├── Data/            // Data helpers, parsing, TLE ingestion, frame utilities
-│   │   │   │   └── Parsing/     // TLE and data parsing utilities
-│   │   │   ├── Extensions/      // Shared extension methods
-│   │   │   ├── Services/        // Runtime services (body lookup, registries, coordination)
+│   │   ├── Core/                          // Application core: bootstrapping, time, services, utilities
+│   │   │   ├── Bootstrap/                 // Simulation startup, dependency wiring, runtime context
+│   │   │   ├── Data/                      // Data helpers, parsing, TLE ingestion, frame utilities
+│   │   │   │   └── Parsing/               // TLE and data parsing utilities
+│   │   │   ├── Extensions/                // Shared extension methods
+│   │   │   ├── Services/                  // Runtime services
 │   │   │   │   └── Abstractions/
-│   │   │   └── Time/            // Simulation time scaling and control
+│   │   │   └── Time/                      // Simulation time scaling and control
 │   │   │
-│   │   ├── Physics/             // Orbital mechanics, Kepler math, constants, native interop
+│   │   ├── Physics/                       // Orbital mechanics, Kepler math, constants, native interop
 │   │   │
-│   │   ├── Gameplay/            // Player-interactable simulation systems
-│   │   │   ├── Abstractions/    // Generic gameplay abstractions and shared interfaces
-│   │   │   ├── ManeuverNodeUtils/ // Maneuver node system: nodes, gizmos, drag handles
-│   │   │   └── System/          // Small gameplay/system helpers
+│   │   ├── Gameplay/                      // Interactable simulation systems
+│   │   │   ├── Abstractions/              // Shared gameplay abstractions and math helpers
+│   │   │   ├── ManeuverNodeUtils/         // Maneuver node system: nodes, gizmos, drag handles, previews
+│   │   │   └── System/                    // Small gameplay/system helpers
 │   │   │
-│   │   ├── Rendering/           // Trajectory, vector, and orbit visualization
-│   │   │   ├── Lines/           // Procedural line rendering and visibility control
-│   │   │   ├── Vectors/         // Force, velocity, and direction overlays
-│   │   │   └── Trajectories/    // CPU/GPU trajectory prediction and rendering
-│   │   │       ├── Helpers/
-│   │   │       └── Utils/
+│   │   ├── Rendering/                     // Trajectory, vector, and orbit visualization
+│   │   │   ├── Lines/                     
+│   │   │   ├── Trajectories/              
+│   │   │   │   ├── Helpers/
+│   │   │   │   └── Utils/
+│   │   │   └── Vectors/                   // Force, velocity, and direction overlays
 │   │   │
-│   │   ├── Placement/           // Satellite spawning and initial-condition tools
+│   │   ├── Placement/                     // Satellite spawning and initial-condition tools
 │   │   │
-│   │   ├── Camera/              // Camera modes, tracking, and control systems
-│   │   │   ├── Abstractions/    // Camera mode and tracking interfaces
-│   │   │   ├── Controllers/     // Input handling and camera movement logic
-│   │   │   ├── Implementations/ // Concrete camera behaviors (free, orbit, etc.)
-│   │   │   └── Orbit/           // Orbit-specific camera helpers and decorators
+│   │   ├── Camera/                        // Camera modes, tracking, and control systems
+│   │   │   ├── Abstractions/              
+│   │   │   ├── Controllers/               
+│   │   │   ├── Implementations/           
+│   │   │   └── Orbit/                     
 │   │   │
-│   │   ├── UI/                  // UI state, bindings, and interaction helpers
-│   │   │   ├── Buttons/         // UI button behaviors and tab navigation
-│   │   │   ├── Common/          // Shared UI components and navigation
-│   │   │   ├── Dropdowns/       // Observable and data-driven dropdowns
-│   │   │   │   └── SatelliteDropdown/
-│   │   │   ├── Helpers/         // Formatting, camera math, and UI utilities
-│   │   │   └── Camera/          // Camera-related UI proxies
+│   │   ├── UI/                            // UI state, views, controllers, and helpers
+│   │   │   ├── Camera/                    // Camera-related UI, calculations, and mode controls
+│   │   │   ├── Components/                // Reusable UI helpers
+│   │   │   │   ├── Buttons/               
+│   │   │   │   ├── Dropdowns/             
+│   │   │   │   │   └── SatelliteDropdown/
+│   │   │   │   └── Indicators/            // Indicators for tracked satellites and maneuver nodes
+│   │   │   ├── Core/                      // UI root object, shared references, wiring
+│   │   │   ├── Drawing/                   
+│   │   │   ├── Flight/                    // HUD, orbit preview, and spacecraft attitude UI
+│   │   │   ├── Instructions/              
+│   │   │   ├── Placement/                 // All satellite placement UI
+│   │   │   ├── Time/                      
+│   │   │   ├── Trajectory/                // Trajectory and vector overlay UI
+│   │   │   └── Tutorial/                  
 │   │   │
-│   │   ├── Audio/               // Ambient and feedback audio systems
+│   │   ├── Audio/                         // Ambient and feedback audio systems
 │   │   │
-│   │   └── Tutorial/            // Guided onboarding and tutorial flow
+│   │   └── Tutorial/                      // Guided tutorial
 │   │
 │   ├── Plugins/
-│   │   ├── Source/              // Native C++ physics backend (Dormand–Prince integrator)
-│   │   └── x86_64/              // Precompiled native physics binaries
+│   │   ├── Source/                        // Native C++ physics backend (Dormand–Prince integrator)
+│   │   └── x86_64/                        // Precompiled native physics binaries
 │   │
 │   └── Tests/
 │       └── EditMode/
@@ -230,7 +238,6 @@ OrbitalControlSimulator/
 │           ├── RenderingTests/
 │           ├── UITests/
 │           └── UtilsTests/
-
 ```
 </details>
 
