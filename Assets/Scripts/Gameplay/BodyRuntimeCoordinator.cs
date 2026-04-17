@@ -26,6 +26,10 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     public float minCollisionDistance = 0.5f;
     public int simulationStep = 0;
     public float simulationTime => simulationStep * Time.fixedDeltaTime;
+    public bool IsNodeBurnInProgress =>
+        ctx != null &&
+        ctx.ThrustController != null &&
+        ctx.ThrustController.IsNodeBurnActive;
 
     [Header("References - UI")]
     public TMP_Dropdown bodyDropdown;
@@ -52,7 +56,7 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// <summary>
     /// Advances internal simulation time based on Unity’s fixed update step.
     /// </summary>
-    void FixedUpdate()
+    public void AdvanceSimulationStep()
     {
         simulationStep++;
     }
@@ -95,8 +99,12 @@ public class BodyRuntimeCoordinator : MonoBehaviour
             if (remove == null) continue;
             if (!bodyService.Bodies.Contains(remove)) continue;
 
+            remove.ForceStopBurnEffects();
+
             if (tracker != null && tracker.CurrentBody == remove)
             {
+                ClearNodeStateForBody(remove);
+
                 var remaining = bodyService
                     .GetSatellites()
                     .Where(x => x != remove && !_pendingRemovalSet.Contains(x))
@@ -132,6 +140,8 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     {
         var tracker = ctx.CameraTracker;
         NBody currentBody = tracker.CurrentBody;
+        ClearNodeStateForBody(currentBody);
+
         if (tracker != null)
         {
             var remaining = bodyService.GetSatellites().Where(x => x != currentBody).ToList();
@@ -145,5 +155,20 @@ public class BodyRuntimeCoordinator : MonoBehaviour
         Destroy(currentBody.gameObject);
 
         ctx.BodyDropdownManager.UpdateDropdownSelection();
+    }
+
+    private void ClearNodeStateForBody(NBody body)
+    {
+        if (body == null || ctx == null)
+            return;
+
+        ManeuverNodeManager nodeManager = ctx.ManeuverNodeManager;
+        ManeuverNode node = nodeManager != null ? nodeManager.CurrentNode : null;
+        if (node == null || node.targetBody != body)
+            return;
+
+        body.ForceStopBurnEffects();
+        nodeManager.ClearNode();
+        ctx.UIRoot?.RefreshAllUi();
     }
 }

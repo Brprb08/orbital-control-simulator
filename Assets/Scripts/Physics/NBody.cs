@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using Unity.Mathematics;
 using UnityEngine;
 
@@ -308,12 +307,11 @@ public class NBody : MonoBehaviour
     /// </summary>
     private bool IsBurnOngoing(ManeuverNode node, int currentStep)
     {
-        return currentStep >= node.burnStartStep &&
-               currentStep < node.burnStartStep + node.burnStepCount;
+        return ManeuverBurnMath.IsBurnActiveForStep(node, this, currentStep);
     }
 
     /// <summary>
-    /// Applies thrust per node burn type/direction for this frame.
+    /// Activates node-burn visuals/state; physics is applied by the batch step.
     /// </summary>
     private void ExecuteNodeBurn(ManeuverNode node, NBody body)
     {
@@ -323,9 +321,20 @@ public class NBody : MonoBehaviour
         thrustController.StartNodeBurn(node);
     }
 
+    public void ForceStopBurnEffects()
+    {
+        _rocketThrustAudio?.StopThrust();
+        thrustController?.StopAllThrust();
+
+        if (_attitudeController != null)
+            _attitudeController.lockNormalParity = false;
+
+        isThrusting = false;
+    }
+
     /// <summary>
-    /// Collision with central body → delegate removal to the coordinator.
-    /// </summary>
+     /// Collision with central body → delegate removal to the coordinator.
+     /// </summary>
     private void CheckCollisionWithEarth()
     {
         if (_bodyService == null)
@@ -390,7 +399,7 @@ public class NBody : MonoBehaviour
     public void CalculatePredictedTrajectoryGPU_Async(
         int steps,
         float deltaTime,
-        Action<List<Vector3>> onComplete,
+        Action<Vector3[]> onComplete,
         Vector3? overrideStartPosition = null,
         Vector3? overrideStartVelocity = null
     )
@@ -398,8 +407,15 @@ public class NBody : MonoBehaviour
         if (_relevantBodies == null || _relevantBodies.Count == 0)
             return;
 
-        Vector3[] otherPositions = _relevantBodies.Select(b => b.transform.position).ToArray();
-        float[] otherMasses = _relevantBodies.Select(b => (float)b.mass).ToArray();
+        int relevantBodyCount = _relevantBodies.Count;
+        Vector3[] otherPositions = new Vector3[relevantBodyCount];
+        float[] otherMasses = new float[relevantBodyCount];
+        for (int i = 0; i < relevantBodyCount; i++)
+        {
+            NBody relevantBody = _relevantBodies[i];
+            otherPositions[i] = relevantBody.transform.position;
+            otherMasses[i] = (float)relevantBody.trueMass;
+        }
 
         if (_tcc == null)
         {
@@ -407,14 +423,14 @@ public class NBody : MonoBehaviour
                 "[NBODY]: TrajectoryComputeController (_tcc) is null. " +
                 "Ensure it is assigned before calling this method."
             );
-            onComplete?.Invoke(null);
+            onComplete?.Invoke(Array.Empty<Vector3>());
             return;
         }
 
         _tcc.CalculateTrajectoryGPU_Async(
             startPos: overrideStartPosition ?? state.position.ToVector3(),
             startVel: overrideStartVelocity ?? state.velocity.ToVector3(),
-            bodyMass: mass,
+            bodyMass: (float)state.mass,
             otherBodyPositions: otherPositions,
             otherBodyMasses: otherMasses,
             dt: deltaTime,
@@ -422,13 +438,9 @@ public class NBody : MonoBehaviour
             onComplete: positionsArray =>
             {
                 if (positionsArray == null)
-                {
-                    onComplete?.Invoke(new List<Vector3>());
-                }
+                    onComplete?.Invoke(Array.Empty<Vector3>());
                 else
-                {
-                    onComplete?.Invoke(new List<Vector3>(positionsArray));
-                }
+                    onComplete?.Invoke(positionsArray);
             }
         );
     }
@@ -533,11 +545,11 @@ public class NBody : MonoBehaviour
         CalculatePredictedTrajectoryGPU_Async(
             steps,
             dt,
-            positions =>
+            positionsArray =>
             {
                 // positions.Length == outputCount (≈ steps / lodFactor)
                 onComplete?.Invoke(
-                    positions ?? new List<Vector3>(),
+                    positionsArray != null ? new List<Vector3>(positionsArray) : new List<Vector3>(),
                     startTime,
                     sampleDt
                 );

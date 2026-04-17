@@ -23,8 +23,16 @@ public class ManeuverNodeManager : MonoBehaviour
     [SerializeField] private float burnDuration = 20f;
     [SerializeField] private float thrustPowerScale = 1f;
 
+    [Header("Preview Snapshot Refresh")]
+    [SerializeField, Min(0.1f)] private float previewNodeSnapshotRefreshInterval = 0.5f;
+
+    [Header("Node Orbit Sampling")]
+    [SerializeField, Min(128)] private int minNodeOrbitSamples = 1024;
+    [SerializeField, Min(256)] private int maxNodeOrbitSamples = 6000;
+
     private BodyService bodyService;
     private TutorialController tutorialController;
+    private UIRoot uiRoot;
 
     public ManeuverNode CurrentNode { get; private set; }
     public bool HasNode => CurrentNode != null;
@@ -33,6 +41,8 @@ public class ManeuverNodeManager : MonoBehaviour
         previewController != null ? previewController.PreviewOrbitParams : new OrbitalParameters(false);
 
     private bool _initialized;
+    private bool _previewNodeSnapshotRefreshInFlight;
+    private float _nextPreviewNodeSnapshotRefreshTime;
 
     public void Initialize(SimContext ctx)
     {
@@ -46,6 +56,7 @@ public class ManeuverNodeManager : MonoBehaviour
         timeController = ctx.TimeController;
         tutorialController = ctx.TutorialController;
         thrustController = ctx.ThrustController;
+        uiRoot = ctx.UIRoot;
         if (thrustController != null)
             thrustController.SetThrustPowerScale(thrustPowerScale);
         bodyService = ctx.BodyService;
@@ -125,6 +136,12 @@ public class ManeuverNodeManager : MonoBehaviour
 
     private void OnTrackedBodyChanged(NBody oldBody, NBody newBody)
     {
+        if (HasNode && oldBody != newBody)
+        {
+            ClearNode();
+            return;
+        }
+
         bool active = HasNode &&
                       CurrentNode.targetBody == newBody &&
                       !CurrentNode.isFinalized;
@@ -134,6 +151,9 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void OnAddManeuverNode()
     {
+        if (bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress)
+            return;
+
         if (timeController != null)
         {
             timeController.SetTimeScale(1f);
@@ -143,10 +163,7 @@ public class ManeuverNodeManager : MonoBehaviour
         if (body == null)
             return;
 
-        int steps = 6000;
-        float dt = trajectoryRenderer != null ? trajectoryRenderer.predictionDeltaTime : 2f;
-
-        body.ComputePredictionForNodes(steps, dt, (traj, startTime, usedDt) =>
+        RequestSingleOrbitNodeSnapshot(body, (traj, startTime, usedDt) =>
         {
             if (traj == null || traj.Count < 2)
                 return;
@@ -204,6 +221,7 @@ public class ManeuverNodeManager : MonoBehaviour
         node.pinnedWorldPosition = node.marker.transform.position;
         node.isPinned = true;
 
+        thrustController?.StopForwardThrust();
         visualController?.SetupNodeVisuals(node, isPreview: false, manager: this);
         uiController?.SetEditingEnabled(false);
 
@@ -236,6 +254,8 @@ public class ManeuverNodeManager : MonoBehaviour
             tutorialController.hasPlacedNode = true;
 
         trajectoryRenderer?.ClearPreview();
+        previewController?.RequestReadoutRefresh(node, immediate: true);
+        uiRoot?.RefreshAllUi();
     }
 
     private void BuildNodeFixedStepSchedule(ManeuverNode node)
@@ -266,10 +286,6 @@ public class ManeuverNodeManager : MonoBehaviour
     public void CreatePreviewNode(Vector3 position, float burnTime, Vector3 deltaV, float duration)
     {
         var trackedBody = trajectoryRenderer != null ? trajectoryRenderer.trackedBody : null;
-        var latestPrediction = trajectoryRenderer != null ? trajectoryRenderer.latestPrediction : null;
-        var snapshot = latestPrediction != null
-            ? new List<Vector3>(latestPrediction)
-            : new List<Vector3>();
 
         var node = new ManeuverNode
         {
@@ -280,12 +296,28 @@ public class ManeuverNodeManager : MonoBehaviour
             duration = duration,
             isFinalized = false,
             burnType = GetBurnChoice(),
-            trajectorySnapshot = snapshot,
-            snapshotStartTime = trajectoryRenderer != null ? trajectoryRenderer.latestPredictionStartTime : 0f,
-            snapshotDeltaTime = trajectoryRenderer != null ? Mathf.Max(1e-5f, trajectoryRenderer.latestPredictionDeltaTime) : 1f
+            trajectorySnapshot = new List<Vector3>(),
+            snapshotStartTime = bodyRuntimeCoordinator != null ? bodyRuntimeCoordinator.simulationTime : 0f,
+            snapshotDeltaTime = trajectoryRenderer != null ? Mathf.Max(1e-5f, trajectoryRenderer.predictionDeltaTime) : 1f
         };
 
         ActivatePreviewNode(node, focusCamera: true);
+
+        if (trackedBody != null)
+        {
+            RequestSingleOrbitNodeSnapshot(
+                trackedBody,
+                (traj, startTime, usedDt) =>
+                {
+                    if (!this || CurrentNode != node || node.isFinalized)
+                        return;
+
+                    if (traj == null || traj.Count < 2)
+                        return;
+
+                    ApplySnapshotToNode(node, traj, startTime, usedDt, rebuildPreview: true);
+                });
+        }
     }
 
     private void ActivatePreviewNode(ManeuverNode node, bool focusCamera)
@@ -305,6 +337,8 @@ public class ManeuverNodeManager : MonoBehaviour
             visualController?.FocusCameraOn(node.marker.transform.position);
 
         previewController?.RequestPreview(node, interactionActive: false);
+        _previewNodeSnapshotRefreshInFlight = false;
+        _nextPreviewNodeSnapshotRefreshTime = Time.unscaledTime + previewNodeSnapshotRefreshInterval;
 
         uiController?.SetEditingEnabled(true);
         uiController?.SetupNodeSlider(node);
@@ -316,10 +350,124 @@ public class ManeuverNodeManager : MonoBehaviour
             visualController?.DestroyVisual(CurrentNode);
 
         CurrentNode = null;
+        _previewNodeSnapshotRefreshInFlight = false;
+        _nextPreviewNodeSnapshotRefreshTime = 0f;
 
         trajectoryRenderer?.ClearPreview();
         previewController?.Clear();
         uiController?.ResetEditingUI();
+        uiRoot?.RefreshAllUi();
+    }
+
+    private void RefreshPreviewNodeSnapshotIfNeeded()
+    {
+        if (!HasNode || trajectoryRenderer == null)
+            return;
+
+        var node = CurrentNode;
+        if (node == null || node.isFinalized || node.targetBody == null)
+            return;
+
+        if (trajectoryRenderer.trackedBody != node.targetBody)
+            return;
+
+        if (_previewNodeSnapshotRefreshInFlight || Time.unscaledTime < _nextPreviewNodeSnapshotRefreshTime)
+            return;
+
+        _nextPreviewNodeSnapshotRefreshTime = Time.unscaledTime + previewNodeSnapshotRefreshInterval;
+
+        RequestPreviewNodeSnapshotRefresh(node);
+    }
+
+    private void RequestPreviewNodeSnapshotRefresh(ManeuverNode node)
+    {
+        if (node == null || node.targetBody == null)
+            return;
+
+        _previewNodeSnapshotRefreshInFlight = true;
+
+        RequestSingleOrbitNodeSnapshot(
+            node.targetBody,
+            (traj, startTime, usedDt) =>
+            {
+                _previewNodeSnapshotRefreshInFlight = false;
+
+                if (!this || CurrentNode != node || node.isFinalized)
+                    return;
+
+                if (traj == null || traj.Count < 2)
+                    return;
+
+                ApplySnapshotToNode(node, traj, startTime, usedDt, rebuildPreview: true);
+            });
+    }
+
+    private void RequestSingleOrbitNodeSnapshot(
+        NBody body,
+        System.Action<List<Vector3>, float, float> onComplete)
+    {
+        if (body == null)
+        {
+            onComplete?.Invoke(new List<Vector3>(), 0f, 1f);
+            return;
+        }
+
+        ResolveSingleOrbitNodePredictionSettings(body, out int steps, out float dt);
+        body.ComputePredictionForNodes(steps, dt, onComplete);
+    }
+
+    private void ResolveSingleOrbitNodePredictionSettings(NBody body, out int steps, out float dt)
+    {
+        dt = trajectoryRenderer != null && trajectoryRenderer.predictionDeltaTime > 0f
+            ? trajectoryRenderer.predictionDeltaTime
+            : 2f;
+        steps = Mathf.Max(maxNodeOrbitSamples, minNodeOrbitSamples);
+
+        if (body == null || bodyService == null || bodyService.CentralBody == null)
+            return;
+
+        NBody central = bodyService.CentralBody;
+        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
+            central.trueMass,
+            central.state.position,
+            body.state.position,
+            body.state.velocity
+        );
+
+        if (!orbit.isValid || orbit.eccentricity >= 1f || orbit.orbitalPeriod <= 0f)
+            return;
+
+        int targetSamples = Mathf.CeilToInt(orbit.orbitalPeriod / Mathf.Max(1e-5f, dt));
+        targetSamples = Mathf.Clamp(targetSamples, minNodeOrbitSamples, maxNodeOrbitSamples);
+
+        steps = Mathf.Max(2, targetSamples);
+        dt = orbit.orbitalPeriod / steps;
+    }
+
+    private void ApplySnapshotToNode(
+        ManeuverNode node,
+        List<Vector3> snapshot,
+        float startTime,
+        float sampleDt,
+        bool rebuildPreview)
+    {
+        if (node == null || snapshot == null || snapshot.Count < 2)
+            return;
+
+        node.trajectorySnapshot = new List<Vector3>(snapshot);
+        node.snapshotStartTime = startTime;
+        node.snapshotDeltaTime = Mathf.Max(1e-5f, sampleDt);
+        node.burnTime = Mathf.Max(node.burnTime, node.snapshotStartTime);
+
+        UpdateManeuverPrediction(node);
+
+        if (node.marker != null)
+            node.marker.transform.position = node.position;
+
+        uiController?.SetupNodeSlider(node);
+
+        if (rebuildPreview)
+            previewController?.RequestPreview(node, interactionActive: false);
     }
 
     public void RemoveNode(ManeuverNode node)
@@ -395,6 +543,12 @@ public class ManeuverNodeManager : MonoBehaviour
         float newBurnTime = node.snapshotStartTime + floatIndex * sampleDt;
 
         Vector3 p = TrajectorySampler.SampleAtIndex(traj, floatIndex);
+
+        if (Mathf.Abs(newBurnTime - node.burnTime) <= 1e-4f &&
+            (p - node.position).sqrMagnitude <= 1e-6f)
+        {
+            return;
+        }
 
         node.burnTime = newBurnTime;
         node.position = p;
@@ -478,5 +632,10 @@ public class ManeuverNodeManager : MonoBehaviour
         return uiController != null
             ? uiController.GetBurnChoice()
             : BurnType.Prograde;
+    }
+
+    public void SetSetupNodeButtonInteractable(bool interactable)
+    {
+        uiController?.SetSetupNodeButtonInteractable(interactable);
     }
 }

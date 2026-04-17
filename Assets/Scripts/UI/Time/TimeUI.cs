@@ -50,6 +50,12 @@ public class TimeUI
             refs.timeSlider.interactable = interactable;
     }
 
+    public void SetPauseButtonInteractable(bool interactable)
+    {
+        if (refs.pauseButton != null)
+            refs.pauseButton.interactable = interactable;
+    }
+
     public void SetSliderValue(float value)
     {
         if (refs.timeSlider != null)

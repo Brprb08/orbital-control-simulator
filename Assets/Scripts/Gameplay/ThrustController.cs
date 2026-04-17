@@ -52,6 +52,8 @@ public class ThrustController : MonoBehaviour
     public bool IsThrusting =>
         isForwardThrustActive;
 
+    public bool IsNodeBurnActive => nodeBurnActive;
+
     public void Initialize(SimContext ctx)
     {
         this.ctx = ctx;
@@ -90,7 +92,14 @@ public class ThrustController : MonoBehaviour
         if (isForwardThrustActive)
         {
             Vector3 burnDir = ResolveBurnDirection(ship);
-            ApplyThrust(ship, EffectiveForwardThrustMagnitude, burnDir);
+            if (nodeBurnActive)
+            {
+                UpdateThrustParticleSystem(ship, burnDir);
+            }
+            else
+            {
+                ApplyThrust(ship, EffectiveForwardThrustMagnitude, burnDir);
+            }
             isThrustingNow = true;
         }
 
@@ -242,6 +251,7 @@ public class ThrustController : MonoBehaviour
         activeBurnType = node.burnType;
         nodeBurnActive = true;
         isForwardThrustActive = true;
+        ctx?.UIRoot?.RefreshAllUi();
     }
 
     public void StopNodeBurn()
@@ -250,6 +260,7 @@ public class ThrustController : MonoBehaviour
         activeBurnBody = null;
         isForwardThrustActive = false;
         StopThrustVisuals();
+        ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>Clears all thrust flags.</summary>
@@ -259,6 +270,7 @@ public class ThrustController : MonoBehaviour
         nodeBurnActive = false;
         activeBurnBody = null;
         StopThrustVisuals();
+        ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>
@@ -266,11 +278,39 @@ public class ThrustController : MonoBehaviour
     /// </summary>
     public void StartForwardThrust()
     {
+        if (!CanStartManualThrust())
+        {
+            EventSystem.current?.SetSelectedGameObject(null);
+            return;
+        }
+
         isForwardThrustActive = true;
     }
     public void StopForwardThrust()
     {
+        if (nodeBurnActive)
+        {
+            EventSystem.current?.SetSelectedGameObject(null);
+            return;
+        }
+
         isForwardThrustActive = false;
         EventSystem.current.SetSelectedGameObject(null);
+    }
+
+    private bool CanStartManualThrust()
+    {
+        if (nodeBurnActive)
+            return false;
+
+        ManeuverNode node = ctx != null && ctx.ManeuverNodeManager != null
+            ? ctx.ManeuverNodeManager.CurrentNode
+            : null;
+
+        if (node == null || !node.isFinalized)
+            return true;
+
+        NBody activeShip = ResolveActiveShip();
+        return node.targetBody == null || node.targetBody != activeShip;
     }
 }

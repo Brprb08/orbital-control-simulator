@@ -17,11 +17,13 @@ public sealed class TrajectoryPreviewModule
     private readonly ProceduralLineRenderer line;
     private readonly SimContext ctx;
     private readonly System.Func<Vector3[], Vector3[]> clipper;
+    private readonly System.Func<Vector3[], Vector3[]> singleOrbitClipper;
 
     private Coroutine previewCo;
     private Vector3 previewPos, previewVel;
     private float previewMass;
     private bool previewDirty;
+    private uint previewRequestGeneration;
 
     // Same DAY / horizon style as TrajectoryRenderer
     private const float DAY = 24f * 60f * 60f;
@@ -40,16 +42,23 @@ public sealed class TrajectoryPreviewModule
         MonoBehaviour owner,
         ProceduralLineRenderer previewLine,
         SimContext ctx,
-        System.Func<Vector3[], Vector3[]> clipper)
+        System.Func<Vector3[], Vector3[]> clipper,
+        System.Func<Vector3[], Vector3[]> singleOrbitClipper)
     {
         this.owner = owner;
         this.line = previewLine;
         this.ctx = ctx;
         this.clipper = clipper ?? (pts => pts);
+        this.singleOrbitClipper = singleOrbitClipper ?? (pts => pts);
     }
 
     public void Reset()
     {
+        unchecked
+        {
+            previewRequestGeneration++;
+        }
+
         previewDirty = false;
         if (line != null) line.Clear();
 
@@ -74,9 +83,8 @@ public sealed class TrajectoryPreviewModule
     public void ClearPreview() => Reset();
 
     /// <summary>
-    /// One-shot long preview. We ignore the caller's steps/dt and instead
-    /// compute them using the same logic as the continuous preview, so the
-    /// behavior matches the main TrajectoryRenderer as closely as possible.
+    /// One-shot long preview. Callers can supply explicit steps/dt for cheap
+    /// interaction previews; otherwise we derive them from the orbit state.
     /// </summary>
     public void QuickPreviewOnceLong(
         Vector3 startPos,
@@ -100,13 +108,20 @@ public sealed class TrajectoryPreviewModule
             return;
         }
 
-        float usedDt;
-        int usedSteps;
-        ComputePreviewSettings(startPos, startVel, svc, out usedDt, out usedSteps);
+        float usedDt = dt;
+        int usedSteps = steps;
+        if (usedDt <= 0f || usedSteps <= 0)
+            ComputePreviewSettings(startPos, startVel, svc, out usedDt, out usedSteps);
+        else
+        {
+            usedDt = Mathf.Max(0.0001f, usedDt);
+            usedSteps = Mathf.Max(2, usedSteps);
+        }
 
         var cb = svc.CentralBody;
         Vector3[] attractorPos = { cb.transform.position };
-        float[] attractorMass = { (float)cb.mass };
+        float[] attractorMass = { (float)cb.trueMass };
+        uint requestGeneration = unchecked(++previewRequestGeneration);
 
         ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
             startPos, startVel, Mathf.Max(1f, bodyMass),
@@ -114,6 +129,9 @@ public sealed class TrajectoryPreviewModule
             usedDt, usedSteps,
             points =>
             {
+                if (requestGeneration != previewRequestGeneration)
+                    return;
+
                 if (points == null || points.Length < 2)
                 {
                     line?.Clear();
@@ -121,6 +139,9 @@ public sealed class TrajectoryPreviewModule
                 }
 
                 var clipped = clipper(points);
+                if (singleOrbit)
+                    clipped = singleOrbitClipper(clipped);
+
                 line.UpdateLine(clipped);
                 previewDirty = false;
             });
@@ -162,7 +183,7 @@ public sealed class TrajectoryPreviewModule
         }
 
         // μ = G * M
-        float mu = (float)(PhysicsConstants.G * cb.mass);
+        float mu = (float)(PhysicsConstants.G * cb.trueMass);
 
         // Specific orbital energy ε = v^2/2 - μ / r
         float energy = 0.5f * v * v - mu / r;
@@ -235,7 +256,8 @@ public sealed class TrajectoryPreviewModule
 
             var cb = svc.CentralBody;
             Vector3[] attractorPos = { cb.transform.position };
-            float[] attractorMass = { (float)cb.mass };
+            float[] attractorMass = { (float)cb.trueMass };
+            uint requestGeneration = unchecked(++previewRequestGeneration);
 
             ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
                 previewPos, previewVel, previewMass,
@@ -243,6 +265,9 @@ public sealed class TrajectoryPreviewModule
                 dt, steps,
                 points =>
                 {
+                    if (requestGeneration != previewRequestGeneration)
+                        return;
+
                     if (points == null || points.Length < 2)
                     {
                         line?.Clear();

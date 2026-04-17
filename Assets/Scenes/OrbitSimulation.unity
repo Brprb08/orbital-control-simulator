@@ -12568,7 +12568,7 @@ MonoBehaviour:
         m_CallState: 2
       - m_Target: {fileID: 772056303}
         m_TargetAssemblyTypeName: ManeuverNodeManager, CoreRuntime
-        m_MethodName: ClearAllNodes
+        m_MethodName: ClearNode
         m_Mode: 1
         m_Arguments:
           m_ObjectArgument: {fileID: 0}
@@ -13221,6 +13221,9 @@ MonoBehaviour:
   allowNodeSlider: 1
   burnDuration: 20
   thrustPowerScale: 1
+  previewNodeSnapshotRefreshInterval: 0.5
+  minNodeOrbitSamples: 1024
+  maxNodeOrbitSamples: 6000
 --- !u!114 &772056304
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -13271,8 +13274,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   orbitPreviewUI: {fileID: 1323397342}
   previewRebuildDelay: 0.08
+  fastPreviewMinInterval: 0.03
   fastPreviewSteps: 2000
   fastPreviewDt: 6
+  autoFitFinalPreviewToOrbit: 1
   finalPreviewSteps: 6000
   useFastPreviewWhileInteracting: 1
 --- !u!114 &772056308

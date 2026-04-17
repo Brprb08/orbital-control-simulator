@@ -71,6 +71,12 @@ public class TimeController : MonoBehaviour
 
     public void TogglePause()
     {
+        if (bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress)
+        {
+            EventSystem.current?.SetSelectedGameObject(null);
+            return;
+        }
+
         if (isPaused) Resume();
         else Pause();
 

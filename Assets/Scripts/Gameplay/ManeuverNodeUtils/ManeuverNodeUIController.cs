@@ -10,6 +10,7 @@ public class ManeuverNodeUIController : MonoBehaviour
     public TMP_Dropdown burnDropdown;
     public Button placeNodeButton;
     public Button removeNodeButton;
+    public Button setupNodeButton;
 
     [Header("Burn Tuning UI")]
     public Slider burnDurationSlider;
@@ -30,6 +31,7 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     private bool allowNodeSlider = true;
     private float nextNodeSliderAllowed;
+    private bool setupButtonResolved;
 
     public float BurnDuration { get; private set; }
     public float ThrustScale { get; private set; }
@@ -57,6 +59,7 @@ public class ManeuverNodeUIController : MonoBehaviour
             removeNodeButton.interactable = false;
 
         SetBurnTuningInteractable(false);
+        SetSetupNodeButtonInteractable(true);
     }
 
     public void Dispose()
@@ -171,7 +174,7 @@ public class ManeuverNodeUIController : MonoBehaviour
             placeNodeButton.interactable = enabled;
 
         if (removeNodeButton != null)
-            removeNodeButton.interactable = enabled;
+            removeNodeButton.interactable = true;
     }
 
     public void ResetEditingUI()
@@ -189,6 +192,13 @@ public class ManeuverNodeUIController : MonoBehaviour
 
         if (removeNodeButton != null)
             removeNodeButton.interactable = false;
+    }
+
+    public void SetSetupNodeButtonInteractable(bool active)
+    {
+        Button button = ResolveSetupNodeButton();
+        if (button != null)
+            button.interactable = active;
     }
 
     public void SetNodeTimeSliderInteractable(bool active)
@@ -245,5 +255,40 @@ public class ManeuverNodeUIController : MonoBehaviour
     {
         if (thrustScaleLabel != null)
             thrustScaleLabel.text = $"{ThrustScale:0.00}x";
+    }
+
+    private Button ResolveSetupNodeButton()
+    {
+        if (setupButtonResolved)
+            return setupNodeButton;
+
+        setupButtonResolved = true;
+        if (setupNodeButton != null)
+            return setupNodeButton;
+
+        Button[] buttons = GetComponentsInChildren<Button>(true);
+        for (int i = 0; i < buttons.Length; i++)
+        {
+            Button candidate = buttons[i];
+            if (candidate == null || candidate == placeNodeButton || candidate == removeNodeButton)
+                continue;
+
+            TMP_Text label = candidate.GetComponentInChildren<TMP_Text>(true);
+            if (label == null)
+                continue;
+
+            string text = label.text;
+            if (string.IsNullOrWhiteSpace(text))
+                continue;
+
+            text = text.Trim().ToLowerInvariant();
+            if (text.Contains("setup"))
+            {
+                setupNodeButton = candidate;
+                break;
+            }
+        }
+
+        return setupNodeButton;
     }
 }

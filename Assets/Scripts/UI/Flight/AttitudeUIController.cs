@@ -13,6 +13,7 @@ public class AttitudeUIController : MonoBehaviour
     private TextMeshProUGUI btnText;
     public Toggle tSnap;
     public Slider slewRate;
+    private ThrustController thrustController;
 
     private Dictionary<AttitudeController.PointingMode, Button> modeToButton;
 
@@ -29,8 +30,13 @@ public class AttitudeUIController : MonoBehaviour
     private NBody _lastBody;
     private AttitudeController.PointingMode _lastModeMirror;
     private bool _haveMirror = false;
+    private bool _lastNodeBurnLock;
 
-    public void Initialize(SimContext ctx) { this.cameraTracker = ctx.CameraTracker; }
+    public void Initialize(SimContext ctx)
+    {
+        this.cameraTracker = ctx.CameraTracker;
+        this.thrustController = ctx.ThrustController;
+    }
 
     void Awake()
     {
@@ -96,6 +102,14 @@ public class AttitudeUIController : MonoBehaviour
         var att = CurrentAtt;
         if (!att) return;
 
+        bool nodeBurnLocked = IsLockedByNodeBurn();
+        if (nodeBurnLocked != _lastNodeBurnLock)
+        {
+            _lastNodeBurnLock = nodeBurnLocked;
+            UpdateModeButtons(att.mode);
+            RefreshUIFrom(att);
+        }
+
         if (!_haveMirror || att.mode != _lastModeMirror)
         {
             // mode changed somewhere else, reflect it
@@ -104,10 +118,15 @@ public class AttitudeUIController : MonoBehaviour
             RefreshUIFrom(att);
             UpdateModeButtons(att.mode);
         }
+
+        RefreshAuxiliaryControls();
     }
 
     void SetMode(AttitudeController.PointingMode m)
     {
+        if (IsLockedByNodeBurn())
+            return;
+
         var att = CurrentAtt;
         if (!att) return;
 
@@ -133,6 +152,9 @@ public class AttitudeUIController : MonoBehaviour
 
     void HoldHere()
     {
+        if (IsLockedByNodeBurn())
+            return;
+
         var att = CurrentAtt;
         if (!att) return;
 
@@ -171,32 +193,38 @@ public class AttitudeUIController : MonoBehaviour
 
     void UpdateModeButtons(AttitudeController.PointingMode active)
     {
+        bool lockedByNodeBurn = IsLockedByNodeBurn();
+
         // reset all first so old satellite disabled button doesn't stay
         foreach (var kv in modeToButton)
         {
             var b = kv.Value;
-            if (b) b.interactable = true;
+            if (b) b.interactable = !lockedByNodeBurn;
         }
 
         bool holding = active == AttitudeController.PointingMode.HoldCurrent;
 
-        foreach (var kv in modeToButton)
+        if (!lockedByNodeBurn)
         {
-            var b = kv.Value;
-            if (!b) continue;
+            foreach (var kv in modeToButton)
+            {
+                var b = kv.Value;
+                if (!b) continue;
 
-            if (holding)
-            {
-                b.interactable = true;   // in Hold, none are selected
-            }
-            else
-            {
-                b.interactable = kv.Key != active; // disable the active one
+                if (holding)
+                {
+                    b.interactable = true;   // in Hold, none are selected
+                }
+                else
+                {
+                    b.interactable = kv.Key != active; // disable the active one
+                }
             }
         }
 
-        // Lock/Auto button never changes color, always interactable
-        if (btnHold) btnHold.interactable = true;
+        if (btnHold) btnHold.interactable = !lockedByNodeBurn;
+
+        RefreshAuxiliaryControls();
 
         // clear Unity's current selection to avoid ghost highlight from previous satellite
         if (EventSystem.current && EventSystem.current.currentSelectedGameObject)
@@ -227,8 +255,23 @@ public class AttitudeUIController : MonoBehaviour
         if (slewRate) slewRate.SetValueWithoutNotify(att.maxSlewRateDegPerSec);
     }
 
-    void SetSnap(bool snap) { var att = CurrentAtt; if (att) att.snapAttitude = snap; }
-    void SetSlew(float degs) { var att = CurrentAtt; if (att) att.maxSlewRateDegPerSec = degs; }
+    void SetSnap(bool snap)
+    {
+        if (IsLockedByNodeBurn())
+            return;
+
+        var att = CurrentAtt;
+        if (att) att.snapAttitude = snap;
+    }
+
+    void SetSlew(float degs)
+    {
+        if (IsLockedByNodeBurn())
+            return;
+
+        var att = CurrentAtt;
+        if (att) att.maxSlewRateDegPerSec = degs;
+    }
 
     // force a full refresh (used on Start/OnEnable/body switch)
     void ForceFullRefresh()
@@ -240,6 +283,20 @@ public class AttitudeUIController : MonoBehaviour
         if (EventSystem.current)
             EventSystem.current.SetSelectedGameObject(null);
 
+        _lastNodeBurnLock = IsLockedByNodeBurn();
         RefreshUIFromCurrent();
+    }
+
+    private bool IsLockedByNodeBurn()
+    {
+        return thrustController != null && thrustController.IsNodeBurnActive;
+    }
+
+    private void RefreshAuxiliaryControls()
+    {
+        bool interactable = !IsLockedByNodeBurn();
+
+        if (tSnap) tSnap.interactable = interactable;
+        if (slewRate) slewRate.interactable = interactable;
     }
 }

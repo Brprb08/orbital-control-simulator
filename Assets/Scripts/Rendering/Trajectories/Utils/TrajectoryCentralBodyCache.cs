@@ -128,14 +128,6 @@ public sealed class TrajectoryCentralBodyCache
         {
             Vector3 current = points[i] - center;
             float deltaAngle = SignedAngleDelta(previous, current, orbitNormal);
-
-            if (Mathf.Abs(deltaAngle) < minStepAngleRad)
-            {
-                output.Add(points[i]);
-                previous = current;
-                continue;
-            }
-
             float nextAccumulatedAngle = accumulatedAngle + deltaAngle;
 
             if (Mathf.Abs(nextAccumulatedAngle) >= threshold)

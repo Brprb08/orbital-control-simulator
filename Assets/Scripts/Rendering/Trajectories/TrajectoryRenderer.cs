@@ -133,7 +133,8 @@ public class TrajectoryRenderer : MonoBehaviour
             owner: this,
             previewLine: previewLine,
             ctx: ctx,
-            clipper: ClipTrajectorySphere
+            clipper: ClipTrajectorySphere,
+            singleOrbitClipper: ClipPreviewToSingleOrbit
         );
 
         ValidateReferences();
@@ -528,7 +529,7 @@ public class TrajectoryRenderer : MonoBehaviour
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: request.Steps,
             deltaTime: request.DeltaTime,
-            onComplete: resultList =>
+            onComplete: resultArray =>
             {
                 if (!this || !gameObject)
                     return;
@@ -542,7 +543,7 @@ public class TrajectoryRenderer : MonoBehaviour
                     return;
                 }
 
-                ApplyPredictionResult(body, resultList, request);
+                ApplyPredictionResult(body, resultArray, request);
             }
         );
     }
@@ -559,7 +560,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private void ApplyPredictionResult(
         NBody body,
-        List<Vector3> resultList,
+        Vector3[] resultArray,
         TrajectoryPredictionRequest request)
     {
         if (trackedBody != body)
@@ -568,7 +569,7 @@ public class TrajectoryRenderer : MonoBehaviour
             return;
         }
 
-        latestPrediction = resultList ?? new List<Vector3>();
+        latestPrediction = resultArray != null ? new List<Vector3>(resultArray) : new List<Vector3>();
         latestPredictionBody = body;
 
         int lodFactor = Mathf.Max(1, request.Steps / (int)PredictionLodMaxPoints);
@@ -576,7 +577,7 @@ public class TrajectoryRenderer : MonoBehaviour
         latestPredictionStartTime = request.Epoch;
         latestPredictionDeltaTime = request.DeltaTime * lodFactor;
 
-        Vector3[] points = latestPrediction.ToArray();
+        Vector3[] points = resultArray ?? Array.Empty<Vector3>();
         points = ClipTrajectorySphere(points);
 
         if (clipToSingleOrbit && centralBodyCache != null)
@@ -658,6 +659,14 @@ public class TrajectoryRenderer : MonoBehaviour
             return points;
 
         return centralBodyCache.ClipTrajectorySphere(points);
+    }
+
+    private Vector3[] ClipPreviewToSingleOrbit(Vector3[] points)
+    {
+        if (centralBodyCache == null || !clipToSingleOrbit)
+            return points;
+
+        return centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon, minStepAngleRad);
     }
 
     private void ShowApogeePerigeeLines(OrbitalParameters orbitalParameters)

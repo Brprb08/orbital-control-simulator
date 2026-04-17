@@ -13,19 +13,50 @@ public class TrajectoryComputeController : MonoBehaviour
     [Header("Compute Shader")]
     public ComputeShader trajectoryComputeShader;
 
-    [Header("Compute Buffers")]
-    private ComputeBuffer initialPositionBuffer;
-    private ComputeBuffer initialVelocityBuffer;
-    private ComputeBuffer massBuffer;
-    private ComputeBuffer bodyPositionsBuffer;
-    private ComputeBuffer bodyMassesBuffer;
-    private ComputeBuffer outputTrajectoryBuffer;
-
     [Header("LOD")]
     private int lodFactor = 1;
     private int outputCount = 0;
 
     private SimContext ctx;
+    private int rungeKuttaKernelIndex = -1;
+
+    private static readonly Vector3[] EmptyBodyPositionData = { Vector3.zero };
+    private static readonly float[] EmptyBodyMassData = { 0f };
+
+    private sealed class TrajectoryRequestContext
+    {
+        public ComputeBuffer initialPositionBuffer;
+        public ComputeBuffer initialVelocityBuffer;
+        public ComputeBuffer massBuffer;
+        public ComputeBuffer bodyPositionsBuffer;
+        public ComputeBuffer bodyMassesBuffer;
+        public ComputeBuffer outputTrajectoryBuffer;
+        public Action<Vector3[]> onComplete;
+        private bool cleanedUp;
+
+        public void Cleanup()
+        {
+            if (cleanedUp)
+                return;
+
+            cleanedUp = true;
+
+            initialPositionBuffer?.Release();
+            initialVelocityBuffer?.Release();
+            massBuffer?.Release();
+            bodyPositionsBuffer?.Release();
+            bodyMassesBuffer?.Release();
+            outputTrajectoryBuffer?.Release();
+
+            initialPositionBuffer = null;
+            initialVelocityBuffer = null;
+            massBuffer = null;
+            bodyPositionsBuffer = null;
+            bodyMassesBuffer = null;
+            outputTrajectoryBuffer = null;
+            onComplete = null;
+        }
+    }
 
     public void Initialize(SimContext ctx)
     {
@@ -57,39 +88,54 @@ public class TrajectoryComputeController : MonoBehaviour
         Action<Vector3[]> onComplete   // callback once data is ready
     )
     {
+        if (trajectoryComputeShader == null)
+        {
+            Debug.LogError("[TrajectoryComputeController] Missing compute shader.");
+            onComplete?.Invoke(null);
+            return;
+        }
+
+        if (otherBodyPositions == null || otherBodyMasses == null || otherBodyPositions.Length != otherBodyMasses.Length)
+        {
+            Debug.LogError("[TrajectoryComputeController] Invalid other-body input buffers.");
+            onComplete?.Invoke(null);
+            return;
+        }
 
         float bodyMassFloat = bodyMass;
-        int maxPoints = 2500;
+        const int maxPoints = 2500;
         lodFactor = Mathf.Max(1, steps / maxPoints);
         outputCount = (int)Mathf.Ceil((float)steps / lodFactor);
 
-        // GPU buffers
-        initialPositionBuffer = new ComputeBuffer(1, sizeof(float) * 3);
-        initialVelocityBuffer = new ComputeBuffer(1, sizeof(float) * 3);
-        massBuffer = new ComputeBuffer(1, sizeof(float));
+        var requestContext = new TrajectoryRequestContext
+        {
+            initialPositionBuffer = new ComputeBuffer(1, sizeof(float) * 3),
+            initialVelocityBuffer = new ComputeBuffer(1, sizeof(float) * 3),
+            massBuffer = new ComputeBuffer(1, sizeof(float)),
+            bodyPositionsBuffer = new ComputeBuffer(Mathf.Max(1, otherBodyPositions.Length), sizeof(float) * 3),
+            bodyMassesBuffer = new ComputeBuffer(Mathf.Max(1, otherBodyMasses.Length), sizeof(float)),
+            outputTrajectoryBuffer = new ComputeBuffer(outputCount, sizeof(float) * 3),
+            onComplete = onComplete
+        };
 
-        bodyPositionsBuffer = new ComputeBuffer(otherBodyPositions.Length, sizeof(float) * 3);
-        bodyMassesBuffer = new ComputeBuffer(otherBodyMasses.Length, sizeof(float));
+        requestContext.initialPositionBuffer.SetData(new[] { startPos });
+        requestContext.initialVelocityBuffer.SetData(new[] { startVel });
+        requestContext.massBuffer.SetData(new[] { bodyMassFloat });
 
-        // Final output buffer is only outputCount in size, not steps
-        outputTrajectoryBuffer = new ComputeBuffer(outputCount, sizeof(float) * 3);
+        requestContext.bodyPositionsBuffer.SetData(
+            otherBodyPositions.Length > 0 ? otherBodyPositions : EmptyBodyPositionData
+        );
+        requestContext.bodyMassesBuffer.SetData(
+            otherBodyMasses.Length > 0 ? otherBodyMasses : EmptyBodyMassData
+        );
 
-        // Set data on the buffers
-        initialPositionBuffer.SetData(new Vector3[] { startPos });
-        initialVelocityBuffer.SetData(new Vector3[] { startVel });
-        massBuffer.SetData(new float[] { bodyMassFloat });
-
-        bodyPositionsBuffer.SetData(otherBodyPositions);
-        bodyMassesBuffer.SetData(otherBodyMasses);
-
-        // Find kernel & bind buffers
-        int kernelIndex = trajectoryComputeShader.FindKernel("RungeKutta");
-        trajectoryComputeShader.SetBuffer(kernelIndex, "initialPosition", initialPositionBuffer);
-        trajectoryComputeShader.SetBuffer(kernelIndex, "initialVelocity", initialVelocityBuffer);
-        trajectoryComputeShader.SetBuffer(kernelIndex, "mass", massBuffer);
-        trajectoryComputeShader.SetBuffer(kernelIndex, "bodyPositions", bodyPositionsBuffer);
-        trajectoryComputeShader.SetBuffer(kernelIndex, "bodyMasses", bodyMassesBuffer);
-        trajectoryComputeShader.SetBuffer(kernelIndex, "outTrajectory", outputTrajectoryBuffer);
+        int kernelIndex = GetRungeKuttaKernelIndex();
+        trajectoryComputeShader.SetBuffer(kernelIndex, "initialPosition", requestContext.initialPositionBuffer);
+        trajectoryComputeShader.SetBuffer(kernelIndex, "initialVelocity", requestContext.initialVelocityBuffer);
+        trajectoryComputeShader.SetBuffer(kernelIndex, "mass", requestContext.massBuffer);
+        trajectoryComputeShader.SetBuffer(kernelIndex, "bodyPositions", requestContext.bodyPositionsBuffer);
+        trajectoryComputeShader.SetBuffer(kernelIndex, "bodyMasses", requestContext.bodyMassesBuffer);
+        trajectoryComputeShader.SetBuffer(kernelIndex, "outTrajectory", requestContext.outputTrajectoryBuffer);
 
         // Pass constants
         trajectoryComputeShader.SetFloat("deltaTime", dt);
@@ -104,46 +150,42 @@ public class TrajectoryComputeController : MonoBehaviour
 
         // Use AsyncGPUReadback to avoid blocking the CPU
         AsyncGPUReadback.Request(
-            outputTrajectoryBuffer,
+            requestContext.outputTrajectoryBuffer,
             (AsyncGPUReadbackRequest request) =>
             {
-                OnAsyncReadbackComplete(request, onComplete);
+                OnAsyncReadbackComplete(request, requestContext);
             }
         );
+    }
+
+    private int GetRungeKuttaKernelIndex()
+    {
+        if (rungeKuttaKernelIndex < 0)
+            rungeKuttaKernelIndex = trajectoryComputeShader.FindKernel("RungeKutta");
+
+        return rungeKuttaKernelIndex;
     }
 
     /// <summary>
     /// Handles the completion of an asynchronous GPU readback request.
     /// </summary>
-    /// <param name="request">The readback request from the GPU.</param>
-    /// <param name="onComplete">Callback function to handle the resulting trajectory data.</param>
-    private void OnAsyncReadbackComplete(AsyncGPUReadbackRequest request, Action<Vector3[]> onComplete)
+    private void OnAsyncReadbackComplete(AsyncGPUReadbackRequest request, TrajectoryRequestContext requestContext)
     {
-        if (request.hasError)
+        try
         {
-            Debug.LogError("AsyncGPUReadbackRequest error when reading trajectory buffer!");
-            onComplete?.Invoke(null);
-        }
-        else
-        {
+            if (request.hasError)
+            {
+                Debug.LogError("AsyncGPUReadbackRequest error when reading trajectory buffer!");
+                requestContext.onComplete?.Invoke(null);
+                return;
+            }
+
             Vector3[] result = request.GetData<Vector3>().ToArray();
-
-            Cleanup();
-
-            onComplete?.Invoke(result);
+            requestContext.onComplete?.Invoke(result);
         }
-    }
-
-    /// <summary>
-    /// Cleans up and releases any GPU buffers that were allocated.
-    /// </summary>
-    private void Cleanup()
-    {
-        if (initialPositionBuffer != null) initialPositionBuffer.Release();
-        if (initialVelocityBuffer != null) initialVelocityBuffer.Release();
-        if (massBuffer != null) massBuffer.Release();
-        if (bodyPositionsBuffer != null) bodyPositionsBuffer.Release();
-        if (bodyMassesBuffer != null) bodyMassesBuffer.Release();
-        if (outputTrajectoryBuffer != null) outputTrajectoryBuffer.Release();
+        finally
+        {
+            requestContext?.Cleanup();
+        }
     }
 }

@@ -41,6 +41,8 @@ public class BodyService : MonoBehaviour, IBodyService
     private const double G_unity = 6.67430e-23; // 1u = 10 km
 
     private byte[] _isThrustingBuf;
+    private Vector3 _nodeBurnVCache = Vector3.right;
+    private Vector3 _nodeBurnHCache = Vector3.up;
     private sbyte[] _latchedParityBuf; // −1/0/+1
 
     // /// <summary>
@@ -124,6 +126,14 @@ public class BodyService : MonoBehaviour, IBodyService
 
         EnsureArraysForN(n);
         var normalSign = new sbyte[n];
+        ManeuverNode node = ctx?.ManeuverNodeManager != null ? ctx.ManeuverNodeManager.CurrentNode : null;
+        int simulationStep = ctx?.BodyRuntimeCoordinator != null ? ctx.BodyRuntimeCoordinator.simulationStep : 0;
+        float nodeBurnThrustMagnitude = ctx?.ThrustController != null
+            ? ctx.ThrustController.EffectiveForwardThrustMagnitude
+            : 0f;
+        Vector3 center = _central != null
+            ? _central.state.position.ToVector3()
+            : Vector3.zero;
 
         for (int i = 0; i < n; i++)
         {
@@ -147,7 +157,22 @@ public class BodyService : MonoBehaviour, IBodyService
 
             var att = b.GetComponent<AttitudeController>();
 
-            if (att != null && att.mode == AttitudeController.PointingMode.Normal)
+            if (ManeuverBurnMath.IsBurnActiveForStep(node, b, simulationStep) &&
+                ManeuverBurnMath.TryBuildBurnCommand(
+                    node.burnType,
+                    b.state.position.ToVector3(),
+                    b.state.velocity.ToVector3(),
+                    center,
+                    nodeBurnThrustMagnitude,
+                    ref _nodeBurnVCache,
+                    ref _nodeBurnHCache,
+                    out Vector3 nodeBurnForce,
+                    out sbyte nodeBurnNormalSign))
+            {
+                _thrustBuf[i] += nodeBurnForce;
+                normalSign[i] = nodeBurnNormalSign;
+            }
+            else if (att != null && att.mode == AttitudeController.PointingMode.Normal)
             {
                 normalSign[i] = +1;   // Normal
             }
@@ -200,6 +225,7 @@ public class BodyService : MonoBehaviour, IBodyService
             b.SyncAfterBatch();
         }
 
+        ctx?.BodyRuntimeCoordinator?.AdvanceSimulationStep();
         ctx?.BodyRuntimeCoordinator?.FlushPendingRemovals();
     }
 

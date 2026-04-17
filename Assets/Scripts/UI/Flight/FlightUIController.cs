@@ -9,15 +9,19 @@ public class FlightUIController
     }
 
     private readonly UIReferences refs;
+    private readonly ManeuverNodeManager maneuverNodeManager;
+    private readonly ThrustController thrustController;
 
     private ThrustUiMode thrustUiMode = ThrustUiMode.FreeThrust;
 
     public ThrustUiMode CurrentMode => thrustUiMode;
     public bool IsFreeThrustMode => thrustUiMode == ThrustUiMode.FreeThrust;
 
-    public FlightUIController(UIReferences refs)
+    public FlightUIController(UIReferences refs, SimContext ctx)
     {
         this.refs = refs;
+        maneuverNodeManager = ctx != null ? ctx.ManeuverNodeManager : null;
+        thrustController = ctx != null ? ctx.ThrustController : null;
     }
 
     public void Initialize()
@@ -27,6 +31,13 @@ public class FlightUIController
 
     public void ToggleBurnMode()
     {
+        if (ShouldForceManeuverMode())
+        {
+            thrustUiMode = ThrustUiMode.ManeuverNodes;
+            RefreshButtonLabel();
+            return;
+        }
+
         thrustUiMode = thrustUiMode == ThrustUiMode.FreeThrust
             ? ThrustUiMode.ManeuverNodes
             : ThrustUiMode.FreeThrust;
@@ -42,6 +53,13 @@ public class FlightUIController
 
     public void ShowThrustPanels(bool show)
     {
+        bool forceManeuverMode = ShouldForceManeuverMode();
+        if (forceManeuverMode)
+            thrustUiMode = ThrustUiMode.ManeuverNodes;
+
+        if (refs.burnControlButton != null)
+            refs.burnControlButton.interactable = !forceManeuverMode;
+
         if (refs.burnControlsPanel != null)
             refs.burnControlsPanel.SetActive(show);
 
@@ -78,5 +96,14 @@ public class FlightUIController
         txt.text = thrustUiMode == ThrustUiMode.FreeThrust
             ? "Use Maneuver Nodes"
             : "Use Free Thrust";
+    }
+
+    private bool ShouldForceManeuverMode()
+    {
+        if (thrustController != null && thrustController.IsNodeBurnActive)
+            return true;
+
+        ManeuverNode node = maneuverNodeManager != null ? maneuverNodeManager.CurrentNode : null;
+        return node != null && node.isFinalized;
     }
 }

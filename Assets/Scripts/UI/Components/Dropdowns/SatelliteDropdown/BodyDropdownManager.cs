@@ -133,6 +133,11 @@ public class BodyDropdownManager : MonoBehaviour
     public void HandleDropdownValueChanged(int index)
     {
         if (bodyDropdown == null) return;
+        if (ctx != null && ctx.ThrustController != null && ctx.ThrustController.IsNodeBurnActive)
+        {
+            UpdateDropdownSelection();
+            return;
+        }
         if (index < 0 || index >= _optionsMap.Count) return;
 
         var target = _optionsMap[index];
@@ -144,6 +149,12 @@ public class BodyDropdownManager : MonoBehaviour
             tutorialController.hasSwitchedSatellites = true;
 
         Debug.Log($"[BodyDropdown] Tracking switched to: {target.name}");
+    }
+
+    public void SetInteractable(bool interactable)
+    {
+        if (bodyDropdown != null)
+            bodyDropdown.interactable = interactable;
     }
 
     private void OnTrackedBodyChanged(NBody _) => UpdateDropdownSelection();

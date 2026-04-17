@@ -57,13 +57,18 @@ public class UIRoot : MonoBehaviour
         placementUI = new PlacementUIController(refs, objectPlacementManager);
         placementUI.Initialize();
 
-        flightUI = new FlightUIController(refs);
+        flightUI = new FlightUIController(refs, ctx);
         flightUI.Initialize();
 
         cameraModeUI = new CameraModeUIController(refs);
 
         BindButtons();
         BindCameraEvents();
+        RefreshAll();
+    }
+
+    public void RefreshAllUi()
+    {
         RefreshAll();
     }
 
@@ -163,16 +168,35 @@ public class UIRoot : MonoBehaviour
         if (cameraTracker == null) return;
 
         CameraMode mode = cameraTracker.Mode;
+        bool nodeBurnActive = ctx != null &&
+                              ctx.ThrustController != null &&
+                              ctx.ThrustController.IsNodeBurnActive;
 
         cameraModeUI?.Apply(mode);
         placementUI?.Apply(mode);
         flightUI?.Apply(mode);
         instructionsUI?.Apply(mode);
         vectorUI?.Apply(mode);
+
+        if (refs.freeCamButton != null)
+            refs.freeCamButton.interactable = !nodeBurnActive;
+
+        timeUI?.SetPauseButtonInteractable(!nodeBurnActive);
+        ctx?.BodyDropdownManager?.SetInteractable(!nodeBurnActive);
+        ctx?.ManeuverNodeManager?.SetSetupNodeButtonInteractable(!nodeBurnActive);
     }
 
     private void OnFreeCamPressed()
     {
+        if (ctx != null && ctx.ThrustController != null && ctx.ThrustController.IsNodeBurnActive)
+        {
+            EventSystem.current?.SetSelectedGameObject(null);
+            return;
+        }
+
+        if (ctx != null && ctx.ManeuverNodeManager != null && ctx.ManeuverNodeManager.HasNode)
+            ctx.ManeuverNodeManager.ClearNode();
+
         cameraTracker?.BreakToFreeCam();
         EventSystem.current?.SetSelectedGameObject(null);
     }

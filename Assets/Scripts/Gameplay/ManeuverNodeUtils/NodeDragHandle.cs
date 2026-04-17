@@ -8,9 +8,16 @@ public class NodeDragHandle : MonoBehaviour
     [SerializeField] private ManeuverNodeIndicator indicator;
     [SerializeField] private float indicatorPickupPaddingPixels = 24f;
 
+    [Header("Drag Performance")]
+    [SerializeField, Min(8)] private int localSegmentSearchRadius = 96;
+    [SerializeField, Min(16)] private int fallbackSegmentSearchRadius = 320;
+    [SerializeField, Min(1f)] private float maxIndexJumpPerFrame = 32f;
+
     ManeuverNodeManager mgr;
     Camera cam;
     bool dragging;
+    int lastBestSegment = -1;
+    float lastDraggedFloatIndex = -1f;
 
     ManeuverNode CurrentNode =>
         (mgr != null && mgr.HasNode) ? mgr.CurrentNode : null;
@@ -33,12 +40,12 @@ public class NodeDragHandle : MonoBehaviour
         var node = CurrentNode;
         if (node == null || node.isFinalized) return;
 
-        dragging = true;
+        BeginDrag();
     }
 
     void OnMouseUp()
     {
-        dragging = false;
+        EndDrag();
     }
 
     void Update()
@@ -50,6 +57,8 @@ public class NodeDragHandle : MonoBehaviour
         if (node == null || node.isFinalized || traj == null || traj.Count < 2)
         {
             dragging = false;
+            lastBestSegment = -1;
+            lastDraggedFloatIndex = -1f;
             return;
         }
 
@@ -63,7 +72,7 @@ public class NodeDragHandle : MonoBehaviour
                 indicator.IsIndicatorVisible() &&
                 indicator.IsPointerOverIndicator(Input.mousePosition, indicatorPickupPaddingPixels))
             {
-                dragging = true;
+                BeginDrag();
             }
         }
 
@@ -72,39 +81,121 @@ public class NodeDragHandle : MonoBehaviour
 
         if (!Input.GetMouseButton(0))
         {
-            dragging = false;
+            EndDrag();
             return;
         }
 
         if (!mgr.TryGetCurrentNodeIndex(out float currentFloatIndex))
             return;
 
+        float referenceFloatIndex = lastDraggedFloatIndex >= 0f
+            ? lastDraggedFloatIndex
+            : currentFloatIndex;
+
         Ray ray = cam.ScreenPointToRay(Input.mousePosition);
 
+        int count = traj.Count;
         int bestSeg = -1;
         float bestSegT = 0f;
         float bestScore = float.PositiveInfinity;
 
-        int count = traj.Count;
+        int searchAnchor = lastBestSegment >= 0
+            ? lastBestSegment
+            : Mathf.Clamp(Mathf.RoundToInt(referenceFloatIndex), 0, count - 2);
 
-        // Limit how far in index space we can jump from current index
-        float maxIndexJump = count * 0.4f;
+        EvaluateSegmentRange(
+            ray,
+            traj,
+            referenceFloatIndex,
+            Mathf.Max(0, searchAnchor - localSegmentSearchRadius),
+            Mathf.Min(count - 2, searchAnchor + localSegmentSearchRadius),
+            ref bestSeg,
+            ref bestSegT,
+            ref bestScore
+        );
 
-        for (int i = 0; i < count - 1; i++)
+        if (bestSeg < 0 && lastBestSegment < 0)
+        {
+            int fallbackAnchor = Mathf.Clamp(Mathf.RoundToInt(referenceFloatIndex), 0, count - 2);
+            EvaluateSegmentRange(
+                ray,
+                traj,
+                referenceFloatIndex,
+                Mathf.Max(0, fallbackAnchor - fallbackSegmentSearchRadius),
+                Mathf.Min(count - 2, fallbackAnchor + fallbackSegmentSearchRadius),
+                ref bestSeg,
+                ref bestSegT,
+                ref bestScore
+            );
+        }
+
+        if (bestSeg < 0 && lastBestSegment < 0)
+        {
+            EvaluateSegmentRange(
+                ray,
+                traj,
+                referenceFloatIndex,
+                0,
+                count - 2,
+                ref bestSeg,
+                ref bestSegT,
+                ref bestScore
+            );
+        }
+
+        if (bestSeg < 0)
+            return;
+
+        lastBestSegment = bestSeg;
+
+        float newFloatIndex = bestSeg + bestSegT;
+        newFloatIndex = Mathf.MoveTowards(referenceFloatIndex, newFloatIndex, maxIndexJumpPerFrame);
+        lastDraggedFloatIndex = newFloatIndex;
+
+        // Move node along trajectory -> updates burnTime + position
+        mgr.DragNodeToFloatIndex(newFloatIndex);
+    }
+
+    private void BeginDrag()
+    {
+        dragging = true;
+        lastBestSegment = -1;
+
+        if (mgr != null && mgr.TryGetCurrentNodeIndex(out float currentFloatIndex))
+            lastDraggedFloatIndex = currentFloatIndex;
+        else
+            lastDraggedFloatIndex = -1f;
+    }
+
+    private void EndDrag()
+    {
+        dragging = false;
+        lastBestSegment = -1;
+        lastDraggedFloatIndex = -1f;
+    }
+
+    private static void EvaluateSegmentRange(
+        Ray ray,
+        List<Vector3> traj,
+        float currentFloatIndex,
+        int startSeg,
+        int endSeg,
+        ref int bestSeg,
+        ref float bestSegT,
+        ref float bestScore)
+    {
+        const float indexWeight = 0.1f;
+
+        for (int i = startSeg; i <= endSeg; i++)
         {
             Vector3 a = traj[i];
             Vector3 b = traj[i + 1];
 
-            ClosestPointsRaySegment(ray, a, b, out float segT, out Vector3 segPoint, out float sqrDist);
+            ClosestPointsRaySegment(ray, a, b, out float segT, out _, out float sqrDist);
             segT = Mathf.Clamp01(segT);
 
             float candidateIndex = i + segT;
             float deltaIndex = Mathf.Abs(candidateIndex - currentFloatIndex);
-
-            if (deltaIndex > maxIndexJump)
-                continue;
-
-            const float indexWeight = 0.1f;
             float score = sqrDist + (deltaIndex * indexWeight);
 
             if (score < bestScore)
@@ -114,14 +205,6 @@ public class NodeDragHandle : MonoBehaviour
                 bestSegT = segT;
             }
         }
-
-        if (bestSeg < 0)
-            return;
-
-        float newFloatIndex = bestSeg + bestSegT;
-
-        // Move node along trajectory -> updates burnTime + position
-        mgr.DragNodeToFloatIndex(newFloatIndex);
     }
 
     /// <summary>
