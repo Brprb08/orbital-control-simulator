@@ -11,6 +11,7 @@ public class SimulationBootstrap : MonoBehaviour
     public CameraController cameraController;
     public CameraMovement cameraMovement;
     public FreeCamera freeCamera;
+    public CameraInfoUIController cameraInfoUIController;
     public BodyDropdownManager bodyDropdownManager;
     public ManeuverNodeManager maneuverNodeManager;
     public ThrustController thrustController;
@@ -43,6 +44,7 @@ public class SimulationBootstrap : MonoBehaviour
             CameraController = cameraController,
             CameraMovement = cameraMovement,
             FreeCamera = freeCamera,
+            CameraInfoUIController = cameraInfoUIController,
             BodyDropdownManager = bodyDropdownManager,
             ManeuverNodeManager = maneuverNodeManager,
             ThrustController = thrustController,
@@ -66,6 +68,9 @@ public class SimulationBootstrap : MonoBehaviour
         bodyService.Initialize(ctx);
         bodyRuntimeCoordinator.Initialize(ctx);
         cameraMovement.Initialize(ctx);
+        cameraInfoUIController = EnsureCameraInfoUIController();
+        ctx.CameraInfoUIController = cameraInfoUIController;
+        cameraInfoUIController.Initialize(ctx);
         cameraButtonProxy.Initialize(ctx);
         freeCamera.Initialize(ctx);
         uIRoot.Initialize(ctx);
@@ -84,5 +89,20 @@ public class SimulationBootstrap : MonoBehaviour
         tutorialController.Initialize(ctx);
         attitudeUIController.Initialize(ctx);
         nBodyVectorOverlayController.Initialize(ctx);
+    }
+
+    private CameraInfoUIController EnsureCameraInfoUIController()
+    {
+        if (cameraInfoUIController != null)
+            return cameraInfoUIController;
+
+        if (cameraMovement != null &&
+            cameraMovement.TryGetComponent(out CameraInfoUIController existing))
+        {
+            return existing;
+        }
+
+        GameObject host = cameraMovement != null ? cameraMovement.gameObject : gameObject;
+        return host.AddComponent<CameraInfoUIController>();
     }
 }

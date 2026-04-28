@@ -10778,7 +10778,7 @@ Transform:
   m_GameObject: {fileID: 534088643}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: 0, y: 0, z: 0}
+  m_LocalPosition: {x: 4.6, y: -0.3, z: -0.8}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -10800,6 +10800,7 @@ MonoBehaviour:
   cameraController: {fileID: 1667378690}
   cameraMovement: {fileID: 817157355}
   freeCamera: {fileID: 330585549}
+  cameraInfoUIController: {fileID: 1667378691}
   bodyDropdownManager: {fileID: 1354312599}
   maneuverNodeManager: {fileID: 772056303}
   thrustController: {fileID: 772056304}
@@ -15764,21 +15765,17 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: baa6e76508860414b8556e50aac51b8c, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
-  tutorialController: {fileID: 716810392}
-  targetBody: {fileID: 2136029598}
-  targetPlaceholder: {fileID: 0}
+  focusBody: {fileID: 0}
+  focusPlaceholder: {fileID: 0}
+  earthFocusBody: {fileID: 0}
   cameraPivotTransform: {fileID: 817157354}
   cameraTransform: {fileID: 330585546}
   distance: -100
   height: 0
   baseZoomSpeed: 10
   maxCameraDistance: 50000
-  inEarthCam: 0
+  inEarthFocus: 0
   isFreeCamMode: 0
-  tempEarthBody: {fileID: 0}
-  velocityText: {fileID: 1094166147}
-  altitudeText: {fileID: 793169699}
-  trackingObjectNameText: {fileID: 1300459248}
   sensitivity: 100
 --- !u!1 &828116620
 GameObject:
@@ -35288,9 +35285,9 @@ GameObject:
   serializedVersion: 6
   m_Component:
   - component: {fileID: 1667378687}
-  - component: {fileID: 1667378688}
   - component: {fileID: 1667378689}
   - component: {fileID: 1667378690}
+  - component: {fileID: 1667378691}
   m_Layer: 0
   m_Name: CameraManager
   m_TagString: Untagged
@@ -35313,21 +35310,6 @@ Transform:
   m_Children: []
   m_Father: {fileID: 1803650427}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
---- !u!114 &1667378688
-MonoBehaviour:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 1667378686}
-  m_Enabled: 1
-  m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 6b5fa6cb94aa79748b4098ee15b1ec81, type: 3}
-  m_Name: 
-  m_EditorClassIdentifier: 
-  trajectoryRenderer: {fileID: 2109498698}
-  lineVisibilityController: {fileID: 2109498701}
-  cameraController: {fileID: 1667378690}
 --- !u!114 &1667378689
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -35356,6 +35338,21 @@ MonoBehaviour:
   _freeCamera: {fileID: 0}
   _bodies: []
   _currentIndex: 0
+--- !u!114 &1667378691
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1667378686}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 65b5b9b0bc544b0993f53e00809a5f22, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: 
+  velocityText: {fileID: 1094166147}
+  altitudeText: {fileID: 793169699}
+  trackingObjectNameText: {fileID: 1300459248}
 --- !u!1 &1674783289
 GameObject:
   m_ObjectHideFlags: 0

@@ -7,6 +7,7 @@ public class SimContext
     public CameraController CameraController { get; set; }
     public CameraMovement CameraMovement { get; set; }
     public FreeCamera FreeCamera { get; set; }
+    public CameraInfoUIController CameraInfoUIController { get; set; }
     public BodyDropdownManager BodyDropdownManager { get; set; }
     public ManeuverNodeManager ManeuverNodeManager { get; set; }
     public ThrustController ThrustController { get; set; }

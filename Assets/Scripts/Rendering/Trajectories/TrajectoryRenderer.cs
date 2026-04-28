@@ -582,7 +582,7 @@ public class TrajectoryRenderer : MonoBehaviour
         if (cameraController != null && cameraController.CurrentBody == trackedBody)
             return true;
 
-        return cameraMovement != null && cameraMovement.targetBody == trackedBody;
+        return false;
     }
 
     private void UpdateTrackedPredictionOwnership(bool cameraOnTrackedBody)

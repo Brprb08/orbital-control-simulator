@@ -179,56 +179,62 @@ The focus is on experimentation and understanding orbital behavior.
 OrbitalControlSimulator/
 |-- Assets/
 |   |-- Scripts/
+|   |   |-- Audio/                         // Ambient and feedback audio systems
+|   |   |
+|   |   |-- Camera/                        // Camera modes, tracking, movement, and zoom rules
+|   |   |   |-- Abstractions/              // Camera-facing interfaces and mode enums
+|   |   |   |-- Controllers/               // High-level camera coordination
+|   |   |   |-- Movement/                  // Camera rig movement and free-camera controls
+|   |   |   |-- Tracking/                  // Tracked target/state models
+|   |   |   `-- Zoom/                      // Camera distance, clamp, and zoom calculations
+|   |   |
 |   |   |-- Core/                          // Application core: bootstrapping, time, services, utilities
 |   |   |   |-- Bootstrap/                 // Simulation startup, dependency wiring, runtime context
-|   |   |   |-- Data/                      // Data helpers, parsing, TLE ingestion, frame utilities
-|   |   |   |   `-- Parsing/               // TLE and data parsing utilities
+|   |   |   |-- Data/                      // Data helpers, TLE ingestion, and parsing utilities
+|   |   |   |   `-- Parsing/
 |   |   |   |-- Extensions/                // Shared extension methods
 |   |   |   |-- Services/                  // Runtime services
 |   |   |   |   `-- Abstractions/
 |   |   |   `-- Time/                      // Simulation time scaling and control
 |   |   |
-|   |   |-- Physics/                       // Orbital mechanics, Kepler math, constants, native interop
-|   |   |
-|   |   |-- Gameplay/                      // Interactable simulation systems
-|   |   |   |-- Abstractions/              // Shared gameplay abstractions and math helpers
-|   |   |   |-- ManeuverNodeUtils/         // Maneuver node system: nodes, gizmos, drag handles, previews
+|   |   |-- Gameplay/                      // Player-facing simulation features
+|   |   |   |-- Flight/                    // Flight control and thrust interaction
+|   |   |   |-- Maneuvers/                 // Maneuver nodes, burn math, previews, gizmos, drag handles
+|   |   |   |-- Placement/                 // Satellite spawning and initial-condition tools
 |   |   |   `-- System/                    // Small gameplay/system helpers
 |   |   |
-|   |   |-- Rendering/                     // Trajectory, vector, and orbit visualization
+|   |   |-- Physics/                       // Simulation bodies, orbital mechanics, frames, and attitude math
+|   |   |   |-- Attitude/                  // Orientation, burn-frame, and attitude helpers
+|   |   |   |-- Bodies/                    // Runtime body state and body simulation coordination
+|   |   |   `-- Orbit/                     // Kepler/orbital calculations, constants, native interop
+|   |   |
+|   |   |-- Rendering/                     // Trajectory, vector, line, and orbit visualization
 |   |   |   |-- Lines/
 |   |   |   |-- Trajectories/
 |   |   |   |   |-- Helpers/
 |   |   |   |   `-- Utils/
 |   |   |   `-- Vectors/                   // Force, velocity, and direction overlays
 |   |   |
-|   |   |-- Placement/                     // Satellite spawning and initial-condition tools
+|   |   |-- Tutorial/                      // Guided tutorial flow and progress state
 |   |   |
-|   |   |-- Camera/                        // Camera modes, tracking, and control systems
-|   |   |   |-- Abstractions/
-|   |   |   |-- Controllers/
-|   |   |   |-- Implementations/
-|   |   |   `-- Orbit/
-|   |   |
-|   |   |-- UI/                            // UI state, views, controllers, and helpers
-|   |   |   |-- Camera/                    // Camera-related UI, calculations, and mode controls
-|   |   |   |-- Components/                // Reusable UI helpers
-|   |   |   |   |-- Buttons/
-|   |   |   |   |-- Dropdowns/
-|   |   |   |   |   `-- SatelliteDropdown/
-|   |   |   |   `-- Indicators/            // Indicators for tracked satellites and maneuver nodes
-|   |   |   |-- Core/                      // UI root object, shared references, wiring
-|   |   |   |-- Drawing/
-|   |   |   |-- Flight/                    // HUD, orbit preview, and spacecraft attitude UI
-|   |   |   |-- Instructions/
-|   |   |   |-- Placement/                 // All satellite placement UI
-|   |   |   |-- Time/
-|   |   |   |-- Trajectory/                // Trajectory and vector overlay UI
-|   |   |   `-- Tutorial/
-|   |   |
-|   |   |-- Audio/                         // Ambient and feedback audio systems
-|   |   |
-|   |   `-- Tutorial/                      // Guided tutorial
+|   |   `-- UI/                            // UI state, views, controllers, and reusable widgets
+|   |       |-- Camera/                    // Camera mode and tracking readout UI
+|   |       |-- Components/                // Reusable UI controls and visual widgets
+|   |       |   |-- Buttons/
+|   |       |   |-- Dialogs/
+|   |       |   |-- Drawing/
+|   |       |   |-- Dropdowns/
+|   |       |   |   `-- SatelliteDropdown/
+|   |       |   |-- Indicators/
+|   |       |   `-- Utils/
+|   |       |-- Core/                      // UI root object, shared references, wiring
+|   |       |-- Flight/                    // HUD, orbit preview, and spacecraft attitude UI
+|   |       |-- Instructions/
+|   |       |-- Maneuvers/                 // Maneuver-node UI controls
+|   |       |-- Placement/                 // Satellite placement UI
+|   |       |-- Time/
+|   |       |-- Trajectory/                // Trajectory and vector overlay UI
+|   |       `-- Tutorial/
 |   |
 |   |-- Plugins/
 |   |   |-- Source/                        // Native C++ physics backend (Dormand-Prince integrator)

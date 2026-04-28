@@ -36,10 +36,12 @@ public static class SimTestBootstrap
         var freeCam = new GameObject("FreeCamera").AddComponent<FreeCamera>();
         freeCam.transform.SetParent(root.transform, false);
 
+        var cameraInfoUI = camMove.gameObject.AddComponent<CameraInfoUIController>();
+
         var bodyService = new GameObject("BodyService").AddComponent<BodyService>();
         bodyService.transform.SetParent(root.transform, false);
 
-        // TutorialController (CameraMovement.SetTargetEarth() touches it)
+        // TutorialController is used by camera/tutorial integration.
         var tut = new GameObject("TutorialController").AddComponent<TutorialController>();
         tut.transform.SetParent(root.transform, false);
         tut.inTutorialMode = false;
@@ -49,6 +51,7 @@ public static class SimTestBootstrap
             CameraController = controller,
             CameraMovement = camMove,
             FreeCamera = freeCam,
+            CameraInfoUIController = cameraInfoUI,
             BodyService = bodyService,
             TutorialController = tut,
         };
@@ -59,6 +62,7 @@ public static class SimTestBootstrap
         // Initialize deps (order mirrors runtime)
         bodyService.Initialize(ctx);
         camMove.Initialize(ctx);
+        cameraInfoUI.Initialize(ctx);
         freeCam.Initialize(ctx);
 
         var earth = MakeCentralBody(root.transform, "Earth", radius: 637f, camRadius: 637f);
@@ -90,6 +94,7 @@ public static class SimTestBootstrap
             controller,
             camMove,
             freeCam,
+            cameraInfoUI,
             bodyService,
             earth,
             satellites,
@@ -145,6 +150,7 @@ public static class SimTestBootstrap
             rig.Controller,
             rig.CamMove,
             rig.FreeCam,
+            rig.CameraInfoUI,
             rig.BodyService,
             rig.Earth,
             rig.Satellites,
@@ -521,6 +527,7 @@ public sealed class SimTestRig : IDisposable
     public CameraController Controller { get; }
     public CameraMovement CamMove { get; }
     public FreeCamera FreeCam { get; }
+    public CameraInfoUIController CameraInfoUI { get; }
     public BodyService BodyService { get; }
     public NBody Earth { get; }
     public IReadOnlyList<NBody> Satellites { get; }
@@ -533,6 +540,7 @@ public sealed class SimTestRig : IDisposable
         CameraController controller,
         CameraMovement camMove,
         FreeCamera freeCam,
+        CameraInfoUIController cameraInfoUI,
         BodyService bodyService,
         NBody earth,
         IReadOnlyList<NBody> sats,
@@ -544,6 +552,7 @@ public sealed class SimTestRig : IDisposable
         Controller = controller;
         CamMove = camMove;
         FreeCam = freeCam;
+        CameraInfoUI = cameraInfoUI;
         BodyService = bodyService;
         Earth = earth;
         Satellites = sats;

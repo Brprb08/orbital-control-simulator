@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Reflection;
 using NUnit.Framework;
 using UnityEngine;
 using UnityEngine.TestTools;
@@ -11,6 +12,13 @@ using UnityEngine.TestTools;
 public class CameraController_EditModeTests
 {
     private SimTestRig rig;
+
+    private static T GetPrivateField<T>(object target, string fieldName)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(field, $"Could not find private field {fieldName}.");
+        return (T)field.GetValue(target);
+    }
 
     [TearDown]
     public void TearDown()
@@ -30,8 +38,8 @@ public class CameraController_EditModeTests
         Assert.AreEqual("Sat1", rig.Controller.CurrentBody.name);
 
         Assert.IsTrue(rig.CamMove.enabled);
-        Assert.IsFalse(rig.CamMove.isFreeCamMode);
-        Assert.IsFalse(rig.CamMove.inEarthCam);
+        Assert.IsFalse(rig.CamMove.IsFreeCamMode);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
     }
 
     [UnityTest]
@@ -68,7 +76,7 @@ public class CameraController_EditModeTests
 
         rig.Controller.SwitchToEarthCam();
         Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Earth));
-        Assert.IsTrue(rig.CamMove.inEarthCam);
+        Assert.IsTrue(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
 
         rig.Controller.SwitchToEarthCam();
         Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Track));
@@ -85,8 +93,8 @@ public class CameraController_EditModeTests
 
         Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Free));
         Assert.IsNull(rig.Controller.CurrentBody);
-        Assert.IsTrue(rig.CamMove.isFreeCamMode);
-        Assert.IsFalse(rig.CamMove.inEarthCam);
+        Assert.IsTrue(rig.CamMove.IsFreeCamMode);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
     }
 
     [UnityTest]
@@ -116,8 +124,8 @@ public class CameraController_EditModeTests
         Assert.IsNull(rig.Controller.CurrentBody);
         Assert.IsNull(rig.Controller.CurrentPlaceholder);
         Assert.IsFalse(rig.CamMove.enabled);
-        Assert.IsTrue(rig.CamMove.isFreeCamMode);
-        Assert.IsFalse(rig.CamMove.inEarthCam);
+        Assert.IsTrue(rig.CamMove.IsFreeCamMode);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
     }
 
     [UnityTest]
@@ -269,8 +277,8 @@ public class CameraController_EditModeTests
         Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Free));
         Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
         Assert.IsNull(rig.Controller.CurrentBody);
-        Assert.IsFalse(rig.CamMove.isFreeCamMode);
-        Assert.IsFalse(rig.CamMove.inEarthCam);
+        Assert.IsFalse(rig.CamMove.IsFreeCamMode);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
         Assert.IsTrue(rig.CamMove.enabled);
     }
 
@@ -296,8 +304,8 @@ public class CameraController_EditModeTests
         Assert.IsTrue(rig.Controller.IsEarthView);
         Assert.IsFalse(rig.Controller.IsTrackingPlaceholder);
         Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
-        Assert.IsTrue(rig.CamMove.inEarthCam);
-        Assert.That(rig.CamMove.tempEarthBody, Is.EqualTo(rig.Earth));
+        Assert.IsTrue(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
+        Assert.That(GetPrivateField<NBody>(rig.CamMove, "earthFocusBody"), Is.EqualTo(rig.Earth));
 
         rig.Controller.SwitchToEarthCam();
 
@@ -306,7 +314,7 @@ public class CameraController_EditModeTests
         Assert.IsFalse(rig.Controller.IsEarthView);
         Assert.IsTrue(rig.Controller.IsTrackingPlaceholder);
         Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
-        Assert.IsFalse(rig.CamMove.inEarthCam);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
     }
 
     [UnityTest]

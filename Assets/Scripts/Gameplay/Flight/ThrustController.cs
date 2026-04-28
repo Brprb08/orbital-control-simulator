@@ -118,7 +118,7 @@ public class ThrustController : MonoBehaviour
     {
         return nodeBurnActive
             ? activeBurnBody
-            : (cameraMovement != null ? cameraMovement.targetBody : null);
+            : (cameraController != null ? cameraController.CurrentBody : null);
     }
 
     private Vector3 ResolveBurnDirection(NBody ship)

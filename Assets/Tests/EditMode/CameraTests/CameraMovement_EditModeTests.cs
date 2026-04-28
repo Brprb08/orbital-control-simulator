@@ -8,8 +8,7 @@ using UnityEngine.TestTools;
 
 /// <summary>
 /// Edit-mode tests for CameraMovement:
-/// verifies initialization, target assignment, Earth-cam toggling,
-/// placeholder targeting, LateUpdate positioning, UI updates,
+/// verifies applied focus behavior, LateUpdate positioning, UI updates,
 /// and helper behaviors that do not depend on live input.
 /// </summary>
 public class CameraMovement_EditModeTests
@@ -28,6 +27,20 @@ public class CameraMovement_EditModeTests
         var mi = typeof(CameraMovement).GetMethod("LateUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(mi, "Could not find private LateUpdate() via reflection.");
         mi.Invoke(camMove, null);
+    }
+
+    private static void InvokeLateUpdate(MonoBehaviour behaviour)
+    {
+        var mi = behaviour.GetType().GetMethod("LateUpdate", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(mi, $"Could not find private LateUpdate() on {behaviour.GetType().Name} via reflection.");
+        mi.Invoke(behaviour, null);
+    }
+
+    private static T GetPrivateField<T>(object target, string fieldName)
+    {
+        var field = target.GetType().GetField(fieldName, BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(field, $"Could not find private field {fieldName}.");
+        return (T)field.GetValue(target);
     }
 
     private static NBody CreateBody(Transform parent, string name, float radius, float camRadius, string tag = "Untagged")
@@ -53,164 +66,135 @@ public class CameraMovement_EditModeTests
     }
 
     [Test]
-    public void Initialize_sets_tutorial_controller_and_main_camera()
+    public void Initialize_sets_main_camera()
     {
         rig = SimTestBootstrap.CreateBasic(0);
 
         rig.CamMove.Initialize(rig.Ctx);
 
-        Assert.AreEqual(rig.Ctx.TutorialController, rig.CamMove.tutorialController);
         Assert.NotNull(rig.CamMove.MainCamera);
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBody_configures_rig_safely()
+    public IEnumerator ApplyBodyFocus_configures_rig_safely()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Sat", 20f, 40f);
 
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         yield return null;
 
-        Assert.AreEqual(body, rig.CamMove.targetBody);
-        Assert.IsNull(rig.CamMove.targetPlaceholder);
+        Assert.AreEqual(body, GetPrivateField<NBody>(rig.CamMove, "focusBody"));
+        Assert.IsNull(GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
 
         var q = rig.CamMove.cameraPivotTransform.rotation;
         Assert.IsFalse(float.IsNaN(q.x + q.y + q.z + q.w));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBody_null_clears_body_and_placeholder()
+    public IEnumerator ClearFocus_clears_applied_focus()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Sat", 20f, 40f);
 
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         yield return null;
-        Assert.AreEqual(body, rig.CamMove.targetBody);
+        Assert.AreEqual(body, GetPrivateField<NBody>(rig.CamMove, "focusBody"));
 
-        rig.CamMove.SetTargetBody(null);
+        rig.CamMove.ClearFocus();
         yield return null;
 
-        Assert.IsNull(rig.CamMove.targetBody);
-        Assert.IsNull(rig.CamMove.targetPlaceholder);
+        Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "focusBody"));
+        Assert.IsNull(GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
+        Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "earthFocusBody"));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBody_small_body_uses_close_default_distance()
+    public IEnumerator ApplyBodyFocus_small_body_uses_close_default_distance()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Tiny", radius: 5f, camRadius: 10f);
 
-        rig.CamMove.inEarthCam = false;
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         yield return null;
 
-        Assert.AreEqual(body, rig.CamMove.targetBody);
+        Assert.AreEqual(body, GetPrivateField<NBody>(rig.CamMove, "focusBody"));
         Assert.That(rig.CamMove.distance, Is.GreaterThan(0f));
         Assert.That(rig.CamMove.distance, Is.LessThan(10000f));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBody_while_in_earth_cam_uses_earth_override_distance()
+    public IEnumerator ApplyBodyFocus_uses_default_distance_override()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Sat", radius: 20f, camRadius: 40f);
 
-        rig.CamMove.inEarthCam = true;
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body, defaultDistanceOverride: 2500f);
         yield return null;
 
         Assert.AreEqual(2500f, rig.CamMove.distance, 0.001f);
     }
 
     [UnityTest]
-    public IEnumerator SetTargetEarth_toggles_flag_and_distance_valid()
+    public IEnumerator ApplyEarthFocus_sets_earth_focus_and_distance()
     {
         rig = SimTestBootstrap.CreateBasic(1);
-        var earth = rig.Earth;
 
-        bool wasEarth = rig.CamMove.inEarthCam;
-        rig.CamMove.SetTargetEarth(earth);
+        rig.CamMove.ApplyEarthFocus(rig.Earth);
         yield return null;
 
-        Assert.AreNotEqual(wasEarth, rig.CamMove.inEarthCam);
-        Assert.AreEqual(earth, rig.CamMove.tempEarthBody);
+        Assert.AreEqual(rig.Earth, GetPrivateField<NBody>(rig.CamMove, "earthFocusBody"));
+        Assert.IsTrue(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
+        Assert.That(rig.CamMove.distance, Is.EqualTo(2000f).Within(0.001f));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetEarth_clears_placeholder()
+    public IEnumerator ApplyEarthFocus_clears_placeholder_focus()
     {
         rig = SimTestBootstrap.CreateBasic(1);
         var ph = new GameObject("PH").transform;
         ph.SetParent(rig.Root.transform, false);
-        rig.CamMove.targetPlaceholder = ph;
 
-        rig.CamMove.SetTargetEarth(rig.Earth);
+        rig.CamMove.ApplyPlaceholderFocus(ph);
+        rig.CamMove.ApplyEarthFocus(rig.Earth);
         yield return null;
 
-        Assert.IsNull(rig.CamMove.targetPlaceholder);
+        Assert.IsNull(GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
+        Assert.AreEqual(rig.Earth, GetPrivateField<NBody>(rig.CamMove, "earthFocusBody"));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetEarth_sets_tutorial_flag_when_in_tutorial_mode()
-    {
-        rig = SimTestBootstrap.CreateBasic(1);
-        rig.Ctx.TutorialController.inTutorialMode = true;
-        rig.Ctx.TutorialController.hasSwitchedToEarthCam = false;
-
-        rig.CamMove.SetTargetEarth(rig.Earth);
-        yield return null;
-
-        Assert.IsTrue(rig.Ctx.TutorialController.hasSwitchedToEarthCam);
-    }
-
-    [UnityTest]
-    public IEnumerator SetTargetEarth_null_still_toggles_mode_and_sets_temp_reference()
+    public IEnumerator ClearEarthFocus_clears_only_earth_focus()
     {
         rig = SimTestBootstrap.CreateBasic(1);
 
-        bool before = rig.CamMove.inEarthCam;
-        rig.CamMove.SetTargetEarth(null);
+        rig.CamMove.ApplyEarthFocus(rig.Earth);
+        rig.CamMove.ClearEarthFocus();
         yield return null;
 
-        Assert.AreNotEqual(before, rig.CamMove.inEarthCam);
-        Assert.IsNull(rig.CamMove.tempEarthBody);
+        Assert.IsFalse(GetPrivateField<bool>(rig.CamMove, "inEarthFocus"));
+        Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "earthFocusBody"));
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBodyPlaceholder_sets_distance_from_scale()
+    public IEnumerator ApplyPlaceholderFocus_sets_distance_from_scale()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var ph = new GameObject("PH").transform;
         ph.SetParent(rig.Root.transform, false);
         ph.localScale = new Vector3(3f, 3f, 3f);
 
-        rig.CamMove.SetTargetBodyPlaceholder(ph);
+        rig.CamMove.ApplyPlaceholderFocus(ph);
         yield return null;
 
-        Assert.IsNull(rig.CamMove.targetBody);
-        Assert.AreEqual(ph, rig.CamMove.targetPlaceholder);
+        Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "focusBody"));
+        Assert.AreEqual(ph, GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
         Assert.AreEqual(30f, rig.CamMove.distance, 0.001f);
         Assert.AreEqual(0.6f, rig.CamMove.height, 0.001f);
     }
 
     [UnityTest]
-    public IEnumerator SetTargetBodyPlaceholder_null_clears_body_and_keeps_placeholder_null()
-    {
-        rig = SimTestBootstrap.CreateBasic(0);
-        var body = CreateBody(rig.Root.transform, "Sat", 20f, 40f);
-        rig.CamMove.targetBody = body;
-
-        rig.CamMove.SetTargetBodyPlaceholder(null);
-        yield return null;
-
-        Assert.IsNull(rig.CamMove.targetBody);
-        Assert.IsNull(rig.CamMove.targetPlaceholder);
-    }
-
-    [UnityTest]
-    public IEnumerator SetTargetBodyPlaceholder_overwrites_existing_body_target()
+    public IEnumerator ApplyPlaceholderFocus_overwrites_existing_body_focus()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Sat", 20f, 40f);
@@ -218,15 +202,15 @@ public class CameraMovement_EditModeTests
         ph.SetParent(rig.Root.transform, false);
         ph.localScale = Vector3.one * 2f;
 
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         yield return null;
-        Assert.AreEqual(body, rig.CamMove.targetBody);
+        Assert.AreEqual(body, GetPrivateField<NBody>(rig.CamMove, "focusBody"));
 
-        rig.CamMove.SetTargetBodyPlaceholder(ph);
+        rig.CamMove.ApplyPlaceholderFocus(ph);
         yield return null;
 
-        Assert.IsNull(rig.CamMove.targetBody);
-        Assert.AreEqual(ph, rig.CamMove.targetPlaceholder);
+        Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "focusBody"));
+        Assert.AreEqual(ph, GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
     }
 
     [Test]
@@ -263,15 +247,17 @@ public class CameraMovement_EditModeTests
     }
 
     [Test]
-    public void LateUpdate_returns_when_no_target_exists()
+    public void LateUpdate_returns_when_no_focus_exists()
     {
         rig = SimTestBootstrap.CreateBasic(0);
+
+        rig.CamMove.ClearFocus();
 
         Assert.DoesNotThrow(() => InvokeLateUpdate(rig.CamMove));
     }
 
     [Test]
-    public void LateUpdate_moves_rig_transform_to_target_body_position()
+    public void LateUpdate_moves_rig_transform_to_body_focus_position()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var body = CreateBody(rig.Root.transform, "Sat", 20f, 40f);
@@ -287,14 +273,14 @@ public class CameraMovement_EditModeTests
             Vector3.zero
         );
 
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         InvokeLateUpdate(rig.CamMove);
 
         Assert.AreEqual(body.transform.position, rig.CamMove.transform.position);
     }
 
     [Test]
-    public void LateUpdate_moves_rig_transform_to_placeholder_position_when_tracking_placeholder()
+    public void LateUpdate_moves_rig_transform_to_placeholder_position()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var ph = new GameObject("PH").transform;
@@ -302,22 +288,20 @@ public class CameraMovement_EditModeTests
         ph.position = new Vector3(4f, 5f, 6f);
         ph.localScale = Vector3.one * 3f;
 
-        rig.CamMove.SetTargetBodyPlaceholder(ph);
+        rig.CamMove.ApplyPlaceholderFocus(ph);
         InvokeLateUpdate(rig.CamMove);
 
         Assert.AreEqual(ph.position, rig.CamMove.transform.position);
     }
 
     [Test]
-    public void LateUpdate_in_earth_cam_uses_temp_earth_position()
+    public void LateUpdate_with_earth_focus_uses_earth_position()
     {
         rig = SimTestBootstrap.CreateBasic(1);
 
         rig.Earth.transform.position = new Vector3(100f, 200f, 300f);
-        rig.CamMove.tempEarthBody = rig.Earth;
-        rig.CamMove.inEarthCam = true;
-        rig.CamMove.targetBody = rig.Satellites[0];
 
+        rig.CamMove.ApplyEarthFocus(rig.Earth);
         InvokeLateUpdate(rig.CamMove);
 
         Assert.AreEqual(rig.Earth.transform.position, rig.CamMove.transform.position);
@@ -343,20 +327,21 @@ public class CameraMovement_EditModeTests
         rig.CamMove.height = 10f;
         rig.CamMove.MainCamera.transform.localPosition = Vector3.zero;
 
-        rig.CamMove.SetTargetBody(body);
+        rig.CamMove.ApplyBodyFocus(body);
         InvokeLateUpdate(rig.CamMove);
 
         Assert.AreNotEqual(Vector3.zero, rig.CamMove.MainCamera.transform.localPosition);
     }
 
     [Test]
-    public void LateUpdate_updates_velocity_altitude_and_name_text_for_body_target()
+    public void CameraInfoUI_updates_velocity_altitude_and_name_text_for_tracked_body()
     {
         rig = SimTestBootstrap.CreateBasic(0);
 
-        rig.CamMove.velocityText = new GameObject("VelocityText").AddComponent<TextMeshProUGUI>();
-        rig.CamMove.altitudeText = new GameObject("AltitudeText").AddComponent<TextMeshProUGUI>();
-        rig.CamMove.trackingObjectNameText = new GameObject("NameText").AddComponent<TextMeshProUGUI>();
+        var velocityText = new GameObject("VelocityText").AddComponent<TextMeshProUGUI>();
+        var altitudeText = new GameObject("AltitudeText").AddComponent<TextMeshProUGUI>();
+        var nameText = new GameObject("NameText").AddComponent<TextMeshProUGUI>();
+        rig.CameraInfoUI.SetTextReferences(velocityText, altitudeText, nameText);
 
         var body = CreateBody(rig.Root.transform, "SatX", 20f, 40f);
         body.transform.position = new Vector3(737.8137f, 0f, 0f);
@@ -372,40 +357,54 @@ public class CameraMovement_EditModeTests
         );
 
         rig.Controller.TrackBody(body);
-        InvokeLateUpdate(rig.CamMove);
+        InvokeLateUpdate(rig.CameraInfoUI);
 
-        Assert.That(rig.CamMove.velocityText.text, Does.Contain("Velocity:"));
-        Assert.That(rig.CamMove.velocityText.text, Does.Contain("20000.00"));
+        Assert.That(velocityText.text, Does.Contain("Velocity:"));
+        Assert.That(velocityText.text, Does.Contain("20000.00"));
 
-        Assert.That(rig.CamMove.altitudeText.text, Does.Contain("Altitude:"));
-        Assert.That(rig.CamMove.altitudeText.text, Does.Contain("1000.000"));
+        Assert.That(altitudeText.text, Does.Contain("Altitude:"));
+        Assert.That(altitudeText.text, Does.Contain("1000.000"));
 
-        Assert.That(rig.CamMove.trackingObjectNameText.text, Is.EqualTo("SatX"));
+        Assert.That(nameText.text, Is.EqualTo("SatX"));
     }
 
     [Test]
-    public void LateUpdate_does_not_update_ui_for_placeholder_target()
+    public void CameraInfoUI_does_not_update_without_tracked_body()
     {
         rig = SimTestBootstrap.CreateBasic(0);
 
-        rig.CamMove.velocityText = new GameObject("VelocityText").AddComponent<TextMeshProUGUI>();
-        rig.CamMove.altitudeText = new GameObject("AltitudeText").AddComponent<TextMeshProUGUI>();
-        rig.CamMove.trackingObjectNameText = new GameObject("NameText").AddComponent<TextMeshProUGUI>();
+        var velocityText = new GameObject("VelocityText").AddComponent<TextMeshProUGUI>();
+        var altitudeText = new GameObject("AltitudeText").AddComponent<TextMeshProUGUI>();
+        var nameText = new GameObject("NameText").AddComponent<TextMeshProUGUI>();
+        rig.CameraInfoUI.SetTextReferences(velocityText, altitudeText, nameText);
 
-        rig.CamMove.velocityText.text = "unchanged-v";
-        rig.CamMove.altitudeText.text = "unchanged-a";
-        rig.CamMove.trackingObjectNameText.text = "unchanged-n";
+        velocityText.text = "unchanged-v";
+        altitudeText.text = "unchanged-a";
+        nameText.text = "unchanged-n";
 
         var ph = new GameObject("PH").transform;
         ph.SetParent(rig.Root.transform, false);
         ph.localScale = Vector3.one * 3f;
 
-        rig.CamMove.SetTargetBodyPlaceholder(ph);
-        InvokeLateUpdate(rig.CamMove);
+        rig.Controller.BreakToFreeCam();
+        rig.CamMove.ApplyPlaceholderFocus(ph);
+        InvokeLateUpdate(rig.CameraInfoUI);
 
-        Assert.AreEqual("unchanged-v", rig.CamMove.velocityText.text);
-        Assert.AreEqual("unchanged-a", rig.CamMove.altitudeText.text);
-        Assert.AreEqual("unchanged-n", rig.CamMove.trackingObjectNameText.text);
+        Assert.AreEqual("unchanged-v", velocityText.text);
+        Assert.AreEqual("unchanged-a", altitudeText.text);
+        Assert.AreEqual("unchanged-n", nameText.text);
+    }
+
+    [Test]
+    public void SetFreeCamMode_updates_public_free_cam_state()
+    {
+        rig = SimTestBootstrap.CreateBasic(0);
+
+        rig.CamMove.SetFreeCamMode(true);
+        Assert.IsTrue(rig.CamMove.IsFreeCamMode);
+
+        rig.CamMove.SetFreeCamMode(false);
+        Assert.IsFalse(rig.CamMove.IsFreeCamMode);
     }
 
     [Test]

@@ -12,53 +12,45 @@ public class CameraController : MonoBehaviour, ICameraTracker
 {
     private const string SatelliteTag = "Satellite";
     private const string LogPrefix = "[CameraController]";
+    private const float EarthReturnBodyDistance = 2500f;
 
     [Header("Core References (wired by SimContext.Initialize or via Inspector)")]
     [SerializeField] private CameraMovement _cameraMovement;
     [SerializeField] private FreeCamera _freeCamera;
 
     private BodyService _bodyService;
-    private SimContext _ctx;
+    private TutorialController _tutorialController;
 
     [Header("Tracking State (read-only)")]
     [SerializeField] private List<NBody> _bodies = new();
     [Tooltip("Index used when cycling through satellites; clamped as needed.")]
     [SerializeField] private int _currentIndex;
 
-    private CameraMode _mode = CameraMode.Track;
+    private readonly CameraTrackingState _state = new();
 
-    private NBody _currentBody;
-    private Transform _currentPlaceholder;
-
-    private NBody _lastTrackedBeforeEarth;
-    private NBody _lastTrackedBeforePlaceholder;
-    private NBody _lastTrackedBeforeFree;
-
-    private bool _preserveAngleNextTrack;
     private bool _suppressUiSignals;
     private bool _pickedInitialTarget;
-    private bool _isPlaceholderEarthViewActive;
 
     /// <summary>List of currently tracked NBody objects.</summary>
     public IReadOnlyList<NBody> Bodies => _bodies;
 
     /// <summary>Current camera mode (Track, Earth, or Free).</summary>
-    public CameraMode Mode => _mode;
+    public CameraMode Mode => _state.Mode;
 
     /// <summary>True if the camera is in Free mode.</summary>
-    public bool IsFree => _mode == CameraMode.Free && !_isPlaceholderEarthViewActive;
+    public bool IsFree => _state.IsFree;
 
     /// <summary>True if the camera is in Earth view mode.</summary>
-    public bool IsEarthView => _mode == CameraMode.Earth || _isPlaceholderEarthViewActive;
+    public bool IsEarthView => _state.IsEarthView;
 
     /// <summary>True if the camera is tracking a placeholder Transform.</summary>
-    public bool IsTrackingPlaceholder => _currentPlaceholder != null && _currentBody == null && !_isPlaceholderEarthViewActive;
+    public bool IsTrackingPlaceholder => _state.IsTrackingPlaceholder;
 
     /// <summary>The currently tracked NBody (null if tracking a placeholder or in Free mode).</summary>
-    public NBody CurrentBody => _currentBody;
+    public NBody CurrentBody => _state.CurrentBody;
 
     /// <summary>The currently tracked placeholder Transform (null if tracking a body or in Free mode).</summary>
-    public Transform CurrentPlaceholder => _currentPlaceholder;
+    public Transform CurrentPlaceholder => _state.CurrentPlaceholder;
 
     /// <summary>Raised when the overall camera mode changes.</summary>
     public event Action<CameraMode> OnModeChanged;
@@ -69,7 +61,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>Raised when the tracked placeholder Transform changes (null if switching away).</summary>
     public event Action<Transform> OnTrackedPlaceholderChanged;
 
-    public bool switchedToPrevTrackedSat => _lastTrackedBeforeEarth != null;
+    public bool switchedToPrevTrackedSat => _state.HasPreviousEarthTarget;
 
     /// <summary>
     /// Initializes the controller using the simulation context.
@@ -78,10 +70,10 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <param name="ctx">Simulation context providing services and camera components.</param>
     public void Initialize(SimContext ctx)
     {
-        _ctx = ctx;
         _cameraMovement = ctx.CameraMovement ?? _cameraMovement;
         _freeCamera = ctx.FreeCamera ?? _freeCamera;
         _bodyService = ctx.BodyService ?? _bodyService;
+        _tutorialController = ctx.TutorialController ?? _tutorialController;
 
         if (_bodyService == null || _cameraMovement == null)
         {
@@ -105,9 +97,9 @@ public class CameraController : MonoBehaviour, ICameraTracker
     {
         _bodies = _bodyService?.GetSatellites()?.ToList() ?? new List<NBody>();
 
-        if (_currentBody != null)
+        if (_state.CurrentBody != null)
         {
-            int idx = _bodies.IndexOf(_currentBody);
+            int idx = _bodies.IndexOf(_state.CurrentBody);
             _currentIndex = (idx >= 0) ? idx : Mathf.Clamp(_currentIndex, 0, _bodies.Count - 1);
         }
         else if (_bodies.Count > 0 && _currentIndex >= _bodies.Count)
@@ -120,27 +112,9 @@ public class CameraController : MonoBehaviour, ICameraTracker
     public void BreakToFreeCam()
     {
         StopPlaceholderEarthView(restorePlaceholderPreview: false);
+        _state.BreakToFree();
 
-        if (_currentBody != null)
-            _lastTrackedBeforeFree = _currentBody;
-
-        _currentBody = null;
-        _currentPlaceholder = null;
-
-        if (_cameraMovement != null)
-        {
-            _cameraMovement.SetTargetBody(null);
-            _cameraMovement.SetTargetBodyPlaceholder(null);
-            _cameraMovement.PointCameraTowardCentralBody(
-                Vector3.zero,
-                _cameraMovement.MainCamera.transform.position
-            );
-        }
-
-        _freeCamera?.TogglePlacementMode(true);
-
-        _preserveAngleNextTrack = true;
-
+        ApplyFreeCameraRig();
         EndPreviewPlaceholder();
         SetMode(CameraMode.Free);
     }
@@ -155,38 +129,35 @@ public class CameraController : MonoBehaviour, ICameraTracker
             return;
         }
 
-        if (_lastTrackedBeforePlaceholder != null)
+        if (_state.LastTrackedBeforePlaceholder != null)
         {
-            var prev = _lastTrackedBeforePlaceholder;
-            _lastTrackedBeforePlaceholder = null;
+            var prev = _state.ConsumeLastTrackedBeforePlaceholder();
             TrackBody(prev);
             return;
         }
 
-        if (_currentBody != null)
+        if (_state.CurrentBody != null)
         {
-            TrackBody(_currentBody);
+            TrackBody(_state.CurrentBody);
             return;
         }
 
-        if (_lastTrackedBeforeFree != null)
+        if (_state.LastTrackedBeforeFree != null)
         {
             var sats = _bodyService?.GetSatellites();
-            if (sats != null && sats.Contains(_lastTrackedBeforeFree))
+            if (sats != null && sats.Contains(_state.LastTrackedBeforeFree))
             {
-                var prev = _lastTrackedBeforeFree;
-                _lastTrackedBeforeFree = null;
+                var prev = _state.ConsumeLastTrackedBeforeFree();
                 TrackBody(prev);
                 return;
             }
 
-            _lastTrackedBeforeFree = null;
+            _state.ClearLastTrackedBeforeFree();
         }
 
-        if (_lastTrackedBeforeEarth != null)
+        if (_state.LastTrackedBeforeEarth != null)
         {
-            var prev = _lastTrackedBeforeEarth;
-            _lastTrackedBeforeEarth = null;
+            var prev = _state.ConsumeLastTrackedBeforeEarth();
             TrackBody(prev);
             return;
         }
@@ -209,7 +180,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         if (TryTogglePlaceholderEarthView())
             return;
 
-        if (_mode != CameraMode.Earth)
+        if (_state.Mode != CameraMode.Earth)
             TrackEarth(_bodyService?.CentralBody);
         else
             ExitEarthView();
@@ -218,17 +189,13 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>Tracks the specified NBody; falls back to FreeCam if null.</summary>
     public void TrackBody(NBody body)
     {
-        if (body != _lastTrackedBeforeEarth)
-        {
-            _lastTrackedBeforeEarth = null;
-        }
         if (body == null)
         {
             BreakToFreeCam();
             return;
         }
 
-        TrackTarget(body, null, CameraMode.Track);
+        TrackTarget(CameraTarget.BodyTarget(body));
     }
 
     /// <summary>Tracks a placeholder Transform (e.g., temporary orbit); falls back to FreeCam if null.</summary>
@@ -240,51 +207,39 @@ public class CameraController : MonoBehaviour, ICameraTracker
             return;
         }
 
-        if (_currentBody != null)
-            _lastTrackedBeforePlaceholder = _currentBody;
-
-        TrackTarget(null, placeholder, CameraMode.Track);
+        TrackTarget(CameraTarget.PlaceholderTarget(placeholder));
     }
 
     /// <summary>Enters Earth view by tracking the central body.</summary>
     public void TrackEarth(NBody earth)
     {
-        StopPlaceholderEarthView(restorePlaceholderPreview: false);
-
         if (earth == null || _cameraMovement == null)
         {
             BreakToFreeCam();
             return;
         }
 
-        _currentPlaceholder = null;
-
-        if (_currentBody != null)
-            _lastTrackedBeforeEarth = _currentBody;
-
-        _freeCamera?.TogglePlacementMode(false);
-        _cameraMovement.EnterEarthView(earth);
-        SetMode(CameraMode.Earth);
+        TrackTarget(CameraTarget.EarthTarget(earth));
     }
 
     /// <summary>Leaves Earth view and returns to the last valid tracked target.</summary>
     public void ExitEarthView()
     {
-        _preserveAngleNextTrack = true;
+        _state.PreserveAngleNextTrack = true;
 
-        if (_lastTrackedBeforeEarth != null)
+        if (_state.LastTrackedBeforeEarth != null)
         {
-            var body = _lastTrackedBeforeEarth;
+            var body = _state.LastTrackedBeforeEarth;
             TrackBody(body);
-            _lastTrackedBeforeEarth = null;
+            _state.ClearLastTrackedBeforeEarth();
         }
-        else if (_currentBody != null)
+        else if (_state.CurrentBody != null)
         {
-            TrackBody(_currentBody);
+            TrackBody(_state.CurrentBody);
         }
-        else if (_currentPlaceholder != null)
+        else if (_state.CurrentPlaceholder != null)
         {
-            TrackPlaceholder(_currentPlaceholder);
+            TrackPlaceholder(_state.CurrentPlaceholder);
         }
         else
         {
@@ -299,18 +254,13 @@ public class CameraController : MonoBehaviour, ICameraTracker
     public void PreviewPlaceholderInFree(Transform placeholder)
     {
         if (placeholder == null || _cameraMovement == null) return;
-        if (_mode != CameraMode.Free) return;
+        if (_state.Mode != CameraMode.Free) return;
 
         StopPlaceholderEarthView(restorePlaceholderPreview: false);
 
-        _currentPlaceholder = placeholder;
-        _currentBody = null;
+        _state.PreviewPlaceholder(placeholder);
 
-        _cameraMovement.enabled = true;
-        _cameraMovement.isFreeCamMode = false;
-        _cameraMovement.inEarthCam = false;
-        _cameraMovement.SetTargetBodyPlaceholder(placeholder);
-        _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, placeholder.position);
+        ApplyPlaceholderPreviewRig(placeholder);
 
         EmitTrackedPlaceholder(placeholder);
     }
@@ -318,10 +268,10 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>Ends placeholder preview while in Free mode.</summary>
     public void EndPreviewPlaceholder()
     {
-        if (_mode == CameraMode.Free && _cameraMovement != null)
+        if (_state.Mode == CameraMode.Free && _cameraMovement != null)
         {
             _cameraMovement.enabled = false;
-            _cameraMovement.SetTargetBodyPlaceholder(null);
+            _cameraMovement.ClearFocus();
         }
     }
 
@@ -368,9 +318,9 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
         _bodies.Remove(body);
 
-        if (_currentBody == body)
+        if (_state.CurrentBody == body)
         {
-            _currentBody = null;
+            _state.ClearCurrentTarget();
             ReturnToTracking();
         }
     }
@@ -396,65 +346,72 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
     private void SetMode(CameraMode next)
     {
-        if (_mode == next) return;
+        if (_state.Mode == next) return;
 
-        var previous = _mode;
-        _mode = next;
+        var previous = _state.Mode;
+        _state.SetMode(next);
 
-        if (previous == CameraMode.Free && _mode != CameraMode.Free)
+        if (previous == CameraMode.Free && _state.Mode != CameraMode.Free)
             EndPreviewPlaceholder();
 
-        ApplyModeToCamera(_mode);
-        EmitModeChanged(_mode);
+        ApplyModeToCamera(_state.Mode);
+        EmitModeChanged(_state.Mode);
     }
 
     private void ApplyModeToCamera(CameraMode mode)
     {
         if (_cameraMovement == null) return;
 
-        _cameraMovement.isFreeCamMode = mode == CameraMode.Free;
-        _cameraMovement.inEarthCam = mode == CameraMode.Earth;
+        _cameraMovement.SetFreeCamMode(mode == CameraMode.Free);
         _cameraMovement.enabled = mode != CameraMode.Free;
     }
 
-    private void TrackTarget(NBody body, Transform placeholder, CameraMode mode)
+    private void TrackTarget(CameraTarget target)
     {
         StopPlaceholderEarthView(restorePlaceholderPreview: false);
 
-        _currentBody = body;
-        _currentPlaceholder = placeholder;
+        _state.Track(target);
 
-        _freeCamera?.TogglePlacementMode(false);
+        bool shouldRepoint = !_state.PreserveAngleNextTrack;
+        _state.PreserveAngleNextTrack = false;
 
-        bool shouldRepoint = !_preserveAngleNextTrack;
-        _preserveAngleNextTrack = false;
-
-        if (_cameraMovement != null)
+        if (!ApplyTargetRig(target, shouldRepoint))
         {
-            if (body != null)
-            {
-                _cameraMovement.SetTargetBody(body);
-                if (shouldRepoint)
-                    _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, body.transform.position);
-            }
-            else if (placeholder != null)
-            {
-                _cameraMovement.SetTargetBodyPlaceholder(placeholder);
-                if (shouldRepoint)
-                    _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, placeholder.position);
-            }
-            else
-            {
-                BreakToFreeCam();
-                return;
-            }
+            BreakToFreeCam();
+            return;
         }
 
-        SetMode(mode);
+        SetMode(target.Mode);
+        EmitTargetChanged(target);
+    }
 
-        if (body != null) EmitTrackedBody(body);
-        // if (body != null && body != _lastTrackedBeforeEarth) EmitTrackedBody(body);
-        if (placeholder != null) EmitTrackedPlaceholder(placeholder);
+    private bool ApplyTargetRig(CameraTarget target, bool shouldRepoint)
+    {
+        if (target.IsBody)
+        {
+            ApplyBodyTrackingRig(target.Body, shouldRepoint);
+            return true;
+        }
+
+        if (target.IsPlaceholder)
+        {
+            ApplyPlaceholderTrackingRig(target.Placeholder, shouldRepoint);
+            return true;
+        }
+
+        if (target.IsEarth)
+        {
+            ApplyEarthCameraRig(target.Body);
+            return true;
+        }
+
+        return false;
+    }
+
+    private void EmitTargetChanged(CameraTarget target)
+    {
+        if (target.IsBody) EmitTrackedBody(target.Body);
+        if (target.IsPlaceholder) EmitTrackedPlaceholder(target.Placeholder);
     }
 
     private void EmitModeChanged(CameraMode mode)
@@ -477,10 +434,10 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
     private bool TryTogglePlaceholderEarthView()
     {
-        if (_mode != CameraMode.Free || _currentPlaceholder == null || _cameraMovement == null)
+        if (_state.Mode != CameraMode.Free || _state.CurrentPlaceholder == null || _cameraMovement == null)
             return false;
 
-        if (_isPlaceholderEarthViewActive)
+        if (_state.PlaceholderEarthViewActive)
         {
             StopPlaceholderEarthView(restorePlaceholderPreview: true);
             return true;
@@ -490,32 +447,88 @@ public class CameraController : MonoBehaviour, ICameraTracker
         if (earth == null)
             return false;
 
-        _isPlaceholderEarthViewActive = true;
-        _freeCamera?.TogglePlacementMode(false);
-        _cameraMovement.enabled = true;
-        _cameraMovement.isFreeCamMode = false;
-        _cameraMovement.EnterEarthView(earth, clearPlaceholderTarget: false);
+        _state.BeginPlaceholderEarthView();
+        ApplyEarthCameraRig(earth);
         return true;
     }
 
     private void StopPlaceholderEarthView(bool restorePlaceholderPreview)
     {
-        if (!_isPlaceholderEarthViewActive)
+        if (!_state.PlaceholderEarthViewActive)
             return;
 
-        _isPlaceholderEarthViewActive = false;
+        _state.EndPlaceholderEarthView();
 
         if (_cameraMovement == null)
             return;
 
-        _cameraMovement.LeaveEarthView();
+        _cameraMovement.ClearFocus();
 
-        if (!restorePlaceholderPreview || _mode != CameraMode.Free || _currentPlaceholder == null)
+        if (!restorePlaceholderPreview || _state.Mode != CameraMode.Free || _state.CurrentPlaceholder == null)
+            return;
+
+        ApplyPlaceholderPreviewRig(_state.CurrentPlaceholder);
+    }
+
+    private void ApplyFreeCameraRig()
+    {
+        if (_cameraMovement != null)
+        {
+            _cameraMovement.ClearFocus();
+            _cameraMovement.PointCameraTowardCentralBody(
+                Vector3.zero,
+                _cameraMovement.MainCamera.transform.position
+            );
+        }
+
+        _freeCamera?.TogglePlacementMode(true);
+    }
+
+    private void ApplyEarthCameraRig(NBody earth)
+    {
+        _freeCamera?.TogglePlacementMode(false);
+        _cameraMovement.ApplyEarthFocus(earth);
+
+        if (_tutorialController != null && _tutorialController.inTutorialMode)
+            _tutorialController.hasSwitchedToEarthCam = true;
+    }
+
+    private void ApplyBodyTrackingRig(NBody body, bool shouldRepoint)
+    {
+        _freeCamera?.TogglePlacementMode(false);
+
+        if (_cameraMovement == null)
+            return;
+
+        float? defaultDistanceOverride = _state.Mode == CameraMode.Earth
+            ? EarthReturnBodyDistance
+            : null;
+
+        _cameraMovement.ApplyBodyFocus(body, defaultDistanceOverride);
+        if (shouldRepoint)
+            _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, body.transform.position);
+    }
+
+    private void ApplyPlaceholderTrackingRig(Transform placeholder, bool shouldRepoint)
+    {
+        _freeCamera?.TogglePlacementMode(false);
+
+        if (_cameraMovement == null)
+            return;
+
+        _cameraMovement.ApplyPlaceholderFocus(placeholder);
+        if (shouldRepoint)
+            _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, placeholder.position);
+    }
+
+    private void ApplyPlaceholderPreviewRig(Transform placeholder)
+    {
+        if (_cameraMovement == null)
             return;
 
         _cameraMovement.enabled = true;
-        _cameraMovement.isFreeCamMode = false;
-        _cameraMovement.SetTargetBodyPlaceholder(_currentPlaceholder);
-        _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, _currentPlaceholder.position);
+        _cameraMovement.SetFreeCamMode(false);
+        _cameraMovement.ApplyPlaceholderFocus(placeholder);
+        _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, placeholder.position);
     }
 }
