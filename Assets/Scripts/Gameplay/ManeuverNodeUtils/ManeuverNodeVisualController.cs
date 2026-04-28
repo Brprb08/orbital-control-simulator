@@ -49,11 +49,11 @@ public class ManeuverNodeVisualController : MonoBehaviour
         if (giz == null)
             giz = node.marker.AddComponent<NodeGizmo>();
 
-        if (isPreview && green != null && green.HasProperty("_BaseColor"))
-            giz.baseColor = green.GetColor("_BaseColor");
-
         if (isPreview)
         {
+            Color previewBase = ResolveMaterialColor(green, giz.baseColor);
+            giz.SetColors(previewBase, giz.hoverColor, enableHover: true, applyImmediately: true);
+
             var drag = node.marker.GetComponent<NodeDragHandle>();
             if (drag == null)
             {
@@ -64,6 +64,8 @@ public class ManeuverNodeVisualController : MonoBehaviour
         else
         {
             giz.SetPulse(false);
+            Color finalizedBase = ResolveMaterialColor(red, giz.baseColor);
+            giz.SetColors(finalizedBase, finalizedBase, enableHover: false, applyImmediately: true);
 
             var drag = node.marker.GetComponent<NodeDragHandle>();
             if (drag != null)
@@ -100,5 +102,19 @@ public class ManeuverNodeVisualController : MonoBehaviour
             dst.SetColor("_BaseColor", src.GetColor("_BaseColor"));
         else if (src.HasProperty("_Color") && dst.HasProperty("_Color"))
             dst.SetColor("_Color", src.GetColor("_Color"));
+    }
+
+    private static Color ResolveMaterialColor(Material material, Color fallback)
+    {
+        if (material == null)
+            return fallback;
+
+        if (material.HasProperty("_BaseColor"))
+            return material.GetColor("_BaseColor");
+
+        if (material.HasProperty("_Color"))
+            return material.GetColor("_Color");
+
+        return fallback;
     }
 }

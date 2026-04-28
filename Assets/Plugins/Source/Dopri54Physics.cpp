@@ -41,31 +41,28 @@ extern "C"
     // 1 Unity unit = 10 km
     const double G = 6.67430e-23; // matches your Unity-side G
     const double UNIT_TO_KM = 10.0;
-    const double EARTH_RADIUS_KM = 6378.137;   // WGS-84 mean equatorial radius
-    const double OMEGA_EARTH = 7.2921150e-5;   // rad/s, Earth rotation
-    static const double DRAG_CUTOFF_KM = 80.0; // turn off drag below this altitude
+    const double EARTH_RADIUS_KM = 6378.137; // WGS-84 mean equatorial radius
+    const double OMEGA_EARTH = 7.2921150e-5; // rad/s, Earth rotation
 
-    // --- Jacchia/Roberts-like table (10 km bins up to 500 km) ---
-    static const int JR_N = 51;
+    // --- Fixed reference density table (kg / km^3) up to 500 km ---
+    // Uses standard-atmosphere-style knots so drag stays table-driven and cheap
+    // at runtime, without the old global density multiplier.
+    static const int JR_N = 27;
     static const double JR_ALT[JR_N] = {
-        0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140,
-        150, 160, 170, 180, 190, 200, 210, 220, 230, 240,
-        250, 260, 270, 280, 290, 300, 310, 320, 330, 340,
-        350, 360, 370, 380, 390, 400, 410, 420, 430, 440,
-        450, 460, 470, 480, 490, 500};
-    // Units: kg / km^3  (not SI kg/m^3)
+        0, 10, 20, 30, 40, 50, 60, 70, 80, 90,
+        100, 110, 120, 130, 140, 150, 160, 170, 180, 190,
+        200, 250, 300, 350, 400, 450, 500};
+
+    // Units: kg / km^3
     static const double JR_RHO[JR_N] = {
-        1.35e9, 4.56e8, 9.82e7, 2.05e7, 4.46e6,
-        1.15e6, 3.48e5, 9.11e4, 2.06e4, 3.81e3,
-        725.0, 267.0, 107.0, 51.0, 10.0,
-        1.95, 1.15, 0.68, 0.40, 0.24,
-        0.135, 0.090, 0.056, 0.035, 0.022,
-        0.187, 0.1459, 0.1136, 0.0885, 0.0689,
-        0.0537, 0.0418, 0.0326, 0.0254, 0.0198,
-        0.0154, 0.0120, 0.00938, 0.0073, 0.00568,
-        0.00487, 0.00378, 0.00292, 0.00232, 0.00197,
-        0.00168, 0.00138, 0.00106, 0.000803, 0.000622,
-        0.000485};
+        1.2250e9, 4.1350e8, 8.8910e7, 1.8410e7, 3.9960e6,
+        1.0270e6, 3.0970e5, 8.2830e4, 1.8460e4, 3.4160e3,
+        5.6060e2, 9.7080e1, 2.2220e1, 8.1520e0, 3.8310e0,
+        2.0760e0, 1.2330e0, 7.8200e-1, 5.1940e-1, 3.5610e-1,
+        2.7890e-1, 7.2480e-2, 2.4180e-2, 9.5180e-3, 3.7250e-3,
+        1.5850e-3, 6.9670e-4};
+
+    static const double DRAG_CUTOFF_KM = 500.0;
     static double JR_H[JR_N - 1];
 
     struct JRInit
@@ -74,13 +71,13 @@ extern "C"
         {
             for (int i = 0; i < JR_N - 1; ++i)
             {
-                const double dh = JR_ALT[i + 1] - JR_ALT[i];         // 10 km
+                const double dh = JR_ALT[i + 1] - JR_ALT[i];         // km
                 JR_H[i] = -dh / std::log(JR_RHO[i + 1] / JR_RHO[i]); // km
             }
         }
     } _jrInit;
 
-    // Log-linear interpolation across each 10 km slab.
+    // Log-linear interpolation across each altitude slab.
     // Returns density in kg / km^3 (consistent with v in km/s and A in km^2).
     static inline double DensityAtKm(double altKm)
     {
@@ -89,7 +86,10 @@ extern "C"
         if (altKm >= JR_ALT[JR_N - 1])
             return 0.0;
 
-        const int idx = std::min(int(altKm / 10.0), JR_N - 2);
+        int idx = 0;
+        while (idx < JR_N - 2 && altKm >= JR_ALT[idx + 1])
+            ++idx;
+
         const double dH = altKm - JR_ALT[idx];
         const double rho = JR_RHO[idx] * std::exp(-dH / JR_H[idx]);
         // avoid underflow; tiny density gives negligible drag anyway
@@ -109,19 +109,24 @@ extern "C"
         const double rkm = std::sqrt(xkm * xkm + ykm * ykm + zkm * zkm);
 
         // NOTE: don't clamp with std::max here
-        const double alt = rkm - EARTH_RADIUS_KM;
+        double alt = rkm - EARTH_RADIUS_KM;
 
-        // hard cutoff: no drag below 60 km
-        if (alt <= DRAG_CUTOFF_KM)
+        // above atmosphere ceiling -> no drag
+        if (alt >= DRAG_CUTOFF_KM)
             return {0, 0, 0};
 
-        const double rho = DensityAtKm(alt); // as-is
+        if (alt < 0.0)
+            alt = 0.0;
+
+        double rho = DensityAtKm(alt);
         if (rho <= 0.0)
             return {0, 0, 0};
 
         // Convert velocity to km/s and subtract atmospheric co-rotation
         const Vector3d vkm = {velUU.x * UNIT_TO_KM, velUU.y * UNIT_TO_KM, velUU.z * UNIT_TO_KM};
-        const Vector3d vatm = {-OMEGA_EARTH * ykm, OMEGA_EARTH * xkm, 0.0}; // km/s
+        // Earth rotates about +Y/-Y in Unity world space; for the stated eastward
+        // surface motion (+X -> +Z -> -X -> -Z), use co-rotation in the XZ plane.
+        const Vector3d vatm = {-OMEGA_EARTH * zkm, 0.0, OMEGA_EARTH * xkm}; // km/s
         const Vector3d vrel = {vkm.x - vatm.x, vkm.y - vatm.y, vkm.z - vatm.z};
 
         const double speed = std::sqrt(vrel.x * vrel.x + vrel.y * vrel.y + vrel.z * vrel.z);
@@ -133,7 +138,17 @@ extern "C"
 
         // a[km/s^2] = -0.5 * Cd * A * rho / m * v * |v|
         const double factor = -0.5 * Cd * A_km2 * rho / mass;
-        const Vector3d a_km = {factor * vrel.x * speed, factor * vrel.y * speed, factor * vrel.z * speed};
+        Vector3d a_km = {factor * vrel.x * speed, factor * vrel.y * speed, factor * vrel.z * speed};
+        static const double MAX_DRAG_ACCEL_KM_S2 = .1; // tune this
+        const double a2 = a_km.x * a_km.x + a_km.y * a_km.y + a_km.z * a_km.z;
+        if (a2 > MAX_DRAG_ACCEL_KM_S2 * MAX_DRAG_ACCEL_KM_S2)
+        {
+            const double invA = 1.0 / std::sqrt(a2);
+            const double s = MAX_DRAG_ACCEL_KM_S2 * invA;
+            a_km.x *= s;
+            a_km.y *= s;
+            a_km.z *= s;
+        }
 
         // Return in Unity units (u/s^2) -> divide by 10
         return {a_km.x / UNIT_TO_KM, a_km.y / UNIT_TO_KM, a_km.z / UNIT_TO_KM};
@@ -209,8 +224,6 @@ extern "C"
         if (substeps < 1)
             substeps = 1;
 
-        const double dt = static_cast<double>(totalDt) / static_cast<double>(substeps);
-
         auto gravA = [&](const Vector3d &r) -> Vector3d
         {
             const double r2 = r.x * r.x + r.y * r.y + r.z * r.z;
@@ -240,8 +253,29 @@ extern "C"
             const double Auu = static_cast<double>(areasUU[i]);
             const int8_t flag = normalSign ? normalSign[i] : 0; // 0 = free, ±1 = lateral shaping
             const bool lateralMode = (flag != 0);
+            int localSubsteps = substeps;
 
-            for (int s = 0; s < substeps; ++s)
+            if (Cd > 0.0 && Auu > 0.0)
+            {
+                const double xkm = pos.x * UNIT_TO_KM;
+                const double ykm = pos.y * UNIT_TO_KM;
+                const double zkm = pos.z * UNIT_TO_KM;
+                const double rkm = std::sqrt(xkm * xkm + ykm * ykm + zkm * zkm);
+                const double altKm = rkm - EARTH_RADIUS_KM;
+
+                // Dense atmosphere is the stiff regime. Spend more integrator work there
+                // so re-entry remains smooth instead of taking giant drag-biased hops.
+                if (altKm < 120.0)
+                    localSubsteps *= 2;
+                if (altKm < 80.0)
+                    localSubsteps *= 2;
+                if (altKm < 50.0)
+                    localSubsteps *= 2;
+            }
+
+            const double dt = static_cast<double>(totalDt) / static_cast<double>(localSubsteps);
+
+            for (int s = 0; s < localSubsteps; ++s)
             {
                 Vector3d kx[7], kv[7];
 
@@ -283,12 +317,12 @@ extern "C"
                 }
 
                 // drag at stage 0
-                // {
-                //     Vector3d d0 = ComputeDragAcceleration(vel, pos, msc, Auu, Cd);
-                //     kv[0].x += d0.x;
-                //     kv[0].y += d0.y;
-                //     kv[0].z += d0.z;
-                // }
+                {
+                    Vector3d d0 = ComputeDragAcceleration(vel, pos, msc, Auu, Cd);
+                    kv[0].x += d0.x;
+                    kv[0].y += d0.y;
+                    kv[0].z += d0.z;
+                }
 
                 // ---- Stages 1..6 ----
                 for (int st = 1; st < 7; ++st)
@@ -336,10 +370,10 @@ extern "C"
                         }
                     }
 
-                    // Vector3d ds = ComputeDragAcceleration(vi, pi, msc, Auu, Cd);
-                    // kv[st].x += ds.x;
-                    // kv[st].y += ds.y;
-                    // kv[st].z += ds.z;
+                    Vector3d ds = ComputeDragAcceleration(vi, pi, msc, Auu, Cd);
+                    kv[st].x += ds.x;
+                    kv[st].y += ds.y;
+                    kv[st].z += ds.z;
                 }
 
                 // ---- Accumulate this substep ----

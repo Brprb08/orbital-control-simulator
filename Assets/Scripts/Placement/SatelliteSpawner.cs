@@ -47,7 +47,7 @@ public class SatelliteSpawner : MonoBehaviour
 
         nbody.mass = mass;
         nbody.trueMass = mass;
-        nbody.radius = 0.002f;
+        nbody.radius = SatelliteSizing.ResolvePhysicalRadiusSimUnits(go.transform.localScale);
         nbody.cameraDistanceRadius = 1f;
         nbody.isCentralBody = false;
         nbody.Initialize(ctx);
@@ -111,10 +111,7 @@ public class SatelliteSpawner : MonoBehaviour
         if (velocityDragManager != null)
         {
             Debug.Log("[Spawner] Wiring drag manager with planet + mass");
-
-            velocityDragManager.ResetDragManager();
-            velocityDragManager.planet = go;
-            velocityDragManager.placeholderMass = mass;
+            velocityDragManager.ConfigurePendingPlacement(go, mass);
         }
 
         return go;

@@ -72,6 +72,7 @@ public class ManeuverNodeManager : MonoBehaviour
             uiController.NodeTimeSliderChanged += SetNodeAtFloatIndex;
             uiController.BurnDurationChanged += OnBurnDurationChangedFromUI;
             uiController.ThrustScaleChanged += OnThrustScaleChangedFromUI;
+            RefreshSetupNodeButtonState();
         }
 
         if (previewController != null)
@@ -151,6 +152,15 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void OnAddManeuverNode()
     {
+        if (HasNode && CurrentNode != null && CurrentNode.isFinalized)
+        {
+            RefreshSetupNodeButtonState();
+            return;
+        }
+
+        if (HasNode)
+            ClearNode();
+
         if (bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress)
             return;
 
@@ -255,6 +265,8 @@ public class ManeuverNodeManager : MonoBehaviour
 
         trajectoryRenderer?.ClearPreview();
         previewController?.RequestReadoutRefresh(node, immediate: true);
+        RefreshSetupNodeButtonState();
+        uiController?.ShowFinalizedManeuverFeedback();
         uiRoot?.RefreshAllUi();
     }
 
@@ -342,6 +354,8 @@ public class ManeuverNodeManager : MonoBehaviour
 
         uiController?.SetEditingEnabled(true);
         uiController?.SetupNodeSlider(node);
+        RefreshSetupNodeButtonState();
+        uiController?.ShowPreviewManeuverFeedback();
     }
 
     public void ClearNode()
@@ -356,6 +370,8 @@ public class ManeuverNodeManager : MonoBehaviour
         trajectoryRenderer?.ClearPreview();
         previewController?.Clear();
         uiController?.ResetEditingUI();
+        uiController?.ClearManeuverFeedback();
+        RefreshSetupNodeButtonState();
         uiRoot?.RefreshAllUi();
     }
 
@@ -636,6 +652,16 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void SetSetupNodeButtonInteractable(bool interactable)
     {
-        uiController?.SetSetupNodeButtonInteractable(interactable);
+        bool blockedByExistingNode = HasNode && CurrentNode != null && CurrentNode.isFinalized;
+        uiController?.SetSetupNodeButtonState(
+            interactable && !blockedByExistingNode,
+            blockedByExistingNode
+        );
+    }
+
+    private void RefreshSetupNodeButtonState()
+    {
+        bool nodeBurnActive = bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress;
+        SetSetupNodeButtonInteractable(!nodeBurnActive);
     }
 }

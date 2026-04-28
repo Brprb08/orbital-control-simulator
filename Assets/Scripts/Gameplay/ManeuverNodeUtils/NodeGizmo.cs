@@ -36,6 +36,7 @@ public class NodeGizmo : MonoBehaviour
     private Camera cam;
     private Vector3 baseScale;
     private bool visualsVisible = true;
+    private bool hoverEnabled = true;
 
     void Awake()
     {
@@ -117,6 +118,16 @@ public class NodeGizmo : MonoBehaviour
         pulseEnabled = enabled;
     }
 
+    public void SetColors(Color baseColor, Color hoverColor, bool enableHover, bool applyImmediately = true)
+    {
+        this.baseColor = baseColor;
+        this.hoverColor = hoverColor;
+        hoverEnabled = enableHover;
+
+        if (applyImmediately)
+            ApplyColor(this.baseColor);
+    }
+
     public void SetTimeToNode(string prefix, float seconds)
     {
         if (!worldLabel) return;
@@ -146,7 +157,7 @@ public class NodeGizmo : MonoBehaviour
 
     void OnMouseEnter()
     {
-        if (visualsVisible)
+        if (visualsVisible && hoverEnabled)
             ApplyColor(hoverColor);
     }
 

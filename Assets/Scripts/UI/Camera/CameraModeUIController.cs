@@ -10,34 +10,37 @@ public class CameraModeUIController
         this.refs = refs;
     }
 
-    public void Apply(CameraMode mode)
+    public void Apply(ICameraTracker cameraTracker, bool showManualVelocityUi)
     {
+        CameraMode mode = cameraTracker != null ? cameraTracker.Mode : CameraMode.Free;
         bool isFreeCam = mode == CameraMode.Free;
+        bool isEarthView = cameraTracker != null && cameraTracker.IsEarthView;
+        bool isPendingManualVelocity = isFreeCam && showManualVelocityUi;
+        bool showEarthButton = !isFreeCam || isPendingManualVelocity;
 
         if (refs.earthCamButtonText != null)
-            refs.earthCamButtonText.text = mode == CameraMode.Earth ? "Satellite Cam" : "Earth Cam";
+            refs.earthCamButtonText.text = isEarthView ? "Satellite Cam" : "Earth Cam";
 
         SetButtonState(refs.freeCamButton, isFreeCam);
         SetButtonState(refs.trackCamButton, !isFreeCam);
 
         if (refs.freeCamButton != null)
-            refs.freeCamButton.interactable = !isFreeCam;
+            refs.freeCamButton.interactable = !isFreeCam && !isPendingManualVelocity;
 
         if (refs.trackCamButton != null)
-            refs.trackCamButton.interactable = isFreeCam;
+            refs.trackCamButton.interactable = isFreeCam && !isPendingManualVelocity;
 
         if (refs.instructionText != null)
             refs.instructionText.text = isFreeCam
                 ? BuildFreeCamInstructions()
                 : BuildTrackCamInstructions();
 
-        if (isFreeCam)
+        if (isFreeCam && !showManualVelocityUi)
         {
             SetActive(refs.objectInfoPanel, false);
             SetActive(refs.apogeePerigeePanel, false);
-            SetActive(refs.timeControlsPanel, false);
+            SetActive(refs.timeControlsPanel, true);
             SetActive(refs.toggleOptionsPanel, false);
-            SetActive(refs.confirmRemoveSatPanel, false);
             SetActive(refs.dropdown, false);
 
             if (refs.removePreManeuverLineButton != null)
@@ -53,17 +56,42 @@ public class CameraModeUIController
         }
         else
         {
-            SetActive(refs.objectInfoPanel, true);
-            SetActive(refs.apogeePerigeePanel, true);
+            SetActive(refs.objectInfoPanel, !isFreeCam);
+            SetActive(refs.apogeePerigeePanel, !isFreeCam);
             SetActive(refs.timeControlsPanel, true);
-            SetActive(refs.toggleOptionsPanel, true);
-            SetActive(refs.dropdown, true);
+            SetActive(refs.toggleOptionsPanel, !isFreeCam);
+            SetActive(refs.dropdown, showEarthButton);
 
             if (refs.feedbackText != null)
-                refs.feedbackText.gameObject.SetActive(false);
+                refs.feedbackText.gameObject.SetActive(isFreeCam);
             if (refs.trackedSatellites != null)
-                refs.trackedSatellites.gameObject.SetActive(true);
+                refs.trackedSatellites.gameObject.SetActive(!isFreeCam);
         }
+
+        if (refs.earthView != null)
+            refs.earthView.gameObject.SetActive(showEarthButton);
+
+        if (refs.removeSatellite != null)
+            refs.removeSatellite.gameObject.SetActive(!isFreeCam && !isPendingManualVelocity);
+
+        SetActive(refs.confirmRemoveSatPanel, false);
+
+        if (refs.freeCamButton != null)
+            refs.freeCamButton.gameObject.SetActive(true);
+
+        if (refs.trackCamButton != null)
+            refs.trackCamButton.gameObject.SetActive(true);
+
+        if (isPendingManualVelocity)
+        {
+            if (refs.freeCamButton != null)
+                refs.freeCamButton.interactable = false;
+
+            if (refs.trackCamButton != null)
+                refs.trackCamButton.interactable = false;
+        }
+
+        SetContainerChromeVisible(refs.dropdown, !isPendingManualVelocity);
 
         SetActive(refs.cameraControls, true);
     }
@@ -147,5 +175,15 @@ public class CameraModeUIController
     {
         if (go != null)
             go.SetActive(show);
+    }
+
+    private void SetContainerChromeVisible(GameObject go, bool visible)
+    {
+        if (go == null)
+            return;
+
+        var graphic = go.GetComponent<Graphic>();
+        if (graphic != null)
+            graphic.enabled = visible;
     }
 }

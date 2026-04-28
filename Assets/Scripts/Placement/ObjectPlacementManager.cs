@@ -73,7 +73,7 @@ public class ObjectPlacementManager : MonoBehaviour
     private const int MaxSatelliteNameLength = 15;
 
     private static readonly PlacementValidators.RangeF MassRange = new(500f, 1000000f);
-    private static readonly PlacementValidators.RangeF RadiusClamp = new(0.5f, 1.0f);
+    private static readonly PlacementValidators.RangeF RadiusClamp = new(0.5f, SatelliteSizing.MaxPhysicalRadiusMeters);
     private static readonly PlacementValidators.DistanceBoundsF PosBounds = new(638f, 5000f);
 
     // Public for RandomSatelliteSpawner

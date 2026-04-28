@@ -371,7 +371,7 @@ public class CameraMovement_EditModeTests
             Vector3.zero
         );
 
-        rig.CamMove.SetTargetBody(body);
+        rig.Controller.TrackBody(body);
         InvokeLateUpdate(rig.CamMove);
 
         Assert.That(rig.CamMove.velocityText.text, Does.Contain("Velocity:"));

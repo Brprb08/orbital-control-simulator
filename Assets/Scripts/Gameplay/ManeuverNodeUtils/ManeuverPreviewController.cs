@@ -56,6 +56,9 @@ public class ManeuverPreviewController : MonoBehaviour
 
     private void LateUpdate()
     {
+        if (pendingPreviewNode != null && orbitPreviewUI != null && bodyRuntimeCoordinator != null)
+            orbitPreviewUI.UpdateTPlus(pendingPreviewNode.burnTime - bodyRuntimeCoordinator.simulationTime);
+
         if (previewDirty && Time.unscaledTime >= previewDirtyUntil)
         {
             previewDirty = false;
@@ -269,8 +272,9 @@ public class ManeuverPreviewController : MonoBehaviour
 
         if (orbitPreviewUI != null)
         {
+            float timeToNode = node.burnTime - bodyRuntimeCoordinator.simulationTime;
             if (previewOrbitParams.isValid)
-                orbitPreviewUI.Show(previewOrbitParams, central);
+                orbitPreviewUI.Show(previewOrbitParams, central, timeToNode);
             else
                 orbitPreviewUI.ShowInvalid();
         }

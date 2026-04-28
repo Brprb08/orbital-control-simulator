@@ -32,20 +32,22 @@ public class PlacementUIController
         RefreshButtonLabel();
     }
 
-    public void Apply(CameraMode cameraMode)
+    public void Apply(CameraMode cameraMode, bool showManualVelocityUi)
     {
         bool isFreeCam = cameraMode == CameraMode.Free;
+        bool showPlacementUi = isFreeCam;
+        bool lockPlacementControls = showManualVelocityUi;
 
         if (refs.placementModeButton != null)
-            refs.placementModeButton.interactable = isFreeCam;
+            refs.placementModeButton.interactable = showPlacementUi && !lockPlacementControls;
 
         if (refs.randomSatelliteButton != null)
-            refs.randomSatelliteButton.interactable = isFreeCam;
+            refs.randomSatelliteButton.interactable = showPlacementUi && !lockPlacementControls;
 
-        ShowPlacementSelect(isFreeCam);
-        ShowPlacePanels(isFreeCam);
+        ShowPlacementSelect(showPlacementUi, lockPlacementControls);
+        ShowPlacePanels(showPlacementUi);
 
-        if (!isFreeCam)
+        if (!showPlacementUi)
             objectPlacementManager?.ClearAllFields();
     }
 
@@ -66,7 +68,7 @@ public class PlacementUIController
         };
     }
 
-    private void ShowPlacementSelect(bool show)
+    private void ShowPlacementSelect(bool show, bool lockPlacementControls)
     {
         if (refs.placementSelectPanel != null)
             refs.placementSelectPanel.SetActive(show);
@@ -76,16 +78,15 @@ public class PlacementUIController
 
         bool manual = placementMode == PlacementMode.Manual;
 
-        if (refs.velocityInputField != null)
-            refs.velocityInputField.interactable = false;
-
         if (show)
         {
-            if (refs.nameInputField != null) refs.nameInputField.interactable = manual;
-            if (refs.positionInputField != null) refs.positionInputField.interactable = manual;
-            if (refs.massInputField != null) refs.massInputField.interactable = manual;
-            if (refs.radiusInputField != null) refs.radiusInputField.interactable = manual;
-            if (refs.placeObjectButton != null) refs.placeObjectButton.interactable = true;
+            bool enableManualControls = manual && !lockPlacementControls;
+
+            if (refs.nameInputField != null) refs.nameInputField.interactable = enableManualControls;
+            if (refs.positionInputField != null) refs.positionInputField.interactable = enableManualControls;
+            if (refs.massInputField != null) refs.massInputField.interactable = enableManualControls;
+            if (refs.radiusInputField != null) refs.radiusInputField.interactable = enableManualControls;
+            if (refs.placeObjectButton != null) refs.placeObjectButton.interactable = manual && !lockPlacementControls;
         }
         else
         {

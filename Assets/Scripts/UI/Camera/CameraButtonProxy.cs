@@ -25,6 +25,7 @@ public class CameraButtonProxy : MonoBehaviour
     public void EarthCam()
     {
         cameraTracker.SwitchToEarthCam();
+        ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>

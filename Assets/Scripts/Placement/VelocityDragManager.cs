@@ -1,4 +1,5 @@
 using System.Collections;
+using Unity.Mathematics;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -27,6 +28,13 @@ public class VelocityDragManager : MonoBehaviour
     [SerializeField] private Button _setVelocityButton;
     [SerializeField] private TextMeshProUGUI _feedbackText;
 
+    [Header("Manual Orbit Readout (Optional)")]
+    [SerializeField] private GameObject _manualOrbitReadoutPanel;
+    [SerializeField] private TextMeshProUGUI _apogeeText;
+    [SerializeField] private TextMeshProUGUI _perigeeText;
+    [SerializeField] private TextMeshProUGUI _inclinationText;
+    [SerializeField] private TextMeshProUGUI _eccentricityText;
+
     [Header("Planet to Apply Velocity To")]
     [SerializeField] public GameObject planet;
     [SerializeField] private float _sphereRadiusMultiplier = 10f;
@@ -36,11 +44,13 @@ public class VelocityDragManager : MonoBehaviour
 
     private bool _isDragging;
     private bool _isVelocitySet;
+    private bool _manualVelocityPlacementUiActive;
     private Vector3 _currentVelocity;
     private Vector3 _dragDirection = Vector3.zero;
     private float _sliderSpeed;
 
     private const float MaxVelocityMagnitude = 5.0f; // currently unused, kept for possible future clamp
+    private const string UnavailableText = "--";
 
     private GameObject _dragSphereObject;
     private SphereCollider _dragSphereCollider;
@@ -61,6 +71,7 @@ public class VelocityDragManager : MonoBehaviour
     [SerializeField] private Color _arrowColor = new Color(0.3f, 1f, 1f, 1f);
 
     public bool HasAppliedVelocity => _isVelocitySet;
+    public bool IsManualVelocityPlacementActive => _manualVelocityPlacementUiActive;
 
     [Header("Performance Tuning")]
     [Tooltip("Minimum time (seconds) between quick preview recomputes while dragging.")]
@@ -77,6 +88,8 @@ public class VelocityDragManager : MonoBehaviour
     private Vector3 _lastArrowStart, _lastArrowEnd;
 
     private const float DefaultPlaceholderMass = 400000f;
+
+    private bool HasPendingPlacement() => _manualVelocityPlacementUiActive && planet != null;
 
     /// <summary>
     /// Binds references from the sim context, wires up UI and input handlers,
@@ -121,6 +134,30 @@ public class VelocityDragManager : MonoBehaviour
         _lastPreviewDir = new Vector3(float.NaN, float.NaN, float.NaN);
         _lastPreviewVel = new Vector3(float.NaN, float.NaN, float.NaN);
         _lastPreviewTime = -999f;
+        _manualVelocityPlacementUiActive = false;
+
+        ClearOrbitReadout();
+        UpdateManualPlacementUi();
+    }
+
+    public void ConfigurePendingPlacement(GameObject pendingPlanet, float mass)
+    {
+        ResetDragManager();
+        planet = pendingPlanet;
+        placeholderMass = mass;
+        _manualVelocityPlacementUiActive = pendingPlanet != null;
+
+        if (_velocityInputField != null)
+            _velocityInputField.interactable = pendingPlanet != null;
+
+        if (_speedSlider != null)
+            _speedSlider.interactable = pendingPlanet != null;
+
+        if (_setVelocityButton != null)
+            _setVelocityButton.interactable = false;
+
+        UpdateManualPlacementUi();
+        _ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>
@@ -144,7 +181,10 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     private void Update()
     {
-        if (!_isVelocitySet && planet != null && !_dragArrow.gameObject.activeSelf)
+        if (!HasPendingPlacement())
+            return;
+
+        if (!_isVelocitySet && !_dragArrow.gameObject.activeSelf)
         {
             Vector3 start = planet.transform.position;
 
@@ -181,7 +221,7 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     private void StartDrag()
     {
-        if (planet == null || _mainCamera == null) return;
+        if (!HasPendingPlacement() || _mainCamera == null) return;
 
         CancelLongPreviewDebounce();
         _isDragging = true;
@@ -223,6 +263,7 @@ public class VelocityDragManager : MonoBehaviour
         Vector3 arrowEnd = sphereCenter + _dragDirection * _arrowLength;
         ShowArrowCached(sphereCenter, arrowEnd);
 
+        RefreshOrbitReadout();
         TryQuickPreview();
     }
 
@@ -243,6 +284,9 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     public void OnSpeedSliderChanged(float value)
     {
+        if (!HasPendingPlacement())
+            return;
+
         _sliderSpeed = value;
         _currentVelocity = _dragDirection * _sliderSpeed;
 
@@ -256,6 +300,7 @@ public class VelocityDragManager : MonoBehaviour
             _velocityInputField.onValueChanged.AddListener(OnVelocityInputChanged);
         }
 
+        RefreshOrbitReadout();
         TryQuickPreview();
         UpdateArrowFromCurrent();
 
@@ -274,18 +319,39 @@ public class VelocityDragManager : MonoBehaviour
         return $"{(v.x * 10f):F2}, {(v.z * 10f):F2}, {(v.y * 10f):F2}";
     }
 
+    private bool TryParseVelocityFromUI(string inputText, out Vector3 velocity)
+    {
+        velocity = Vector3.zero;
+
+        if (!ParsingUtils.TryParseVector3(inputText, out var uiVelocity))
+            return false;
+
+        velocity = new Vector3(
+            uiVelocity.x / 10f,
+            uiVelocity.z / 10f,
+            uiVelocity.y / 10f
+        );
+        return true;
+    }
+
     /// <summary>
     /// Parses manual velocity input and refreshes the ghost arrow and preview.
     /// </summary>
     private void OnVelocityInputChanged(string inputText)
     {
+        if (!HasPendingPlacement())
+            return;
+
         if (string.IsNullOrWhiteSpace(inputText)) return;
 
-        if (ParsingUtils.TryParseVector3(inputText, out var newVelocity))
+        if (TryParseVelocityFromUI(inputText, out var newVelocity))
         {
             _currentVelocity = newVelocity;
+            if (_currentVelocity.sqrMagnitude > 1e-6f)
+                _dragDirection = _currentVelocity.normalized;
             if (_setVelocityButton != null) _setVelocityButton.interactable = true;
             UpdateArrowFromCurrent();
+            RefreshOrbitReadout();
             TryQuickPreview();
         }
 
@@ -313,7 +379,7 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     public void ApplyVelocityToPlanet(Vector3 velocityToApply)
     {
-        if (planet == null) return;
+        if (!HasPendingPlacement()) return;
 
         var nbody = planet.GetComponent<NBody>();
         if (nbody == null)
@@ -324,11 +390,12 @@ public class VelocityDragManager : MonoBehaviour
 
             nbody.mass = mass;
             nbody.trueMass = mass;
-            nbody.radius = 0.0002f;
             nbody.cameraDistanceRadius = 1f;
             nbody.isCentralBody = false;
             nbody.Initialize(_ctx);
         }
+
+        nbody.radius = SatelliteSizing.ResolvePhysicalRadiusSimUnits(planet.transform.localScale);
 
         var attitude = planet.GetComponent<AttitudeController>();
         if (attitude == null)
@@ -354,8 +421,11 @@ public class VelocityDragManager : MonoBehaviour
         trajectoryRenderer?.RequestFullOrbitPass();
         planet = null;
         _isVelocitySet = true;
+        _manualVelocityPlacementUiActive = false;
 
         _dragArrow.Hide();
+        ClearOrbitReadout();
+        UpdateManualPlacementUi();
         _objectPlacementManager?.ResetLastPlacedGameObject();
         EventSystem.current?.SetSelectedGameObject(null);
 
@@ -373,6 +443,8 @@ public class VelocityDragManager : MonoBehaviour
 
         if (_setVelocityButton != null)
             _setVelocityButton.interactable = false;
+
+        _ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>
@@ -446,7 +518,7 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     private void TryQuickPreview()
     {
-        if (trajectoryRenderer == null || planet == null) return;
+        if (!HasPendingPlacement() || trajectoryRenderer == null) return;
 
         var svc = _ctx?.BodyService;
         if (svc == null || svc.CentralBody == null) return;
@@ -481,7 +553,7 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     private void ScheduleLongPreviewForGhost()
     {
-        if (planet == null || trajectoryRenderer == null) return;
+        if (!HasPendingPlacement() || trajectoryRenderer == null) return;
         if (_longPreviewCoroutine != null) StopCoroutine(_longPreviewCoroutine);
         _longPreviewCoroutine = StartCoroutine(LongPreviewAfterIdle());
     }
@@ -500,7 +572,7 @@ public class VelocityDragManager : MonoBehaviour
             yield return null;
         }
 
-        if (planet == null) yield break;
+        if (!HasPendingPlacement()) yield break;
 
         float massForPreview = (placeholderMass > 0f) ? placeholderMass : DefaultPlaceholderMass;
         trajectoryRenderer.QuickPreviewOnceLong(
@@ -531,7 +603,10 @@ public class VelocityDragManager : MonoBehaviour
         CancelLongPreviewDebounce();
         _isDragging = false;
         _isVelocitySet = false;
+        _manualVelocityPlacementUiActive = false;
         _dragArrow.Hide();
+        ClearOrbitReadout();
+        UpdateManualPlacementUi();
 
         if (_velocityInputField != null)
         {
@@ -555,6 +630,7 @@ public class VelocityDragManager : MonoBehaviour
 
         trajectoryRenderer?.ClearPreview();
         trajectoryRenderer?.ClearPreManeuverOrbit();
+        _ctx?.UIRoot?.RefreshAllUi();
     }
 
     /// <summary>
@@ -562,8 +638,137 @@ public class VelocityDragManager : MonoBehaviour
     /// </summary>
     public void ResetDragManager()
     {
+        CancelLongPreviewDebounce();
+        _isDragging = false;
         _isVelocitySet = false;
-        if (_velocityInputField != null) _velocityInputField.interactable = true;
+        _manualVelocityPlacementUiActive = false;
+        _currentVelocity = Vector3.zero;
+        _dragDirection = Vector3.zero;
+        _sliderSpeed = 0f;
+        placeholderMass = 0f;
+        planet = null;
+
+        if (_velocityInputField != null)
+        {
+            _velocityInputField.text = "";
+            _velocityInputField.interactable = false;
+        }
+
+        if (_speedSlider != null)
+        {
+            _speedSlider.value = 0f;
+            _speedSlider.interactable = false;
+        }
+
+        if (_setVelocityButton != null)
+            _setVelocityButton.interactable = false;
+
+        if (_dragSphereObject != null)
+            _dragSphereObject.SetActive(false);
+
+        if (_dragArrow != null)
+            _dragArrow.Hide();
+
+        ClearOrbitReadout();
+        UpdateManualPlacementUi();
         trajectoryRenderer?.ClearPreview();
+        trajectoryRenderer?.ClearPreManeuverOrbit();
+    }
+
+    private void RefreshOrbitReadout()
+    {
+        if (_apogeeText == null &&
+            _perigeeText == null &&
+            _inclinationText == null &&
+            _eccentricityText == null)
+        {
+            return;
+        }
+
+        NBody centralBody = _bodyService != null ? _bodyService.CentralBody : null;
+        if (planet == null || centralBody == null || _currentVelocity.sqrMagnitude <= 1e-12f)
+        {
+            ClearOrbitReadout();
+            return;
+        }
+
+        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
+            centralBody.trueMass,
+            ToDouble3(centralBody.transform.position),
+            ToDouble3(planet.transform.position),
+            ToDouble3(_currentVelocity)
+        );
+
+        if (!orbit.isValid)
+        {
+            ClearOrbitReadout();
+            return;
+        }
+
+        float kmPerUnit = GetKilometersPerUnit();
+        float centralRadius = (float)centralBody.radius;
+        float perigeeKm = (orbit.perigeeRadius - centralRadius) * kmPerUnit;
+        float? apogeeKm = orbit.apogeeRadius >= 0f
+            ? (orbit.apogeeRadius - centralRadius) * kmPerUnit
+            : null;
+
+        SetOrbitText(_perigeeText, "Perigee", perigeeKm, "km", "F1");
+        SetOrbitText(_apogeeText, "Apogee", apogeeKm, "km", "F1", nullText: "Apogee: Escape");
+        SetOrbitText(_inclinationText, "Inclination", orbit.inclination, "deg", "F1");
+        SetOrbitText(_eccentricityText, "Ecc", orbit.eccentricity, string.Empty, "F4");
+    }
+
+    private void ClearOrbitReadout()
+    {
+        SetTextDirect(_apogeeText, $"Apogee: {UnavailableText}");
+        SetTextDirect(_perigeeText, $"Perigee: {UnavailableText}");
+        SetTextDirect(_inclinationText, $"Inclination: {UnavailableText}");
+        SetTextDirect(_eccentricityText, $"Ecc: {UnavailableText}");
+    }
+
+    private void UpdateManualPlacementUi()
+    {
+        if (_manualOrbitReadoutPanel != null)
+            _manualOrbitReadoutPanel.SetActive(IsManualVelocityPlacementActive);
+    }
+
+    private void SetOrbitText(
+        TextMeshProUGUI text,
+        string label,
+        float? value,
+        string unit,
+        string format,
+        string nullText = null)
+    {
+        if (text == null)
+            return;
+
+        if (!value.HasValue || !float.IsFinite(value.Value))
+        {
+            text.text = nullText ?? $"{label}: {UnavailableText}";
+            return;
+        }
+
+        string suffix = string.IsNullOrWhiteSpace(unit) ? string.Empty : $" {unit}";
+        text.text = $"{label}: {value.Value.ToString(format)}{suffix}";
+    }
+
+    private void SetTextDirect(TextMeshProUGUI text, string value)
+    {
+        if (text != null)
+            text.text = value;
+    }
+
+    private float GetKilometersPerUnit()
+    {
+        if (_objectPlacementManager != null)
+            return (float)(_objectPlacementManager.MetersPerUnit / 1000.0);
+
+        return 10f;
+    }
+
+    private static double3 ToDouble3(Vector3 value)
+    {
+        return new double3(value.x, value.y, value.z);
     }
 }

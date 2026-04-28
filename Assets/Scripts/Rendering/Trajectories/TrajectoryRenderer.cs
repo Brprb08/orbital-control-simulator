@@ -1,12 +1,12 @@
 using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using UnityEngine;
 
 public class TrajectoryRenderer : MonoBehaviour
 {
     private const float UiIntervalSeconds = 0.5f;
     private const float NearCircularUnitsThreshold = 0.5f;
-    private const float PredictionLodMaxPoints = 2500f;
 
     [Header("Prediction")]
     [Min(1)] public int predictionSteps = 5000;
@@ -17,6 +17,21 @@ public class TrajectoryRenderer : MonoBehaviour
     [Tooltip("Coalesce rapid orbitIsDirty toggles to avoid churn.")]
     [SerializeField, Range(0, 5)] private int dirtyDebounceFrames = 2;
     private int dirtyDebounceCounter;
+
+    [Header("Continuous Refresh")]
+    [SerializeField] private bool enableContinuousRefresh = true;
+    [SerializeField, Min(0.001f)] private float continuousPositionDriftThreshold = 0.1f;
+    [SerializeField, Min(0.0001f)] private float continuousVelocityDriftThreshold = 0.01f;
+    [SerializeField, Min(0.01f)] private float minimumContinuousRefreshInterval = 0.05f;
+
+    [Header("Continuous Quality")]
+    [SerializeField, Min(32)] private int continuousCoarseMaxOutputPoints = 384;
+    [SerializeField, Min(64)] private int continuousHighQualityMaxOutputPoints = 1600;
+    [SerializeField, Min(0.1f)] private float continuousHighQualityInterval = 3f;
+
+    [Header("Long Drag Transfer Refresh")]
+    [SerializeField, Min(0f)] private float longDragRefreshEnterAltitudeKm = 480f;
+    [SerializeField, Min(0f)] private float longDragRefreshExitAltitudeKm = 520f;
 
     [Header("Refs")]
     public ThrustController thrustController;
@@ -90,6 +105,26 @@ public class TrajectoryRenderer : MonoBehaviour
     private List<Vector3> preManeuverSnapshot;
     private float uiNextTick;
     private uint predictionGeneration;
+    private float nextContinuousPredictionTime;
+    private float nextContinuousHighQualityTime;
+    private Vector3 lastPredictionSourcePosition;
+    private Vector3 lastPredictionSourceVelocity;
+    private float lastPredictionEpoch;
+    private bool hasPredictionSourceState;
+    private TrajectoryPredictionRequest lastPredictionRequest;
+    private Task<TrajectoryMatchedPredictionResult> matchedPredictionTask;
+    private uint matchedPredictionTaskGeneration;
+    private NBody matchedPredictionTaskBody;
+    private TrajectoryPredictionRequest matchedPredictionTaskRequest;
+    private Vector3[] bufferedPredictionPoints;
+    private float bufferedPredictionSampleDeltaTime;
+    private NBody bufferedPredictionBody;
+    private TrajectoryPredictionRequest bufferedPredictionRequest;
+    private bool hasBufferedPredictionResult;
+    private bool forceFastSwitchPreview;
+    private bool trackedPredictionOwnershipActive;
+    private bool dragRefreshOrbitActive;
+    private bool longDragPassageRefreshActive;
 
     public void Initialize(SimContext simContext)
     {
@@ -157,6 +192,8 @@ public class TrajectoryRenderer : MonoBehaviour
     private void Update()
     {
         UpdateDirtyDebounce();
+        PumpCompletedPredictionWork();
+        ApplyBufferedPredictionResult();
 
         if (trackedBody == null)
         {
@@ -166,6 +203,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
         RefreshCentralBodyCache(force: false);
         UpdateThrustState();
+        UpdateLongDragTransferRefreshState();
 
         burnTrace?.Update(
             thrusting: isThrusting,
@@ -179,12 +217,23 @@ public class TrajectoryRenderer : MonoBehaviour
             ui?.UpdateDeltaV(0f);
 
         bool cameraOnTrackedBody = IsCameraOnTrackedBody();
+        UpdateTrackedPredictionOwnership(cameraOnTrackedBody);
 
-        if (fullPassRequested && !isThrusting && !isComputingPrediction && cameraOnTrackedBody)
-            TryStartFinalLongPass(trackedBody);
-
-        if (ShouldComputePrediction(trackedBody))
+        bool dirtyReady = IsDirtyPredictionReady();
+        if (cameraOnTrackedBody && (isThrusting || dirtyReady) && !isComputingPrediction)
             TryStartRealtimePrediction(trackedBody);
+        else if (cameraOnTrackedBody && ShouldContinuouslyRefreshPrediction(trackedBody))
+            TryStartContinuousPrediction(trackedBody);
+
+        if (fullPassRequested &&
+            !orbitIsDirty &&
+            !isThrusting &&
+            !isComputingPrediction &&
+            cameraOnTrackedBody &&
+            !longDragPassageRefreshActive)
+        {
+            TryStartFinalLongPass(trackedBody);
+        }
 
         RefreshOrbitUIIfNeeded();
         ToggleLinesByDistance(cameraOnTrackedBody);
@@ -212,17 +261,22 @@ public class TrajectoryRenderer : MonoBehaviour
         wasThrusting = false;
         savedOriginalOrbit = false;
         fullPassRequested = false;
+        trackedPredictionOwnershipActive = false;
+        dragRefreshOrbitActive = false;
+        longDragPassageRefreshActive = false;
 
         TrackedBodyChanged?.Invoke(previousBody, trackedBody);
 
         if (trackedBody == null)
         {
             orbitIsDirty = false;
+            forceFastSwitchPreview = false;
             ui?.SetApogeePerigeePanelVisible(false);
             SetPreManeuverButtonVisible(false);
             return;
         }
 
+        forceFastSwitchPreview = true;
         ui?.SetApogeePerigeePanelVisible(true);
         RequestFullOrbitPass();
         MarkOrbitDirty();
@@ -237,6 +291,7 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         preManeuverSnapshot = null;
         preManeuverLine?.Clear();
+        ClearBurnTrace();
 
         if (referenceOrbitBody != null)
         {
@@ -263,11 +318,14 @@ public class TrajectoryRenderer : MonoBehaviour
 
         burnTrace?.Reset();
         previewModule?.Reset();
+        ResetContinuousRefreshState();
 
         latestPrediction.Clear();
         latestPredictionBody = null;
         latestPredictionStartTime = 0f;
         latestPredictionDeltaTime = 0f;
+        dragRefreshOrbitActive = false;
+        longDragPassageRefreshActive = false;
     }
 
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
@@ -423,6 +481,7 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         InvalidatePredictionWork();
         ClearAllLines();
+        ResetContinuousRefreshState();
         ui?.SetApogeePerigeePanelVisible(false);
         SetPreManeuverButtonVisible(false);
     }
@@ -465,24 +524,98 @@ public class TrajectoryRenderer : MonoBehaviour
         wasThrusting = isThrusting;
     }
 
+    private void UpdateLongDragTransferRefreshState()
+    {
+        bool wasPassageActive = longDragPassageRefreshActive;
+        dragRefreshOrbitActive = false;
+
+        if (trackedBody == null || bodyService == null || bodyService.CentralBody == null || isThrusting)
+        {
+            longDragPassageRefreshActive = false;
+        }
+        else
+        {
+            OrbitalParameters orbitalParameters = OrbitalCalculations.TryParams(trackedBody, bodyService);
+            if (orbitalParameters.isValid)
+                dragRefreshOrbitActive =
+                    trackedBody.dragCoefficient > 0f &&
+                    trackedBody.atmosphericDensity0 > 0f &&
+                    (orbitalParameters.perigeeRadius - bodyService.CentralBody.radius) * 10f <=
+                    TrajectoryPredictionPlanner.DragPeriapsisThresholdKm;
+
+            if (!dragRefreshOrbitActive)
+            {
+                longDragPassageRefreshActive = false;
+            }
+            else
+            {
+                float currentAltitudeKm = (float)trackedBody.altitude * 10f;
+                float thresholdKm = wasPassageActive
+                    ? longDragRefreshExitAltitudeKm
+                    : longDragRefreshEnterAltitudeKm;
+
+                longDragPassageRefreshActive = currentAltitudeKm <= thresholdKm;
+            }
+        }
+
+        if (longDragPassageRefreshActive == wasPassageActive)
+            return;
+
+        if (longDragPassageRefreshActive)
+        {
+            forceFastSwitchPreview = false;
+            fullPassRequested = false;
+            MarkOrbitDirty();
+            return;
+        }
+
+        ResetContinuousRefreshState();
+        RequestFullOrbitPass();
+        MarkOrbitDirty();
+    }
+
     private bool IsCameraOnTrackedBody()
     {
+        if (trackedBody == null)
+            return false;
+
+        if (cameraController != null && cameraController.CurrentBody == trackedBody)
+            return true;
+
         return cameraMovement != null && cameraMovement.targetBody == trackedBody;
     }
 
-    private bool ShouldComputePrediction(NBody body)
+    private void UpdateTrackedPredictionOwnership(bool cameraOnTrackedBody)
     {
-        if (fullPassRequested && !isThrusting) return false;
-        if (body == null) return false;
-        if (!IsCameraOnTrackedBody()) return false;
+        if (trackedBody == null)
+        {
+            trackedPredictionOwnershipActive = false;
+            return;
+        }
 
-        bool dirtyReady = orbitIsDirty && dirtyDebounceCounter == 0;
-        return isThrusting || dirtyReady;
+        if (trackedPredictionOwnershipActive == cameraOnTrackedBody)
+            return;
+
+        trackedPredictionOwnershipActive = cameraOnTrackedBody;
+
+        if (!cameraOnTrackedBody)
+        {
+            // Trajectory rendering is owned by the active tracked-camera view.
+            // If we leave that view, discard in-flight tracked predictions and
+            // refresh state so we do not apply stale results later.
+            InvalidatePredictionWork();
+            ResetContinuousRefreshState();
+            return;
+        }
+
+        forceFastSwitchPreview = true;
+        RequestFullOrbitPass();
+        MarkOrbitDirty();
     }
 
     private void TryStartRealtimePrediction(NBody body)
     {
-        if (isComputingPrediction)
+        if (isComputingPrediction || body == null)
             return;
 
         if (!TrajectoryPredictionPlanner.TryBuildRealtimeRequest(
@@ -497,13 +630,30 @@ public class TrajectoryRenderer : MonoBehaviour
             return;
         }
 
+        request = ResolveLongDragTransferRequest(body, request);
+
+        if (forceFastSwitchPreview && !longDragPassageRefreshActive)
+        {
+            forceFastSwitchPreview = false;
+
+            if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+                request = request.WithBackend(TrajectoryPredictionBackend.GpuGravity);
+        }
+
+        if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+        {
+            int maxPoints = Mathf.Max(request.MaxOutputPoints, continuousHighQualityMaxOutputPoints);
+            request = request.WithMaxOutputPoints(maxPoints);
+            nextContinuousHighQualityTime = Time.unscaledTime + continuousHighQualityInterval;
+        }
+
         predictionSteps = request.Steps;
         BeginPrediction(body, request);
     }
 
     private void TryStartFinalLongPass(NBody body)
     {
-        if (isComputingPrediction)
+        if (isComputingPrediction || body == null)
             return;
 
         if (!TrajectoryPredictionPlanner.TryBuildFinalPassRequest(
@@ -516,15 +666,88 @@ public class TrajectoryRenderer : MonoBehaviour
             return;
         }
 
+        request = ResolveLongDragTransferRequest(body, request);
+
+        if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+        {
+            int maxPoints = Mathf.Max(request.MaxOutputPoints, continuousHighQualityMaxOutputPoints);
+            request = request.WithMaxOutputPoints(maxPoints);
+            nextContinuousHighQualityTime = Time.unscaledTime + continuousHighQualityInterval;
+        }
+
         predictionSteps = request.Steps;
         BeginPrediction(body, request);
         fullPassRequested = false;
+    }
+
+    private void TryStartContinuousPrediction(NBody body)
+    {
+        if (isComputingPrediction || body == null)
+            return;
+
+        if (!TrajectoryPredictionPlanner.TryBuildRealtimeRequest(
+                body,
+                bodyService,
+                bodyRuntimeCoordinator,
+                predictionDeltaTime,
+                isThrusting,
+                Time.timeScale,
+                out TrajectoryPredictionRequest request))
+        {
+            return;
+        }
+
+        request = ResolveLongDragTransferRequest(body, request);
+
+        if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+        {
+            bool useHighQualityPass = Time.unscaledTime >= nextContinuousHighQualityTime;
+            int maxPoints = useHighQualityPass
+                ? Mathf.Max(continuousHighQualityMaxOutputPoints, continuousCoarseMaxOutputPoints)
+                : continuousCoarseMaxOutputPoints;
+
+            request = request.WithMaxOutputPoints(maxPoints);
+
+            if (useHighQualityPass)
+                nextContinuousHighQualityTime = Time.unscaledTime + continuousHighQualityInterval;
+        }
+
+        predictionSteps = request.Steps;
+        BeginPrediction(body, request);
+    }
+
+    private TrajectoryPredictionRequest ResolveLongDragTransferRequest(
+        NBody body,
+        TrajectoryPredictionRequest request)
+    {
+        if (body == null || body != trackedBody || !dragRefreshOrbitActive || longDragPassageRefreshActive)
+            return request;
+
+        if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+            return request.WithBackend(TrajectoryPredictionBackend.GpuGravity);
+
+        return request;
     }
 
     private void BeginPrediction(NBody body, TrajectoryPredictionRequest request)
     {
         isComputingPrediction = true;
         uint requestGeneration = ++predictionGeneration;
+
+        if (request.Backend == TrajectoryPredictionBackend.NativeMatched)
+        {
+            if (!TrajectoryMatchedPredictor.TryBuildWorkItem(body, bodyService, request, out TrajectoryMatchedPredictionWorkItem workItem))
+            {
+                isComputingPrediction = false;
+                return;
+            }
+
+            matchedPredictionTaskGeneration = requestGeneration;
+            matchedPredictionTaskBody = body;
+            matchedPredictionTaskRequest = request;
+            matchedPredictionTask = Task.Run(() => TrajectoryMatchedPredictor.Predict(workItem));
+            return;
+        }
 
         body.CalculatePredictedTrajectoryGPU_Async(
             steps: request.Steps,
@@ -537,13 +760,12 @@ public class TrajectoryRenderer : MonoBehaviour
                 if (requestGeneration != predictionGeneration)
                     return;
 
-                if (predictionLine == null)
-                {
-                    isComputingPrediction = false;
-                    return;
-                }
-
-                ApplyPredictionResult(body, resultArray, request);
+                QueuePredictionResult(
+                    body,
+                    resultArray,
+                    request,
+                    ResolveSampleDeltaTime(request, resultArray)
+                );
             }
         );
     }
@@ -555,13 +777,20 @@ public class TrajectoryRenderer : MonoBehaviour
             predictionGeneration++;
         }
 
+        matchedPredictionTask = null;
+        matchedPredictionTaskBody = null;
+        matchedPredictionTaskRequest = default;
+        matchedPredictionTaskGeneration = 0;
+        ClearBufferedPredictionResult();
+        forceFastSwitchPreview = false;
         isComputingPrediction = false;
     }
 
     private void ApplyPredictionResult(
         NBody body,
         Vector3[] resultArray,
-        TrajectoryPredictionRequest request)
+        TrajectoryPredictionRequest request,
+        float sampleDeltaTime)
     {
         if (trackedBody != body)
         {
@@ -569,13 +798,11 @@ public class TrajectoryRenderer : MonoBehaviour
             return;
         }
 
-        latestPrediction = resultArray != null ? new List<Vector3>(resultArray) : new List<Vector3>();
+        ReplaceLatestPrediction(resultArray);
         latestPredictionBody = body;
 
-        int lodFactor = Mathf.Max(1, request.Steps / (int)PredictionLodMaxPoints);
-
         latestPredictionStartTime = request.Epoch;
-        latestPredictionDeltaTime = request.DeltaTime * lodFactor;
+        latestPredictionDeltaTime = sampleDeltaTime;
 
         Vector3[] points = resultArray ?? Array.Empty<Vector3>();
         points = ClipTrajectorySphere(points);
@@ -583,8 +810,10 @@ public class TrajectoryRenderer : MonoBehaviour
         if (clipToSingleOrbit && centralBodyCache != null)
             points = centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon, minStepAngleRad);
 
-        predictionLine.UpdateLine(points);
+        if (predictionLine != null)
+            predictionLine.UpdateLine(points);
 
+        CachePredictionSourceState(body, request);
         orbitIsDirty = false;
         isComputingPrediction = false;
     }
@@ -649,7 +878,6 @@ public class TrajectoryRenderer : MonoBehaviour
     private void OnClearPreManeuverClicked()
     {
         ClearPreManeuverOrbit();
-        ClearBurnTrace();
         SetPreManeuverButtonVisible(false);
     }
 
@@ -711,5 +939,168 @@ public class TrajectoryRenderer : MonoBehaviour
     private void HandleTrackedBodyChanged(NBody newBody)
     {
         SetTrackedBody(newBody);
+    }
+
+    private bool IsDirtyPredictionReady()
+    {
+        return orbitIsDirty && dirtyDebounceCounter == 0;
+    }
+
+    private bool ShouldContinuouslyRefreshPrediction(NBody body)
+    {
+        if (!enableContinuousRefresh || body == null || isComputingPrediction)
+            return false;
+
+        if (body == trackedBody && dragRefreshOrbitActive && !longDragPassageRefreshActive)
+            return false;
+
+        if (lastPredictionRequest.Backend != TrajectoryPredictionBackend.NativeMatched)
+            return false;
+
+        if (!TrajectoryPredictionPlanner.ShouldContinuouslyRefresh(lastPredictionRequest))
+            return false;
+
+        if (!hasPredictionSourceState || latestPredictionBody != body || latestPrediction == null || latestPrediction.Count < 2)
+            return true;
+
+        if (Time.unscaledTime < nextContinuousPredictionTime)
+            return false;
+
+        float positionThresholdSq = continuousPositionDriftThreshold * continuousPositionDriftThreshold;
+        float velocityThresholdSq = continuousVelocityDriftThreshold * continuousVelocityDriftThreshold;
+        bool positionDrifted = (body.transform.position - lastPredictionSourcePosition).sqrMagnitude >= positionThresholdSq;
+        bool velocityDrifted = (body.velocity - lastPredictionSourceVelocity).sqrMagnitude >= velocityThresholdSq;
+
+        float simulationTime = bodyRuntimeCoordinator != null ? bodyRuntimeCoordinator.simulationTime : 0f;
+        float epochDrift = Mathf.Abs(simulationTime - lastPredictionEpoch);
+        float refreshInterval = Mathf.Max(minimumContinuousRefreshInterval, lastPredictionRequest.RefreshInterval);
+
+        return positionDrifted || velocityDrifted || epochDrift >= refreshInterval;
+    }
+
+    private void CachePredictionSourceState(NBody body, TrajectoryPredictionRequest request)
+    {
+        if (body == null)
+        {
+            ResetContinuousRefreshState();
+            return;
+        }
+
+        lastPredictionSourcePosition = body.transform.position;
+        lastPredictionSourceVelocity = body.velocity;
+        lastPredictionEpoch = request.Epoch;
+        lastPredictionRequest = request;
+        hasPredictionSourceState = true;
+        nextContinuousPredictionTime = Time.unscaledTime +
+                                       Mathf.Max(minimumContinuousRefreshInterval, request.RefreshInterval);
+    }
+
+    private void ResetContinuousRefreshState()
+    {
+        nextContinuousPredictionTime = 0f;
+        nextContinuousHighQualityTime = 0f;
+        lastPredictionSourcePosition = Vector3.zero;
+        lastPredictionSourceVelocity = Vector3.zero;
+        lastPredictionEpoch = 0f;
+        hasPredictionSourceState = false;
+        lastPredictionRequest = default;
+    }
+
+    private void PumpCompletedPredictionWork()
+    {
+        if (matchedPredictionTask == null || !matchedPredictionTask.IsCompleted)
+            return;
+
+        Task<TrajectoryMatchedPredictionResult> completedTask = matchedPredictionTask;
+        uint taskGeneration = matchedPredictionTaskGeneration;
+        NBody taskBody = matchedPredictionTaskBody;
+        TrajectoryPredictionRequest taskRequest = matchedPredictionTaskRequest;
+
+        matchedPredictionTask = null;
+        matchedPredictionTaskBody = null;
+        matchedPredictionTaskRequest = default;
+        matchedPredictionTaskGeneration = 0;
+
+        if (taskGeneration != predictionGeneration)
+        {
+            isComputingPrediction = false;
+            return;
+        }
+
+        if (completedTask.IsCanceled)
+        {
+            isComputingPrediction = false;
+            return;
+        }
+
+        if (completedTask.IsFaulted)
+        {
+            Debug.LogException(completedTask.Exception);
+            isComputingPrediction = false;
+            return;
+        }
+
+        TrajectoryMatchedPredictionResult result = completedTask.Result;
+        QueuePredictionResult(taskBody, result.Points, taskRequest, result.SampleDeltaTime);
+    }
+
+    private void QueuePredictionResult(
+        NBody body,
+        Vector3[] resultArray,
+        TrajectoryPredictionRequest request,
+        float sampleDeltaTime)
+    {
+        bufferedPredictionBody = body;
+        bufferedPredictionRequest = request;
+        bufferedPredictionPoints = resultArray ?? Array.Empty<Vector3>();
+        bufferedPredictionSampleDeltaTime = sampleDeltaTime;
+        hasBufferedPredictionResult = true;
+    }
+
+    private void ApplyBufferedPredictionResult()
+    {
+        if (!hasBufferedPredictionResult)
+            return;
+
+        NBody body = bufferedPredictionBody;
+        TrajectoryPredictionRequest request = bufferedPredictionRequest;
+        Vector3[] resultArray = bufferedPredictionPoints ?? Array.Empty<Vector3>();
+        float sampleDeltaTime = bufferedPredictionSampleDeltaTime;
+
+        ClearBufferedPredictionResult();
+        ApplyPredictionResult(body, resultArray, request, sampleDeltaTime);
+    }
+
+    private void ClearBufferedPredictionResult()
+    {
+        bufferedPredictionBody = null;
+        bufferedPredictionRequest = default;
+        bufferedPredictionPoints = null;
+        bufferedPredictionSampleDeltaTime = 0f;
+        hasBufferedPredictionResult = false;
+    }
+
+    private void ReplaceLatestPrediction(Vector3[] resultArray)
+    {
+        latestPrediction.Clear();
+
+        if (resultArray == null || resultArray.Length == 0)
+            return;
+
+        if (latestPrediction.Capacity < resultArray.Length)
+            latestPrediction.Capacity = resultArray.Length;
+
+        for (int i = 0; i < resultArray.Length; i++)
+            latestPrediction.Add(resultArray[i]);
+    }
+
+    private static float ResolveSampleDeltaTime(TrajectoryPredictionRequest request, Vector3[] resultArray)
+    {
+        int resultCount = resultArray != null ? resultArray.Length : 0;
+        if (resultCount <= 0)
+            return request.DeltaTime;
+
+        int lodFactor = Mathf.Max(1, Mathf.CeilToInt((float)request.Steps / resultCount));
+        return request.DeltaTime * lodFactor;
     }
 }

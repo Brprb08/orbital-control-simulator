@@ -9,8 +9,14 @@ public class OrbitPreviewUI : MonoBehaviour
     public TMP_Text previewPeriodLabel;
     public TMP_Text previewInclinationLabel;
     public TMP_Text previewEccentricityLabel;
+    public TMP_Text previewTPlusLabel;
 
     public void Show(OrbitalParameters p, NBody central)
+    {
+        Show(p, central, float.NaN);
+    }
+
+    public void Show(OrbitalParameters p, NBody central, float timeToNodeSeconds)
     {
         if (!p.isValid || central == null)
         {
@@ -36,7 +42,7 @@ public class OrbitPreviewUI : MonoBehaviour
         {
             previewApoapsisLabel.text = p.orbitalPeriod > 0f
                 ? $"Apoapsis: {apoAlt:0} km"
-                : "Apoapsis: —";
+                : "Apoapsis: --";
         }
 
         if (previewPeriodLabel != null)
@@ -47,23 +53,44 @@ public class OrbitPreviewUI : MonoBehaviour
         }
 
         if (previewInclinationLabel != null)
-            previewInclinationLabel.text = $"Incl: {p.inclination:0.0}°";
+            previewInclinationLabel.text = $"Incl: {p.inclination:0.0} deg";
 
         if (previewEccentricityLabel != null)
             previewEccentricityLabel.text = $"e: {p.eccentricity:0.000}";
+
+        UpdateTPlus(timeToNodeSeconds);
+    }
+
+    public void UpdateTPlus(float timeToNodeSeconds)
+    {
+        if (previewTPlusLabel != null)
+            previewTPlusLabel.text = FormatTPlus(timeToNodeSeconds);
     }
 
     public void ShowInvalid()
     {
         if (previewPeriapsisLabel != null)
-            previewPeriapsisLabel.text = "Periapsis: —";
+            previewPeriapsisLabel.text = "Periapsis: --";
         if (previewApoapsisLabel != null)
-            previewApoapsisLabel.text = "Apoapsis: —";
+            previewApoapsisLabel.text = "Apoapsis: --";
         if (previewPeriodLabel != null)
-            previewPeriodLabel.text = "Period: —";
+            previewPeriodLabel.text = "Period: --";
         if (previewInclinationLabel != null)
-            previewInclinationLabel.text = "Incl: —";
+            previewInclinationLabel.text = "Incl: --";
         if (previewEccentricityLabel != null)
-            previewEccentricityLabel.text = "e: —";
+            previewEccentricityLabel.text = "e: --";
+        if (previewTPlusLabel != null)
+            previewTPlusLabel.text = "T+: --";
+    }
+
+    private static string FormatTPlus(float timeToNodeSeconds)
+    {
+        if (!float.IsFinite(timeToNodeSeconds))
+            return "T+: --";
+
+        string prefix = timeToNodeSeconds >= 0f ? "T+" : "T-";
+        var (value, unit) = TimeFormatUtils.GetBestTimeUnit(Mathf.Abs(timeToNodeSeconds));
+        string format = unit == "sec" ? "0.0" : "0.00";
+        return $"{prefix}: {value.ToString(format)} {unit}";
     }
 }

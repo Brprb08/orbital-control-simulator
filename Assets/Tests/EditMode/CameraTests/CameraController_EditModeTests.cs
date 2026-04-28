@@ -275,6 +275,41 @@ public class CameraController_EditModeTests
     }
 
     [UnityTest]
+    public IEnumerator SwitchToEarthCam_from_free_placeholder_preview_toggles_earth_view_and_restores_placeholder()
+    {
+        rig = SimTestBootstrap.CreateBasic(2);
+        yield return null;
+
+        rig.Controller.BreakToFreeCam();
+
+        var placeholder = new GameObject("PreviewPlaceholder").transform;
+        placeholder.position = new Vector3(10f, 0f, 0f);
+        placeholder.SetParent(rig.Root.transform, false);
+
+        rig.Controller.PreviewPlaceholderInFree(placeholder);
+        Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
+
+        rig.Controller.SwitchToEarthCam();
+
+        Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Free));
+        Assert.IsFalse(rig.Controller.IsFree);
+        Assert.IsTrue(rig.Controller.IsEarthView);
+        Assert.IsFalse(rig.Controller.IsTrackingPlaceholder);
+        Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
+        Assert.IsTrue(rig.CamMove.inEarthCam);
+        Assert.That(rig.CamMove.tempEarthBody, Is.EqualTo(rig.Earth));
+
+        rig.Controller.SwitchToEarthCam();
+
+        Assert.That(rig.Controller.Mode, Is.EqualTo(CameraMode.Free));
+        Assert.IsTrue(rig.Controller.IsFree);
+        Assert.IsFalse(rig.Controller.IsEarthView);
+        Assert.IsTrue(rig.Controller.IsTrackingPlaceholder);
+        Assert.That(rig.Controller.CurrentPlaceholder, Is.EqualTo(placeholder));
+        Assert.IsFalse(rig.CamMove.inEarthCam);
+    }
+
+    [UnityTest]
     public IEnumerator PreviewPlaceholderInFree_does_nothing_when_not_in_free_mode()
     {
         rig = SimTestBootstrap.CreateBasic(2);

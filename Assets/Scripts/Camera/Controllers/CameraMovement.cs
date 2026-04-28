@@ -106,12 +106,16 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     void LateUpdate()
     {
-        if (mainCamera == null || (targetBody == null && targetPlaceholder == null)) return;
+        bool usingEarthTarget = inEarthCam && tempEarthBody != null;
+        bool usingPlaceholder = !usingEarthTarget && targetBody == null && targetPlaceholder != null;
 
-        bool usingPlaceholder = (targetBody == null && targetPlaceholder != null);
-        float cameraDistanceRadius = usingPlaceholder ? placeholderBodyRadius : targetBody.cameraDistanceRadius;
+        if (mainCamera == null || (!usingEarthTarget && targetBody == null && !usingPlaceholder)) return;
 
-        transform.position = inEarthCam
+        float cameraDistanceRadius = usingEarthTarget
+            ? tempEarthBody.cameraDistanceRadius
+            : (usingPlaceholder ? placeholderBodyRadius : targetBody.cameraDistanceRadius);
+
+        transform.position = usingEarthTarget
             ? tempEarthBody.transform.position
             : (usingPlaceholder ? targetPlaceholder.position : targetBody.transform.position);
 
@@ -132,10 +136,7 @@ public class CameraMovement : MonoBehaviour
 
         mainCamera.transform.LookAt(transform.position);
 
-        if (!usingPlaceholder)
-        {
-            UpdateVelocityAndAltitudeUI();
-        }
+        UpdateVelocityAndAltitudeUI(ResolveInfoBody(usingPlaceholder));
     }
 
     /// <summary>
@@ -208,9 +209,22 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     public void SetTargetEarth(NBody earth)
     {
-        inEarthCam = !inEarthCam;
+        if (inEarthCam)
+        {
+            LeaveEarthView();
+            return;
+        }
+
+        EnterEarthView(earth);
+    }
+
+    public void EnterEarthView(NBody earth, bool clearPlaceholderTarget = true)
+    {
+        inEarthCam = true;
         tempEarthBody = earth;
-        targetPlaceholder = null;
+
+        if (clearPlaceholderTarget)
+            targetPlaceholder = null;
 
         if (earth != null)
         {
@@ -225,6 +239,12 @@ public class CameraMovement : MonoBehaviour
         {
             tutorialController.hasSwitchedToEarthCam = true;
         }
+    }
+
+    public void LeaveEarthView()
+    {
+        inEarthCam = false;
+        tempEarthBody = null;
     }
 
     /// <summary>
@@ -319,24 +339,35 @@ public class CameraMovement : MonoBehaviour
     /// <summary>
     /// Updates velocity, altitude, and tracked object name text.
     /// </summary>
-    void UpdateVelocityAndAltitudeUI()
+    private NBody ResolveInfoBody(bool usingPlaceholder)
     {
-        if (velocityText != null && targetBody != null)
+        if (usingPlaceholder)
+            return null;
+
+        if (ctx?.CameraTracker?.CurrentBody != null)
+            return ctx.CameraTracker.CurrentBody;
+
+        return targetBody;
+    }
+
+    void UpdateVelocityAndAltitudeUI(NBody infoBody)
+    {
+        if (velocityText != null && infoBody != null)
         {
-            float velocityMagnitude = targetBody.velocity.magnitude;
+            float velocityMagnitude = infoBody.velocity.magnitude;
             float velocityInMetersPerSecond = velocityMagnitude * 10000f;
             velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s";
         }
 
-        if (altitudeText != null && targetBody != null)
+        if (altitudeText != null && infoBody != null)
         {
-            float altitude = (float)targetBody.altitude;
+            float altitude = (float)infoBody.altitude;
             altitudeText.text = $"Altitude: {altitude * 10:F3} km";
         }
 
-        if (trackingObjectNameText != null && targetBody != null)
+        if (trackingObjectNameText != null && infoBody != null)
         {
-            trackingObjectNameText.text = targetBody.name;
+            trackingObjectNameText.text = infoBody.name;
         }
     }
 }

@@ -168,18 +168,24 @@ public class UIRoot : MonoBehaviour
         if (cameraTracker == null) return;
 
         CameraMode mode = cameraTracker.Mode;
+        bool showManualVelocityUi = ctx != null &&
+                                    ctx.VelocityDragManager != null &&
+                                    ctx.VelocityDragManager.IsManualVelocityPlacementActive;
         bool nodeBurnActive = ctx != null &&
                               ctx.ThrustController != null &&
                               ctx.ThrustController.IsNodeBurnActive;
 
-        cameraModeUI?.Apply(mode);
-        placementUI?.Apply(mode);
+        cameraModeUI?.Apply(cameraTracker, showManualVelocityUi);
+        placementUI?.Apply(mode, showManualVelocityUi);
         flightUI?.Apply(mode);
         instructionsUI?.Apply(mode);
         vectorUI?.Apply(mode);
 
         if (refs.freeCamButton != null)
-            refs.freeCamButton.interactable = !nodeBurnActive;
+            refs.freeCamButton.interactable = refs.freeCamButton.interactable && !nodeBurnActive;
+
+        if (refs.trackCamButton != null)
+            refs.trackCamButton.interactable = refs.trackCamButton.interactable && !nodeBurnActive;
 
         timeUI?.SetPauseButtonInteractable(!nodeBurnActive);
         ctx?.BodyDropdownManager?.SetInteractable(!nodeBurnActive);

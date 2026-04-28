@@ -86,6 +86,11 @@ public class VelocityDragManager_EditModeTests
         SetPrivateField(mgr, "_speedSlider", MakeSlider(rig.Root.transform, "SpeedSlider"));
         SetPrivateField(mgr, "_setVelocityButton", MakeButton(rig.Root.transform, "SetVelocityBtn"));
         SetPrivateField(mgr, "_feedbackText", new GameObject("Feedback").AddComponent<TextMeshProUGUI>());
+        SetPrivateField(mgr, "_manualOrbitReadoutPanel", new GameObject("ManualOrbitPanel"));
+        SetPrivateField(mgr, "_apogeeText", new GameObject("Apogee").AddComponent<TextMeshProUGUI>());
+        SetPrivateField(mgr, "_perigeeText", new GameObject("Perigee").AddComponent<TextMeshProUGUI>());
+        SetPrivateField(mgr, "_inclinationText", new GameObject("Inclination").AddComponent<TextMeshProUGUI>());
+        SetPrivateField(mgr, "_eccentricityText", new GameObject("Eccentricity").AddComponent<TextMeshProUGUI>());
 
         rig.Ctx.VelocityDragManager = mgr;
 
@@ -117,6 +122,9 @@ public class VelocityDragManager_EditModeTests
         BuildManager();
 
         var input = GetPrivateField<TMP_InputField>(mgr, "_velocityInputField");
+        var planet = new GameObject("PlaceholderPlanet");
+        planet.transform.SetParent(rig.Root.transform, false);
+        mgr.ConfigurePendingPlacement(planet, 1000f);
 
         SetPrivateField(mgr, "_dragDirection", Vector3.forward);
         SetPrivateField(mgr, "_currentVelocity", Vector3.zero);
@@ -133,12 +141,97 @@ public class VelocityDragManager_EditModeTests
         BuildManager();
 
         var button = GetPrivateField<Button>(mgr, "_setVelocityButton");
+        var currentVelocityField = typeof(VelocityDragManager).GetField("_currentVelocity", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(currentVelocityField);
+        var planet = new GameObject("PlaceholderPlanet");
+        planet.transform.SetParent(rig.Root.transform, false);
+        mgr.ConfigurePendingPlacement(planet, 1000f);
 
         var mi = typeof(VelocityDragManager).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(mi);
         mi.Invoke(mgr, new object[] { "1,2,3" });
 
         Assert.IsTrue(button.interactable);
+
+        Vector3 velocity = (Vector3)currentVelocityField.GetValue(mgr);
+        Assert.That(velocity.x, Is.EqualTo(0.1f).Within(0.0001f));
+        Assert.That(velocity.y, Is.EqualTo(0.3f).Within(0.0001f));
+        Assert.That(velocity.z, Is.EqualTo(0.2f).Within(0.0001f));
+    }
+
+    [Test]
+    public void OnVelocityInputChanged_round_trips_slider_style_velocity_text()
+    {
+        BuildManager();
+
+        var input = GetPrivateField<TMP_InputField>(mgr, "_velocityInputField");
+        var currentVelocityField = typeof(VelocityDragManager).GetField("_currentVelocity", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(currentVelocityField);
+
+        var planet = new GameObject("PlaceholderPlanet");
+        planet.transform.SetParent(rig.Root.transform, false);
+        mgr.ConfigurePendingPlacement(planet, 1000f);
+
+        SetPrivateField(mgr, "_dragDirection", new Vector3(0.2545512f, 0.0145458f, 0.9669532f));
+        mgr.OnSpeedSliderChanged(0.2750886f);
+
+        Assert.AreEqual("0.70, 2.66, 0.04", input.text);
+
+        var mi = typeof(VelocityDragManager).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(mi);
+        mi.Invoke(mgr, new object[] { "0.70, 2.68, 0.04" });
+
+        Vector3 roundTrippedVelocity = (Vector3)currentVelocityField.GetValue(mgr);
+        Assert.That(roundTrippedVelocity.x, Is.EqualTo(0.07f).Within(0.0001f));
+        Assert.That(roundTrippedVelocity.y, Is.EqualTo(0.004f).Within(0.0001f));
+        Assert.That(roundTrippedVelocity.z, Is.EqualTo(0.268f).Within(0.0001f));
+    }
+
+    [Test]
+    public void OnVelocityInputChanged_updates_manual_orbit_readout()
+    {
+        BuildManager();
+
+        var apogee = GetPrivateField<TextMeshProUGUI>(mgr, "_apogeeText");
+        var perigee = GetPrivateField<TextMeshProUGUI>(mgr, "_perigeeText");
+        var inclination = GetPrivateField<TextMeshProUGUI>(mgr, "_inclinationText");
+        var eccentricity = GetPrivateField<TextMeshProUGUI>(mgr, "_eccentricityText");
+
+        var planet = new GameObject("PlaceholderPlanet");
+        planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
+        mgr.ConfigurePendingPlacement(planet, 1000f);
+
+        var mi = typeof(VelocityDragManager).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
+        Assert.NotNull(mi);
+        mi.Invoke(mgr, new object[] { "0,0,754618" });
+
+        Assert.That(apogee.text, Does.StartWith("Apogee:"));
+        Assert.That(perigee.text, Does.StartWith("Perigee:"));
+        Assert.That(perigee.text, Does.Not.Contain("--"));
+        Assert.That(inclination.text, Does.StartWith("Inclination:"));
+        Assert.That(eccentricity.text, Does.StartWith("Ecc:"));
+    }
+
+    [Test]
+    public void ConfigurePendingPlacement_shows_manual_orbit_panel_until_velocity_is_applied()
+    {
+        BuildManager();
+
+        var panel = GetPrivateField<GameObject>(mgr, "_manualOrbitReadoutPanel");
+        Assert.IsFalse(panel.activeSelf);
+
+        var planet = new GameObject("PlaceholderPlanet");
+        planet.transform.SetParent(rig.Root.transform, false);
+
+        mgr.ConfigurePendingPlacement(planet, 12345f);
+
+        Assert.IsTrue(panel.activeSelf);
+        Assert.That(mgr.planet, Is.EqualTo(planet));
+
+        mgr.ApplyVelocityToPlanet(Vector3.forward);
+
+        Assert.IsFalse(panel.activeSelf);
     }
 
     [Test]
@@ -149,8 +242,7 @@ public class VelocityDragManager_EditModeTests
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
 
-        mgr.planet = planet;
-        mgr.placeholderMass = 12345f;
+        mgr.ConfigurePendingPlacement(planet, 12345f);
 
         int beforeCount = rig.BodyService.Bodies.Count;
 
@@ -175,8 +267,7 @@ public class VelocityDragManager_EditModeTests
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
 
-        mgr.planet = planet;
-        mgr.placeholderMass = 0f;
+        mgr.ConfigurePendingPlacement(planet, 0f);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
@@ -203,7 +294,7 @@ public class VelocityDragManager_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.planet = planet;
+        mgr.ConfigurePendingPlacement(planet, 1000f);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
@@ -222,7 +313,7 @@ public class VelocityDragManager_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.planet = planet;
+        mgr.ConfigurePendingPlacement(planet, 1000f);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
@@ -261,18 +352,36 @@ public class VelocityDragManager_EditModeTests
     }
 
     [Test]
-    public void ResetDragManager_reenables_velocity_input_and_clears_applied_flag()
+    public void ResetDragManager_disables_velocity_ui_and_clears_pending_state()
     {
         BuildManager();
 
         var input = GetPrivateField<TMP_InputField>(mgr, "_velocityInputField");
-        input.interactable = false;
+        var slider = GetPrivateField<Slider>(mgr, "_speedSlider");
+        var button = GetPrivateField<Button>(mgr, "_setVelocityButton");
+        var dragSphere = GetPrivateField<GameObject>(mgr, "_dragSphereObject");
+
+        input.interactable = true;
+        input.text = "1,2,3";
+        slider.interactable = true;
+        slider.value = 2f;
+        button.interactable = true;
+        dragSphere.SetActive(true);
 
         SetPrivateField(mgr, "_isVelocitySet", true);
+        SetPrivateField(mgr, "_manualVelocityPlacementUiActive", true);
+        mgr.planet = new GameObject("PlaceholderPlanet");
 
         mgr.ResetDragManager();
 
-        Assert.IsTrue(input.interactable);
+        Assert.IsFalse(input.interactable);
+        Assert.AreEqual("", input.text);
+        Assert.IsFalse(slider.interactable);
+        Assert.AreEqual(0f, slider.value);
+        Assert.IsFalse(button.interactable);
+        Assert.IsFalse(dragSphere.activeSelf);
+        Assert.IsNull(mgr.planet);
+        Assert.IsFalse(mgr.IsManualVelocityPlacementActive);
         Assert.IsFalse(mgr.HasAppliedVelocity);
     }
 
