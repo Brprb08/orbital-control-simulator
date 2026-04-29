@@ -43,6 +43,15 @@ public class TrajectoryRenderer_EditModeTests
         return m.Invoke(obj, args);
     }
 
+    private TrajectoryPredictionState PredictionState =>
+        GetPrivateField<TrajectoryPredictionState>(tr, "predictionState");
+
+    private TrajectoryPredictionRunner PredictionRunner =>
+        GetPrivateField<TrajectoryPredictionRunner>(tr, "predictionRunner");
+
+    private TrajectoryDragRefreshPolicy DragRefreshPolicy =>
+        GetPrivateField<TrajectoryDragRefreshPolicy>(tr, "dragRefreshPolicy");
+
     private static Button MakeButton(Transform parent, string name)
     {
         var go = new GameObject(name);
@@ -277,6 +286,18 @@ public class TrajectoryRenderer_EditModeTests
     }
 
     [Test]
+    public void RequestPredictionRefresh_sets_dirty_flag()
+    {
+        BuildRenderer();
+
+        tr.orbitIsDirty = false;
+
+        tr.RequestPredictionRefresh();
+
+        Assert.IsTrue(tr.orbitIsDirty);
+    }
+
+    [Test]
     public void SetLineVisibility_does_not_throw_when_lines_exist()
     {
         BuildRenderer();
@@ -349,8 +370,6 @@ public class TrajectoryRenderer_EditModeTests
             sat.transform.position + Vector3.forward * 10f
         };
 
-        SetPrivateField(tr, "isComputingPrediction", false);
-
         Assert.IsTrue(tr.HasFreshPredictionFor(sat));
     }
 
@@ -368,8 +387,6 @@ public class TrajectoryRenderer_EditModeTests
             sat.transform.position + Vector3.forward * 10f
         };
 
-        SetPrivateField(tr, "isComputingPrediction", false);
-
         Assert.IsFalse(tr.HasFreshPredictionFor(sat));
     }
 
@@ -381,7 +398,8 @@ public class TrajectoryRenderer_EditModeTests
         var sat = rig.Satellites[0];
         tr.SetTrackedBody(sat);
 
-        SetPrivateField(tr, "lastPredictionRequest",
+        PredictionState.CacheSourceState(
+            sat,
             new TrajectoryPredictionRequest(
                 steps: 1024,
                 deltaTime: 5f,
@@ -389,7 +407,9 @@ public class TrajectoryRenderer_EditModeTests
                 refreshInterval: 1f,
                 requiresContinuousRefresh: true,
                 backend: TrajectoryPredictionBackend.GpuGravity,
-                maxOutputPoints: 256));
+                maxOutputPoints: 256),
+            Time.unscaledTime,
+            0.05f);
 
         bool shouldRefresh = (bool)InvokePrivateMethod(tr, "ShouldContinuouslyRefreshPrediction", sat);
 
@@ -404,11 +424,10 @@ public class TrajectoryRenderer_EditModeTests
         var sat = rig.Satellites[0];
         tr.SetTrackedBody(sat);
 
-        SetPrivateField(tr, "dragRefreshOrbitActive", true);
-        SetPrivateField(tr, "longDragPassageRefreshActive", false);
-        SetPrivateField(tr, "hasPredictionSourceState", true);
-        SetPrivateField(tr, "nextContinuousPredictionTime", 0f);
-        SetPrivateField(tr, "lastPredictionRequest",
+        SetPrivateField(DragRefreshPolicy, "<DragRefreshOrbitActive>k__BackingField", true);
+        SetPrivateField(DragRefreshPolicy, "<LongDragPassageRefreshActive>k__BackingField", false);
+        PredictionState.CacheSourceState(
+            sat,
             new TrajectoryPredictionRequest(
                 steps: 1024,
                 deltaTime: 5f,
@@ -416,7 +435,9 @@ public class TrajectoryRenderer_EditModeTests
                 refreshInterval: 1f,
                 requiresContinuousRefresh: true,
                 backend: TrajectoryPredictionBackend.NativeMatched,
-                maxOutputPoints: 256));
+                maxOutputPoints: 256),
+            Time.unscaledTime - 10f,
+            0.05f);
         tr.latestPredictionBody = sat;
         tr.latestPrediction = new List<Vector3> { sat.transform.position, sat.transform.position + Vector3.forward };
 
@@ -430,11 +451,8 @@ public class TrajectoryRenderer_EditModeTests
     {
         BuildRenderer();
 
-        SetPrivateField(tr, "nextContinuousPredictionTime", 2f);
-        SetPrivateField(tr, "nextContinuousHighQualityTime", 3f);
-        SetPrivateField(tr, "lastPredictionEpoch", 4f);
-        SetPrivateField(tr, "hasPredictionSourceState", true);
-        SetPrivateField(tr, "lastPredictionRequest",
+        PredictionState.CacheSourceState(
+            rig.Satellites[0],
             new TrajectoryPredictionRequest(
                 steps: 512,
                 deltaTime: 2f,
@@ -442,15 +460,18 @@ public class TrajectoryRenderer_EditModeTests
                 refreshInterval: 1f,
                 requiresContinuousRefresh: true,
                 backend: TrajectoryPredictionBackend.NativeMatched,
-                maxOutputPoints: 128));
+                maxOutputPoints: 128),
+            1f,
+            0.05f);
+        PredictionState.ScheduleNextHighQualityPass(1f, 2f);
 
         tr.ClearAllLines();
 
-        Assert.AreEqual(0f, GetPrivateField<float>(tr, "nextContinuousPredictionTime"));
-        Assert.AreEqual(0f, GetPrivateField<float>(tr, "nextContinuousHighQualityTime"));
-        Assert.AreEqual(0f, GetPrivateField<float>(tr, "lastPredictionEpoch"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "hasPredictionSourceState"));
-        Assert.AreEqual(default(TrajectoryPredictionRequest), GetPrivateField<TrajectoryPredictionRequest>(tr, "lastPredictionRequest"));
+        Assert.AreEqual(0f, PredictionState.NextContinuousPredictionTime);
+        Assert.AreEqual(0f, PredictionState.NextContinuousHighQualityTime);
+        Assert.AreEqual(0f, PredictionState.LastEpoch);
+        Assert.IsFalse(PredictionState.HasSourceState);
+        Assert.AreEqual(default(TrajectoryPredictionRequest), PredictionState.LastRequest);
     }
 
     [Test]
@@ -462,17 +483,66 @@ public class TrajectoryRenderer_EditModeTests
         tr.SetTrackedBody(sat);
 
         SetPrivateField(tr, "trackedPredictionOwnershipActive", true);
-        SetPrivateField(tr, "isComputingPrediction", true);
-        SetPrivateField(tr, "hasBufferedPredictionResult", true);
-        SetPrivateField(tr, "bufferedPredictionBody", sat);
-        SetPrivateField(tr, "hasPredictionSourceState", true);
+        SetPrivateField(PredictionRunner, "<IsComputing>k__BackingField", true);
+        InvokePrivateMethod(
+            PredictionRunner,
+            "QueueResult",
+            sat,
+            new[] { sat.transform.position, sat.transform.position + Vector3.forward },
+            new TrajectoryPredictionRequest(
+                steps: 512,
+                deltaTime: 2f,
+                epoch: 6f,
+                refreshInterval: 1f,
+                requiresContinuousRefresh: true,
+                backend: TrajectoryPredictionBackend.NativeMatched,
+                maxOutputPoints: 128),
+            2f);
+        PredictionState.CacheSourceState(
+            sat,
+            new TrajectoryPredictionRequest(
+                steps: 512,
+                deltaTime: 2f,
+                epoch: 6f,
+                refreshInterval: 1f,
+                requiresContinuousRefresh: true,
+                backend: TrajectoryPredictionBackend.NativeMatched,
+                maxOutputPoints: 128),
+            1f,
+            0.05f);
 
         InvokePrivateMethod(tr, "UpdateTrackedPredictionOwnership", false);
 
         Assert.IsFalse(GetPrivateField<bool>(tr, "trackedPredictionOwnershipActive"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "isComputingPrediction"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "hasBufferedPredictionResult"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "hasPredictionSourceState"));
+        Assert.IsFalse(PredictionRunner.IsComputing);
+        Assert.IsFalse(PredictionRunner.HasBufferedResult);
+        Assert.IsFalse(PredictionState.HasSourceState);
+    }
+
+    [Test]
+    public void UpdateTrackedPredictionOwnership_losing_camera_ownership_clears_pre_maneuver_state()
+    {
+        BuildRenderer();
+
+        var sat = rig.Satellites[0];
+        tr.SetTrackedBody(sat);
+
+        SetPrivateField(tr, "trackedPredictionOwnershipActive", true);
+        SetPrivateField(tr, "preManeuverSnapshot", new List<Vector3>
+        {
+            sat.transform.position,
+            sat.transform.position + Vector3.forward
+        });
+        tr.preManeuverLine.UpdateLine(new[]
+        {
+            sat.transform.position,
+            sat.transform.position + Vector3.forward
+        });
+
+        InvokePrivateMethod(tr, "UpdateTrackedPredictionOwnership", false);
+
+        Assert.IsNull(GetPrivateField<List<Vector3>>(tr, "preManeuverSnapshot"));
+        Assert.IsFalse(tr.preManeuverLine.HasPoints);
     }
 
     [Test]
@@ -496,7 +566,7 @@ public class TrajectoryRenderer_EditModeTests
     }
 
     [Test]
-    public void UpdateLongDragTransferRefreshState_entering_drag_passage_marks_orbit_dirty()
+    public void UpdateDragRefreshPolicy_entering_drag_passage_marks_orbit_dirty()
     {
         BuildRenderer();
 
@@ -512,17 +582,17 @@ public class TrajectoryRenderer_EditModeTests
         SetPrivateField(tr, "fullPassRequested", true);
         SetPrivateField(tr, "forceFastSwitchPreview", true);
 
-        InvokePrivateMethod(tr, "UpdateLongDragTransferRefreshState");
+        InvokePrivateMethod(tr, "UpdateDragRefreshPolicy");
 
-        Assert.IsTrue(GetPrivateField<bool>(tr, "dragRefreshOrbitActive"));
-        Assert.IsTrue(GetPrivateField<bool>(tr, "longDragPassageRefreshActive"));
+        Assert.IsTrue(DragRefreshPolicy.DragRefreshOrbitActive);
+        Assert.IsTrue(DragRefreshPolicy.LongDragPassageRefreshActive);
         Assert.IsTrue(tr.orbitIsDirty);
         Assert.IsFalse(GetPrivateField<bool>(tr, "fullPassRequested"));
         Assert.IsFalse(GetPrivateField<bool>(tr, "forceFastSwitchPreview"));
     }
 
     [Test]
-    public void UpdateLongDragTransferRefreshState_exiting_drag_passage_requests_locked_recompute()
+    public void UpdateDragRefreshPolicy_exiting_drag_passage_requests_locked_recompute()
     {
         BuildRenderer();
 
@@ -535,16 +605,27 @@ public class TrajectoryRenderer_EditModeTests
 
         tr.SetTrackedBody(transferSat);
         tr.orbitIsDirty = false;
-        SetPrivateField(tr, "longDragPassageRefreshActive", true);
-        SetPrivateField(tr, "hasPredictionSourceState", true);
+        SetPrivateField(DragRefreshPolicy, "<LongDragPassageRefreshActive>k__BackingField", true);
+        PredictionState.CacheSourceState(
+            transferSat,
+            new TrajectoryPredictionRequest(
+                steps: 512,
+                deltaTime: 2f,
+                epoch: 6f,
+                refreshInterval: 1f,
+                requiresContinuousRefresh: true,
+                backend: TrajectoryPredictionBackend.NativeMatched,
+                maxOutputPoints: 128),
+            1f,
+            0.05f);
         SetPrivateField(tr, "fullPassRequested", false);
 
-        InvokePrivateMethod(tr, "UpdateLongDragTransferRefreshState");
+        InvokePrivateMethod(tr, "UpdateDragRefreshPolicy");
 
-        Assert.IsTrue(GetPrivateField<bool>(tr, "dragRefreshOrbitActive"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "longDragPassageRefreshActive"));
+        Assert.IsTrue(DragRefreshPolicy.DragRefreshOrbitActive);
+        Assert.IsFalse(DragRefreshPolicy.LongDragPassageRefreshActive);
         Assert.IsTrue(tr.orbitIsDirty);
         Assert.IsTrue(GetPrivateField<bool>(tr, "fullPassRequested"));
-        Assert.IsFalse(GetPrivateField<bool>(tr, "hasPredictionSourceState"));
+        Assert.IsFalse(PredictionState.HasSourceState);
     }
 }

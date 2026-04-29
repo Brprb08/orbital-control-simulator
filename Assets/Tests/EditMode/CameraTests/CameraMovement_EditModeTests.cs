@@ -334,6 +334,18 @@ public class CameraMovement_EditModeTests
     }
 
     [Test]
+    public void CalculateEffectiveHeight_scales_down_when_zoomed_close()
+    {
+        Assert.AreEqual(1f, CameraMovement.CalculateEffectiveHeight(30f, 4f, 0.25f), 0.001f);
+    }
+
+    [Test]
+    public void CalculateEffectiveHeight_keeps_configured_height_when_distance_allows()
+    {
+        Assert.AreEqual(30f, CameraMovement.CalculateEffectiveHeight(30f, 200f, 0.25f), 0.001f);
+    }
+
+    [Test]
     public void CameraInfoUI_updates_velocity_altitude_and_name_text_for_tracked_body()
     {
         rig = SimTestBootstrap.CreateBasic(0);

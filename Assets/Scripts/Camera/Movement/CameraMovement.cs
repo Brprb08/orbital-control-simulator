@@ -17,6 +17,7 @@ public class CameraMovement : MonoBehaviour
     public float height = 30f;
     public float baseZoomSpeed = 40f;
     public float maxCameraDistance = 50000f;
+    [SerializeField, Min(0f)] private float closeZoomHeightRatio = 0.25f;
     private float minCameraDistance = 0.1f;
 
     [Header("Camera State")]
@@ -100,7 +101,8 @@ public class CameraMovement : MonoBehaviour
 
         minCameraDistance = CalculateMinCameraDistance(cameraDistanceRadius);
 
-        Vector3 targetLocalPos = new Vector3(0f, height, -distance);
+        float effectiveHeight = CalculateEffectiveHeight(height, distance, closeZoomHeightRatio);
+        Vector3 targetLocalPos = new Vector3(0f, effectiveHeight, -distance);
 
         mainCamera.transform.localPosition = Vector3.Lerp(
             mainCamera.transform.localPosition,
@@ -257,6 +259,12 @@ public class CameraMovement : MonoBehaviour
         distance = settings.DefaultDistance;
         if (settings.Height.HasValue)
             height = settings.Height.Value;
+    }
+
+    public static float CalculateEffectiveHeight(float configuredHeight, float currentDistance, float heightRatio)
+    {
+        float maxHeight = Mathf.Max(0f, currentDistance) * Mathf.Max(0f, heightRatio);
+        return Mathf.Min(configuredHeight, maxHeight);
     }
 
     private void ApplyFocusPosition(NBody body)

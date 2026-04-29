@@ -15774,6 +15774,7 @@ MonoBehaviour:
   height: 0
   baseZoomSpeed: 10
   maxCameraDistance: 50000
+  closeZoomHeightRatio: 0.25
   inEarthFocus: 0
   isFreeCamMode: 0
   sensitivity: 100
@@ -43420,8 +43421,9 @@ MonoBehaviour:
   continuousCoarseMaxOutputPoints: 384
   continuousHighQualityMaxOutputPoints: 1600
   continuousHighQualityInterval: 3
-  longDragRefreshEnterAltitudeKm: 480
-  longDragRefreshExitAltitudeKm: 520
+  dragRefreshPolicy:
+    enterAltitudeKm: 480
+    exitAltitudeKm: 520
   thrustController: {fileID: 0}
   cameraMovement: {fileID: 0}
   bodyRuntimeCoordinator: {fileID: 0}
@@ -45089,7 +45091,7 @@ GameObject:
   m_Icon: {fileID: 0}
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
-  m_IsActive: 1
+  m_IsActive: 0
 --- !u!33 &2867651322944578903
 MeshFilter:
   m_ObjectHideFlags: 0

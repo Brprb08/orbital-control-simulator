@@ -188,7 +188,7 @@ public class ThrustController : MonoBehaviour
         targetBody.AddForce(F);
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
-        trajectoryRenderer.orbitIsDirty = true;
+        trajectoryRenderer?.RequestPredictionRefresh();
 
         if (tutorialController != null && tutorialController.inTutorialMode)
         {
