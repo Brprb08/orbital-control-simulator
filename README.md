@@ -10,10 +10,10 @@ Real satellite TLEs can be loaded. Satellites can also be placed manually or fro
 
 [Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be) (Old version of sim, needs an update)
 
-![Track Cam](./Assets/Images/12-5Track.png)
-![Track Cam with Vectors](./Assets/Images/12-5Vectors.png)
-![Elliptical Orbit](./Assets/Images/12-5SatelliteUpClose.png)
-![Free Cam](./Assets/Images/12-5Free.png)
+![Track Cam](./Assets/Images/4-29Track.png)
+![Track Cam with Nodes](./Assets/Images/4-29Nodes.png)
+![Elliptical Orbit](./Assets/Images/4-29SatelliteUpClose.png)
+![Free Cam](./Assets/Images/4-29Free.png)
 
 ---
 
