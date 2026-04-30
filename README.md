@@ -13,7 +13,7 @@ Real satellite TLEs can be loaded. Satellites can also be placed manually or fro
 ![Track Cam](./Assets/Images/4-29Track.png)
 ![Track Cam with Nodes](./Assets/Images/4-29Nodes.png)
 ![Elliptical Orbit](./Assets/Images/4-29SatelliteUpClose.png)
-![Free Cam](./Assets/Images/4-29Free.png)
+![Free Cam](./Assets/Images/12-5Free.png)
 
 ---
 
