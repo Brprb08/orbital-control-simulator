@@ -14,6 +14,9 @@ public class ManeuverPreviewController : MonoBehaviour
     [SerializeField] private bool autoFitFinalPreviewToOrbit = true;
     [SerializeField] private int finalPreviewSteps = 6000;
     [SerializeField] private bool useFastPreviewWhileInteracting = true;
+    [SerializeField, Min(1)] private int maxExactCoastSteps = 5000;
+    [SerializeField, Min(1)] private int maxFinalizedExactNativeCoastSteps = 300000;
+    [SerializeField, Min(60f)] private float maxFinalizedAnalyticCoastSeconds = 172800f;
 
     private BodyService bodyService;
     private BodyRuntimeCoordinator bodyRuntimeCoordinator;
@@ -31,6 +34,7 @@ public class ManeuverPreviewController : MonoBehaviour
 
     private OrbitalParameters previewOrbitParams = new OrbitalParameters(false);
     public OrbitalParameters PreviewOrbitParams => previewOrbitParams;
+    public event System.Action<bool> AccuratePreviewLimitExceededChanged;
 
     private readonly double3[] previewPosBuf = new double3[1];
     private readonly double3[] previewVelBuf = new double3[1];
@@ -57,7 +61,7 @@ public class ManeuverPreviewController : MonoBehaviour
     private void LateUpdate()
     {
         if (pendingPreviewNode != null && orbitPreviewUI != null && bodyRuntimeCoordinator != null)
-            orbitPreviewUI.UpdateTPlus(pendingPreviewNode.burnTime - bodyRuntimeCoordinator.simulationTime);
+            orbitPreviewUI.UpdateTPlus(GetTimeToNode(pendingPreviewNode));
 
         if (previewDirty && Time.unscaledTime >= previewDirtyUntil)
         {
@@ -125,6 +129,7 @@ public class ManeuverPreviewController : MonoBehaviour
         previewVCcache = Vector3.right;
         previewHCache = Vector3.up;
         previewOrbitParams = new OrbitalParameters(false);
+        SetAccuratePreviewLimitExceeded(false);
         orbitPreviewUI?.ShowInvalid();
     }
 
@@ -144,13 +149,29 @@ public class ManeuverPreviewController : MonoBehaviour
 
         float fixedDt = Time.fixedDeltaTime;
         int currentStep = bodyRuntimeCoordinator.simulationStep;
-        BuildPreviewSchedule(node, currentStep, fixedDt, out int burnStartStep, out int burnFrames);
+        float previewBurnTime = ResolvePreviewBurnTime(node);
+        PreviewCoastMode coastMode = ResolvePreviewCoastMode(
+            node,
+            previewBurnTime,
+            currentStep,
+            fixedDt,
+            interactionActive
+        );
+        bool useSampledBurnStart = coastMode == PreviewCoastMode.Sampled;
+        float scheduleBurnTime = useSampledBurnStart
+            ? bodyRuntimeCoordinator.simulationTime
+            : previewBurnTime;
+        BuildPreviewSchedule(node, scheduleBurnTime, currentStep, fixedDt, out int burnStartStep, out int burnFrames);
+        SetAccuratePreviewLimitExceeded(
+            !interactionActive &&
+            CoastExceedsAnalyticLimit(node, previewBurnTime, currentStep, fixedDt)
+        );
 
         const double G_unity = 6.67430e-23;
         double mu = G_unity * central.trueMass;
         double3 posNow;
         double3 velNow;
-        bool useExactPreview = !interactionActive;
+        bool useExactPreview = !interactionActive && !useSampledBurnStart;
 
         if (useExactPreview)
         {
@@ -161,7 +182,7 @@ public class ManeuverPreviewController : MonoBehaviour
         {
             Vector3 burnStartPos;
             Vector3 burnStartVel;
-            if (TrajectorySampler.TrySampleAtBurnTime(node, out burnStartPos, out burnStartVel, out _))
+            if (TrajectorySampler.TrySampleAtBurnTimeWrapped(node, out burnStartPos, out burnStartVel, out _))
             {
                 posNow = new double3(burnStartPos.x, burnStartPos.y, burnStartPos.z);
                 velNow = new double3(burnStartVel.x, burnStartVel.y, burnStartVel.z);
@@ -216,8 +237,29 @@ public class ManeuverPreviewController : MonoBehaviour
         if (useExactPreview)
         {
             int coastSteps = Mathf.Max(0, burnStartStep - currentStep);
-            for (int i = 0; i < coastSteps; i++)
-                IntegrateOneSegment(fixedDt, Vector3.zero, 0);
+            double coastSeconds = coastSteps * (double)fixedDt;
+            if (coastMode == PreviewCoastMode.Analytic)
+            {
+                if (KeplerPropagator.TryPropagateUniversal(
+                        posNow,
+                        velNow,
+                        mu,
+                        coastSeconds,
+                        out double3 propagatedPos,
+                        out double3 propagatedVel))
+                {
+                    posNow = propagatedPos;
+                    velNow = propagatedVel;
+                }
+                else
+                {
+                    IntegrateOneSegment(coastSeconds, Vector3.zero, 0);
+                }
+            }
+            else
+            {
+                IntegrateOneSegment(coastSeconds, Vector3.zero, 0);
+            }
         }
 
         Vector3 velPre = new Vector3((float)velNow.x, (float)velNow.y, (float)velNow.z);
@@ -272,7 +314,7 @@ public class ManeuverPreviewController : MonoBehaviour
 
         if (orbitPreviewUI != null)
         {
-            float timeToNode = node.burnTime - bodyRuntimeCoordinator.simulationTime;
+            float timeToNode = GetTimeToNode(node);
             if (previewOrbitParams.isValid)
                 orbitPreviewUI.Show(previewOrbitParams, central, timeToNode);
             else
@@ -318,6 +360,7 @@ public class ManeuverPreviewController : MonoBehaviour
 
     private static void BuildPreviewSchedule(
         ManeuverNode node,
+        float burnTime,
         int currentStep,
         float fixedDt,
         out int burnStartStep,
@@ -338,8 +381,99 @@ public class ManeuverPreviewController : MonoBehaviour
                 : Mathf.CeilToInt((node != null ? node.duration : 0f) / fixedDt)
         );
 
-        float burnTime = node != null ? node.burnTime : 0f;
         burnStartStep = Mathf.Max(currentStep, Mathf.CeilToInt(burnTime / fixedDt));
+    }
+
+    private float ResolvePreviewBurnTime(ManeuverNode node)
+    {
+        if (node == null || bodyRuntimeCoordinator == null)
+            return 0f;
+
+        return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)
+            ? ManeuverNodeTiming.ResolveFutureBurnTime(
+                node.burnTime,
+                bodyRuntimeCoordinator.simulationTime,
+                orbitalPeriod
+            )
+            : node.burnTime;
+    }
+
+    private enum PreviewCoastMode
+    {
+        ExactNative,
+        Analytic,
+        Sampled
+    }
+
+    private PreviewCoastMode ResolvePreviewCoastMode(
+        ManeuverNode node,
+        float resolvedBurnTime,
+        int currentStep,
+        float fixedDt,
+        bool interactionActive)
+    {
+        if (node == null)
+            return PreviewCoastMode.ExactNative;
+
+        float tolerance = Mathf.Max(0.001f, fixedDt * 0.5f);
+        if (resolvedBurnTime > node.burnTime + tolerance)
+            return PreviewCoastMode.Sampled;
+
+        int scheduledStartStep = node.isFinalized
+            ? node.burnStartStep
+            : Mathf.CeilToInt(resolvedBurnTime / fixedDt);
+
+        int coastSteps = scheduledStartStep - currentStep;
+        if (coastSteps <= maxExactCoastSteps)
+            return PreviewCoastMode.ExactNative;
+
+        if (interactionActive)
+            return PreviewCoastMode.Sampled;
+
+        if (node.isFinalized && coastSteps <= maxFinalizedExactNativeCoastSteps)
+            return PreviewCoastMode.ExactNative;
+
+        float coastSeconds = coastSteps * fixedDt;
+        return coastSeconds <= maxFinalizedAnalyticCoastSeconds
+            ? PreviewCoastMode.Analytic
+            : PreviewCoastMode.Sampled;
+    }
+
+    private bool CoastExceedsAnalyticLimit(
+        ManeuverNode node,
+        float resolvedBurnTime,
+        int currentStep,
+        float fixedDt)
+    {
+        if (node == null || fixedDt <= 0f)
+            return false;
+
+        int scheduledStartStep = node.isFinalized
+            ? node.burnStartStep
+            : Mathf.CeilToInt(resolvedBurnTime / fixedDt);
+
+        int coastSteps = Mathf.Max(0, scheduledStartStep - currentStep);
+        float coastSeconds = coastSteps * fixedDt;
+        return coastSeconds > maxFinalizedAnalyticCoastSeconds;
+    }
+
+    private void SetAccuratePreviewLimitExceeded(bool exceeded)
+    {
+        AccuratePreviewLimitExceededChanged?.Invoke(exceeded);
+    }
+
+    private float GetTimeToNode(ManeuverNode node)
+    {
+        if (node == null || bodyRuntimeCoordinator == null)
+            return float.NaN;
+
+        float simTime = bodyRuntimeCoordinator.simulationTime;
+        if (node.isFinalized)
+            return node.burnTime - simTime;
+
+        return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)
+            ? ManeuverNodeTiming.GetTimeToNode(node.burnTime, simTime, orbitalPeriod)
+            : node.burnTime - simTime;
     }
 
     private static float ResolveArea(NBody body)

@@ -83,6 +83,7 @@ public class ManeuverNodeManager : MonoBehaviour
                 thrustController: thrustController,
                 trajectoryRenderer: trajectoryRenderer
             );
+            previewController.AccuratePreviewLimitExceededChanged += OnAccuratePreviewLimitExceededChanged;
         }
 
         if (trajectoryRenderer != null)
@@ -106,6 +107,9 @@ public class ManeuverNodeManager : MonoBehaviour
             uiController.ThrustScaleChanged -= OnThrustScaleChangedFromUI;
             uiController.Dispose();
         }
+
+        if (previewController != null)
+            previewController.AccuratePreviewLimitExceededChanged -= OnAccuratePreviewLimitExceededChanged;
     }
 
     private void UpdatePinnedNodeVisuals()
@@ -126,13 +130,6 @@ public class ManeuverNodeManager : MonoBehaviour
                 node.marker.transform.SetParent(null, true);
         }
 
-        if (node.marker != null && bodyRuntimeCoordinator != null)
-        {
-            float tMinus = node.burnTime - bodyRuntimeCoordinator.simulationTime;
-            var giz = node.marker.GetComponent<NodeGizmo>();
-            if (giz != null)
-                giz.SetTimeToNode(node.burnType.ToDisplayName(), tMinus);
-        }
     }
 
     private void OnTrackedBodyChanged(NBody oldBody, NBody newBody)
@@ -224,6 +221,7 @@ public class ManeuverNodeManager : MonoBehaviour
         if (node == null || node.marker == null)
             return;
 
+        ResolveNodeBurnTimeIntoFuture(node);
         BuildNodeFixedStepSchedule(node);
 
         node.isFinalized = true;
@@ -235,36 +233,13 @@ public class ManeuverNodeManager : MonoBehaviour
         visualController?.SetupNodeVisuals(node, isPreview: false, manager: this);
         uiController?.SetEditingEnabled(false);
 
-        if (bodyService != null && bodyService.CentralBody != null && trajectoryRenderer != null)
-        {
-            var central = bodyService.CentralBody;
-            var tracked = trajectoryRenderer.trackedBody;
-
-            if (tracked != null)
-            {
-                var orbit = OrbitalCalculations.CalculateOrbitalParameters(
-                    central.trueMass,
-                    central.state.position,
-                    tracked.state.position,
-                    tracked.state.velocity
-                );
-
-                if (orbit.isValid && orbit.eccentricity < 1f && orbit.orbitalPeriod > 0f)
-                {
-                    float simTime = bodyRuntimeCoordinator != null ? bodyRuntimeCoordinator.simulationTime : 0f;
-                    while (node.burnTime < simTime)
-                        node.burnTime += orbit.orbitalPeriod;
-
-                    BuildNodeFixedStepSchedule(node);
-                }
-            }
-        }
-
         if (tutorialController != null && tutorialController.inTutorialMode)
             tutorialController.hasPlacedNode = true;
 
+        trajectoryRenderer?.CommitPreviewAsPlannedManeuver();
         trajectoryRenderer?.ClearPreview();
         previewController?.RequestReadoutRefresh(node, immediate: true);
+
         RefreshSetupNodeButtonState();
         uiController?.ShowFinalizedManeuverFeedback();
         uiRoot?.RefreshAllUi();
@@ -368,6 +343,7 @@ public class ManeuverNodeManager : MonoBehaviour
         _nextPreviewNodeSnapshotRefreshTime = 0f;
 
         trajectoryRenderer?.ClearPreview();
+        trajectoryRenderer?.ClearPlannedManeuver();
         previewController?.Clear();
         uiController?.ResetEditingUI();
         uiController?.ClearManeuverFeedback();
@@ -473,6 +449,7 @@ public class ManeuverNodeManager : MonoBehaviour
         node.trajectorySnapshot = new List<Vector3>(snapshot);
         node.snapshotStartTime = startTime;
         node.snapshotDeltaTime = Mathf.Max(1e-5f, sampleDt);
+        ResolveNodeBurnTimeIntoFuture(node);
         node.burnTime = Mathf.Max(node.burnTime, node.snapshotStartTime);
 
         UpdateManeuverPrediction(node);
@@ -664,4 +641,42 @@ public class ManeuverNodeManager : MonoBehaviour
         bool nodeBurnActive = bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress;
         SetSetupNodeButtonInteractable(!nodeBurnActive);
     }
+
+    private void OnAccuratePreviewLimitExceededChanged(bool exceeded)
+    {
+        if (exceeded)
+            uiController?.ShowPreviewHorizonLimitFeedback();
+        else if (HasNode && CurrentNode != null && !CurrentNode.isFinalized)
+            uiController?.ShowPreviewManeuverFeedback();
+    }
+
+    private float GetTimeToNode(ManeuverNode node)
+    {
+        if (node == null || bodyRuntimeCoordinator == null)
+            return float.NaN;
+
+        float simTime = bodyRuntimeCoordinator.simulationTime;
+        if (node.isFinalized)
+            return node.burnTime - simTime;
+
+        return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)
+            ? ManeuverNodeTiming.GetTimeToNode(node.burnTime, simTime, orbitalPeriod)
+            : node.burnTime - simTime;
+    }
+
+    private void ResolveNodeBurnTimeIntoFuture(ManeuverNode node)
+    {
+        if (node == null || bodyRuntimeCoordinator == null)
+            return;
+
+        if (!ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod))
+            return;
+
+        node.burnTime = ManeuverNodeTiming.ResolveFutureBurnTime(
+            node.burnTime,
+            bodyRuntimeCoordinator.simulationTime,
+            orbitalPeriod
+        );
+    }
+
 }

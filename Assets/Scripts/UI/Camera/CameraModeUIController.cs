@@ -131,8 +131,8 @@ public class CameraModeUIController
         "\u00A0\u00A0\u00A0\u00A0<b>──────── PLACING A SATELLITE ────────</b>\n" +
         "- Naming is optional (defaults to 'Satellite (n)').\n" +
         "- Set Mass (500 - 1,000,000 kg).\n" +
-        "- Set Radius (1-50).\n" +
-        "  * Format: 5,45,3\n" +
+        "- Set Radius in meters (2-300).\n" +
+        "  * Format: 5,20,3\n" +
         "  * No parentheses, negatives, or non-numeric characters.\n" +
         "- Click 'Place Satellite' to spawn.";
 

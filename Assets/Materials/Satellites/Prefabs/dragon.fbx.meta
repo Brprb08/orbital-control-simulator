@@ -1,29 +1,9 @@
 fileFormatVersion: 2
-guid: 11dc3fed99ef2f041b6f037f488c77cd
+guid: cc4133d290ccf88479de34707ab3319a
 ModelImporter:
   serializedVersion: 22200
   internalIDToNameTable: []
-  externalObjects:
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: BlackMetal
-    second: {fileID: 2100000, guid: 936ea7d91052a82448af9f68ce0689b1, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: GrayMetal
-    second: {fileID: 2100000, guid: 1f0e4f7b91af55847b5cac1ddb3878e8, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: SolarPanel
-    second: {fileID: 2100000, guid: f63adeff536519e46bbbc4ffeedde4a4, type: 2}
-  - first:
-      type: UnityEngine:Material
-      assembly: UnityEngine.CoreModule
-      name: WhiteMetal
-    second: {fileID: 2100000, guid: 936ea7d91052a82448af9f68ce0689b1, type: 2}
+  externalObjects: {}
   materials:
     materialImportMode: 2
     materialName: 0
@@ -53,7 +33,7 @@ ModelImporter:
     isReadable: 0
   meshes:
     lODScreenPercentages: []
-    globalScale: 1
+    globalScale: 50
     meshCompression: 0
     addColliders: 0
     useSRGBMaterialColor: 1
@@ -108,7 +88,7 @@ ModelImporter:
     armStretch: 0.05
     legStretch: 0.05
     feetSpacing: 0
-    globalScale: 0.01
+    globalScale: 0.5
     rootMotionBoneName: 
     hasTranslationDoF: 0
     hasExtraRoot: 0

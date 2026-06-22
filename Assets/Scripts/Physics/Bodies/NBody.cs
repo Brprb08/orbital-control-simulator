@@ -58,6 +58,9 @@ public class NBody : MonoBehaviour
     public bool isReferenceOrbit = false;
     public bool projectLateralPerSubstep = false;
 
+    [Header("Render Smoothing")]
+    [SerializeField] private bool interpolateRenderedPosition = true;
+
     [Header("Telemetry")]
     public float cumulativeDeltaVUsed = 0f;
 
@@ -66,6 +69,11 @@ public class NBody : MonoBehaviour
     // Caches & components
     private double[] _otherMassCache;
     private SimContext _ctx;
+    private double3 _previousPhysicsPosition;
+    private double3 _currentPhysicsPosition;
+    private bool _hasPhysicsInterpolationState;
+
+    public Vector3 RenderPosition => GetRenderPosition();
 
     /// <summary>
     /// Injects context dependencies used by integration, prediction, and UI systems.
@@ -192,6 +200,15 @@ public class NBody : MonoBehaviour
     /// </summary>
     public void SyncAfterBatch()
     {
+        SyncAfterBatch(state.position);
+    }
+
+    public void SyncAfterBatch(double3 previousPosition)
+    {
+        _previousPhysicsPosition = previousPosition;
+        _currentPhysicsPosition = state.position;
+        _hasPhysicsInterpolationState = true;
+
         transform.position = state.position.ToVector3();
         velocity = state.velocity.ToVector3();
 
@@ -199,6 +216,49 @@ public class NBody : MonoBehaviour
         CheckEscapeFromEarth();
 
         state.force = Vector3.zero;
+    }
+
+    private void LateUpdate()
+    {
+        if (!ShouldInterpolateRenderedPosition())
+            return;
+
+        transform.position = GetInterpolatedPhysicsPosition();
+    }
+
+    private bool ShouldInterpolateRenderedPosition()
+    {
+        if (!interpolateRenderedPosition)
+            return false;
+
+        if (isCentralBody || isReferenceOrbit)
+            return false;
+
+        if (!_hasPhysicsInterpolationState)
+            return false;
+
+        if (_ctx == null || _ctx.BodyService == null || !_ctx.BodyService.DrivePhysics)
+            return false;
+
+        return Application.isPlaying;
+    }
+
+    private Vector3 GetRenderPosition()
+    {
+        if (!ShouldInterpolateRenderedPosition())
+            return transform.position;
+
+        return GetInterpolatedPhysicsPosition();
+    }
+
+    private Vector3 GetInterpolatedPhysicsPosition()
+    {
+        float alpha = Time.fixedDeltaTime > 1e-6f
+            ? Mathf.Clamp01((Time.time - Time.fixedTime) / Time.fixedDeltaTime)
+            : 1f;
+
+        double3 position = math.lerp(_previousPhysicsPosition, _currentPhysicsPosition, alpha);
+        return position.ToVector3();
     }
 
     /// <summary>

@@ -12,8 +12,11 @@ using System.Reflection;
 /// </summary>
 public class VelocityDragManager_EditModeTests
 {
+    private static readonly Vector3 TestRadiusMeters = Vector3.one * 20f;
+
     private SimTestRig rig;
     private VelocityDragManager mgr;
+    private ManualOrbitReadout.References manualOrbitRefs;
 
     [TearDown]
     public void TearDown()
@@ -72,6 +75,25 @@ public class VelocityDragManager_EditModeTests
         return go.AddComponent<Button>();
     }
 
+    private static TextMeshProUGUI MakeText(Transform parent, string name)
+    {
+        var go = new GameObject(name);
+        go.transform.SetParent(parent, false);
+        return go.AddComponent<TextMeshProUGUI>();
+    }
+
+    private ManualOrbitReadout.References MakeManualOrbitRefs()
+    {
+        var refs = new ManualOrbitReadout.References();
+        SetPrivateField(refs, "panel", new GameObject("ManualOrbitPanel"));
+        refs.Panel.transform.SetParent(rig.Root.transform, false);
+        SetPrivateField(refs, "apogeeText", MakeText(rig.Root.transform, "Apogee"));
+        SetPrivateField(refs, "perigeeText", MakeText(rig.Root.transform, "Perigee"));
+        SetPrivateField(refs, "inclinationText", MakeText(rig.Root.transform, "Inclination"));
+        SetPrivateField(refs, "eccentricityText", MakeText(rig.Root.transform, "Eccentricity"));
+        return refs;
+    }
+
     private void BuildManager()
     {
         rig = SimTestBootstrap.CreateBasic(1);
@@ -86,11 +108,8 @@ public class VelocityDragManager_EditModeTests
         SetPrivateField(mgr, "_speedSlider", MakeSlider(rig.Root.transform, "SpeedSlider"));
         SetPrivateField(mgr, "_setVelocityButton", MakeButton(rig.Root.transform, "SetVelocityBtn"));
         SetPrivateField(mgr, "_feedbackText", new GameObject("Feedback").AddComponent<TextMeshProUGUI>());
-        SetPrivateField(mgr, "_manualOrbitReadoutPanel", new GameObject("ManualOrbitPanel"));
-        SetPrivateField(mgr, "_apogeeText", new GameObject("Apogee").AddComponent<TextMeshProUGUI>());
-        SetPrivateField(mgr, "_perigeeText", new GameObject("Perigee").AddComponent<TextMeshProUGUI>());
-        SetPrivateField(mgr, "_inclinationText", new GameObject("Inclination").AddComponent<TextMeshProUGUI>());
-        SetPrivateField(mgr, "_eccentricityText", new GameObject("Eccentricity").AddComponent<TextMeshProUGUI>());
+        manualOrbitRefs = MakeManualOrbitRefs();
+        SetPrivateField(mgr, "_manualOrbitReadoutRefs", manualOrbitRefs);
 
         rig.Ctx.VelocityDragManager = mgr;
 
@@ -124,7 +143,7 @@ public class VelocityDragManager_EditModeTests
         var input = GetPrivateField<TMP_InputField>(mgr, "_velocityInputField");
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         SetPrivateField(mgr, "_dragDirection", Vector3.forward);
         SetPrivateField(mgr, "_currentVelocity", Vector3.zero);
@@ -145,7 +164,7 @@ public class VelocityDragManager_EditModeTests
         Assert.NotNull(currentVelocityField);
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         var mi = typeof(VelocityDragManager).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(mi);
@@ -170,7 +189,7 @@ public class VelocityDragManager_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         SetPrivateField(mgr, "_dragDirection", new Vector3(0.2545512f, 0.0145458f, 0.9669532f));
         mgr.OnSpeedSliderChanged(0.2750886f);
@@ -192,15 +211,15 @@ public class VelocityDragManager_EditModeTests
     {
         BuildManager();
 
-        var apogee = GetPrivateField<TextMeshProUGUI>(mgr, "_apogeeText");
-        var perigee = GetPrivateField<TextMeshProUGUI>(mgr, "_perigeeText");
-        var inclination = GetPrivateField<TextMeshProUGUI>(mgr, "_inclinationText");
-        var eccentricity = GetPrivateField<TextMeshProUGUI>(mgr, "_eccentricityText");
+        var apogee = manualOrbitRefs.ApogeeText;
+        var perigee = manualOrbitRefs.PerigeeText;
+        var inclination = manualOrbitRefs.InclinationText;
+        var eccentricity = manualOrbitRefs.EccentricityText;
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
         planet.transform.position = new Vector3(700f, 0f, 0f);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         var mi = typeof(VelocityDragManager).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(mi);
@@ -218,13 +237,13 @@ public class VelocityDragManager_EditModeTests
     {
         BuildManager();
 
-        var panel = GetPrivateField<GameObject>(mgr, "_manualOrbitReadoutPanel");
+        var panel = manualOrbitRefs.Panel;
         Assert.IsFalse(panel.activeSelf);
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
 
-        mgr.ConfigurePendingPlacement(planet, 12345f);
+        mgr.ConfigurePendingPlacement(planet, 12345f, TestRadiusMeters);
 
         Assert.IsTrue(panel.activeSelf);
         Assert.That(mgr.planet, Is.EqualTo(planet));
@@ -242,7 +261,7 @@ public class VelocityDragManager_EditModeTests
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
 
-        mgr.ConfigurePendingPlacement(planet, 12345f);
+        mgr.ConfigurePendingPlacement(planet, 12345f, TestRadiusMeters);
 
         int beforeCount = rig.BodyService.Bodies.Count;
 
@@ -255,6 +274,8 @@ public class VelocityDragManager_EditModeTests
         Assert.NotNull(attitude);
         Assert.AreEqual(new Vector3(1f, 2f, 3f), nbody.velocity);
         Assert.AreEqual(12345f, nbody.mass);
+        Assert.AreEqual(0.002f, nbody.radius, 0.000001f);
+        Assert.AreEqual(System.Math.PI * 0.002 * 0.002, nbody.state.crossSectionArea, 1e-10);
         Assert.AreEqual(beforeCount + 1, rig.BodyService.Bodies.Count);
         Assert.IsTrue(mgr.HasAppliedVelocity);
     }
@@ -267,7 +288,7 @@ public class VelocityDragManager_EditModeTests
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
 
-        mgr.ConfigurePendingPlacement(planet, 0f);
+        mgr.ConfigurePendingPlacement(planet, 0f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
@@ -294,7 +315,7 @@ public class VelocityDragManager_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
@@ -313,7 +334,7 @@ public class VelocityDragManager_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
-        mgr.ConfigurePendingPlacement(planet, 1000f);
+        mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 

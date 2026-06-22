@@ -1,110 +1,43 @@
 using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
+/// <summary>
+/// Owns placement form fields: clearing input text, locking field interactivity,
+/// feedback text, and tutorial field-entry hooks. It deliberately does not decide
+/// which placement mode/panel is visible and does not spawn satellites.
+/// </summary>
 public class PlacementFieldsUI
 {
+    private readonly UIReferences refs;
     private readonly UIRoot uiRoot;
     private readonly TutorialController tutorialController;
     private readonly Camera mainCamera;
 
-    // Manual
-    private readonly TMP_InputField objectNameInputField;
-    private readonly TMP_InputField massInput;
-    private readonly TMP_InputField radiusInput;
-    private readonly TMP_InputField positionInput;
-    private readonly Button placeObjectButton;
-    private readonly TextMeshProUGUI feedbackText;
+    public TMP_InputField ObjectNameInputField => refs.nameInputField;
+    public TMP_InputField MassInput => refs.massInputField;
+    public TMP_InputField RadiusInput => refs.radiusInputField;
+    public TMP_InputField PositionInput => refs.positionInputField;
 
-    // Kepler
-    private readonly TMP_InputField kepNameInputField;
-    private readonly TMP_InputField kepMassInputField;
-    private readonly TMP_InputField kepADegOrMetersInputField;
-    private readonly TMP_InputField kepEccInputField;
-    private readonly TMP_InputField kepIncDegInputField;
-    private readonly TMP_InputField kepRAANDegInputField;
-    private readonly TMP_InputField kepArgPDegInputField;
-    private readonly TMP_InputField kepTrueAnomDegInputField;
-    private readonly Button placeKeplerObjectButton;
+    public TMP_InputField KepNameInputField => refs.kepNameInputField;
+    public TMP_InputField KepMassInputField => refs.kepMassInputField;
+    public TMP_InputField KepADegOrMetersInputField => refs.kepADegOrMetersInputField;
+    public TMP_InputField KepEccInputField => refs.kepEccInputField;
+    public TMP_InputField KepIncDegInputField => refs.kepIncDegInputField;
+    public TMP_InputField KepRAANDegInputField => refs.kepRAANDegInputField;
+    public TMP_InputField KepArgPDegInputField => refs.kepArgPDegInputField;
+    public TMP_InputField KepTrueAnomDegInputField => refs.kepTrueAnomDegInputField;
 
-    // TLE
-    private readonly TMP_InputField tleNameInputField;
-    private readonly TMP_InputField tleMassInputField;
-    private readonly TMP_InputField tleLine1InputField;
-    private readonly TMP_InputField tleLine2InputField;
-    private readonly Button placeTleObjectButton;
+    public TMP_InputField TleNameInputField => refs.tleNameInputField;
+    public TMP_InputField TleMassInputField => refs.tleMassInputField;
+    public TMP_InputField TleLine1InputField => refs.tleLine1InputField;
+    public TMP_InputField TleLine2InputField => refs.tleLine2InputField;
 
-    public TMP_InputField ObjectNameInputField => objectNameInputField;
-    public TMP_InputField MassInput => massInput;
-    public TMP_InputField RadiusInput => radiusInput;
-    public TMP_InputField PositionInput => positionInput;
-
-    public TMP_InputField KepNameInputField => kepNameInputField;
-    public TMP_InputField KepMassInputField => kepMassInputField;
-    public TMP_InputField KepADegOrMetersInputField => kepADegOrMetersInputField;
-    public TMP_InputField KepEccInputField => kepEccInputField;
-    public TMP_InputField KepIncDegInputField => kepIncDegInputField;
-    public TMP_InputField KepRAANDegInputField => kepRAANDegInputField;
-    public TMP_InputField KepArgPDegInputField => kepArgPDegInputField;
-    public TMP_InputField KepTrueAnomDegInputField => kepTrueAnomDegInputField;
-
-    public TMP_InputField TleNameInputField => tleNameInputField;
-    public TMP_InputField TleMassInputField => tleMassInputField;
-    public TMP_InputField TleLine1InputField => tleLine1InputField;
-    public TMP_InputField TleLine2InputField => tleLine2InputField;
-
-    public PlacementFieldsUI(
-        UIRoot uiRoot,
-        TutorialController tutorialController,
-        Camera mainCamera,
-        TMP_InputField objectNameInputField,
-        TMP_InputField massInput,
-        TMP_InputField radiusInput,
-        TMP_InputField positionInput,
-        Button placeObjectButton,
-        TextMeshProUGUI feedbackText,
-        TMP_InputField kepNameInputField,
-        TMP_InputField kepMassInputField,
-        TMP_InputField kepADegOrMetersInputField,
-        TMP_InputField kepEccInputField,
-        TMP_InputField kepIncDegInputField,
-        TMP_InputField kepRAANDegInputField,
-        TMP_InputField kepArgPDegInputField,
-        TMP_InputField kepTrueAnomDegInputField,
-        Button placeKeplerObjectButton,
-        TMP_InputField tleNameInputField,
-        TMP_InputField tleMassInputField,
-        TMP_InputField tleLine1InputField,
-        TMP_InputField tleLine2InputField,
-        Button placeTleObjectButton)
+    public PlacementFieldsUI(UIReferences refs, UIRoot uiRoot, TutorialController tutorialController, Camera mainCamera)
     {
+        this.refs = refs;
         this.uiRoot = uiRoot;
         this.tutorialController = tutorialController;
         this.mainCamera = mainCamera;
-
-        this.objectNameInputField = objectNameInputField;
-        this.massInput = massInput;
-        this.radiusInput = radiusInput;
-        this.positionInput = positionInput;
-        this.placeObjectButton = placeObjectButton;
-        this.feedbackText = feedbackText;
-
-        this.kepNameInputField = kepNameInputField;
-        this.kepMassInputField = kepMassInputField;
-        this.kepADegOrMetersInputField = kepADegOrMetersInputField;
-        this.kepEccInputField = kepEccInputField;
-        this.kepIncDegInputField = kepIncDegInputField;
-        this.kepRAANDegInputField = kepRAANDegInputField;
-        this.kepArgPDegInputField = kepArgPDegInputField;
-        this.kepTrueAnomDegInputField = kepTrueAnomDegInputField;
-        this.placeKeplerObjectButton = placeKeplerObjectButton;
-
-        this.tleNameInputField = tleNameInputField;
-        this.tleMassInputField = tleMassInputField;
-        this.tleLine1InputField = tleLine1InputField;
-        this.tleLine2InputField = tleLine2InputField;
-        this.placeTleObjectButton = placeTleObjectButton;
     }
 
     public void BindTutorialHooks()
@@ -112,29 +45,32 @@ public class PlacementFieldsUI
         if (tutorialController == null || !tutorialController.inTutorialMode)
             return;
 
-        if (massInput != null)
-            massInput.onValueChanged.AddListener(OnMassInputChanged);
+        if (MassInput != null)
+            MassInput.onValueChanged.AddListener(OnMassInputChanged);
 
-        if (radiusInput != null)
-            radiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
+        if (RadiusInput != null)
+            RadiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
     }
 
     public void UnbindTutorialHooks()
     {
-        if (massInput != null)
-            massInput.onValueChanged.RemoveListener(OnMassInputChanged);
+        if (MassInput != null)
+            MassInput.onValueChanged.RemoveListener(OnMassInputChanged);
 
-        if (radiusInput != null)
-            radiusInput.onValueChanged.RemoveListener(OnRadiusInputChanged);
+        if (RadiusInput != null)
+            RadiusInput.onValueChanged.RemoveListener(OnRadiusInputChanged);
     }
 
     public void LockManualInputs(bool locked)
     {
-        if (objectNameInputField != null) objectNameInputField.interactable = !locked;
-        if (positionInput != null) positionInput.interactable = !locked;
-        if (massInput != null) massInput.interactable = !locked;
-        if (radiusInput != null) radiusInput.interactable = !locked;
-        if (placeObjectButton != null) placeObjectButton.interactable = !locked;
+        UIHelpers.SetInteractable(
+            !locked,
+            ObjectNameInputField,
+            PositionInput,
+            MassInput,
+            RadiusInput,
+            refs.placeObjectButton
+        );
 
         uiRoot?.SetPlacementButtonsLocked(locked);
         SetTrackCamButtonInteractable(false);
@@ -147,40 +83,30 @@ public class PlacementFieldsUI
 
     public void SetFeedback(string msg)
     {
-        if (feedbackText != null)
-            feedbackText.text = msg ?? string.Empty;
+        UIHelpers.SetText(refs.feedbackText, msg);
     }
 
     public void ClearAllFields()
     {
-        ClearAndUnfocusInputField(radiusInput);
-        ClearAndUnfocusInputField(positionInput);
-        ClearAndUnfocusInputField(objectNameInputField);
-        ClearAndUnfocusInputField(massInput);
-
-        ClearAndUnfocusInputField(tleNameInputField);
-        ClearAndUnfocusInputField(tleMassInputField);
-        ClearAndUnfocusInputField(tleLine1InputField);
-        ClearAndUnfocusInputField(tleLine2InputField);
-
-        ClearAndUnfocusInputField(kepNameInputField);
-        ClearAndUnfocusInputField(kepMassInputField);
-        ClearAndUnfocusInputField(kepADegOrMetersInputField);
-        ClearAndUnfocusInputField(kepEccInputField);
-        ClearAndUnfocusInputField(kepIncDegInputField);
-        ClearAndUnfocusInputField(kepRAANDegInputField);
-        ClearAndUnfocusInputField(kepArgPDegInputField);
-        ClearAndUnfocusInputField(kepTrueAnomDegInputField);
-    }
-
-    private void ClearAndUnfocusInputField(TMP_InputField inputField)
-    {
-        if (inputField == null) return;
-
-        inputField.text = string.Empty;
-
-        if (EventSystem.current != null)
-            EventSystem.current.SetSelectedGameObject(null);
+        UIHelpers.ClearInputs(
+            true,
+            RadiusInput,
+            PositionInput,
+            ObjectNameInputField,
+            MassInput,
+            TleNameInputField,
+            TleMassInputField,
+            TleLine1InputField,
+            TleLine2InputField,
+            KepNameInputField,
+            KepMassInputField,
+            KepADegOrMetersInputField,
+            KepEccInputField,
+            KepIncDegInputField,
+            KepRAANDegInputField,
+            KepArgPDegInputField,
+            KepTrueAnomDegInputField
+        );
     }
 
     private void OnMassInputChanged(string input)
@@ -225,7 +151,7 @@ public class PlacementFieldsUI
         }
         else
         {
-            SetFeedback("Invalid Radius: Format is x,y,z. Example 1,2,1");
+            SetFeedback("Invalid Radius: Format is meters x,y,z. Example 2,20,2");
         }
     }
 }

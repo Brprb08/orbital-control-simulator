@@ -39,7 +39,8 @@ public class SatelliteSpawner : MonoBehaviour
         go.name = name;
         go.tag = "Satellite";
         go.transform.position = position;
-        go.transform.localScale = new Vector3(2f, 2f, 2f);
+        Vector3 physicalRadiusMeters = Vector3.one * SatelliteSizing.DefaultPhysicalRadiusMeters;
+        go.transform.localScale = SatelliteSizing.DefaultVisualScale();
 
         var nbody = go.GetComponent<NBody>();
         if (nbody == null)
@@ -47,23 +48,19 @@ public class SatelliteSpawner : MonoBehaviour
 
         nbody.mass = mass;
         nbody.trueMass = mass;
-        nbody.radius = SatelliteSizing.ResolvePhysicalRadiusSimUnits(go.transform.localScale);
-        nbody.cameraDistanceRadius = 1f;
+        nbody.radius = SatelliteSizing.ResolvePhysicalRadiusSimUnits(physicalRadiusMeters);
+        nbody.cameraDistanceRadius = SatelliteSizing.CameraDistanceRadius;
         nbody.isCentralBody = false;
         nbody.Initialize(ctx);
-
-        if (isGhost)
-        {
-            nbody.state = new NBody.OrbitalState(
-                new Unity.Mathematics.double3(position.x, position.y, position.z),
-                new Unity.Mathematics.double3(initialVelocity.x, initialVelocity.y, initialVelocity.z),
-                0f,
-                nbody.trueMass,
-                nbody.radius,
-                nbody.dragCoefficient,
-                Vector3.zero
-            );
-        }
+        nbody.state = new NBody.OrbitalState(
+            new Unity.Mathematics.double3(position.x, position.y, position.z),
+            new Unity.Mathematics.double3(initialVelocity.x, initialVelocity.y, initialVelocity.z),
+            0f,
+            nbody.trueMass,
+            nbody.radius,
+            nbody.dragCoefficient,
+            Vector3.zero
+        );
 
         nbody.velocity = initialVelocity;
 
@@ -94,7 +91,7 @@ public class SatelliteSpawner : MonoBehaviour
     public GameObject CreatePlaceholder(
         string name,
         Vector3 position,
-        Vector3 scale,
+        Vector3 radiusMeters,
         float mass,
         VelocityDragManager velocityDragManager)
     {
@@ -104,14 +101,14 @@ public class SatelliteSpawner : MonoBehaviour
         go.name = name;
         go.tag = "Satellite";
         go.transform.position = position;
-        go.transform.localScale = scale;
+        go.transform.localScale = SatelliteSizing.ResolveVisualScale(radiusMeters);
 
         cameraTracker?.RefreshBodiesList();
 
         if (velocityDragManager != null)
         {
             Debug.Log("[Spawner] Wiring drag manager with planet + mass");
-            velocityDragManager.ConfigurePendingPlacement(go, mass);
+            velocityDragManager.ConfigurePendingPlacement(go, mass, radiusMeters);
         }
 
         return go;

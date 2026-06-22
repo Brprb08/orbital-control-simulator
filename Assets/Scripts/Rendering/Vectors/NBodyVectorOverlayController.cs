@@ -5,6 +5,7 @@ using UnityEngine;
 /// and optional world-space labels. Lives once in the scene (e.g., on a RenderManager) and
 /// follows whatever body the camera is tracking.
 /// </summary>
+[DefaultExecutionOrder(100)]
 public class NBodyVectorOverlayController : MonoBehaviour
 {
     private const float EPS = 1e-8f;
@@ -97,7 +98,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
             _cameraController.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
     }
 
-    private void Update()
+    private void LateUpdate()
     {
         if (!showVectors || _trackedBody == null)
         {
@@ -114,7 +115,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
         }
 
         // No camera controller, or not tracking a body
-        if (_cameraMovement != null && _cameraController == null || _cameraController.CurrentBody != _trackedBody)
+        if (_cameraController == null || _cameraController.CurrentBody != _trackedBody)
         {
             InvalidateCachedVectors();
             SetAllVisible(false);
@@ -133,11 +134,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
             }
         }
 
-        DrawVectorsUpdate();
-    }
-
-    private void LateUpdate()
-    {
+        DrawVectorsLate();
         UpdateLabelsLate();
     }
 
@@ -172,10 +169,10 @@ public class NBodyVectorOverlayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Computes vectors and updates line geometry once per frame (in Update).
-    /// Caches data for label update in LateUpdate to avoid jitter with camera motion.
+    /// Computes vectors and updates line geometry after physics interpolation and camera movement.
+    /// Caches data so lines and labels share the same render-time position.
     /// </summary>
-    private void DrawVectorsUpdate()
+    private void DrawVectorsLate()
     {
         if (_trackedBody == null)
         {
@@ -185,7 +182,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
 
         EnsureLineRenderers();
 
-        Vector3 pos = _trackedBody.transform.position;
+        Vector3 pos = _trackedBody.RenderPosition;
         Vector3 vel = _trackedBody.velocity;
 
         _posCached = pos;
@@ -199,7 +196,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
 
         if (_bodyService != null && _bodyService.CentralBody != null)
         {
-            center = _bodyService.CentralBody.transform.position;
+            center = _bodyService.CentralBody.RenderPosition;
             haveCentral = true;
         }
 
@@ -286,8 +283,7 @@ public class NBodyVectorOverlayController : MonoBehaviour
     }
 
     /// <summary>
-    /// Updates label positions/orientations after the camera has finished moving (LateUpdate),
-    /// using the cached vectors from Update. This prevents jitter at high time scales.
+    /// Updates label positions/orientations from the same cached vectors used for the lines.
     /// </summary>
     private void UpdateLabelsLate()
     {

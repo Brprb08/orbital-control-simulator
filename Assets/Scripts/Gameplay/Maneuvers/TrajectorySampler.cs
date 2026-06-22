@@ -27,11 +27,62 @@ public static class TrajectorySampler
         // smooth position at this index
         position = SampleAtIndex(traj, floatIndex);
 
-        // difference for velocity
-        int velStep = Mathf.Clamp(Mathf.RoundToInt(floatIndex), 1, count - 2);
-        velocity = EstimateVelocity(traj, velStep, sampleDt);
+        velocity = EstimateVelocityAtIndex(traj, floatIndex, sampleDt);
 
         return true;
+    }
+
+    public static bool TrySampleAtBurnTimeWrapped(
+        ManeuverNode node,
+        out Vector3 position,
+        out Vector3 velocity,
+        out float floatIndex)
+    {
+        position = Vector3.zero;
+        velocity = Vector3.zero;
+        floatIndex = 0f;
+
+        if (node == null || node.trajectorySnapshot == null || node.trajectorySnapshot.Count < 2)
+            return false;
+
+        var traj = node.trajectorySnapshot;
+        float sampleDt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
+        int count = traj.Count;
+        float maxIndex = count - 1.0001f;
+        float sampleSpan = Mathf.Max(sampleDt, (count - 1) * sampleDt);
+
+        float timeFromSnapshotStart = node.burnTime - node.snapshotStartTime;
+        if (timeFromSnapshotStart < 0f || timeFromSnapshotStart > sampleSpan)
+            timeFromSnapshotStart = Mathf.Repeat(timeFromSnapshotStart, sampleSpan);
+
+        floatIndex = Mathf.Clamp(timeFromSnapshotStart / sampleDt, 0f, maxIndex);
+
+        position = SampleAtIndex(traj, floatIndex);
+
+        velocity = EstimateVelocityAtIndex(traj, floatIndex, sampleDt);
+
+        return true;
+    }
+
+    public static Vector3 EstimateVelocityAtIndex(List<Vector3> trajectory, float floatIndex, float dt)
+    {
+        if (trajectory == null || trajectory.Count < 2)
+            return Vector3.zero;
+
+        float sampleDt = Mathf.Max(1e-5f, dt);
+        float maxIndex = trajectory.Count - 1.0001f;
+        float centerIndex = Mathf.Clamp(floatIndex, 0f, maxIndex);
+        float beforeIndex = Mathf.Max(0f, centerIndex - 0.5f);
+        float afterIndex = Mathf.Min(maxIndex, centerIndex + 0.5f);
+
+        if (afterIndex - beforeIndex < 1e-4f)
+            return Vector3.zero;
+
+        Vector3 before = SampleAtIndex(trajectory, beforeIndex);
+        Vector3 after = SampleAtIndex(trajectory, afterIndex);
+        float seconds = (afterIndex - beforeIndex) * sampleDt;
+
+        return seconds > 1e-5f ? (after - before) / seconds : Vector3.zero;
     }
 
     public static Vector3 EstimateVelocity(List<Vector3> trajectory, int step, float dt)

@@ -1,10 +1,15 @@
 using TMPro;
+using UnityEngine;
 
+/// <summary>
+/// Controls placement mode and panel visibility. Field contents, feedback text,
+/// and input locking live in PlacementFieldsUI; object spawning lives in
+/// ObjectPlacementManager.
+/// </summary>
 public class PlacementUIController
 {
     private readonly UIReferences refs;
     private readonly ObjectPlacementManager objectPlacementManager;
-    private readonly PlacementFieldsUI placementFieldsUI;
 
     private enum PlacementMode
     {
@@ -36,16 +41,17 @@ public class PlacementUIController
     {
         bool isFreeCam = cameraMode == CameraMode.Free;
         bool showPlacementUi = isFreeCam;
-        bool lockPlacementControls = showManualVelocityUi;
+        bool showPlacementControls = showPlacementUi && !showManualVelocityUi;
 
         if (refs.placementModeButton != null)
-            refs.placementModeButton.interactable = showPlacementUi && !lockPlacementControls;
+            refs.placementModeButton.interactable = showPlacementControls;
 
         if (refs.randomSatelliteButton != null)
-            refs.randomSatelliteButton.interactable = showPlacementUi && !lockPlacementControls;
+            refs.randomSatelliteButton.interactable = showPlacementControls;
 
-        ShowPlacementSelect(showPlacementUi, lockPlacementControls);
-        ShowPlacePanels(showPlacementUi);
+        ShowPlacementSelect(showPlacementControls);
+        ShowPlacePanels(showPlacementUi, showManualVelocityUi);
+        SetManualObjectControlsVisible(showPlacementControls && placementMode == PlacementMode.Manual);
 
         if (!showPlacementUi)
             objectPlacementManager?.ClearAllFields();
@@ -68,58 +74,28 @@ public class PlacementUIController
         };
     }
 
-    private void ShowPlacementSelect(bool show, bool lockPlacementControls)
+    private void ShowPlacementSelect(bool show)
     {
-        if (refs.placementSelectPanel != null)
-            refs.placementSelectPanel.SetActive(show);
-
-        if (refs.randomPlacementPanel != null)
-            refs.randomPlacementPanel.SetActive(show);
+        UIHelpers.SetActive(refs.placementSelectPanel, show);
+        UIHelpers.SetActive(refs.randomPlacementPanel, show);
 
         bool manual = placementMode == PlacementMode.Manual;
 
         if (show)
         {
-            bool enableManualControls = manual && !lockPlacementControls;
-
-            if (refs.nameInputField != null) refs.nameInputField.interactable = enableManualControls;
-            if (refs.positionInputField != null) refs.positionInputField.interactable = enableManualControls;
-            if (refs.massInputField != null) refs.massInputField.interactable = enableManualControls;
-            if (refs.radiusInputField != null) refs.radiusInputField.interactable = enableManualControls;
-            if (refs.placeObjectButton != null) refs.placeObjectButton.interactable = manual && !lockPlacementControls;
+            UIHelpers.SetInteractable(refs.nameInputField, manual);
+            UIHelpers.SetInteractable(refs.positionInputField, manual);
+            UIHelpers.SetInteractable(refs.massInputField, manual);
+            UIHelpers.SetInteractable(refs.radiusInputField, manual);
+            UIHelpers.SetInteractable(refs.placeObjectButton, manual);
         }
         else
         {
-            if (refs.nameInputField != null)
-            {
-                refs.nameInputField.text = string.Empty;
-                refs.nameInputField.interactable = false;
-            }
-
-            if (refs.positionInputField != null)
-            {
-                refs.positionInputField.text = string.Empty;
-                refs.positionInputField.interactable = false;
-            }
-
-            if (refs.massInputField != null)
-            {
-                refs.massInputField.text = string.Empty;
-                refs.massInputField.interactable = false;
-            }
-
-            if (refs.radiusInputField != null)
-            {
-                refs.radiusInputField.text = string.Empty;
-                refs.radiusInputField.interactable = false;
-            }
-
-            if (refs.placeObjectButton != null)
-                refs.placeObjectButton.interactable = false;
+            ClearAndDisableManualInputs();
         }
     }
 
-    private void ShowPlacePanels(bool show)
+    private void ShowPlacePanels(bool show, bool showManualVelocityUi)
     {
         if (refs.placeTLEPanel == null || refs.objectPlacementPanel == null || refs.placeKeplerPanel == null)
             return;
@@ -133,7 +109,48 @@ public class PlacementUIController
         }
 
         refs.placeTLEPanel.SetActive(placementMode == PlacementMode.TLE);
-        refs.objectPlacementPanel.SetActive(placementMode == PlacementMode.Manual);
+        refs.objectPlacementPanel.SetActive(showManualVelocityUi || placementMode == PlacementMode.Manual);
         refs.placeKeplerPanel.SetActive(placementMode == PlacementMode.Kepler);
+    }
+
+    private void SetManualObjectControlsVisible(bool visible)
+    {
+        SetInputVisible(refs.nameInputField, visible);
+        SetInputVisible(refs.positionInputField, visible);
+        SetInputVisible(refs.massInputField, visible);
+        SetInputVisible(refs.radiusInputField, visible);
+
+        UIHelpers.SetActive(refs.placeObjectButton != null ? refs.placeObjectButton.gameObject : null, visible);
+
+        Transform panelRoot = refs.objectPlacementPanel != null ? refs.objectPlacementPanel.transform : null;
+        UIHelpers.SetChildActive(panelRoot, "Txt_Name", visible);
+        UIHelpers.SetChildActive(panelRoot, "Txt_Position", visible);
+        UIHelpers.SetChildActive(panelRoot, "Txt_Mass", visible);
+        UIHelpers.SetChildActive(panelRoot, "Txt_Radius", visible);
+    }
+
+    private static void SetInputVisible(TMP_InputField input, bool visible)
+    {
+        UIHelpers.SetActive(input != null ? input.gameObject : null, visible);
+    }
+
+    private void ClearAndDisableManualInputs()
+    {
+        UIHelpers.ClearInputs(
+            false,
+            refs.nameInputField,
+            refs.positionInputField,
+            refs.massInputField,
+            refs.radiusInputField
+        );
+
+        UIHelpers.SetInteractable(
+            false,
+            refs.nameInputField,
+            refs.positionInputField,
+            refs.massInputField,
+            refs.radiusInputField,
+            refs.placeObjectButton
+        );
     }
 }

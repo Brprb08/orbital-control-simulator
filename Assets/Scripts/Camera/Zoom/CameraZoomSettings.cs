@@ -21,13 +21,18 @@ internal static class CameraZoomSettingsFactory
     public const float EarthCamMinDistance = 750f;
     public const float EarthCamDefaultDistance = 2000f;
     public const float PlaceholderMaxCameraDistance = 800f;
+    public const float PlaceholderCameraRadius = SatelliteSizing.CameraDistanceRadius;
+    public const float PreviewPlaceholderMinCameraDistance = 2.5f;
+    public static readonly float PendingPlaceholderMinCameraDistance =
+        CalculateRuntimeMinDistance(PlaceholderCameraRadius, isEarthFocus: false);
 
     public static CameraZoomSettings ForBody(NBody body, float? defaultDistanceOverride = null)
     {
-        float minDistance = CameraCalculations.CalculateMinDistance(body.radius);
-        float maxDistance = CameraCalculations.CalculateMaxDistance(body.radius);
+        float cameraRadius = body.cameraDistanceRadius;
+        float minDistance = CameraCalculations.CalculateMinDistance(cameraRadius);
+        float maxDistance = CameraCalculations.CalculateMaxDistance(cameraRadius);
         float midpointDistance = (minDistance + maxDistance) / 2f;
-        float closerFraction = body.radius <= 10f ? 0.15f : 0.25f;
+        float closerFraction = cameraRadius <= 10f ? 0.15f : 0.25f;
         float defaultDistance = defaultDistanceOverride
             ?? minDistance + (midpointDistance - minDistance) * closerFraction;
 
@@ -51,14 +56,24 @@ internal static class CameraZoomSettingsFactory
 
     public static CameraZoomSettings ForPlaceholder(Transform placeholder)
     {
-        float radius = placeholder.localScale.x;
+        float radius = PlaceholderCameraRadius;
+        float minDistance = GetPlaceholderMinDistance(placeholder);
+        bool isPendingVelocityPlacement =
+            placeholder != null && placeholder.GetComponent<PendingVelocityPlacementMarker>() != null;
 
         return new CameraZoomSettings(
-            minDistance: CalculateRuntimeMinDistance(radius, isEarthFocus: false),
+            minDistance,
             maxDistance: PlaceholderMaxCameraDistance,
-            defaultDistance: 10f * radius,
-            height: 0.2f * radius
+            defaultDistance: isPendingVelocityPlacement ? minDistance : 10f * radius,
+            height: 0f
         );
+    }
+
+    public static float GetPlaceholderMinDistance(Transform placeholder)
+    {
+        return placeholder != null && placeholder.GetComponent<PendingVelocityPlacementMarker>() != null
+            ? PendingPlaceholderMinCameraDistance
+            : PreviewPlaceholderMinCameraDistance;
     }
 
     public static float CalculateRuntimeMinDistance(float radius, bool isEarthFocus)

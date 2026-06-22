@@ -9,7 +9,7 @@ using UnityEngine.TestTools;
 
 /// <summary>
 /// Edit-mode tests for ObjectPlacementManager:
-/// verifies initialization, field clearing, cancel/reset behavior,
+/// verifies initialization, field clearing, cancel/pending behavior,
 /// placement gating, and manual position input / ghost preview behavior.
 /// </summary>
 public class ObjectPlacementManager_EditModeTests
@@ -101,29 +101,6 @@ public class ObjectPlacementManager_EditModeTests
 
         SetPrivateField(mgr, "_mainCamera", rig.CamMove.MainCamera);
         SetPrivateField(mgr, "_tutorialController", rig.Ctx.TutorialController);
-        SetPrivateField(mgr, "_feedbackText", MakeText(rig.Root.transform, "Feedback"));
-
-        SetPrivateField(mgr, "_objectNameInputField", MakeInput(rig.Root.transform, "ObjName"));
-        SetPrivateField(mgr, "_massInput", MakeInput(rig.Root.transform, "Mass"));
-        SetPrivateField(mgr, "_radiusInput", MakeInput(rig.Root.transform, "Radius"));
-        SetPrivateField(mgr, "_positionInput", MakeInput(rig.Root.transform, "Position"));
-        SetPrivateField(mgr, "_placeObjectButton", MakeButton(rig.Root.transform, "PlaceBtn"));
-
-        SetPrivateField(mgr, "_kepNameInputField", MakeInput(rig.Root.transform, "KepName"));
-        SetPrivateField(mgr, "_kepMassInputField", MakeInput(rig.Root.transform, "KepMass"));
-        SetPrivateField(mgr, "_kepADegOrMetersInputField", MakeInput(rig.Root.transform, "KepA"));
-        SetPrivateField(mgr, "_kepEccInputField", MakeInput(rig.Root.transform, "KepE"));
-        SetPrivateField(mgr, "_kepIncDegInputField", MakeInput(rig.Root.transform, "KepI"));
-        SetPrivateField(mgr, "_kepRAANDegInputField", MakeInput(rig.Root.transform, "KepRAAN"));
-        SetPrivateField(mgr, "_kepArgPDegInputField", MakeInput(rig.Root.transform, "KepArgP"));
-        SetPrivateField(mgr, "_kepTrueAnomDegInputField", MakeInput(rig.Root.transform, "KepNu"));
-        SetPrivateField(mgr, "_placeKeplerObjectButton", MakeButton(rig.Root.transform, "PlaceKepBtn"));
-
-        SetPrivateField(mgr, "_tleNameInputField", MakeInput(rig.Root.transform, "TleName"));
-        SetPrivateField(mgr, "_tleMassInputField", MakeInput(rig.Root.transform, "TleMass"));
-        SetPrivateField(mgr, "_tleLine1InputField", MakeInput(rig.Root.transform, "TleL1"));
-        SetPrivateField(mgr, "_tleLine2InputField", MakeInput(rig.Root.transform, "TleL2"));
-        SetPrivateField(mgr, "_placeTleObjectButton", MakeButton(rig.Root.transform, "PlaceTleBtn"));
 
         // Minimal prefab for ghost preview
         var ghostPrefab = GameObject.CreatePrimitive(PrimitiveType.Sphere);
@@ -163,65 +140,72 @@ public class ObjectPlacementManager_EditModeTests
 
         yield return null; // let EventSystem.current initialize
 
-        GetPrivateField<TMP_InputField>(mgr, "_objectNameInputField").text = "Sat";
-        GetPrivateField<TMP_InputField>(mgr, "_massInput").text = "5000";
-        GetPrivateField<TMP_InputField>(mgr, "_radiusInput").text = "1,1,1";
-        GetPrivateField<TMP_InputField>(mgr, "_positionInput").text = "700,0,0";
+        rig.UIRefs.nameInputField.text = "Sat";
+        rig.UIRefs.massInputField.text = "5000";
+        rig.UIRefs.radiusInputField.text = "1,1,1";
+        rig.UIRefs.positionInputField.text = "700,0,0";
 
-        GetPrivateField<TMP_InputField>(mgr, "_kepNameInputField").text = "KSat";
-        GetPrivateField<TMP_InputField>(mgr, "_kepMassInputField").text = "5000";
+        rig.UIRefs.kepNameInputField.text = "KSat";
+        rig.UIRefs.kepMassInputField.text = "5000";
 
-        GetPrivateField<TMP_InputField>(mgr, "_tleNameInputField").text = "TSat";
-        GetPrivateField<TMP_InputField>(mgr, "_tleMassInputField").text = "5000";
-        GetPrivateField<TMP_InputField>(mgr, "_tleLine1InputField").text = "L1";
-        GetPrivateField<TMP_InputField>(mgr, "_tleLine2InputField").text = "L2";
+        rig.UIRefs.tleNameInputField.text = "TSat";
+        rig.UIRefs.tleMassInputField.text = "5000";
+        rig.UIRefs.tleLine1InputField.text = "L1";
+        rig.UIRefs.tleLine2InputField.text = "L2";
 
         mgr.ClearAllFields();
 
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_objectNameInputField").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_massInput").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_radiusInput").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_positionInput").text);
+        Assert.AreEqual("", rig.UIRefs.nameInputField.text);
+        Assert.AreEqual("", rig.UIRefs.massInputField.text);
+        Assert.AreEqual("", rig.UIRefs.radiusInputField.text);
+        Assert.AreEqual("", rig.UIRefs.positionInputField.text);
 
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_kepNameInputField").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_kepMassInputField").text);
+        Assert.AreEqual("", rig.UIRefs.kepNameInputField.text);
+        Assert.AreEqual("", rig.UIRefs.kepMassInputField.text);
 
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_tleNameInputField").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_tleMassInputField").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_tleLine1InputField").text);
-        Assert.AreEqual("", GetPrivateField<TMP_InputField>(mgr, "_tleLine2InputField").text);
+        Assert.AreEqual("", rig.UIRefs.tleNameInputField.text);
+        Assert.AreEqual("", rig.UIRefs.tleMassInputField.text);
+        Assert.AreEqual("", rig.UIRefs.tleLine1InputField.text);
+        Assert.AreEqual("", rig.UIRefs.tleLine2InputField.text);
     }
 
     [Test]
-    public void CancelPlacement_destroys_lastPlacedGameObject_and_clears_feedback()
+    public void CancelPlacement_destroys_pending_satellite_and_clears_feedback()
     {
         BuildManager();
 
         var placed = new GameObject("Placed");
         placed.transform.SetParent(rig.Root.transform, false);
-        SetPrivateField(mgr, "_lastPlacedGameObject", placed);
+        var pending = new PendingSatellitePlacement();
+        pending.Set(placed);
+        SetPrivateField(mgr, "_pendingPlacement", pending);
 
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
         feedback.text = "hello";
 
         mgr.CancelPlacement();
 
-        Assert.IsNull(GetPrivateField<GameObject>(mgr, "_lastPlacedGameObject"));
+        Assert.IsFalse(GetPrivateField<PendingSatellitePlacement>(mgr, "_pendingPlacement").HasSatellite);
         Assert.AreEqual("", feedback.text);
     }
 
     [Test]
-    public void ResetLastPlacedGameObject_clears_pending_reference_and_feedback()
+    public void ClearPendingPlacement_clears_pending_reference_and_feedback()
     {
         BuildManager();
 
-        SetPrivateField(mgr, "_lastPlacedGameObject", new GameObject("Pending"));
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var pending = new PendingSatellitePlacement();
+        var placed = new GameObject("Pending");
+        placed.transform.SetParent(rig.Root.transform, false);
+        pending.Set(placed);
+        SetPrivateField(mgr, "_pendingPlacement", pending);
+
+        var feedback = rig.UIRefs.feedbackText;
         feedback.text = "pending";
 
-        mgr.ResetLastPlacedGameObject();
+        mgr.ClearPendingPlacement();
 
-        Assert.IsNull(GetPrivateField<GameObject>(mgr, "_lastPlacedGameObject"));
+        Assert.IsFalse(GetPrivateField<PendingSatellitePlacement>(mgr, "_pendingPlacement").HasSatellite);
         Assert.AreEqual("", feedback.text);
     }
 
@@ -231,7 +215,7 @@ public class ObjectPlacementManager_EditModeTests
         BuildManager();
 
         rig.Controller.ReturnToTracking(); // should be Track
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
 
         mgr.StartPlacement();
 
@@ -244,9 +228,13 @@ public class ObjectPlacementManager_EditModeTests
         BuildManager();
 
         rig.Controller.BreakToFreeCam();
-        SetPrivateField(mgr, "_lastPlacedGameObject", new GameObject("PendingSat"));
+        var pending = new PendingSatellitePlacement();
+        var placed = new GameObject("PendingSat");
+        placed.transform.SetParent(rig.Root.transform, false);
+        pending.Set(placed);
+        SetPrivateField(mgr, "_pendingPlacement", pending);
 
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
         mgr.StartPlacement();
 
         Assert.That(feedback.text, Does.Contain("Finish setting velocity"));
@@ -260,7 +248,7 @@ public class ObjectPlacementManager_EditModeTests
         InvokePrivate(mgr, "OnPositionInputChanged", "not-a-vector");
 
         var ghost = GetPrivateField<GameObject>(mgr, "_ghostInstance");
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
 
         Assert.IsFalse(ghost.activeSelf);
         Assert.That(feedback.text, Does.Contain("Invalid Position"));
@@ -274,7 +262,7 @@ public class ObjectPlacementManager_EditModeTests
         InvokePrivate(mgr, "OnPositionInputChanged", "100,0,0"); // below 638
 
         var ghost = GetPrivateField<GameObject>(mgr, "_ghostInstance");
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
 
         Assert.IsFalse(ghost.activeSelf);
         Assert.That(feedback.text, Does.Contain("Position magnitude must be between"));
@@ -288,7 +276,7 @@ public class ObjectPlacementManager_EditModeTests
         InvokePrivate(mgr, "OnPositionInputChanged", "700,0,0");
 
         var ghost = GetPrivateField<GameObject>(mgr, "_ghostInstance");
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
         var ghostPlaced = GetPrivateField<bool>(mgr, "_ghostObjectPlaced");
 
         Assert.IsTrue(ghost.activeSelf);
@@ -306,7 +294,7 @@ public class ObjectPlacementManager_EditModeTests
         InvokePrivate(mgr, "OnPositionInputChanged", "");
 
         var ghost = GetPrivateField<GameObject>(mgr, "_ghostInstance");
-        var feedback = GetPrivateField<TextMeshProUGUI>(mgr, "_feedbackText");
+        var feedback = rig.UIRefs.feedbackText;
 
         Assert.IsFalse(ghost.activeSelf);
         Assert.AreEqual("", feedback.text);

@@ -1,16 +1,14 @@
 using System;
-using TMPro;
 using UnityEngine;
-using UnityEngine.EventSystems;
-using UnityEngine.UI;
 
 /// <summary>
-/// Handles satellite placement from three paths:
+/// Builds and spawns satellites from three placement paths:
 /// 1) Manual position/mass/radius
 /// 2) Keplerian elements
 /// 3) TLE
-/// Also manages the “ghost” preview, simple validation, and interaction with
-/// camera tracking and the velocity-drag flow.
+/// UI field plumbing lives in PlacementFieldsUI, while placement mode/panel
+/// visibility lives in PlacementUIController. PendingSatellitePlacement names
+/// the manual-placement state where a placeholder exists but needs velocity.
 /// </summary>
 public class ObjectPlacementManager : MonoBehaviour
 {
@@ -21,35 +19,9 @@ public class ObjectPlacementManager : MonoBehaviour
     [SerializeField] private TutorialController _tutorialController;
 
     private ICameraTracker _cameraTracker;
-    // private UIManager _uiManager;
     private UIRoot _uiRoot;
     private SimContext _ctx;
-
-    [Header("References - UI (Manual)")]
-    [SerializeField] private TMP_InputField _objectNameInputField;
-    [SerializeField] private TMP_InputField _massInput;
-    [SerializeField] private TMP_InputField _radiusInput;
-    [SerializeField] private TMP_InputField _positionInput;
-    [SerializeField] private Button _placeObjectButton;
-    [SerializeField] private TextMeshProUGUI _feedbackText;
-
-    [Header("References - UI (Kepler)")]
-    [SerializeField] private TMP_InputField _kepNameInputField;
-    [SerializeField] private TMP_InputField _kepMassInputField;
-    [SerializeField] private TMP_InputField _kepADegOrMetersInputField;   // a (meters)
-    [SerializeField] private TMP_InputField _kepEccInputField;            // e
-    [SerializeField] private TMP_InputField _kepIncDegInputField;         // i (deg)
-    [SerializeField] private TMP_InputField _kepRAANDegInputField;        // Ω (deg)
-    [SerializeField] private TMP_InputField _kepArgPDegInputField;        // ω (deg)
-    [SerializeField] private TMP_InputField _kepTrueAnomDegInputField;    // ν (deg)
-    [SerializeField] private Button _placeKeplerObjectButton;
-
-    [Header("References - UI (TLE)")]
-    [SerializeField] private TMP_InputField _tleNameInputField;
-    [SerializeField] private TMP_InputField _tleMassInputField;
-    [SerializeField] private TMP_InputField _tleLine1InputField;
-    [SerializeField] private TMP_InputField _tleLine2InputField;
-    [SerializeField] private Button _placeTleObjectButton;
+    private PlacementFieldsUI _fields;
 
     [Header("Units & Central Body")]
     [Tooltip("Meters per 1 sim unit. If world units are kilometers, set this to 1000.")]
@@ -68,18 +40,32 @@ public class ObjectPlacementManager : MonoBehaviour
     private bool _clearingPosition;
 
     [Header("Placement State")]
-    [SerializeField] private GameObject _lastPlacedGameObject;   // manual-placement blocker
+    [SerializeField] private PendingSatellitePlacement _pendingPlacement = new();
 
     private const int MaxSatelliteNameLength = 15;
 
     private static readonly PlacementValidators.RangeF MassRange = new(500f, 1000000f);
-    private static readonly PlacementValidators.RangeF RadiusClamp = new(0.5f, SatelliteSizing.MaxPhysicalRadiusMeters);
+    private static readonly PlacementValidators.RangeF RadiusClamp = new(
+        SatelliteSizing.MinPhysicalRadiusMeters,
+        SatelliteSizing.MaxPhysicalRadiusMeters
+    );
     private static readonly PlacementValidators.DistanceBoundsF PosBounds = new(638f, 5000f);
 
     // Public for RandomSatelliteSpawner
     public double Mu => _mu;
     public double EarthRadiusMeters => _earthRadiusMeters;
     public double MetersPerUnit => _metersPerUnit;
+
+    private PendingSatellitePlacement PendingPlacement
+    {
+        get
+        {
+            if (_pendingPlacement == null)
+                _pendingPlacement = new PendingSatellitePlacement();
+
+            return _pendingPlacement;
+        }
+    }
 
     /// <summary>
     /// Injects the simulation context and wires dependencies + UI listeners.
@@ -89,27 +75,27 @@ public class ObjectPlacementManager : MonoBehaviour
     {
         _ctx = ctx;
         _cameraTracker = ctx.CameraTracker;
-        // _uiManager = ctx.UIManager;
         _uiRoot = ctx.UIRoot;
         _tutorialController = ctx.TutorialController ?? _tutorialController;
+        _fields = new PlacementFieldsUI(_uiRoot.References, _uiRoot, _tutorialController, _mainCamera);
+        _fields.BindTutorialHooks();
 
-        if (_tutorialController != null && _tutorialController.inTutorialMode)
-        {
-            if (_massInput != null)
-                _massInput.onValueChanged.AddListener(OnMassInputChanged);
-
-            if (_radiusInput != null)
-                _radiusInput.onValueChanged.AddListener(OnRadiusInputChanged);
-        }
-
-        if (_positionInput != null)
-            _positionInput.onValueChanged.AddListener(OnPositionInputChanged);
+        if (_fields.PositionInput != null)
+            _fields.PositionInput.onValueChanged.AddListener(OnPositionInputChanged);
 
         if (_ghostPreviewPrefab != null)
         {
             _ghostInstance = Instantiate(_ghostPreviewPrefab);
             HideGhost();
         }
+    }
+
+    private void OnDestroy()
+    {
+        _fields?.UnbindTutorialHooks();
+
+        if (_fields?.PositionInput != null)
+            _fields.PositionInput.onValueChanged.RemoveListener(OnPositionInputChanged);
     }
 
     /// <summary>
@@ -124,7 +110,6 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        // REFACTORED: pull manual parsing + validation into a helper.
         if (!TryBuildManualPlaceholderData(
                 out string name,
                 out Vector3 position,
@@ -138,7 +123,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
         HideGhost();
 
-        _lastPlacedGameObject = _satelliteSpawner.CreatePlaceholder(
+        GameObject placeholder = _satelliteSpawner.CreatePlaceholder(
             name,
             position,
             radius,
@@ -146,7 +131,8 @@ public class ObjectPlacementManager : MonoBehaviour
             _velocityDragManager
         );
 
-        PreviewSilently(_lastPlacedGameObject.transform);
+        PendingPlacement.Set(placeholder);
+        PreviewSilently(placeholder != null ? placeholder.transform : null);
 
         LockManualPlacementInputs(true);
         ClearAllFields();
@@ -161,7 +147,7 @@ public class ObjectPlacementManager : MonoBehaviour
             "• Use input field to adjust speed."
         );
 
-        EventSystem.current.SetSelectedGameObject(null);
+        UIHelpers.ClearSelection();
     }
 
     /// <summary>
@@ -192,7 +178,7 @@ public class ObjectPlacementManager : MonoBehaviour
         ClearAllFields();
         SetFeedback($"Placed '{name}' from Keplerian elements.");
 
-        _lastPlacedGameObject = null;
+        PendingPlacement.Clear();
         UpdateTrackCamButtonState(false);
     }
 
@@ -232,7 +218,7 @@ public class ObjectPlacementManager : MonoBehaviour
             $"(epoch {epochUtc:yyyy-MM-dd HH:mm:ss}Z)."
         );
 
-        _lastPlacedGameObject = null;
+        PendingPlacement.Clear();
         UpdateTrackCamButtonState(false);
     }
 
@@ -241,24 +227,9 @@ public class ObjectPlacementManager : MonoBehaviour
     /// </summary>
     public void ClearAllFields()
     {
-        ClearAndUnfocusInputField(_radiusInput);
-        ClearAndUnfocusInputField(_positionInput);
-        ClearAndUnfocusInputField(_objectNameInputField);
-        ClearAndUnfocusInputField(_massInput);
-
-        ClearAndUnfocusInputField(_tleNameInputField);
-        ClearAndUnfocusInputField(_tleMassInputField);
-        ClearAndUnfocusInputField(_tleLine1InputField);
-        ClearAndUnfocusInputField(_tleLine2InputField);
-
-        ClearAndUnfocusInputField(_kepNameInputField);
-        ClearAndUnfocusInputField(_kepMassInputField);
-        ClearAndUnfocusInputField(_kepADegOrMetersInputField);
-        ClearAndUnfocusInputField(_kepEccInputField);
-        ClearAndUnfocusInputField(_kepIncDegInputField);
-        ClearAndUnfocusInputField(_kepRAANDegInputField);
-        ClearAndUnfocusInputField(_kepArgPDegInputField);
-        ClearAndUnfocusInputField(_kepTrueAnomDegInputField);
+        _clearingPosition = true;
+        _fields?.ClearAllFields();
+        _clearingPosition = false;
     }
 
     /// <summary>
@@ -266,18 +237,7 @@ public class ObjectPlacementManager : MonoBehaviour
     /// </summary>
     public void CancelPlacement()
     {
-        if (_lastPlacedGameObject != null)
-        {
-#if UNITY_EDITOR
-            if (!Application.isPlaying)
-                DestroyImmediate(_lastPlacedGameObject);
-            else
-                Destroy(_lastPlacedGameObject);
-#else
-        Destroy(_lastPlacedGameObject);
-#endif
-            _lastPlacedGameObject = null;
-        }
+        PendingPlacement.DestroyAndClear();
 
         SetFeedback(string.Empty);
         _cameraTracker?.ReturnToTracking();
@@ -286,62 +246,10 @@ public class ObjectPlacementManager : MonoBehaviour
     /// <summary>
     /// Clears any "pending placement" state so another manual placement can start.
     /// </summary>
-    public void ResetLastPlacedGameObject()
+    public void ClearPendingPlacement()
     {
         SetFeedback(string.Empty);
-        _lastPlacedGameObject = null;
-    }
-
-    /// <summary>
-    /// Tutorial hook: validates mass entry and updates tutorial flags/feedback.
-    /// </summary>
-    private void OnMassInputChanged(string input)
-    {
-        if (_mainCamera == null) return;
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            SetFeedback(string.Empty);
-            return;
-        }
-
-        if (ParsingUtils.TryParseMass(input, out _))
-        {
-            if (_tutorialController != null)
-                _tutorialController.hasMassBeenEnteredForSatellite = true;
-
-            SetFeedback(string.Empty);
-        }
-        else
-        {
-            SetFeedback("Invalid Mass: Should be between 500-1,000,000. Units are in kg by default.");
-        }
-    }
-
-    /// <summary>
-    /// Tutorial hook: validates radius entry and updates tutorial flags/feedback.
-    /// </summary>
-    private void OnRadiusInputChanged(string input)
-    {
-        if (_mainCamera == null) return;
-
-        if (string.IsNullOrWhiteSpace(input))
-        {
-            SetFeedback(string.Empty);
-            return;
-        }
-
-        if (ParsingUtils.TryParseVector3(input, out _))
-        {
-            if (_tutorialController != null)
-                _tutorialController.hasRadiusBeenEnteredForSatellite = true;
-
-            SetFeedback(string.Empty);
-        }
-        else
-        {
-            SetFeedback("Invalid Radius: Format is x,y,z. Example 1,2,1");
-        }
+        PendingPlacement.Clear();
     }
 
     /// <summary>
@@ -352,7 +260,7 @@ public class ObjectPlacementManager : MonoBehaviour
     {
         if (_mainCamera == null) return;
 
-        if (_ghostObjectPlaced && !_clearingPosition && _positionInput != null && _positionInput.isFocused)
+        if (_ghostObjectPlaced && !_clearingPosition && _fields?.PositionInput != null && _fields.PositionInput.isFocused)
         {
             _cameraTracker?.BreakToFreeCam();
         }
@@ -402,75 +310,19 @@ public class ObjectPlacementManager : MonoBehaviour
         _cameraTracker.EndUiSuppress();
     }
 
-    /// <summary>
-    /// Locks or unlocks manual placement inputs and related UI controls.
-    /// </summary>
-    // private void LockManualPlacementInputs(bool locked)
-    // {
-    //     if (_objectNameInputField != null) _objectNameInputField.interactable = !locked;
-    //     if (_positionInput != null) _positionInput.interactable = !locked;
-    //     if (_massInput != null) _massInput.interactable = !locked;
-    //     if (_radiusInput != null) _radiusInput.interactable = !locked;
-    //     if (_placeObjectButton != null) _placeObjectButton.interactable = !locked;
-
-    //     if (_uiManager?.placementModeButton != null)
-    //         _uiManager.placementModeButton.interactable = !locked;
-
-    //     if (_uiManager?.randomSatelliteButton != null)
-    //         _uiManager.randomSatelliteButton.interactable = !locked;
-
-    //     UpdateTrackCamButtonState(false);
-    // }
-
     private void LockManualPlacementInputs(bool locked)
     {
-        if (_objectNameInputField != null) _objectNameInputField.interactable = !locked;
-        if (_positionInput != null) _positionInput.interactable = !locked;
-        if (_massInput != null) _massInput.interactable = !locked;
-        if (_radiusInput != null) _radiusInput.interactable = !locked;
-        if (_placeObjectButton != null) _placeObjectButton.interactable = !locked;
-
-        _uiRoot?.SetPlacementButtonsLocked(locked);
-        UpdateTrackCamButtonState(false);
+        _fields?.LockManualInputs(locked);
     }
-
-    /// <summary>
-    /// Enables or disables the track camera button.
-    /// </summary>
-    // private void UpdateTrackCamButtonState(bool state)
-    // {
-    //     if (_uiManager?.trackCamButton == null) return;
-    //     _uiManager.trackCamButton.interactable = state;
-    // }
 
     private void UpdateTrackCamButtonState(bool state)
     {
-        _uiRoot?.SetTrackCamButtonInteractable(state);
+        _fields?.SetTrackCamButtonInteractable(state);
     }
 
-    /// <summary>
-    /// Sets feedback text into the UI panel.
-    /// </summary>
     private void SetFeedback(string msg)
     {
-        if (_feedbackText != null)
-            _feedbackText.text = msg ?? string.Empty;
-    }
-
-    /// <summary>
-    /// Clears an input field and removes focus.
-    /// </summary>
-    private void ClearAndUnfocusInputField(TMP_InputField inputField)
-    {
-        if (inputField == null) return;
-
-        _clearingPosition = true;
-        inputField.text = string.Empty;
-
-        if (EventSystem.current != null)
-            EventSystem.current.SetSelectedGameObject(null);
-
-        _clearingPosition = false;
+        _fields?.SetFeedback(msg);
     }
 
     /// <summary>
@@ -501,9 +353,9 @@ public class ObjectPlacementManager : MonoBehaviour
     /// </summary>
     private bool CanStartPlacement(out string error)
     {
-        if (_lastPlacedGameObject != null)
+        if (PendingPlacement.HasSatellite)
         {
-            error = $"Finish setting velocity for '{_lastPlacedGameObject.name}' first.";
+            error = $"Finish setting velocity for '{PendingPlacement.SatelliteName}' first.";
             return false;
         }
 
@@ -540,7 +392,7 @@ public class ObjectPlacementManager : MonoBehaviour
         error = null;
 
         if (!PlacementValidators.TryGetName(
-                _objectNameInputField,
+                _fields.ObjectNameInputField,
                 "Satellite",
                 _satelliteSpawner.SatelliteCount,
                 MaxSatelliteNameLength,
@@ -551,7 +403,7 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         if (!PlacementValidators.TryGetPositionOrDefault(
-                _positionInput,
+                _fields.PositionInput,
                 _mainCamera.transform,
                 10f,
                 PosBounds,
@@ -561,12 +413,12 @@ public class ObjectPlacementManager : MonoBehaviour
             return false;
         }
 
-        if (!PlacementValidators.TryGetRadius(_radiusInput, RadiusClamp, out radius, out error))
+        if (!PlacementValidators.TryGetRadius(_fields.RadiusInput, RadiusClamp, out radius, out error))
         {
             return false;
         }
 
-        if (!PlacementValidators.TryGetMass(_massInput, MassRange, out mass, out error))
+        if (!PlacementValidators.TryGetMass(_fields.MassInput, MassRange, out mass, out error))
         {
             return false;
         }
@@ -596,7 +448,7 @@ public class ObjectPlacementManager : MonoBehaviour
         error = null;
 
         if (!PlacementValidators.TryGetName(
-                _kepNameInputField,
+                _fields.KepNameInputField,
                 "Kepler Sat",
                 _satelliteSpawner.SatelliteCount + 1,
                 MaxSatelliteNameLength,
@@ -606,29 +458,29 @@ public class ObjectPlacementManager : MonoBehaviour
             return false;
         }
 
-        if (!PlacementValidators.TryGetMass(_kepMassInputField, MassRange, out var massF, out error))
+        if (!PlacementValidators.TryGetMass(_fields.KepMassInputField, MassRange, out var massF, out error))
         {
             return false;
         }
 
         mass = massF;
 
-        if (!PlacementValidators.TryGetDouble(_kepADegOrMetersInputField, out double aMeters))
+        if (!PlacementValidators.TryGetDouble(_fields.KepADegOrMetersInputField, out double aMeters))
         {
             error = "Invalid semi-major axis 'a'.";
             return false;
         }
 
-        if (!PlacementValidators.TryGetDouble(_kepEccInputField, out double e) || e < 0.0 || e >= 1.0)
+        if (!PlacementValidators.TryGetDouble(_fields.KepEccInputField, out double e) || e < 0.0 || e >= 1.0)
         {
             error = "Invalid eccentricity 'e'. Use 0 ≤ e < 1.";
             return false;
         }
 
-        if (!PlacementValidators.TryGetDouble(_kepIncDegInputField, out double iDeg) ||
-            !PlacementValidators.TryGetDouble(_kepRAANDegInputField, out double raanDeg) ||
-            !PlacementValidators.TryGetDouble(_kepArgPDegInputField, out double argpDeg) ||
-            !PlacementValidators.TryGetDouble(_kepTrueAnomDegInputField, out double trueAnomDeg))
+        if (!PlacementValidators.TryGetDouble(_fields.KepIncDegInputField, out double iDeg) ||
+            !PlacementValidators.TryGetDouble(_fields.KepRAANDegInputField, out double raanDeg) ||
+            !PlacementValidators.TryGetDouble(_fields.KepArgPDegInputField, out double argpDeg) ||
+            !PlacementValidators.TryGetDouble(_fields.KepTrueAnomDegInputField, out double trueAnomDeg))
         {
             error = "Invalid angle(s): i / RAAN / ω / ν.";
             return false;
@@ -685,20 +537,20 @@ public class ObjectPlacementManager : MonoBehaviour
         epochUtc = default;
         error = null;
 
-        if (!PlacementValidators.TryGetMass(_tleMassInputField, MassRange, out var massF, out error))
+        if (!PlacementValidators.TryGetMass(_fields.TleMassInputField, MassRange, out var massF, out error))
         {
             return false;
         }
 
         mass = massF;
 
-        name = !string.IsNullOrWhiteSpace(_tleNameInputField?.text)
-            ? _tleNameInputField.text.Trim()
+        name = !string.IsNullOrWhiteSpace(_fields.TleNameInputField?.text)
+            ? _fields.TleNameInputField.text.Trim()
             : $"TLE Satellite {_satelliteSpawner.NextSatelliteIndex}";
 
         if (!TLEParser.TryPropagate(
-                _tleLine1InputField.text,
-                _tleLine2InputField.text,
+                _fields.TleLine1InputField.text,
+                _fields.TleLine2InputField.text,
                 whenUtc,
                 out Vector3d rEci_m,
                 out Vector3d vEci_mps,

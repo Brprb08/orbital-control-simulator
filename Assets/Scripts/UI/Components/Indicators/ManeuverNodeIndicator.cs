@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using UnityEngine.UI;
 
 public class ManeuverNodeIndicator : MonoBehaviour
 {
@@ -7,14 +8,12 @@ public class ManeuverNodeIndicator : MonoBehaviour
     [SerializeField] private Canvas _canvas;
     [SerializeField] private Camera _mainCamera;
     [SerializeField] private RectTransform _iconRect;
+    [SerializeField] private Graphic _iconGraphic;
     [SerializeField] private TMP_Text _label;
     [SerializeField] private ManeuverNodeManager _nodeManager;
     [SerializeField] private BodyService _bodyService;
 
     [Header("Behavior")]
-    [Tooltip("Distance from target (world units) beyond which the indicator is shown.")]
-    [SerializeField] private float _showAtDistance = 1000f;
-
     [Tooltip("Optional extra offset above the node in world space.")]
     [SerializeField] private Vector3 _worldOffset = Vector3.zero;
 
@@ -22,7 +21,6 @@ public class ManeuverNodeIndicator : MonoBehaviour
     [SerializeField] private float _screenEdgePadding = 0f;
 
     [SerializeField] private bool _hideWhenOccludedByCentralBody = true;
-    [SerializeField] private bool _hide3DNodeWhenIndicatorActive = true;
 
     [Header("Viewport Rules")]
     [SerializeField, Range(0f, 0.2f)] private float _innerViewportMargin = 0.02f;
@@ -34,7 +32,10 @@ public class ManeuverNodeIndicator : MonoBehaviour
     [Tooltip("Offset of the label relative to the indicator icon.")]
     [SerializeField] private Vector2 _labelOffset = new Vector2(0f, -5f);
 
-    private float _showAtDistanceSqr;
+    [Header("State Colors")]
+    [SerializeField] private Color _previewColor = new(0.3f, 1f, 0.7f, 1f);
+    [SerializeField] private Color _finalizedColor = new(1f, 0.2f, 0.18f, 1f);
+
     private RectTransform _labelRect;
 
     private void Awake()
@@ -48,7 +49,8 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (_label != null)
             _labelRect = _label.rectTransform;
 
-        _showAtDistanceSqr = _showAtDistance * _showAtDistance;
+        if (_iconGraphic == null && _iconRect != null)
+            _iconGraphic = _iconRect.GetComponent<Graphic>();
 
         if (_labelRect != null)
             _labelRect.localScale = Vector3.one * _labelScale;
@@ -68,7 +70,6 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (_mainCamera == null)
         {
             SetIndicatorVisible(false);
-            RestoreNodeVisuals();
             return;
         }
 
@@ -83,25 +84,14 @@ public class ManeuverNodeIndicator : MonoBehaviour
         Vector3 targetPos = target.position + _worldOffset;
         Vector3 camPos = _mainCamera.transform.position;
 
-        var gizmo = target.GetComponent<NodeGizmo>();
-
         if (_hideWhenOccludedByCentralBody && _bodyService != null)
         {
             var earth = _bodyService.CentralBody;
             if (earth != null && IsOccludedByCentralBody(camPos, targetPos, earth))
             {
                 SetIndicatorVisible(false);
-                if (gizmo != null) gizmo.SetVisualsVisible(true);
                 return;
             }
-        }
-
-        float distSqr = (camPos - targetPos).sqrMagnitude;
-        if (distSqr < _showAtDistanceSqr)
-        {
-            SetIndicatorVisible(false);
-            if (gizmo != null) gizmo.SetVisualsVisible(true);
-            return;
         }
 
         Vector3 viewportPos = _mainCamera.WorldToViewportPoint(targetPos);
@@ -109,7 +99,6 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (viewportPos.z <= 0f)
         {
             SetIndicatorVisible(false);
-            if (gizmo != null) gizmo.SetVisualsVisible(true);
             return;
         }
 
@@ -122,7 +111,6 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (!inView)
         {
             SetIndicatorVisible(false);
-            if (gizmo != null) gizmo.SetVisualsVisible(true);
             return;
         }
 
@@ -146,17 +134,12 @@ public class ManeuverNodeIndicator : MonoBehaviour
             if (_label != null)
                 _label.text = BuildLabel(node);
 
+            ApplyNodeColor(node);
             SetIndicatorVisible(true);
-
-            if (gizmo != null && _hide3DNodeWhenIndicatorActive)
-                gizmo.SetVisualsVisible(false);
-            else if (gizmo != null)
-                gizmo.SetVisualsVisible(true);
         }
         else
         {
             SetIndicatorVisible(false);
-            if (gizmo != null) gizmo.SetVisualsVisible(true);
         }
     }
 
@@ -179,15 +162,12 @@ public class ManeuverNodeIndicator : MonoBehaviour
         return $"{burnName} ({sign}{Mathf.Abs(tMinus):0}s)";
     }
 
-    private void RestoreNodeVisuals()
+    private void ApplyNodeColor(ManeuverNode node)
     {
-        ManeuverNode node = GetCurrentNode();
-        if (node == null || node.marker == null)
+        if (_iconGraphic == null || node == null)
             return;
 
-        var gizmo = node.marker.GetComponent<NodeGizmo>();
-        if (gizmo != null)
-            gizmo.SetVisualsVisible(true);
+        _iconGraphic.color = node.isFinalized ? _finalizedColor : _previewColor;
     }
 
     private bool IsOccludedByCentralBody(Vector3 camPos, Vector3 targetPos, NBody central)

@@ -1,4 +1,5 @@
 using System.Collections;
+using Unity.Mathematics;
 using UnityEngine;
 
 /// <summary>
@@ -15,6 +16,8 @@ public sealed class TrajectoryPreviewModule
 {
     private readonly MonoBehaviour owner;
     private readonly ProceduralLineRenderer line;
+    private readonly ProceduralLineRenderer apogeeLine;
+    private readonly ProceduralLineRenderer perigeeLine;
     private readonly SimContext ctx;
     private readonly System.Func<Vector3[], Vector3[]> clipper;
     private readonly System.Func<Vector3[], Vector3[]> singleOrbitClipper;
@@ -37,16 +40,24 @@ public sealed class TrajectoryPreviewModule
     private const int PREVIEW_MAX_STEPS = 6000;
 
     private const float BASE_DT = 7f;
+    private const float NEAR_CIRCULAR_UNITS_THRESHOLD = 0.5f;
+
+    private readonly Vector3[] apogeeLinePoints = new Vector3[2];
+    private readonly Vector3[] perigeeLinePoints = new Vector3[2];
 
     public TrajectoryPreviewModule(
         MonoBehaviour owner,
         ProceduralLineRenderer previewLine,
+        ProceduralLineRenderer previewApogeeLine,
+        ProceduralLineRenderer previewPerigeeLine,
         SimContext ctx,
         System.Func<Vector3[], Vector3[]> clipper,
         System.Func<Vector3[], Vector3[]> singleOrbitClipper)
     {
         this.owner = owner;
         this.line = previewLine;
+        this.apogeeLine = previewApogeeLine;
+        this.perigeeLine = previewPerigeeLine;
         this.ctx = ctx;
         this.clipper = clipper ?? (pts => pts);
         this.singleOrbitClipper = singleOrbitClipper ?? (pts => pts);
@@ -61,6 +72,7 @@ public sealed class TrajectoryPreviewModule
 
         previewDirty = false;
         if (line != null) line.Clear();
+        ClearApsides();
 
         if (previewCo != null && owner != null)
         {
@@ -92,7 +104,8 @@ public sealed class TrajectoryPreviewModule
         float bodyMass,
         int steps,
         float dt,
-        bool singleOrbit)
+        bool singleOrbit,
+        bool smoothClosedLoop)
     {
         if (previewCo != null && owner != null)
         {
@@ -105,8 +118,11 @@ public sealed class TrajectoryPreviewModule
         {
             Debug.LogWarning("[QuickPreviewOnceLong] No BodyService or CentralBody.");
             line?.Clear();
+            ClearApsides();
             return;
         }
+
+        UpdateApsides(startPos, startVel, svc);
 
         float usedDt = dt;
         int usedSteps = steps;
@@ -135,6 +151,7 @@ public sealed class TrajectoryPreviewModule
                 if (points == null || points.Length < 2)
                 {
                     line?.Clear();
+                    ClearApsides();
                     return;
                 }
 
@@ -142,7 +159,7 @@ public sealed class TrajectoryPreviewModule
                 if (singleOrbit)
                     clipped = singleOrbitClipper(clipped);
 
-                line.UpdateLine(clipped);
+                line.UpdateLine(clipped, smoothClosedLoop && singleOrbit);
                 previewDirty = false;
             });
     }
@@ -246,6 +263,7 @@ public sealed class TrajectoryPreviewModule
             if (svc == null || svc.CentralBody == null)
             {
                 line?.Clear();
+                ClearApsides();
                 yield return new WaitForSecondsRealtime(tick);
                 continue;
             }
@@ -253,6 +271,7 @@ public sealed class TrajectoryPreviewModule
             float dt;
             int steps;
             ComputePreviewSettings(previewPos, previewVel, svc, out dt, out steps);
+            UpdateApsides(previewPos, previewVel, svc);
 
             var cb = svc.CentralBody;
             Vector3[] attractorPos = { cb.transform.position };
@@ -271,6 +290,7 @@ public sealed class TrajectoryPreviewModule
                     if (points == null || points.Length < 2)
                     {
                         line?.Clear();
+                        ClearApsides();
                         return;
                     }
 
@@ -280,5 +300,86 @@ public sealed class TrajectoryPreviewModule
 
             yield return new WaitForSecondsRealtime(tick);
         }
+    }
+
+    private void UpdateApsides(Vector3 startPos, Vector3 startVel, BodyService bodyService)
+    {
+        if (bodyService == null || bodyService.CentralBody == null)
+        {
+            ClearApsides();
+            return;
+        }
+
+        NBody central = bodyService.CentralBody;
+        Vector3 center = central.transform.position;
+        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
+            central.trueMass,
+            ToDouble3(center),
+            ToDouble3(startPos),
+            ToDouble3(startVel)
+        );
+
+        if (!orbit.isValid)
+        {
+            ClearApsides();
+            return;
+        }
+
+        bool hasPerigee = orbit.perigeeRadius > 0f;
+        bool hasApogee = orbit.apogeeRadius > 0f;
+        bool nearCircular = hasApogee &&
+            Mathf.Abs(orbit.apogeeRadius - orbit.perigeeRadius) < NEAR_CIRCULAR_UNITS_THRESHOLD;
+
+        DrawApsides(
+            center + orbit.apogeePosition,
+            hasApogee && !nearCircular,
+            center + orbit.perigeePosition,
+            hasPerigee && !nearCircular,
+            center
+        );
+    }
+
+    private void DrawApsides(
+        Vector3 apogee,
+        bool showApogee,
+        Vector3 perigee,
+        bool showPerigee,
+        Vector3 center)
+    {
+        if (apogeeLine == null || perigeeLine == null)
+            return;
+
+        if (showApogee)
+        {
+            apogeeLinePoints[0] = apogee;
+            apogeeLinePoints[1] = center;
+            apogeeLine.UpdateLine(apogeeLinePoints);
+        }
+        else
+        {
+            apogeeLine.Clear();
+        }
+
+        if (showPerigee)
+        {
+            perigeeLinePoints[0] = perigee;
+            perigeeLinePoints[1] = center;
+            perigeeLine.UpdateLine(perigeeLinePoints);
+        }
+        else
+        {
+            perigeeLine.Clear();
+        }
+    }
+
+    private void ClearApsides()
+    {
+        apogeeLine?.Clear();
+        perigeeLine?.Clear();
+    }
+
+    private static double3 ToDouble3(Vector3 value)
+    {
+        return new double3(value.x, value.y, value.z);
     }
 }

@@ -164,6 +164,9 @@ public class TrajectoryRenderer_EditModeTests
         Assert.NotNull(tr.perigeeLine);
         Assert.NotNull(tr.preManeuverLine);
         Assert.NotNull(tr.previewLine);
+        Assert.NotNull(tr.previewApogeeLine);
+        Assert.NotNull(tr.previewPerigeeLine);
+        Assert.NotNull(tr.plannedManeuverLine);
         Assert.NotNull(tr.burnLine);
     }
 

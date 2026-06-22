@@ -506,7 +506,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
         _cameraMovement.ApplyBodyFocus(body, defaultDistanceOverride);
         if (shouldRepoint)
-            _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, body.transform.position);
+            _cameraMovement.PointCameraTowardCentralBody(Vector3.zero, body.RenderPosition);
     }
 
     private void ApplyPlaceholderTrackingRig(Transform placeholder, bool shouldRepoint)

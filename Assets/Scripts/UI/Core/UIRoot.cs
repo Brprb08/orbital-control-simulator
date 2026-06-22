@@ -28,6 +28,7 @@ public class UIRoot : MonoBehaviour
     public PlacementUIController PlacementUI => placementUI;
     public FlightUIController FlightUI => flightUI;
     public CameraModeUIController CameraModeUI => cameraModeUI;
+    public UIReferences References => refs;
 
     private bool initialized;
 

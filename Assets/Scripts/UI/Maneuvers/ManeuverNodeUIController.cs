@@ -52,12 +52,16 @@ public class ManeuverNodeUIController : MonoBehaviour
     [SerializeField] private float stepButtonAccelerationDelay = 0.8f;
     [SerializeField] private string setupNodePreviewMessage = "Set maneuver timing and thrust, then place node.";
     [SerializeField] private string setupNodeFinalizedMessage = "Remove node to place another, or wait for node to fire.";
+    [SerializeField] private string previewHorizonLimitMessage = "Preview is approximate beyond 48 hours.";
 
     private bool allowNodeSlider = true;
     private float nextNodeSliderAllowed;
     private bool setupButtonResolved;
-    private bool suppressUiSync;
     private float nodeTimeSampleDelta;
+
+    private NumericControlBinding nodeTimeControl;
+    private NumericControlBinding burnDurationControl;
+    private NumericControlBinding thrustScaleControl;
 
     private const int TimeDecimalPlaces = 2;
     private const int BurnDurationDecimalPlaces = 2;
@@ -76,13 +80,7 @@ public class ManeuverNodeUIController : MonoBehaviour
         nodeTimeSampleDelta = 0f;
 
         PopulateBurnDropdown();
-        SetupNodeTimeSlider();
-        SetupBurnDurationSlider(defaultBurnDuration);
-        SetupThrustScaleSlider(defaultThrustScale);
-        SetupStepButtons();
-
-        UpdateBurnDurationLabel();
-        UpdateThrustScaleLabel();
+        SetupControls(defaultBurnDuration, defaultThrustScale);
 
         if (placeNodeButton != null)
             placeNodeButton.interactable = false;
@@ -91,55 +89,16 @@ public class ManeuverNodeUIController : MonoBehaviour
             removeNodeButton.interactable = false;
 
         SetBurnTuningInteractable(false);
+        SetNodeTimeSliderInteractable(false);
         SetSetupNodeButtonInteractable(true);
         ClearManeuverFeedback();
     }
 
     public void Dispose()
     {
-        if (nodeTimeSlider != null)
-            nodeTimeSlider.onValueChanged.RemoveAllListeners();
-
-        if (burnDurationSlider != null)
-            burnDurationSlider.onValueChanged.RemoveListener(OnBurnDurationSliderChanged);
-
-        if (thrustScaleSlider != null)
-            thrustScaleSlider.onValueChanged.RemoveListener(OnThrustScaleSliderChanged);
-
-        if (nodeTimeInputField != null)
-            nodeTimeInputField.onValueChanged.RemoveListener(OnNodeTimeInputChanged);
-        if (nodeTimeInputField != null)
-            nodeTimeInputField.onEndEdit.RemoveListener(OnNodeTimeInputEndEdit);
-
-        if (burnDurationInputField != null)
-            burnDurationInputField.onValueChanged.RemoveListener(OnBurnDurationInputChanged);
-        if (burnDurationInputField != null)
-            burnDurationInputField.onEndEdit.RemoveListener(OnBurnDurationInputEndEdit);
-
-        if (thrustScaleInputField != null)
-            thrustScaleInputField.onValueChanged.RemoveListener(OnThrustScaleInputChanged);
-        if (thrustScaleInputField != null)
-            thrustScaleInputField.onEndEdit.RemoveListener(OnThrustScaleInputEndEdit);
-
-        if (nodeTimeDecreaseButton != null)
-            nodeTimeDecreaseButton.onClick.RemoveListener(OnNodeTimeDecreaseClicked);
-        if (nodeTimeIncreaseButton != null)
-            nodeTimeIncreaseButton.onClick.RemoveListener(OnNodeTimeIncreaseClicked);
-        if (burnDurationDecreaseButton != null)
-            burnDurationDecreaseButton.onClick.RemoveListener(OnBurnDurationDecreaseClicked);
-        if (burnDurationIncreaseButton != null)
-            burnDurationIncreaseButton.onClick.RemoveListener(OnBurnDurationIncreaseClicked);
-        if (thrustScaleDecreaseButton != null)
-            thrustScaleDecreaseButton.onClick.RemoveListener(OnThrustScaleDecreaseClicked);
-        if (thrustScaleIncreaseButton != null)
-            thrustScaleIncreaseButton.onClick.RemoveListener(OnThrustScaleIncreaseClicked);
-
-        ClearStepButton(nodeTimeDecreaseButton);
-        ClearStepButton(nodeTimeIncreaseButton);
-        ClearStepButton(burnDurationDecreaseButton);
-        ClearStepButton(burnDurationIncreaseButton);
-        ClearStepButton(thrustScaleDecreaseButton);
-        ClearStepButton(thrustScaleIncreaseButton);
+        nodeTimeControl?.Dispose();
+        burnDurationControl?.Dispose();
+        thrustScaleControl?.Dispose();
     }
 
     private void PopulateBurnDropdown()
@@ -162,101 +121,60 @@ public class ManeuverNodeUIController : MonoBehaviour
         return BurnTypeExtensions.FromDropdownIndex(burnDropdown.value);
     }
 
-    private void SetupNodeTimeSlider()
+    private void SetupControls(float defaultBurnDuration, float defaultThrustScale)
     {
-        if (nodeTimeSlider == null)
-            return;
+        nodeTimeControl = new NumericControlBinding(
+            slider: nodeTimeSlider,
+            input: nodeTimeInputField,
+            decreaseButton: nodeTimeDecreaseButton,
+            increaseButton: nodeTimeIncreaseButton,
+            label: null,
+            decimals: TimeDecimalPlaces,
+            suffix: string.Empty,
+            stepProvider: () => 1f,
+            inputToSlider: SecondsToNodeIndex,
+            sliderToInput: NodeIndexToSeconds,
+            quantize: seconds => QuantizeTimeSeconds(seconds, GetNodeTimeSampleDelta()),
+            canEdit: () => allowNodeSlider,
+            configureStepButton: ConfigureStepButton,
+            onValueChanged: HandleNodeTimeControlChanged);
+        nodeTimeControl.Initialize(0f, 0f, 1f, startInteractable: false, clearInput: true);
 
-        nodeTimeSlider.interactable = false;
-        nodeTimeSlider.onValueChanged.RemoveAllListeners();
-        nodeTimeSampleDelta = 0f;
-
-        if (nodeTimeInputField != null)
-        {
-            nodeTimeInputField.onValueChanged.RemoveListener(OnNodeTimeInputChanged);
-            nodeTimeInputField.onEndEdit.RemoveListener(OnNodeTimeInputEndEdit);
-            nodeTimeInputField.SetTextWithoutNotify(string.Empty);
-            nodeTimeInputField.interactable = false;
-            nodeTimeInputField.contentType = TMP_InputField.ContentType.DecimalNumber;
-            nodeTimeInputField.onValidateInput = ValidateNodeTimeCharacter;
-            nodeTimeInputField.onValueChanged.AddListener(OnNodeTimeInputChanged);
-            nodeTimeInputField.onEndEdit.AddListener(OnNodeTimeInputEndEdit);
-        }
-    }
-
-    private void SetupBurnDurationSlider(float defaultBurnDuration)
-    {
-        if (burnDurationSlider == null)
-            return;
-
-        burnDurationSlider.minValue = minBurnDuration;
-        burnDurationSlider.maxValue = maxBurnDuration;
-        burnDurationSlider.wholeNumbers = false;
-
+        burnDurationControl = new NumericControlBinding(
+            slider: burnDurationSlider,
+            input: burnDurationInputField,
+            decreaseButton: burnDurationDecreaseButton,
+            increaseButton: burnDurationIncreaseButton,
+            label: burnDurationLabel,
+            decimals: BurnDurationDecimalPlaces,
+            suffix: " s",
+            stepProvider: GetBurnDurationStep,
+            inputToSlider: value => value,
+            sliderToInput: value => value,
+            quantize: QuantizeBurnDuration,
+            canEdit: null,
+            configureStepButton: ConfigureStepButton,
+            onValueChanged: OnBurnDurationControlChanged);
         BurnDuration = Mathf.Clamp(defaultBurnDuration, minBurnDuration, maxBurnDuration);
+        burnDurationControl.Initialize(BurnDuration, minBurnDuration, maxBurnDuration, startInteractable: true, clearInput: false);
 
-        burnDurationSlider.onValueChanged.RemoveAllListeners();
-        burnDurationSlider.SetValueWithoutNotify(BurnDuration);
-        burnDurationSlider.onValueChanged.AddListener(OnBurnDurationSliderChanged);
-
-        if (burnDurationInputField != null)
-        {
-            burnDurationInputField.onValueChanged.RemoveListener(OnBurnDurationInputChanged);
-            burnDurationInputField.onEndEdit.RemoveListener(OnBurnDurationInputEndEdit);
-            burnDurationInputField.SetTextWithoutNotify(FormatBurnDuration(BurnDuration));
-            burnDurationInputField.contentType = TMP_InputField.ContentType.DecimalNumber;
-            burnDurationInputField.onValidateInput = ValidateBurnDurationCharacter;
-            burnDurationInputField.onValueChanged.AddListener(OnBurnDurationInputChanged);
-            burnDurationInputField.onEndEdit.AddListener(OnBurnDurationInputEndEdit);
-        }
-    }
-
-    private void SetupThrustScaleSlider(float defaultThrustScale)
-    {
-        if (thrustScaleSlider == null)
-            return;
-
-        thrustScaleSlider.minValue = minThrustScale;
-        thrustScaleSlider.maxValue = maxThrustScale;
-        thrustScaleSlider.wholeNumbers = false;
-
+        thrustScaleControl = new NumericControlBinding(
+            slider: thrustScaleSlider,
+            input: thrustScaleInputField,
+            decreaseButton: thrustScaleDecreaseButton,
+            increaseButton: thrustScaleIncreaseButton,
+            label: thrustScaleLabel,
+            decimals: ThrustScaleDecimalPlaces,
+            suffix: "x",
+            stepProvider: GetThrustScaleStep,
+            inputToSlider: value => value,
+            sliderToInput: value => value,
+            quantize: QuantizeThrustScale,
+            canEdit: null,
+            configureStepButton: ConfigureStepButton,
+            onValueChanged: OnThrustScaleControlChanged);
         ThrustScale = Mathf.Clamp(defaultThrustScale, minThrustScale, maxThrustScale);
-
-        thrustScaleSlider.onValueChanged.RemoveAllListeners();
-        thrustScaleSlider.SetValueWithoutNotify(ThrustScale);
-        thrustScaleSlider.onValueChanged.AddListener(OnThrustScaleSliderChanged);
-
-        if (thrustScaleInputField != null)
-        {
-            thrustScaleInputField.onValueChanged.RemoveListener(OnThrustScaleInputChanged);
-            thrustScaleInputField.onEndEdit.RemoveListener(OnThrustScaleInputEndEdit);
-            thrustScaleInputField.SetTextWithoutNotify(FormatThrustScale(ThrustScale));
-            thrustScaleInputField.contentType = TMP_InputField.ContentType.DecimalNumber;
-            thrustScaleInputField.onValidateInput = ValidateThrustScaleCharacter;
-            thrustScaleInputField.onValueChanged.AddListener(OnThrustScaleInputChanged);
-            thrustScaleInputField.onEndEdit.AddListener(OnThrustScaleInputEndEdit);
-        }
-    }
-
-    private void SetupStepButtons()
-    {
-        if (nodeTimeDecreaseButton != null)
-            ConfigureStepButton(nodeTimeDecreaseButton, OnNodeTimeDecreaseClicked);
-
-        if (nodeTimeIncreaseButton != null)
-            ConfigureStepButton(nodeTimeIncreaseButton, OnNodeTimeIncreaseClicked);
-
-        if (burnDurationDecreaseButton != null)
-            ConfigureStepButton(burnDurationDecreaseButton, OnBurnDurationDecreaseClicked);
-
-        if (burnDurationIncreaseButton != null)
-            ConfigureStepButton(burnDurationIncreaseButton, OnBurnDurationIncreaseClicked);
-
-        if (thrustScaleDecreaseButton != null)
-            ConfigureStepButton(thrustScaleDecreaseButton, OnThrustScaleDecreaseClicked);
-
-        if (thrustScaleIncreaseButton != null)
-            ConfigureStepButton(thrustScaleIncreaseButton, OnThrustScaleIncreaseClicked);
+        thrustScaleControl.Initialize(ThrustScale, minThrustScale, maxThrustScale, startInteractable: true, clearInput: false);
     }
 
     public void SetupNodeSlider(ManeuverNode node)
@@ -268,34 +186,26 @@ public class ManeuverNodeUIController : MonoBehaviour
         if (trajectory == null || trajectory.Count < 2)
             return;
 
-        nodeTimeSlider.wholeNumbers = false;
-        nodeTimeSlider.minValue = 0f;
-        nodeTimeSlider.maxValue = trajectory.Count - 1;
-
         float dt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
         float floatIndex = (node.burnTime - node.snapshotStartTime) / dt;
         nodeTimeSampleDelta = dt;
 
-        nodeTimeSlider.onValueChanged.RemoveAllListeners();
-        nodeTimeSlider.SetValueWithoutNotify(Mathf.Clamp(floatIndex, 0f, nodeTimeSlider.maxValue));
-        nodeTimeSlider.onValueChanged.AddListener(HandleNodeTimeSliderChanged);
-        nodeTimeSlider.interactable = true;
-
-        SyncNodeTimeInputFromSlider();
+        nodeTimeControl.Initialize(
+            value: Mathf.Clamp(floatIndex, 0f, trajectory.Count - 1),
+            min: 0f,
+            max: trajectory.Count - 1,
+            startInteractable: true,
+            clearInput: false);
     }
 
     public void SetNodeSliderValueWithoutNotify(float value)
     {
-        if (nodeTimeSlider != null)
-            nodeTimeSlider.SetValueWithoutNotify(value);
-
-        SyncNodeTimeInputFromSlider();
+        nodeTimeControl?.SetValueWithoutNotify(value);
     }
 
     public void SetEditingEnabled(bool enabled)
     {
         SetNodeTimeSliderInteractable(enabled);
-
         SetBurnTuningInteractable(enabled);
 
         if (placeNodeButton != null)
@@ -307,25 +217,8 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     public void ResetEditingUI()
     {
-        if (nodeTimeSlider != null)
-        {
-            nodeTimeSlider.interactable = false;
-            nodeTimeSlider.onValueChanged.RemoveAllListeners();
-        }
-
+        nodeTimeControl?.Reset(clearInput: true);
         nodeTimeSampleDelta = 0f;
-
-        if (nodeTimeInputField != null)
-        {
-            nodeTimeInputField.interactable = false;
-            nodeTimeInputField.SetTextWithoutNotify(string.Empty);
-        }
-
-        if (nodeTimeDecreaseButton != null)
-            nodeTimeDecreaseButton.interactable = false;
-
-        if (nodeTimeIncreaseButton != null)
-            nodeTimeIncreaseButton.interactable = false;
 
         SetBurnTuningInteractable(false);
 
@@ -361,17 +254,7 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     public void SetNodeTimeSliderInteractable(bool active)
     {
-        if (nodeTimeSlider != null)
-            nodeTimeSlider.interactable = active && allowNodeSlider;
-
-        if (nodeTimeInputField != null)
-            nodeTimeInputField.interactable = active && allowNodeSlider;
-
-        if (nodeTimeDecreaseButton != null)
-            nodeTimeDecreaseButton.interactable = active && allowNodeSlider;
-
-        if (nodeTimeIncreaseButton != null)
-            nodeTimeIncreaseButton.interactable = active && allowNodeSlider;
+        nodeTimeControl?.SetInteractable(active);
     }
 
     public void SetPlaceButtonInteractable(bool active)
@@ -382,320 +265,43 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     public void SetBurnTuningInteractable(bool interactable)
     {
-        if (burnDurationSlider != null)
-            burnDurationSlider.interactable = interactable;
-
-        if (thrustScaleSlider != null)
-            thrustScaleSlider.interactable = interactable;
-
-        if (burnDurationInputField != null)
-            burnDurationInputField.interactable = interactable;
-
-        if (thrustScaleInputField != null)
-            thrustScaleInputField.interactable = interactable;
-
-        if (burnDurationDecreaseButton != null)
-            burnDurationDecreaseButton.interactable = interactable;
-
-        if (burnDurationIncreaseButton != null)
-            burnDurationIncreaseButton.interactable = interactable;
-
-        if (thrustScaleDecreaseButton != null)
-            thrustScaleDecreaseButton.interactable = interactable;
-
-        if (thrustScaleIncreaseButton != null)
-            thrustScaleIncreaseButton.interactable = interactable;
+        burnDurationControl?.SetInteractable(interactable);
+        thrustScaleControl?.SetInteractable(interactable);
     }
 
-    private void HandleNodeTimeSliderChanged(float value)
+    private void HandleNodeTimeControlChanged(float sliderValue)
     {
-        if (suppressUiSync)
-            return;
-
-        SyncNodeTimeInputFromSlider();
-
         if (Time.unscaledTime < nextNodeSliderAllowed)
             return;
 
         nextNodeSliderAllowed = Time.unscaledTime + sliderUpdateMinInterval;
-        NodeTimeSliderChanged?.Invoke(value);
+        NodeTimeSliderChanged?.Invoke(sliderValue);
     }
 
-    private void OnBurnDurationSliderChanged(float value)
+    private void OnBurnDurationControlChanged(float value)
     {
-        if (suppressUiSync)
-            return;
-
         BurnDuration = value;
-        UpdateBurnDurationLabel();
-        SyncBurnDurationInput();
         BurnDurationChanged?.Invoke(BurnDuration);
     }
 
-    private void OnThrustScaleSliderChanged(float value)
+    private void OnThrustScaleControlChanged(float value)
     {
-        if (suppressUiSync)
-            return;
-
         ThrustScale = value;
-        UpdateThrustScaleLabel();
-        SyncThrustScaleInput();
         ThrustScaleChanged?.Invoke(ThrustScale);
     }
 
-    private void OnNodeTimeInputChanged(string value)
+    private float SecondsToNodeIndex(float seconds)
     {
-        if (suppressUiSync || nodeTimeSlider == null || !allowNodeSlider)
-            return;
-
-        if (!TryParseFloat(value, out float seconds))
-            return;
-
         float sampleDt = GetNodeTimeSampleDelta();
         if (sampleDt <= 0f)
-            return;
+            return nodeTimeSlider != null ? nodeTimeSlider.value : 0f;
 
-        float quantizedSeconds = QuantizeTimeSeconds(seconds, sampleDt);
-        float floatIndex = quantizedSeconds / sampleDt;
-        float clampedIndex = Mathf.Clamp(floatIndex, nodeTimeSlider.minValue, nodeTimeSlider.maxValue);
-        SetNodeSliderFromInput(clampedIndex, preserveTypedText: true);
+        return seconds / sampleDt;
     }
 
-    private void OnBurnDurationInputChanged(string value)
+    private float NodeIndexToSeconds(float index)
     {
-        if (suppressUiSync || burnDurationSlider == null)
-            return;
-
-        if (!TryParseFloat(value, out float parsed))
-            return;
-
-        float clamped = Mathf.Clamp(parsed, minBurnDuration, maxBurnDuration);
-        clamped = QuantizeBurnDuration(clamped);
-        SetBurnDurationFromInput(clamped, preserveTypedText: true);
-    }
-
-    private void OnThrustScaleInputChanged(string value)
-    {
-        if (suppressUiSync || thrustScaleSlider == null)
-            return;
-
-        if (!TryParseFloat(value, out float parsed))
-            return;
-
-        float clamped = Mathf.Clamp(parsed, minThrustScale, maxThrustScale);
-        clamped = QuantizeThrustScale(clamped);
-        SetThrustScaleFromInput(clamped, preserveTypedText: true);
-    }
-
-    private void OnNodeTimeInputEndEdit(string value)
-    {
-        if (nodeTimeInputField == null)
-            return;
-
-        if (!TryParseFloat(value, out float seconds))
-        {
-            SyncNodeTimeInputFromSlider(force: true);
-            return;
-        }
-
-        float sampleDt = GetNodeTimeSampleDelta();
-        if (sampleDt <= 0f)
-        {
-            SyncNodeTimeInputFromSlider(force: true);
-            return;
-        }
-
-        float quantizedSeconds = QuantizeTimeSeconds(seconds, sampleDt);
-        float floatIndex = Mathf.Clamp(quantizedSeconds / sampleDt, nodeTimeSlider.minValue, nodeTimeSlider.maxValue);
-        SetNodeSliderFromInput(floatIndex, preserveTypedText: false);
-    }
-
-    private void OnBurnDurationInputEndEdit(string value)
-    {
-        if (burnDurationInputField == null)
-            return;
-
-        if (!TryParseFloat(value, out float parsed))
-        {
-            SyncBurnDurationInput(force: true);
-            return;
-        }
-
-        float clamped = Mathf.Clamp(parsed, minBurnDuration, maxBurnDuration);
-        clamped = QuantizeBurnDuration(clamped);
-        SetBurnDurationFromInput(clamped, preserveTypedText: false);
-    }
-
-    private void OnThrustScaleInputEndEdit(string value)
-    {
-        if (thrustScaleInputField == null)
-            return;
-
-        if (!TryParseFloat(value, out float parsed))
-        {
-            SyncThrustScaleInput(force: true);
-            return;
-        }
-
-        float clamped = Mathf.Clamp(parsed, minThrustScale, maxThrustScale);
-        clamped = QuantizeThrustScale(clamped);
-        SetThrustScaleFromInput(clamped, preserveTypedText: false);
-    }
-
-    private void OnNodeTimeDecreaseClicked()
-    {
-        StepNodeTime(-1f);
-    }
-
-    private void OnNodeTimeIncreaseClicked()
-    {
-        StepNodeTime(1f);
-    }
-
-    private void OnBurnDurationDecreaseClicked()
-    {
-        StepBurnDuration(-GetBurnDurationStep());
-    }
-
-    private void OnBurnDurationIncreaseClicked()
-    {
-        StepBurnDuration(GetBurnDurationStep());
-    }
-
-    private void OnThrustScaleDecreaseClicked()
-    {
-        StepThrustScale(-GetThrustScaleStep());
-    }
-
-    private void OnThrustScaleIncreaseClicked()
-    {
-        StepThrustScale(GetThrustScaleStep());
-    }
-
-    private void UpdateBurnDurationLabel()
-    {
-        if (burnDurationLabel != null)
-            burnDurationLabel.text = $"{FormatBurnDuration(BurnDuration)} s";
-    }
-
-    private void UpdateThrustScaleLabel()
-    {
-        if (thrustScaleLabel != null)
-            thrustScaleLabel.text = $"{FormatThrustScale(ThrustScale)}x";
-    }
-
-    private void SetNodeSliderFromInput(float value, bool preserveTypedText)
-    {
-        if (nodeTimeSlider == null)
-            return;
-
-        suppressUiSync = true;
-        nodeTimeSlider.SetValueWithoutNotify(value);
-        suppressUiSync = false;
-
-        if (!preserveTypedText)
-            SyncNodeTimeInputFromSlider(force: true);
-        HandleNodeTimeSliderChanged(value);
-    }
-
-    private void StepNodeTime(float direction)
-    {
-        if (nodeTimeSlider == null || !allowNodeSlider)
-            return;
-
-        float nextValue = Mathf.Clamp(
-            nodeTimeSlider.value + Mathf.Sign(direction),
-            nodeTimeSlider.minValue,
-            nodeTimeSlider.maxValue
-        );
-
-        SetNodeSliderFromInput(nextValue, preserveTypedText: false);
-    }
-
-    private void SetBurnDurationFromInput(float value, bool preserveTypedText)
-    {
-        if (burnDurationSlider == null)
-            return;
-
-        suppressUiSync = true;
-        burnDurationSlider.SetValueWithoutNotify(value);
-        suppressUiSync = false;
-
-        BurnDuration = value;
-        UpdateBurnDurationLabel();
-        if (!preserveTypedText)
-            SyncBurnDurationInput(force: true);
-        BurnDurationChanged?.Invoke(BurnDuration);
-    }
-
-    private void StepBurnDuration(float delta)
-    {
-        if (burnDurationSlider == null)
-            return;
-
-        float nextValue = Mathf.Clamp(BurnDuration + delta, minBurnDuration, maxBurnDuration);
-        nextValue = QuantizeBurnDuration(nextValue);
-        SetBurnDurationFromInput(nextValue, preserveTypedText: false);
-    }
-
-    private void SetThrustScaleFromInput(float value, bool preserveTypedText)
-    {
-        if (thrustScaleSlider == null)
-            return;
-
-        suppressUiSync = true;
-        thrustScaleSlider.SetValueWithoutNotify(value);
-        suppressUiSync = false;
-
-        ThrustScale = value;
-        UpdateThrustScaleLabel();
-        if (!preserveTypedText)
-            SyncThrustScaleInput(force: true);
-        ThrustScaleChanged?.Invoke(ThrustScale);
-    }
-
-    private void StepThrustScale(float delta)
-    {
-        if (thrustScaleSlider == null)
-            return;
-
-        float nextValue = Mathf.Clamp(ThrustScale + delta, minThrustScale, maxThrustScale);
-        nextValue = QuantizeThrustScale(nextValue);
-        SetThrustScaleFromInput(nextValue, preserveTypedText: false);
-    }
-
-    private void SyncNodeTimeInputFromSlider(bool force = false)
-    {
-        if (nodeTimeInputField == null || nodeTimeSlider == null)
-            return;
-
-        if (!force && nodeTimeInputField.isFocused)
-            return;
-
-        float seconds = nodeTimeSlider.value * GetNodeTimeSampleDelta();
-        nodeTimeInputField.SetTextWithoutNotify(FormatNodeTime(seconds));
-    }
-
-    private void SyncBurnDurationInput(bool force = false)
-    {
-        if (burnDurationInputField == null)
-            return;
-
-        if (!force && burnDurationInputField.isFocused)
-            return;
-
-        burnDurationInputField.SetTextWithoutNotify(FormatBurnDuration(BurnDuration));
-    }
-
-    private void SyncThrustScaleInput(bool force = false)
-    {
-        if (thrustScaleInputField == null)
-            return;
-
-        if (!force && thrustScaleInputField.isFocused)
-            return;
-
-        thrustScaleInputField.SetTextWithoutNotify(FormatThrustScale(ThrustScale));
+        return index * GetNodeTimeSampleDelta();
     }
 
     private float GetNodeTimeSampleDelta()
@@ -727,30 +333,13 @@ public class ManeuverNodeUIController : MonoBehaviour
         if (repeatButton == null)
             repeatButton = button.gameObject.AddComponent<HoldRepeatButton>();
 
-        ConfigureRepeatTiming(repeatButton);
-        repeatButton.Configure(action);
-    }
-
-    private void ConfigureRepeatTiming(HoldRepeatButton repeatButton)
-    {
-        if (repeatButton == null)
-            return;
-
         repeatButton.SetTiming(
             stepButtonInitialDelay,
             stepButtonRepeatInterval,
             stepButtonFastRepeatInterval,
             stepButtonAccelerationDelay
         );
-    }
-
-    private static void ClearStepButton(Button button)
-    {
-        if (button == null)
-            return;
-
-        HoldRepeatButton repeatButton = button.GetComponent<HoldRepeatButton>();
-        repeatButton?.Clear();
+        repeatButton.Configure(action);
     }
 
     private static bool TryParseFloat(string value, out float parsed)
@@ -782,21 +371,6 @@ public class ManeuverNodeUIController : MonoBehaviour
     {
         float multiplier = Mathf.Pow(10f, ThrustScaleDecimalPlaces);
         return Mathf.Round(scale * multiplier) / multiplier;
-    }
-
-    private char ValidateNodeTimeCharacter(string text, int charIndex, char addedChar)
-    {
-        return ValidateDecimalCharacter(text, charIndex, addedChar, TimeDecimalPlaces);
-    }
-
-    private char ValidateBurnDurationCharacter(string text, int charIndex, char addedChar)
-    {
-        return ValidateDecimalCharacter(text, charIndex, addedChar, BurnDurationDecimalPlaces);
-    }
-
-    private char ValidateThrustScaleCharacter(string text, int charIndex, char addedChar)
-    {
-        return ValidateDecimalCharacter(text, charIndex, addedChar, ThrustScaleDecimalPlaces);
     }
 
     private static char ValidateDecimalCharacter(string text, int charIndex, char addedChar, int maxDecimals)
@@ -832,10 +406,6 @@ public class ManeuverNodeUIController : MonoBehaviour
 
         return '\0';
     }
-
-    private static string FormatNodeTime(float seconds) => FormatFixedDecimals(seconds, TimeDecimalPlaces);
-    private static string FormatBurnDuration(float seconds) => FormatFixedDecimals(seconds, BurnDurationDecimalPlaces);
-    private static string FormatThrustScale(float scale) => FormatFixedDecimals(scale, ThrustScaleDecimalPlaces);
 
     private static string FormatFixedDecimals(float value, int decimals)
     {
@@ -894,6 +464,11 @@ public class ManeuverNodeUIController : MonoBehaviour
         SetManeuverFeedback(setupNodeFinalizedMessage);
     }
 
+    public void ShowPreviewHorizonLimitFeedback()
+    {
+        SetManeuverFeedback(previewHorizonLimitMessage);
+    }
+
     public void ClearManeuverFeedback()
     {
         SetManeuverFeedback(string.Empty);
@@ -903,5 +478,298 @@ public class ManeuverNodeUIController : MonoBehaviour
     {
         if (maneuverFeedbackText != null)
             maneuverFeedbackText.text = message ?? string.Empty;
+    }
+
+    private sealed class NumericControlBinding
+    {
+        private readonly Slider slider;
+        private readonly TMP_InputField input;
+        private readonly Button decreaseButton;
+        private readonly Button increaseButton;
+        private readonly TMP_Text label;
+        private readonly int decimals;
+        private readonly string suffix;
+        private readonly Func<float> stepProvider;
+        private readonly Func<float, float> inputToSlider;
+        private readonly Func<float, float> sliderToInput;
+        private readonly Func<float, float> quantize;
+        private readonly Func<bool> canEdit;
+        private readonly Action<Button, Action> configureStepButton;
+        private readonly Action<float> onValueChanged;
+
+        private bool suppressSync;
+        private float value;
+
+        public NumericControlBinding(
+            Slider slider,
+            TMP_InputField input,
+            Button decreaseButton,
+            Button increaseButton,
+            TMP_Text label,
+            int decimals,
+            string suffix,
+            Func<float> stepProvider,
+            Func<float, float> inputToSlider,
+            Func<float, float> sliderToInput,
+            Func<float, float> quantize,
+            Func<bool> canEdit,
+            Action<Button, Action> configureStepButton,
+            Action<float> onValueChanged)
+        {
+            this.slider = slider;
+            this.input = input;
+            this.decreaseButton = decreaseButton;
+            this.increaseButton = increaseButton;
+            this.label = label;
+            this.decimals = decimals;
+            this.suffix = suffix;
+            this.stepProvider = stepProvider;
+            this.inputToSlider = inputToSlider;
+            this.sliderToInput = sliderToInput;
+            this.quantize = quantize;
+            this.canEdit = canEdit;
+            this.configureStepButton = configureStepButton;
+            this.onValueChanged = onValueChanged;
+        }
+
+        public void Initialize(float value, float min, float max, bool startInteractable, bool clearInput)
+        {
+            if (slider != null)
+            {
+                slider.wholeNumbers = false;
+                slider.minValue = min;
+                slider.maxValue = max;
+                slider.onValueChanged.RemoveAllListeners();
+                slider.SetValueWithoutNotify(Mathf.Clamp(value, min, max));
+                slider.onValueChanged.AddListener(OnSliderChanged);
+            }
+
+            this.value = slider != null ? slider.value : value;
+
+            if (input != null)
+            {
+                input.onValueChanged.RemoveListener(OnInputChanged);
+                input.onEndEdit.RemoveListener(OnInputEndEdit);
+                input.contentType = TMP_InputField.ContentType.DecimalNumber;
+                input.onValidateInput = ValidateInputCharacter;
+                input.SetTextWithoutNotify(clearInput ? string.Empty : FormatInputFromSliderValue(this.value));
+                input.onValueChanged.AddListener(OnInputChanged);
+                input.onEndEdit.AddListener(OnInputEndEdit);
+            }
+
+            configureStepButton?.Invoke(decreaseButton, OnDecreaseClicked);
+            configureStepButton?.Invoke(increaseButton, OnIncreaseClicked);
+
+            RefreshLabel();
+            SetInteractable(startInteractable);
+        }
+
+        public void Dispose()
+        {
+            if (slider != null)
+                slider.onValueChanged.RemoveListener(OnSliderChanged);
+
+            if (input != null)
+            {
+                input.onValueChanged.RemoveListener(OnInputChanged);
+                input.onEndEdit.RemoveListener(OnInputEndEdit);
+            }
+
+            ClearStepButton(decreaseButton);
+            ClearStepButton(increaseButton);
+        }
+
+        public void Reset(bool clearInput)
+        {
+            if (slider != null)
+            {
+                slider.interactable = false;
+                slider.onValueChanged.RemoveAllListeners();
+            }
+
+            if (input != null)
+            {
+                input.interactable = false;
+                if (clearInput)
+                    input.SetTextWithoutNotify(string.Empty);
+            }
+
+            SetButtonInteractable(decreaseButton, false);
+            SetButtonInteractable(increaseButton, false);
+        }
+
+        public void SetInteractable(bool active)
+        {
+            bool interactable = active && (canEdit == null || canEdit());
+
+            if (slider != null)
+                slider.interactable = interactable;
+
+            if (input != null)
+                input.interactable = interactable;
+
+            SetButtonInteractable(decreaseButton, interactable);
+            SetButtonInteractable(increaseButton, interactable);
+        }
+
+        public void SetValueWithoutNotify(float nextValue)
+        {
+            if (slider != null)
+            {
+                slider.SetValueWithoutNotify(nextValue);
+                value = slider.value;
+            }
+            else
+            {
+                value = nextValue;
+            }
+
+            SyncInput(force: false);
+            RefreshLabel();
+        }
+
+        private void OnSliderChanged(float sliderValue)
+        {
+            if (suppressSync)
+                return;
+
+            SetCurrentValue(sliderValue, preserveTypedText: false, notify: true);
+        }
+
+        private void OnInputChanged(string text)
+        {
+            if (!CanRespondToInput(text, out float parsed))
+                return;
+
+            SetValueFromParsedInput(parsed, preserveTypedText: true);
+        }
+
+        private void OnInputEndEdit(string text)
+        {
+            if (!TryParseFloat(text, out float parsed))
+            {
+                SyncInput(force: true);
+                return;
+            }
+
+            SetValueFromParsedInput(parsed, preserveTypedText: false);
+        }
+
+        private void OnDecreaseClicked()
+        {
+            Step(-1f);
+        }
+
+        private void OnIncreaseClicked()
+        {
+            Step(1f);
+        }
+
+        private void Step(float direction)
+        {
+            if (slider == null || (canEdit != null && !canEdit()))
+                return;
+
+            float step = stepProvider != null ? stepProvider() : 1f;
+            float nextValue = Mathf.Clamp(
+                slider.value + Mathf.Sign(direction) * step,
+                slider.minValue,
+                slider.maxValue
+            );
+
+            SetCurrentValue(nextValue, preserveTypedText: false, notify: true);
+        }
+
+        private bool CanRespondToInput(string text, out float parsed)
+        {
+            parsed = 0f;
+            if (slider == null || (canEdit != null && !canEdit()))
+                return false;
+
+            return TryParseFloat(text, out parsed);
+        }
+
+        private void SetValueFromParsedInput(float parsedInputValue, bool preserveTypedText)
+        {
+            float inputValue = quantize != null ? quantize(parsedInputValue) : parsedInputValue;
+            float sliderValue = inputToSlider != null ? inputToSlider(inputValue) : inputValue;
+
+            if (slider != null)
+                sliderValue = Mathf.Clamp(sliderValue, slider.minValue, slider.maxValue);
+
+            SetCurrentValue(sliderValue, preserveTypedText, notify: true);
+        }
+
+        private void SetCurrentValue(float sliderValue, bool preserveTypedText, bool notify)
+        {
+            if (slider != null)
+            {
+                suppressSync = true;
+                slider.SetValueWithoutNotify(sliderValue);
+                suppressSync = false;
+                value = slider.value;
+            }
+            else
+            {
+                value = sliderValue;
+            }
+
+            if (!preserveTypedText)
+                SyncInput(force: true);
+
+            RefreshLabel();
+
+            if (notify)
+                onValueChanged?.Invoke(value);
+        }
+
+        private void SyncInput(bool force)
+        {
+            if (input == null)
+                return;
+
+            if (!force && input.isFocused)
+                return;
+
+            input.SetTextWithoutNotify(FormatInputFromSliderValue(value));
+        }
+
+        private void RefreshLabel()
+        {
+            if (label != null)
+                label.text = $"{FormatSliderValue(value)}{suffix}";
+        }
+
+        private string FormatInputFromSliderValue(float sliderValue)
+        {
+            float inputValue = sliderToInput != null ? sliderToInput(sliderValue) : sliderValue;
+            return FormatFixedDecimals(inputValue, decimals);
+        }
+
+        private string FormatSliderValue(float sliderValue)
+        {
+            float displayValue = sliderToInput != null ? sliderToInput(sliderValue) : sliderValue;
+            return FormatFixedDecimals(displayValue, decimals);
+        }
+
+        private char ValidateInputCharacter(string text, int charIndex, char addedChar)
+        {
+            return ValidateDecimalCharacter(text, charIndex, addedChar, decimals);
+        }
+
+        private static void SetButtonInteractable(Button button, bool interactable)
+        {
+            if (button != null)
+                button.interactable = interactable;
+        }
+
+        private static void ClearStepButton(Button button)
+        {
+            if (button == null)
+                return;
+
+            HoldRepeatButton repeatButton = button.GetComponent<HoldRepeatButton>();
+            repeatButton?.Clear();
+        }
     }
 }

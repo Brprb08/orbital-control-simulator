@@ -220,9 +220,11 @@ public class BodyService : MonoBehaviour, IBodyService
         {
             var b = _satCache[i];
             if (b == null) continue;
+            double3 previousPosition = b.state.position;
             b.state.position = _posBuf[i];
             b.state.velocity = _velBuf[i];
-            b.SyncAfterBatch();
+
+            b.SyncAfterBatch(previousPosition);
         }
 
         ctx?.BodyRuntimeCoordinator?.AdvanceSimulationStep();
@@ -257,6 +259,8 @@ public class BodyService : MonoBehaviour, IBodyService
         if (ctx == null) { Debug.LogError("[BodyService] ctx is NULL at Register!"); return; }
 
         body.Initialize(ctx);
+        SatelliteSizing.ApplyVisualScale(body);
+
         _bodies.Add(body);
         if (body.isCentralBody) { _central = body; UpdateMu(); }
 

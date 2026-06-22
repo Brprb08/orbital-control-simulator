@@ -88,18 +88,22 @@ public class CameraMovement : MonoBehaviour
 
         float cameraDistanceRadius = usingEarthTarget
             ? earthFocusBody.cameraDistanceRadius
-            : (usingPlaceholder ? focusPlaceholder.localScale.x : focusBody.cameraDistanceRadius);
+            : (usingPlaceholder ? CameraZoomSettingsFactory.PlaceholderCameraRadius : focusBody.cameraDistanceRadius);
 
-        transform.position = usingEarthTarget
-            ? earthFocusBody.transform.position
-            : (usingPlaceholder ? focusPlaceholder.position : focusBody.transform.position);
+        Vector3 focusPosition = usingEarthTarget
+            ? earthFocusBody.RenderPosition
+            : (usingPlaceholder ? focusPlaceholder.position : focusBody.RenderPosition);
+
+        transform.position = focusPosition;
 
         if (usingPlaceholder)
         {
             maxCameraDistance = CameraZoomSettingsFactory.PlaceholderMaxCameraDistance;
         }
 
-        minCameraDistance = CalculateMinCameraDistance(cameraDistanceRadius);
+        minCameraDistance = usingPlaceholder
+            ? CameraZoomSettingsFactory.GetPlaceholderMinDistance(focusPlaceholder)
+            : CalculateMinCameraDistance(cameraDistanceRadius);
 
         float effectiveHeight = CalculateEffectiveHeight(height, distance, closeZoomHeightRatio);
         Vector3 targetLocalPos = new Vector3(0f, effectiveHeight, -distance);
@@ -110,7 +114,7 @@ public class CameraMovement : MonoBehaviour
             0.2f
         );
 
-        mainCamera.transform.LookAt(transform.position);
+        mainCamera.transform.LookAt(focusPosition);
     }
 
     /// <summary>
@@ -270,7 +274,7 @@ public class CameraMovement : MonoBehaviour
     private void ApplyFocusPosition(NBody body)
     {
         if (body == null) return;
-        transform.position = body.transform.position;
+        transform.position = body.RenderPosition;
 
         if (float.IsNaN(transform.position.x) || float.IsNaN(transform.position.y) || float.IsNaN(transform.position.z))
         {

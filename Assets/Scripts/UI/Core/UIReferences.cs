@@ -2,6 +2,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
 
+/// <summary>
+/// Inspector wiring bucket for shared UI objects. Controllers read from this
+/// single place so gameplay classes do not each serialize duplicate UI fields.
+/// </summary>
 public class UIReferences : MonoBehaviour
 {
     [Header("Buttons")]
@@ -9,6 +13,8 @@ public class UIReferences : MonoBehaviour
     public Button trackCamButton;
     public Button instructionsButton;
     public Button placeObjectButton;
+    public Button placeKeplerObjectButton;
+    public Button placeTleObjectButton;
     public Button placementModeButton;
     public Button randomSatelliteButton;
     public Button burnControlButton;
@@ -45,6 +51,18 @@ public class UIReferences : MonoBehaviour
     public TMP_InputField massInputField;
     public TMP_InputField radiusInputField;
     public TMP_InputField velocityInputField;
+    public TMP_InputField kepNameInputField;
+    public TMP_InputField kepMassInputField;
+    public TMP_InputField kepADegOrMetersInputField;
+    public TMP_InputField kepEccInputField;
+    public TMP_InputField kepIncDegInputField;
+    public TMP_InputField kepRAANDegInputField;
+    public TMP_InputField kepArgPDegInputField;
+    public TMP_InputField kepTrueAnomDegInputField;
+    public TMP_InputField tleNameInputField;
+    public TMP_InputField tleMassInputField;
+    public TMP_InputField tleLine1InputField;
+    public TMP_InputField tleLine2InputField;
 
     [Header("Dropdowns")]
     public TMP_Dropdown trackedSatellites;

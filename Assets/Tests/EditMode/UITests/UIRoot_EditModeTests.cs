@@ -166,7 +166,7 @@ public class UIRoot_EditModeTests
 
         var pendingPlaceholder = new GameObject("PendingPlaceholder");
         pendingPlaceholder.transform.SetParent(rig.Root.transform, false);
-        dragManager.ConfigurePendingPlacement(pendingPlaceholder, 1000f);
+        dragManager.ConfigurePendingPlacement(pendingPlaceholder, 1000f, Vector3.one * 20f);
 
         rig.UI.RefreshAllUi();
 
@@ -197,7 +197,7 @@ public class UIRoot_EditModeTests
         Assert.IsFalse(apogeePerigeePanel.activeSelf);
         Assert.IsFalse(toggleOptionsPanel.activeSelf);
         Assert.IsTrue(objectPlacementPanel.activeSelf);
-        Assert.IsTrue(placementSelectPanel.activeSelf);
+        Assert.IsFalse(placementSelectPanel.activeSelf);
         Assert.IsTrue(freeCamButton.gameObject.activeSelf);
         Assert.IsTrue(trackCamButton.gameObject.activeSelf);
         Assert.IsFalse(freeCamButton.interactable);

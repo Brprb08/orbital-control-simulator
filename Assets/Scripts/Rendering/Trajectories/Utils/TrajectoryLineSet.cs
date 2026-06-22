@@ -5,6 +5,8 @@ public sealed class TrajectoryLineSet
     private readonly Vector3[] originLinePoints = new Vector3[2];
     private readonly Vector3[] apogeeLinePoints = new Vector3[2];
     private readonly Vector3[] perigeeLinePoints = new Vector3[2];
+    private readonly Vector3[] previewApogeeLinePoints = new Vector3[2];
+    private readonly Vector3[] previewPerigeeLinePoints = new Vector3[2];
 
     public Transform Root { get; private set; }
 
@@ -14,6 +16,9 @@ public sealed class TrajectoryLineSet
     public ProceduralLineRenderer Perigee { get; private set; }
     public ProceduralLineRenderer PreManeuver { get; private set; }
     public ProceduralLineRenderer Preview { get; private set; }
+    public ProceduralLineRenderer PreviewApogee { get; private set; }
+    public ProceduralLineRenderer PreviewPerigee { get; private set; }
+    public ProceduralLineRenderer PlannedManeuver { get; private set; }
     public ProceduralLineRenderer Burn { get; private set; }
 
     private TrajectoryLineSet()
@@ -44,6 +49,9 @@ public sealed class TrajectoryLineSet
         set.Perigee = CreateLine("PerigeeLine", perigeeColor, set.Root, layer);
         set.PreManeuver = CreateLine("PreManeuverLine", preManeuverHex, set.Root, layer);
         set.Preview = CreateLine("PreviewLine", previewHex, set.Root, layer);
+        set.PreviewApogee = CreateLine("PreviewApogeeLine", apogeeColor, set.Root, layer);
+        set.PreviewPerigee = CreateLine("PreviewPerigeeLine", perigeeColor, set.Root, layer);
+        set.PlannedManeuver = CreateLine("PlannedManeuverLine", previewHex, set.Root, layer);
         set.Burn = CreateLine("BurnLine", burnColor, set.Root, layer);
 
         return set;
@@ -72,6 +80,9 @@ public sealed class TrajectoryLineSet
         Perigee = null;
         PreManeuver = null;
         Preview = null;
+        PreviewApogee = null;
+        PreviewPerigee = null;
+        PlannedManeuver = null;
         Burn = null;
     }
 
@@ -83,6 +94,9 @@ public sealed class TrajectoryLineSet
         Perigee?.Clear();
         PreManeuver?.Clear();
         Preview?.Clear();
+        PreviewApogee?.Clear();
+        PreviewPerigee?.Clear();
+        PlannedManeuver?.Clear();
         Burn?.Clear();
     }
 
@@ -90,6 +104,12 @@ public sealed class TrajectoryLineSet
     {
         Apogee?.Clear();
         Perigee?.Clear();
+    }
+
+    public void ClearPreviewApsides()
+    {
+        PreviewApogee?.Clear();
+        PreviewPerigee?.Clear();
     }
 
     public void DrawOrigin(Vector3 from, Vector3 to)
@@ -122,6 +142,39 @@ public sealed class TrajectoryLineSet
         Perigee.UpdateLine(perigeeLinePoints);
     }
 
+    public void DrawPreviewApsides(
+        Vector3 apogee,
+        bool showApogee,
+        Vector3 perigee,
+        bool showPerigee,
+        Vector3 center)
+    {
+        if (PreviewApogee == null || PreviewPerigee == null)
+            return;
+
+        if (showApogee)
+        {
+            previewApogeeLinePoints[0] = apogee;
+            previewApogeeLinePoints[1] = center;
+            PreviewApogee.UpdateLine(previewApogeeLinePoints);
+        }
+        else
+        {
+            PreviewApogee.Clear();
+        }
+
+        if (showPerigee)
+        {
+            previewPerigeeLinePoints[0] = perigee;
+            previewPerigeeLinePoints[1] = center;
+            PreviewPerigee.UpdateLine(previewPerigeeLinePoints);
+        }
+        else
+        {
+            PreviewPerigee.Clear();
+        }
+    }
+
     public void SetAllVisible(bool visible)
     {
         Prediction?.SetVisibility(visible);
@@ -130,7 +183,30 @@ public sealed class TrajectoryLineSet
         Perigee?.SetVisibility(visible);
         PreManeuver?.SetVisibility(visible);
         Preview?.SetVisibility(visible);
+        PreviewApogee?.SetVisibility(visible);
+        PreviewPerigee?.SetVisibility(visible);
+        PlannedManeuver?.SetVisibility(visible);
         Burn?.SetVisibility(visible);
+    }
+
+    public void ApplyEffectiveVisibility(
+        bool runtimeVisible,
+        bool maneuverRuntimeVisible,
+        bool showPrediction,
+        bool showOrigin,
+        bool showApogeePerigee)
+    {
+        Prediction?.SetVisibility(runtimeVisible && showPrediction);
+        Origin?.SetVisibility(runtimeVisible && showOrigin);
+        Apogee?.SetVisibility(runtimeVisible && showApogeePerigee);
+        Perigee?.SetVisibility(runtimeVisible && showApogeePerigee);
+
+        PreManeuver?.SetVisibility(runtimeVisible);
+        Preview?.SetVisibility(maneuverRuntimeVisible);
+        PreviewApogee?.SetVisibility(maneuverRuntimeVisible);
+        PreviewPerigee?.SetVisibility(maneuverRuntimeVisible);
+        PlannedManeuver?.SetVisibility(maneuverRuntimeVisible);
+        Burn?.SetVisibility(runtimeVisible);
     }
 
     public void SetLineVisibility(bool showPrediction, bool showOrigin, bool showApogeePerigee)
@@ -139,6 +215,19 @@ public sealed class TrajectoryLineSet
         Origin?.SetVisibility(showOrigin);
         Apogee?.SetVisibility(showApogeePerigee);
         Perigee?.SetVisibility(showApogeePerigee);
+    }
+
+    public bool CopyPreviewToPlannedManeuver()
+    {
+        if (Preview == null || PlannedManeuver == null)
+            return false;
+
+        Vector3[] points = Preview.GetWorldPointsCopy();
+        if (points.Length < 2)
+            return false;
+
+        PlannedManeuver.UpdateLine(points);
+        return true;
     }
 
     private static ProceduralLineRenderer CreateLine(string name, Color color, Transform parent, int layer)

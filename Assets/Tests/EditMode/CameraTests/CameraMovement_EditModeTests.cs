@@ -177,7 +177,7 @@ public class CameraMovement_EditModeTests
     }
 
     [UnityTest]
-    public IEnumerator ApplyPlaceholderFocus_sets_distance_from_scale()
+    public IEnumerator ApplyPlaceholderFocus_uses_placeholder_zoom_settings()
     {
         rig = SimTestBootstrap.CreateBasic(0);
         var ph = new GameObject("PH").transform;
@@ -189,8 +189,8 @@ public class CameraMovement_EditModeTests
 
         Assert.IsNull(GetPrivateField<NBody>(rig.CamMove, "focusBody"));
         Assert.AreEqual(ph, GetPrivateField<Transform>(rig.CamMove, "focusPlaceholder"));
-        Assert.AreEqual(30f, rig.CamMove.distance, 0.001f);
-        Assert.AreEqual(0.6f, rig.CamMove.height, 0.001f);
+        Assert.AreEqual(5f, rig.CamMove.distance, 0.001f);
+        Assert.AreEqual(0f, rig.CamMove.height, 0.001f);
     }
 
     [UnityTest]

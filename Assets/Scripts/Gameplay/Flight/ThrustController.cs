@@ -5,6 +5,7 @@ using UnityEngine.EventSystems;
 /// Applies directional thrust to the tracked craft and keeps visual thrust effects in sync.
 /// Integrates with UI inputs, tutorial flags, and trajectory updates.
 /// </summary>
+[DefaultExecutionOrder(-100)]
 public class ThrustController : MonoBehaviour
 {
     [Header("Thrust Settings")]
@@ -23,7 +24,7 @@ public class ThrustController : MonoBehaviour
     [Header("Thrust Flags")]
     public bool isForwardThrustActive = false;
 
-    [SerializeField] float backOffset = 0.6f;
+    [SerializeField, Min(0f)] float backOffset = 0.1f;
 
     [Header("References - Scripts")]
     public CameraController cameraController;
@@ -43,6 +44,8 @@ public class ThrustController : MonoBehaviour
 
     [Header("Thrust Configs")]
     private bool thrustStopped = false;
+    private NBody thrustParticlesParentBody;
+    private Vector3 thrustParticlesBaseScale = Vector3.one;
 
     private SimContext ctx;
 
@@ -65,19 +68,27 @@ public class ThrustController : MonoBehaviour
 
         if (thrustParticles == null)
         {
-            thrustParticles = GameObject.Find("Particle System").GetComponent<ParticleSystem>();
+            GameObject thrustParticleObject = GameObject.Find("Particle System");
+            thrustParticles = thrustParticleObject != null
+                ? thrustParticleObject.GetComponent<ParticleSystem>()
+                : null;
 
             if (thrustParticles == null)
             {
                 Debug.LogError("ThrustController: No Particle System found in the scene!");
+                return;
             }
         }
 
+        thrustParticles.transform.SetParent(null, true);
+        thrustParticlesBaseScale = thrustParticles.transform.localScale;
+
         var main = thrustParticles.main;
         main.useUnscaledTime = true;
+        main.simulationSpace = ParticleSystemSimulationSpace.Local;
 
-        thrustParticles.Stop();
-        thrustParticles.Clear();
+        thrustParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        thrustParticles.Clear(true);
     }
 
     void FixedUpdate()
@@ -160,8 +171,12 @@ public class ThrustController : MonoBehaviour
     {
         if (!thrustParticles) return;
 
-        thrustParticles.Stop();
+        thrustParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+        thrustParticles.Clear(true);
         thrustStopped = true;
+        thrustParticlesParentBody = null;
+        thrustParticles.transform.SetParent(null, true);
+        thrustParticles.transform.localScale = thrustParticlesBaseScale;
     }
 
     public void ApplyThrust(
@@ -202,17 +217,33 @@ public class ThrustController : MonoBehaviour
     /// </summary>
     private void UpdateThrustParticleSystem(NBody targetBody, Vector3 thrustDirection)
     {
-        if (!thrustParticles) return;
+        if (!thrustParticles || targetBody == null) return;
 
-        var rot = Quaternion.LookRotation(-thrustDirection.normalized, targetBody.transform.up);
+        Vector3 exhaustDirection = -thrustDirection.normalized;
+        if (float.IsNaN(exhaustDirection.x) || exhaustDirection == Vector3.zero)
+            return;
 
-        Vector3 pos = targetBody.transform.position + rot * Vector3.forward * backOffset;
+        Vector3 worldPosition = targetBody.transform.position + exhaustDirection * backOffset;
+        Vector3 worldUp = Mathf.Abs(Vector3.Dot(exhaustDirection, targetBody.transform.up)) > 0.98f
+            ? Vector3.forward
+            : targetBody.transform.up;
+        Quaternion worldRotation = Quaternion.LookRotation(exhaustDirection, worldUp);
 
-        thrustParticles.transform.SetPositionAndRotation(pos, rot);
+        if (thrustParticlesParentBody != targetBody)
+        {
+            thrustParticles.Stop(true, ParticleSystemStopBehavior.StopEmittingAndClear);
+            thrustParticles.Clear(true);
+            thrustParticles.transform.SetParent(targetBody.transform, true);
+            thrustParticles.transform.localScale = thrustParticlesBaseScale;
+            thrustParticlesParentBody = targetBody;
+            thrustStopped = true;
+        }
+
+        thrustParticles.transform.SetPositionAndRotation(worldPosition, worldRotation);
 
         if (!thrustParticles.isPlaying || thrustStopped)
         {
-            thrustParticles.Clear();
+            thrustParticles.Clear(true);
             thrustParticles.Play();
             thrustStopped = false;
         }
