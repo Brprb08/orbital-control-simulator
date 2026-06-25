@@ -8,7 +8,7 @@ Unity handles the visible side of the project: rendering, input, UI, and camera 
 
 Real satellite TLEs can be loaded. Satellites can also be placed manually or from orbital elements, with live orbit previews, maneuver planning, and trajectory updates without stopping the simulation. Maneuver nodes are not instant delta-v teleports either, planned burns are simulated as finite-duration thrust under gravity.
 
-[Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be) (older build, but it still shows the general idea)
+[Watch the demo video on YouTube](https://youtu.be/w0mEL8PJFN0?si=0LpU4MF2ve1I8Ath)
 
 ![Track Cam](./Assets/Images/4-29Track.png)
 _Track camera with live orbit readouts._
