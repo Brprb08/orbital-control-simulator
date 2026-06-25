@@ -54,6 +54,7 @@ public class UIRoot : MonoBehaviour
         vectorUI.Initialize();
 
         tutorialUI = new TutorialUIController(refs, tutorialController);
+        tutorialUI.Initialize();
 
         placementUI = new PlacementUIController(refs, objectPlacementManager);
         placementUI.Initialize();
@@ -170,8 +171,8 @@ public class UIRoot : MonoBehaviour
 
         CameraMode mode = cameraTracker.Mode;
         bool showManualVelocityUi = ctx != null &&
-                                    ctx.VelocityDragManager != null &&
-                                    ctx.VelocityDragManager.IsManualVelocityPlacementActive;
+                                    ctx.PendingVelocityPlacementController != null &&
+                                    ctx.PendingVelocityPlacementController.IsManualVelocityPlacementActive;
         bool nodeBurnActive = ctx != null &&
                               ctx.ThrustController != null &&
                               ctx.ThrustController.IsNodeBurnActive;
@@ -179,7 +180,7 @@ public class UIRoot : MonoBehaviour
         cameraModeUI?.Apply(cameraTracker, showManualVelocityUi);
         placementUI?.Apply(mode, showManualVelocityUi);
         flightUI?.Apply(mode);
-        instructionsUI?.Apply(mode);
+        tutorialUI?.Apply();
         vectorUI?.Apply(mode);
 
         if (refs.freeCamButton != null)
@@ -216,7 +217,7 @@ public class UIRoot : MonoBehaviour
 
     private void OnInstructionsPressed()
     {
-        instructionsUI?.Toggle();
+        tutorialUI?.ToggleTutorial();
         EventSystem.current?.SetSelectedGameObject(null);
     }
 
@@ -247,7 +248,7 @@ public class UIRoot : MonoBehaviour
 
     private void OnSkipTutorialPressed()
     {
-        tutorialUI?.SkipTutorial();
+        tutorialUI?.MinimizeTutorial();
         EventSystem.current?.SetSelectedGameObject(null);
     }
 

@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 
 /// <summary>
@@ -15,13 +14,14 @@ public class ObjectPlacementManager : MonoBehaviour
     [Header("References - Core")]
     [SerializeField] private Camera _mainCamera;
     [SerializeField] private SatelliteSpawner _satelliteSpawner;
-    [SerializeField] private VelocityDragManager _velocityDragManager;
+    [SerializeField] private PendingVelocityPlacementController _pendingVelocityPlacementController;
     [SerializeField] private TutorialController _tutorialController;
 
     private ICameraTracker _cameraTracker;
     private UIRoot _uiRoot;
     private SimContext _ctx;
     private PlacementFieldsUI _fields;
+    private PlacementSpawnBuilder _spawnBuilder;
 
     [Header("Units & Central Body")]
     [Tooltip("Meters per 1 sim unit. If world units are kilometers, set this to 1000.")]
@@ -35,21 +35,13 @@ public class ObjectPlacementManager : MonoBehaviour
 
     [Header("Ghost Preview")]
     [SerializeField] private GameObject _ghostPreviewPrefab;
+    [SerializeField, Min(0f)] private float _manualPlacementEarthCamDistance = 4000f;
     private GameObject _ghostInstance;
     private bool _ghostObjectPlaced;
     private bool _clearingPosition;
 
     [Header("Placement State")]
     [SerializeField] private PendingSatellitePlacement _pendingPlacement = new();
-
-    private const int MaxSatelliteNameLength = 15;
-
-    private static readonly PlacementValidators.RangeF MassRange = new(500f, 1000000f);
-    private static readonly PlacementValidators.RangeF RadiusClamp = new(
-        SatelliteSizing.MinPhysicalRadiusMeters,
-        SatelliteSizing.MaxPhysicalRadiusMeters
-    );
-    private static readonly PlacementValidators.DistanceBoundsF PosBounds = new(638f, 5000f);
 
     // Public for RandomSatelliteSpawner
     public double Mu => _mu;
@@ -78,6 +70,14 @@ public class ObjectPlacementManager : MonoBehaviour
         _uiRoot = ctx.UIRoot;
         _tutorialController = ctx.TutorialController ?? _tutorialController;
         _fields = new PlacementFieldsUI(_uiRoot.References, _uiRoot, _tutorialController, _mainCamera);
+        _spawnBuilder = new PlacementSpawnBuilder(
+            _fields,
+            _mainCamera,
+            _satelliteSpawner,
+            _metersPerUnit,
+            _mu,
+            _earthRadiusMeters
+        );
         _fields.BindTutorialHooks();
 
         if (_fields.PositionInput != null)
@@ -100,7 +100,7 @@ public class ObjectPlacementManager : MonoBehaviour
 
     /// <summary>
     /// Manual placement flow: validates manual fields, spawns a placeholder,
-    /// hooks it up to the velocity-drag manager, and locks the inputs.
+    /// hooks it up to the velocity staging manager, and locks the inputs.
     /// </summary>
     public void StartPlacement()
     {
@@ -110,12 +110,7 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!TryBuildManualPlaceholderData(
-                out string name,
-                out Vector3 position,
-                out Vector3 radius,
-                out float mass,
-                out string error))
+        if (!_spawnBuilder.TryBuildManualPlaceholder(out var placement, out string error))
         {
             SetFeedback(error);
             return;
@@ -124,15 +119,16 @@ public class ObjectPlacementManager : MonoBehaviour
         HideGhost();
 
         GameObject placeholder = _satelliteSpawner.CreatePlaceholder(
-            name,
-            position,
-            radius,
-            mass,
-            _velocityDragManager
+            placement.Name,
+            placement.Position,
+            placement.RadiusMeters,
+            placement.Mass,
+            _pendingVelocityPlacementController
         );
 
         PendingPlacement.Set(placeholder);
         PreviewSilently(placeholder != null ? placeholder.transform : null);
+        SwitchManualPlacementToEarthCam();
 
         LockManualPlacementInputs(true);
         ClearAllFields();
@@ -142,9 +138,9 @@ public class ObjectPlacementManager : MonoBehaviour
 
         SetFeedback(
             "Setting Satellite Velocity:\n\n" +
-            "• Click the satellite and drag.\n" +
-            "• Set the desired direction.\n" +
-            "• Use input field to adjust speed."
+            "• Choose prograde/retrograde and orbit shaping.\n" +
+            "• Adjust speed scale or enter an exact vector.\n" +
+            "• Click Set Velocity when the preview looks right."
         );
 
         UIHelpers.ClearSelection();
@@ -162,21 +158,22 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!TryBuildKeplerSpawnData(
-                out string name,
-                out double mass,
-                out Vector3 position,
-                out Vector3 velocity,
-                out string error))
+        if (!_spawnBuilder.TryBuildKeplerSpawn(out var spawn, out string error))
         {
             SetFeedback(error);
             return;
         }
 
-        _satelliteSpawner.SpawnSatellite(name, position, (float)mass, velocity, trackAfterSpawn: true);
+        _satelliteSpawner.SpawnSatellite(
+            spawn.Name,
+            spawn.Position,
+            (float)spawn.Mass,
+            spawn.Velocity,
+            trackAfterSpawn: true
+        );
 
         ClearAllFields();
-        SetFeedback($"Placed '{name}' from Keplerian elements.");
+        SetFeedback($"Placed '{spawn.Name}' from Keplerian elements.");
 
         PendingPlacement.Clear();
         UpdateTrackCamButtonState(false);
@@ -194,28 +191,27 @@ public class ObjectPlacementManager : MonoBehaviour
             return;
         }
 
-        if (!TryBuildTleSpawnData(
-                out string name,
-                out double mass,
-                out Vector3 position,
-                out Vector3 velocity,
-                out DateTime whenUtc,
-                out DateTime epochUtc,
-                out string error))
+        if (!_spawnBuilder.TryBuildTleSpawn(out var tle, out string error))
         {
             SetFeedback(error);
             return;
         }
 
-        if (_velocityDragManager?.trajectoryRenderer?.preManeuverLine != null)
-            _velocityDragManager.trajectoryRenderer.preManeuverLine.Clear();
+        if (_pendingVelocityPlacementController?.trajectoryRenderer?.preManeuverLine != null)
+            _pendingVelocityPlacementController.trajectoryRenderer.preManeuverLine.Clear();
 
-        _satelliteSpawner.SpawnSatellite(name, position, (float)mass, velocity, trackAfterSpawn: true);
+        _satelliteSpawner.SpawnSatellite(
+            tle.Spawn.Name,
+            tle.Spawn.Position,
+            (float)tle.Spawn.Mass,
+            tle.Spawn.Velocity,
+            trackAfterSpawn: true
+        );
 
         ClearAllFields();
         SetFeedback(
-            $"Placed '{name}' from TLE at {whenUtc:yyyy-MM-dd HH:mm:ss}Z " +
-            $"(epoch {epochUtc:yyyy-MM-dd HH:mm:ss}Z)."
+            $"Placed '{tle.Spawn.Name}' from TLE at {tle.WhenUtc:yyyy-MM-dd HH:mm:ss}Z " +
+            $"(epoch {tle.EpochUtc:yyyy-MM-dd HH:mm:ss}Z)."
         );
 
         PendingPlacement.Clear();
@@ -276,12 +272,16 @@ public class ObjectPlacementManager : MonoBehaviour
         {
             float distanceFromEarth = Vector3.Distance(Vector3.zero, targetPosition);
 
-            if (distanceFromEarth < PosBounds.Min || distanceFromEarth > PosBounds.Max)
+            if (distanceFromEarth < PlacementSpawnBuilder.PositionBounds.Min ||
+                distanceFromEarth > PlacementSpawnBuilder.PositionBounds.Max)
             {
                 _ghostObjectPlaced = false;
                 if (_ghostInstance != null) _ghostInstance.SetActive(false);
 
-                SetFeedback($"Position magnitude must be between {PosBounds.Min} and {PosBounds.Max}. Example: 641,0,0");
+                SetFeedback(
+                    $"Position magnitude must be between {PlacementSpawnBuilder.PositionBounds.Min} " +
+                    $"and {PlacementSpawnBuilder.PositionBounds.Max}. Example: 641,0,0"
+                );
                 return;
             }
 
@@ -308,6 +308,22 @@ public class ObjectPlacementManager : MonoBehaviour
         _cameraTracker.BeginUiSuppress();
         _cameraTracker.PreviewPlaceholderInFree(t);
         _cameraTracker.EndUiSuppress();
+    }
+
+    private void SwitchManualPlacementToEarthCam()
+    {
+        if (_ctx?.CameraButtonProxy != null)
+        {
+            _ctx.CameraButtonProxy.EarthCam(_manualPlacementEarthCamDistance);
+            return;
+        }
+
+        if (_ctx?.CameraController != null)
+            _ctx.CameraController.SwitchToEarthCam(_manualPlacementEarthCamDistance);
+        else
+            _cameraTracker?.SwitchToEarthCam();
+
+        _ctx?.UIRoot?.RefreshAllUi();
     }
 
     private void LockManualPlacementInputs(bool locked)
@@ -372,203 +388,6 @@ public class ObjectPlacementManager : MonoBehaviour
         }
 
         error = null;
-        return true;
-    }
-
-    /// <summary>
-    /// Validates and builds data for a manual placeholder placement.
-    /// </summary>
-    private bool TryBuildManualPlaceholderData(
-        out string name,
-        out Vector3 position,
-        out Vector3 radius,
-        out float mass,
-        out string error)
-    {
-        name = default;
-        position = default;
-        radius = default;
-        mass = default;
-        error = null;
-
-        if (!PlacementValidators.TryGetName(
-                _fields.ObjectNameInputField,
-                "Satellite",
-                _satelliteSpawner.SatelliteCount,
-                MaxSatelliteNameLength,
-                out name,
-                out error))
-        {
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetPositionOrDefault(
-                _fields.PositionInput,
-                _mainCamera.transform,
-                10f,
-                PosBounds,
-                out position,
-                out error))
-        {
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetRadius(_fields.RadiusInput, RadiusClamp, out radius, out error))
-        {
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetMass(_fields.MassInput, MassRange, out mass, out error))
-        {
-            return false;
-        }
-
-        if (radius == Vector3.zero)
-        {
-            radius = Vector3.one;
-        }
-
-        return true;
-    }
-
-    /// <summary>
-    /// Validates Kepler inputs and produces Unity-space spawn position/velocity.
-    /// </summary>
-    private bool TryBuildKeplerSpawnData(
-        out string name,
-        out double mass,
-        out Vector3 position,
-        out Vector3 velocity,
-        out string error)
-    {
-        name = default;
-        mass = default;
-        position = default;
-        velocity = default;
-        error = null;
-
-        if (!PlacementValidators.TryGetName(
-                _fields.KepNameInputField,
-                "Kepler Sat",
-                _satelliteSpawner.SatelliteCount + 1,
-                MaxSatelliteNameLength,
-                out name,
-                out error))
-        {
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetMass(_fields.KepMassInputField, MassRange, out var massF, out error))
-        {
-            return false;
-        }
-
-        mass = massF;
-
-        if (!PlacementValidators.TryGetDouble(_fields.KepADegOrMetersInputField, out double aMeters))
-        {
-            error = "Invalid semi-major axis 'a'.";
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetDouble(_fields.KepEccInputField, out double e) || e < 0.0 || e >= 1.0)
-        {
-            error = "Invalid eccentricity 'e'. Use 0 ≤ e < 1.";
-            return false;
-        }
-
-        if (!PlacementValidators.TryGetDouble(_fields.KepIncDegInputField, out double iDeg) ||
-            !PlacementValidators.TryGetDouble(_fields.KepRAANDegInputField, out double raanDeg) ||
-            !PlacementValidators.TryGetDouble(_fields.KepArgPDegInputField, out double argpDeg) ||
-            !PlacementValidators.TryGetDouble(_fields.KepTrueAnomDegInputField, out double trueAnomDeg))
-        {
-            error = "Invalid angle(s): i / RAAN / ω / ν.";
-            return false;
-        }
-
-        try
-        {
-            var (rEci, vEci) = KeplerUtils.FromElements(
-                aMeters,
-                e,
-                iDeg,
-                raanDeg,
-                argpDeg,
-                trueAnomDeg,
-                _mu
-            );
-
-            double rp = aMeters * (1.0 - e);
-            if (rp <= _earthRadiusMeters * 1.001)
-            {
-                double altKm = (rp - _earthRadiusMeters) / 1000.0;
-                error = $"Orbit intersects Earth (perigee alt {altKm:F1} km). Increase 'a' or reduce 'e'.";
-                return false;
-            }
-
-            position = FrameUtils.EciToUnity(rEci, _metersPerUnit);
-            velocity = FrameUtils.VelEciToUnity(vEci, _metersPerUnit);
-            return true;
-        }
-        catch (Exception ex)
-        {
-            error = $"Kepler placement failed: {ex.Message}";
-            return false;
-        }
-    }
-
-    /// <summary>
-    /// Validates TLE input, propagates to now, and produces Unity-space spawn data.
-    /// </summary>
-    private bool TryBuildTleSpawnData(
-        out string name,
-        out double mass,
-        out Vector3 spawnPos,
-        out Vector3 spawnVel,
-        out DateTime whenUtc,
-        out DateTime epochUtc,
-        out string error)
-    {
-        name = default;
-        mass = default;
-        spawnPos = default;
-        spawnVel = default;
-        whenUtc = DateTime.UtcNow;
-        epochUtc = default;
-        error = null;
-
-        if (!PlacementValidators.TryGetMass(_fields.TleMassInputField, MassRange, out var massF, out error))
-        {
-            return false;
-        }
-
-        mass = massF;
-
-        name = !string.IsNullOrWhiteSpace(_fields.TleNameInputField?.text)
-            ? _fields.TleNameInputField.text.Trim()
-            : $"TLE Satellite {_satelliteSpawner.NextSatelliteIndex}";
-
-        if (!TLEParser.TryPropagate(
-                _fields.TleLine1InputField.text,
-                _fields.TleLine2InputField.text,
-                whenUtc,
-                out Vector3d rEci_m,
-                out Vector3d vEci_mps,
-                out epochUtc))
-        {
-            error = "Invalid TLE input or propagation failed.";
-            return false;
-        }
-
-        if (rEci_m.magnitude <= _earthRadiusMeters * 1.001)
-        {
-            error = "Computed position intersects Earth. Check TLE/time.";
-            return false;
-        }
-
-        spawnPos = FrameUtils.EciToUnity(rEci_m, _metersPerUnit);
-        spawnVel = FrameUtils.VelEciToUnity(vEci_mps, _metersPerUnit);
-
         return true;
     }
 }

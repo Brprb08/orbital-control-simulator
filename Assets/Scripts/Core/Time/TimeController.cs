@@ -14,6 +14,10 @@ public class TimeController : MonoBehaviour
     private TutorialController tutorialController;
     private BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private TimeUI timeUI;
+    private bool temporaryMaxTimeScaleActive;
+    private float temporaryMaxTimeScale = float.PositiveInfinity;
+    private float temporaryTimeScaleRestoreValue = 1f;
+    private bool hasTemporaryTimeScaleRestoreValue;
 
     public void Initialize(SimContext ctx)
     {
@@ -57,6 +61,7 @@ public class TimeController : MonoBehaviour
 
     public void SetTimeScale(float scale)
     {
+        scale = ClampToTemporaryMaxTimeScale(scale);
         previousTimeScale = scale;
 
         if (!isPaused)
@@ -67,6 +72,57 @@ public class TimeController : MonoBehaviour
         }
 
         timeUI?.SetSliderValue(scale);
+    }
+
+    public bool BeginTemporaryMaxTimeScale(float maxScale)
+    {
+        if (!float.IsFinite(maxScale) || maxScale <= 0f)
+            return false;
+
+        float currentScale = isPaused ? previousTimeScale : Time.timeScale;
+        bool reducedTimeScale = currentScale > maxScale;
+
+        if (!temporaryMaxTimeScaleActive)
+        {
+            temporaryTimeScaleRestoreValue = currentScale;
+            hasTemporaryTimeScaleRestoreValue = reducedTimeScale;
+            temporaryMaxTimeScale = maxScale;
+            temporaryMaxTimeScaleActive = true;
+        }
+        else
+        {
+            temporaryMaxTimeScale = Mathf.Min(temporaryMaxTimeScale, maxScale);
+        }
+
+        if (reducedTimeScale)
+            SetTimeScale(maxScale);
+
+        return reducedTimeScale;
+    }
+
+    public void EndTemporaryMaxTimeScale()
+    {
+        if (!temporaryMaxTimeScaleActive)
+            return;
+
+        bool shouldRestore = hasTemporaryTimeScaleRestoreValue;
+        float restoreValue = temporaryTimeScaleRestoreValue;
+
+        temporaryMaxTimeScaleActive = false;
+        temporaryMaxTimeScale = float.PositiveInfinity;
+        temporaryTimeScaleRestoreValue = 1f;
+        hasTemporaryTimeScaleRestoreValue = false;
+
+        if (shouldRestore)
+            SetTimeScale(restoreValue);
+    }
+
+    private float ClampToTemporaryMaxTimeScale(float scale)
+    {
+        if (!temporaryMaxTimeScaleActive)
+            return scale;
+
+        return Mathf.Min(scale, temporaryMaxTimeScale);
     }
 
     public void TogglePause()

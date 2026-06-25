@@ -1,19 +1,26 @@
 # Orbital Control Simulator
 
-This is a real-time orbital mechanics simulator built in Unity, with the physics simulation running in native C++.
+This is a real-time orbital mechanics simulator built in Unity, with the actual physics simulation running in native C++.
 
 The simulation is always running continuously. You can add satellites, change attitude, and apply thrust at any point and the orbit updates right away.
 
-Unity is responsible for rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to maintain numerical stability under time acceleration and sustained thrust. Core orbital motion is integrated using a batched Dormand-Prince 5th-order (DoPri5) solver, while trajectory previews run through separate preview systems so the interactive parts of the sim do not lag or stutter.
+Unity handles the visible side of the project: rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to keep things stable under time acceleration and sustained thrust. Core orbital motion is integrated using a batched Dormand-Prince 5th-order (DoPri5) solver, while trajectory previews run through separate preview systems so the interactive parts of the sim do not lag or stutter.
 
-Real satellite TLEs can be loaded. Satellites can also be placed manually or from orbital elements, with live orbit previews, maneuver planning, and trajectory updates without stopping the simulation.
+Real satellite TLEs can be loaded. Satellites can also be placed manually or from orbital elements, with live orbit previews, maneuver planning, and trajectory updates without stopping the simulation. Maneuver nodes are not instant delta-v teleports either, planned burns are simulated as finite-duration thrust under gravity.
 
-[Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be) (Old version of sim, needs an update)
+[Watch the demo video on YouTube](https://www.youtube.com/watch?v=aisBrqQ_A4o&feature=youtu.be) (older build, but it still shows the general idea)
 
 ![Track Cam](./Assets/Images/4-29Track.png)
+_Track camera with live orbit readouts._
+
 ![Track Cam with Nodes](./Assets/Images/4-29Nodes.png)
+_Maneuver node preview and planned-burn visualization._
+
 ![Elliptical Orbit](./Assets/Images/4-29SatelliteUpClose.png)
+_Close view of a satellite on an elliptical orbit._
+
 ![Free Cam](./Assets/Images/12-5Free.png)
+_Free camera view used for placement and inspection._
 
 ---
 
@@ -30,6 +37,16 @@ This project gave me something I could use to answer those questions. It began a
 ## What It Can Do
 
 Everything runs live.
+
+The basic intended flow is roughly:
+
+1. Switch to Free Cam
+2. Create a satellite
+3. Stage an initial velocity with the launch preview tools
+4. Set velocity and start tracking it
+5. Change the orbit with thrust or a maneuver node
+
+There is also an in-game tutorial for this flow, because otherwise I have heard is pretty easy to forget which panel is supposed to do what.
 
 ### Real-Time Orbital Control & Planning
 - **Continuous, real-time orbital simulation**
@@ -51,6 +68,7 @@ Everything runs live.
   - Burns are simulated as **finite-duration thrust under gravity** (not impulsive delta-v)
   - Post-burn trajectories and orbit readouts are previewed in real time, including T+ timing and predicted orbital parameters
   - Finalized nodes are pinned and locked to prevent accidental edits
+  - Node burns execute automatically when simulation time reaches the planned burn window
 
 ### Physics & Numerical Architecture
 - **Native C++ orbital integration using a batched Dormand-Prince 5th-order (DoPri5) solver**
@@ -65,6 +83,7 @@ Everything runs live.
 - **Runtime creation and reset of satellites**
   - Cartesian placement using explicit position and velocity vectors
   - Guided manual placement flow with live orbit preview while setting initial velocity
+  - One-click launch shaping controls for circularizing, raising apogee, lowering perigee, and changing tilt/radial shape before launch
   - Earth-relative camera support during manual placement to inspect the full orbit path before launch
   - Immediate placement readouts for apogee, perigee, inclination, and eccentricity
   - Real-world TLE loading (Two-Line Element sets)
@@ -103,6 +122,8 @@ Unity is responsible for visualization, input handling, UI state, and camera beh
 
 The two layers communicate through a minimal interop boundary using `DllImport`.
 
+For a deeper breakdown of the physics, interop, validation notes, and limitations, see [TECHNICAL_README.md](./TECHNICAL_README.md).
+
 ---
 
 ## Performance Characteristics
@@ -133,14 +154,14 @@ The goal is not full coverage. The goal is to catch regressions early and keep t
 
 ### Requirements
 
-- Unity 2020.3 or later
+- Unity 6 / 6000.0.28f1 or later
 - Windows 64-bit due to native DLL support
 
 ### Run in the Unity Editor
 
 1. Clone the repository:
 ```text
-git clone https://github.com/Brprb08/space-orbit-simulation.git
+git clone https://github.com/Brprb08/satellite-maneuver-simulation.git
 ```
 2. Open the project in Unity Hub
 3. Load
@@ -251,4 +272,4 @@ OrbitalControlSimulator/
 ```
 </details>
 
-[↑ Back to Top](#orbital-control-simulator)
+[Back to Top](#orbital-control-simulator)

@@ -151,6 +151,7 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         if (HasNode && CurrentNode != null && CurrentNode.isFinalized)
         {
+            uiController?.ShowFinalizedManeuverFeedback();
             RefreshSetupNodeButtonState();
             return;
         }
@@ -159,7 +160,10 @@ public class ManeuverNodeManager : MonoBehaviour
             ClearNode();
 
         if (bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress)
+        {
+            uiController?.ShowBurnInProgressFeedback();
             return;
+        }
 
         if (timeController != null)
         {
@@ -168,12 +172,18 @@ public class ManeuverNodeManager : MonoBehaviour
 
         var body = trajectoryRenderer != null ? trajectoryRenderer.trackedBody : null;
         if (body == null)
+        {
+            uiController?.ShowNoTrackedBodyFeedback();
             return;
+        }
 
         RequestSingleOrbitNodeSnapshot(body, (traj, startTime, usedDt) =>
         {
             if (traj == null || traj.Count < 2)
+            {
+                uiController?.ShowNodeSnapshotUnavailableFeedback();
                 return;
+            }
 
             float simTime = bodyRuntimeCoordinator != null ? bodyRuntimeCoordinator.simulationTime : 0f;
             float initialOffsetTime = 20f;

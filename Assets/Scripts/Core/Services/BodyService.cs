@@ -45,6 +45,10 @@ public class BodyService : MonoBehaviour, IBodyService
     private Vector3 _nodeBurnHCache = Vector3.up;
     private sbyte[] _latchedParityBuf; // −1/0/+1
 
+    private const float EarthRotationRate = 360f / 86164f; // deg/sec, sidereal
+    private const float MaxDistanceFromEarth = 40000f;
+    private const float AttitudeLeadTime = 20f;
+
     // /// <summary>
     /// Raised when a body is registered.
     /// </summary>
@@ -91,7 +95,167 @@ public class BodyService : MonoBehaviour, IBodyService
     private void FixedUpdate()
     {
         if (!DrivePhysics) return;
+        PrepareBodyStep();
         StepAllBodiesBatch();
+    }
+
+    private void PrepareBodyStep()
+    {
+        for (int i = 0; i < _bodies.Count; i++)
+        {
+            NBody body = _bodies[i];
+            if (body == null)
+                continue;
+
+            ReportNaNPosition(body);
+
+            if (body.isCentralBody)
+            {
+                RotateCentralBodyVisual(body);
+                continue;
+            }
+
+            if (!body.isReferenceOrbit)
+                UpdateNodeBurnLifecycle(body);
+        }
+    }
+
+    private void ReportNaNPosition(NBody body)
+    {
+        Vector3 pos = body.transform.position;
+        if (!float.IsNaN(pos.x) && !float.IsNaN(pos.y) && !float.IsNaN(pos.z))
+            return;
+
+        Debug.LogError(
+            $"[NBODY]: {body.name} has NaN transform.position! " +
+            $"velocity={body.velocity}, force={body.state.force}"
+        );
+    }
+
+    private static void RotateCentralBodyVisual(NBody body)
+    {
+        float deltaAngle = -EarthRotationRate * Time.deltaTime;
+        body.transform.Rotate(Vector3.up, deltaAngle);
+    }
+
+    private void UpdateNodeBurnLifecycle(NBody body)
+    {
+        ManeuverNodeManager nodeManager = ctx?.ManeuverNodeManager;
+        BodyRuntimeCoordinator runtime = ctx?.BodyRuntimeCoordinator;
+        ThrustController thrustController = ctx?.ThrustController;
+
+        if (body == null || nodeManager == null || runtime == null)
+            return;
+
+        float simTime = runtime.simulationTime;
+        int currentStep = runtime.simulationStep;
+        bool burnInProgress = false;
+        bool shouldRemoveNode = false;
+
+        ManeuverNode node = nodeManager.CurrentNode;
+        AttitudeController attitude = body.GetComponent<AttitudeController>();
+
+        if (node != null && node.targetBody == body && node.isFinalized)
+        {
+            UpdateNodeBurnAttitude(attitude, node, simTime, currentStep);
+
+            if (currentStep >= node.burnStartStep)
+            {
+                if (ManeuverBurnMath.IsBurnActiveForStep(node, body, currentStep))
+                {
+                    thrustController?.StartNodeBurn(node);
+                    burnInProgress = true;
+                }
+                else
+                {
+                    thrustController?.StopAllThrust();
+                    shouldRemoveNode = true;
+                }
+            }
+        }
+        else if (attitude != null)
+        {
+            attitude.lockNormalParity = false;
+        }
+
+        UpdateBurnEffects(body, burnInProgress, thrustController);
+
+        if (shouldRemoveNode)
+            nodeManager.RemoveNode(node);
+    }
+
+    private static void UpdateNodeBurnAttitude(
+        AttitudeController attitude,
+        ManeuverNode node,
+        float simTime,
+        int currentStep)
+    {
+        if (attitude == null || node == null)
+            return;
+
+        bool inBurnPhase =
+            simTime >= node.burnTime - AttitudeLeadTime &&
+            currentStep < node.burnStartStep + node.burnStepCount;
+
+        if (inBurnPhase)
+        {
+            AttitudeController.PointingMode desiredMode = MapBurnTypeToAttitude(node.burnType);
+            if (attitude.mode != desiredMode)
+                attitude.SetMode(desiredMode);
+
+            attitude.lockNormalParity = true;
+            return;
+        }
+
+        attitude.lockNormalParity = false;
+    }
+
+    private void UpdateBurnEffects(NBody body, bool burnInProgress, ThrustController thrustController)
+    {
+        if (burnInProgress)
+        {
+            if (!body.isThrusting)
+            {
+                ctx?.RocketThrustAudio?.StartThrust();
+                body.isThrusting = true;
+            }
+
+            return;
+        }
+
+        if (!body.isThrusting)
+            return;
+
+        ctx?.RocketThrustAudio?.StopThrust();
+        thrustController?.StopAllThrust();
+        body.isThrusting = false;
+    }
+
+    private static AttitudeController.PointingMode MapBurnTypeToAttitude(BurnType burnType)
+    {
+        switch (burnType)
+        {
+            case BurnType.Prograde:
+                return AttitudeController.PointingMode.Velocity;
+
+            case BurnType.Retrograde:
+                return AttitudeController.PointingMode.Retrograde;
+
+            case BurnType.RadialIn:
+                return AttitudeController.PointingMode.Nadir;
+
+            case BurnType.RadialOut:
+                return AttitudeController.PointingMode.Zenith;
+
+            case BurnType.Normal:
+                return AttitudeController.PointingMode.Normal;
+
+            case BurnType.AntiNormal:
+                return AttitudeController.PointingMode.AntiNormal;
+
+            default:
+                return AttitudeController.PointingMode.Velocity;
+        }
     }
 
     private void SetCentralBody(NBody earth)
@@ -131,6 +295,13 @@ public class BodyService : MonoBehaviour, IBodyService
         float nodeBurnThrustMagnitude = ctx?.ThrustController != null
             ? ctx.ThrustController.EffectiveForwardThrustMagnitude
             : 0f;
+        bool nodeBurnActiveThisStep = node != null &&
+                                      node.isFinalized &&
+                                      simulationStep >= node.burnStartStep &&
+                                      simulationStep < node.burnStartStep + node.burnStepCount;
+        if (nodeBurnActiveThisStep)
+            ctx?.ThrustController?.EnsureThrustTimeScaleLimit(showNodeFeedback: true);
+
         Vector3 center = _central != null
             ? _central.state.position.ToVector3()
             : Vector3.zero;
@@ -225,10 +396,41 @@ public class BodyService : MonoBehaviour, IBodyService
             b.state.velocity = _velBuf[i];
 
             b.SyncAfterBatch(previousPosition);
+            CheckPostStepRemoval(b);
         }
 
         ctx?.BodyRuntimeCoordinator?.AdvanceSimulationStep();
         ctx?.BodyRuntimeCoordinator?.FlushPendingRemovals();
+    }
+
+    private void CheckPostStepRemoval(NBody body)
+    {
+        if (body == null || body.isCentralBody)
+            return;
+
+        NBody earth = CentralBody;
+        BodyRuntimeCoordinator runtime = ctx?.BodyRuntimeCoordinator;
+        if (earth == null || earth == body || runtime == null)
+            return;
+
+        float distance = Vector3.Distance(body.transform.position, earth.transform.position);
+        float collisionThreshold = body.cameraDistanceRadius + earth.radius;
+
+        if (distance < collisionThreshold)
+        {
+            Debug.Log($"[NBODY]: [COLLISION] {body.name} collided with Earth");
+            runtime.HandleCollision(body, earth);
+            return;
+        }
+
+        if (distance > MaxDistanceFromEarth)
+        {
+            Debug.Log(
+                $"[NBODY]: [ESCAPE] {body.name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed."
+            );
+
+            runtime.HandleCollision(body, earth);
+        }
     }
 
     private void RebuildSatelliteCache()

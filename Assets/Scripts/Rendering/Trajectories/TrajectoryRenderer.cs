@@ -44,7 +44,6 @@ public class TrajectoryRenderer : MonoBehaviour
     public NBody trackedBody;
 
     private CameraController cameraController;
-    // private UIManager ui;
     private TrajectoryUI ui;
     private Camera mainCamera;
 
@@ -126,7 +125,6 @@ public class TrajectoryRenderer : MonoBehaviour
         cameraController = ctx.CameraController;
         cameraMovement = ctx.CameraMovement;
         thrustController = ctx.ThrustController;
-        // ui = ctx.UIManager;
         ui = ctx.UIRoot != null ? ctx.UIRoot.TrajectoryUI : null;
         bodyService = ctx.BodyService;
 
@@ -334,6 +332,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
     public void QuickPreviewFromState(Vector3 startPos, Vector3 startVel, float bodyMass)
     {
+        EnsurePreviewLinesVisible();
         previewModule?.QuickPreviewFromState(startPos, startVel, bodyMass);
     }
 
@@ -361,6 +360,7 @@ public class TrajectoryRenderer : MonoBehaviour
         bool singleOrbit = true,
         bool smoothClosedLoop = false)
     {
+        EnsurePreviewLinesVisible();
         previewModule?.QuickPreviewOnceLong(
             startPos,
             startVel,
@@ -370,6 +370,17 @@ public class TrajectoryRenderer : MonoBehaviour
             singleOrbit && clipToSingleOrbit,
             smoothClosedLoop
         );
+    }
+
+    private void EnsurePreviewLinesVisible()
+    {
+        if (lines == null)
+            return;
+
+        bool visible = IsManeuverOrbitRuntimeVisible();
+        previewLine?.SetVisibility(visible);
+        previewApogeeLine?.SetVisibility(visible);
+        previewPerigeeLine?.SetVisibility(visible);
     }
 
     public bool HasFreshPredictionFor(NBody body)
@@ -457,6 +468,13 @@ public class TrajectoryRenderer : MonoBehaviour
     private void ClearWhenNoTrackedBody()
     {
         InvalidatePredictionWork();
+
+        if (IsManualVelocityPlacementActive())
+        {
+            HideTrackedOrbitUi();
+            return;
+        }
+
         ClearAllLines();
         HideTrackedOrbitUi();
     }
@@ -512,9 +530,9 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private bool IsManeuverOrbitRuntimeVisible()
     {
-        if (ctx?.VelocityDragManager != null && ctx.VelocityDragManager.IsManualVelocityPlacementActive)
+        if (IsManualVelocityPlacementActive())
         {
-            GameObject pendingBody = ctx.VelocityDragManager.planet;
+            GameObject pendingBody = GetPendingManualPlacementBody();
             if (mainCamera == null || pendingBody == null)
                 return true;
 
@@ -623,13 +641,22 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private bool IsCameraOnTrackedBody()
     {
-        if (trackedBody == null)
-            return false;
+        return trackedBody != null &&
+               cameraController != null &&
+               cameraController.CurrentBody == trackedBody;
+    }
 
-        if (cameraController != null && cameraController.CurrentBody == trackedBody)
-            return true;
+    private bool IsManualVelocityPlacementActive()
+    {
+        return ctx?.PendingVelocityPlacementController != null &&
+               ctx.PendingVelocityPlacementController.IsManualVelocityPlacementActive;
+    }
 
-        return false;
+    private GameObject GetPendingManualPlacementBody()
+    {
+        return ctx?.PendingVelocityPlacementController != null
+            ? ctx.PendingVelocityPlacementController.planet
+            : null;
     }
 
     private void UpdateTrackedPredictionOwnership(bool cameraOnTrackedBody)

@@ -86,14 +86,14 @@ public class SatelliteSpawner : MonoBehaviour
     }
 
     /// <summary>
-    /// Creates a placeholder GameObject for manual placement and configures the velocity drag manager.
+    /// Creates a placeholder GameObject for manual placement and configures velocity staging.
     /// </summary>
     public GameObject CreatePlaceholder(
         string name,
         Vector3 position,
         Vector3 radiusMeters,
         float mass,
-        VelocityDragManager velocityDragManager)
+        PendingVelocityPlacementController pendingVelocityPlacementController)
     {
         satelliteCount++;
 
@@ -105,10 +105,10 @@ public class SatelliteSpawner : MonoBehaviour
 
         cameraTracker?.RefreshBodiesList();
 
-        if (velocityDragManager != null)
+        if (pendingVelocityPlacementController != null)
         {
-            Debug.Log("[Spawner] Wiring drag manager with planet + mass");
-            velocityDragManager.ConfigurePendingPlacement(go, mass, radiusMeters);
+            Debug.Log("[Spawner] Wiring velocity staging with planet + mass");
+            pendingVelocityPlacementController.ConfigurePendingPlacement(go, mass, radiusMeters);
         }
 
         return go;

@@ -37,7 +37,8 @@ public sealed class TrajectoryPreviewModule
     private const float HYPERBOLIC_FALLBACK_T = 60000f;
 
     private const int PREVIEW_MIN_STEPS = 500;
-    private const int PREVIEW_MAX_STEPS = 6000;
+    private const int QUICK_PREVIEW_MAX_STEPS = 6000;
+    private const int LONG_PREVIEW_MAX_STEPS = 100000;
 
     private const float BASE_DT = 7f;
     private const float NEAR_CIRCULAR_UNITS_THRESHOLD = 0.5f;
@@ -127,7 +128,7 @@ public sealed class TrajectoryPreviewModule
         float usedDt = dt;
         int usedSteps = steps;
         if (usedDt <= 0f || usedSteps <= 0)
-            ComputePreviewSettings(startPos, startVel, svc, out usedDt, out usedSteps);
+            ComputePreviewSettings(startPos, startVel, svc, LONG_PREVIEW_MAX_STEPS, out usedDt, out usedSteps);
         else
         {
             usedDt = Mathf.Max(0.0001f, usedDt);
@@ -177,6 +178,7 @@ public sealed class TrajectoryPreviewModule
         Vector3 startPos,
         Vector3 startVel,
         BodyService bodyService,
+        int maxSteps,
         out float dt,
         out int steps)
     {
@@ -233,13 +235,14 @@ public sealed class TrajectoryPreviewModule
         float effectiveDt = BASE_DT;
         int stepsNeeded = Mathf.CeilToInt(horizonSeconds / effectiveDt);
 
-        if (stepsNeeded > PREVIEW_MAX_STEPS)
+        int clampedMaxSteps = Mathf.Max(PREVIEW_MIN_STEPS, maxSteps);
+        if (stepsNeeded > clampedMaxSteps)
         {
-            effectiveDt = horizonSeconds / PREVIEW_MAX_STEPS;
-            stepsNeeded = PREVIEW_MAX_STEPS;
+            effectiveDt = horizonSeconds / clampedMaxSteps;
+            stepsNeeded = clampedMaxSteps;
         }
 
-        stepsNeeded = Mathf.Clamp(stepsNeeded, PREVIEW_MIN_STEPS, PREVIEW_MAX_STEPS);
+        stepsNeeded = Mathf.Clamp(stepsNeeded, PREVIEW_MIN_STEPS, clampedMaxSteps);
 
         dt = Mathf.Max(0.0001f, effectiveDt);
         steps = stepsNeeded;
@@ -270,7 +273,7 @@ public sealed class TrajectoryPreviewModule
 
             float dt;
             int steps;
-            ComputePreviewSettings(previewPos, previewVel, svc, out dt, out steps);
+            ComputePreviewSettings(previewPos, previewVel, svc, QUICK_PREVIEW_MAX_STEPS, out dt, out steps);
             UpdateApsides(previewPos, previewVel, svc);
 
             var cb = svc.CentralBody;

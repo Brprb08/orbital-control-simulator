@@ -44,12 +44,16 @@ internal static class CameraZoomSettingsFactory
         );
     }
 
-    public static CameraZoomSettings ForEarth(NBody earth)
+    public static CameraZoomSettings ForEarth(NBody earth, float? defaultDistanceOverride = null)
     {
+        float defaultDistance = defaultDistanceOverride.HasValue && defaultDistanceOverride.Value > 0f
+            ? defaultDistanceOverride.Value
+            : EarthCamDefaultDistance;
+
         return new CameraZoomSettings(
             minDistance: CameraCalculations.CalculateMinDistance(earth.radius) * 5f,
             maxDistance: 30000f,
-            defaultDistance: EarthCamDefaultDistance,
+            defaultDistance,
             height: null
         );
     }

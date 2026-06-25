@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 
 /// <summary>
@@ -6,29 +7,16 @@ using System.Collections.Generic;
 /// </summary>
 public class TutorialProgress
 {
-    private readonly Dictionary<RequirementType, bool> _completed = new()
+    private readonly Dictionary<RequirementType, bool> _completed = new();
+
+    public TutorialProgress()
     {
-        { RequirementType.RotateViewRMB, false },
-        { RequirementType.ZoomScroll, false },
-        { RequirementType.SwitchSatelliteTrack, false },
-        { RequirementType.SwitchToEarthCam, false },
-        { RequirementType.SwitchToFreeCam, false },
-        { RequirementType.PressW, false },
-        { RequirementType.PressA, false },
-        { RequirementType.PressS, false },
-        { RequirementType.PressD, false },
-        { RequirementType.RotateViewRMBFree, false },
-        { RequirementType.EnterMass, false },
-        { RequirementType.EnterRadius, false },
-        { RequirementType.PlaceSatellite, false },
-        { RequirementType.ClickSatelliteAndDrag, false },
-        { RequirementType.AddVelocity, false },
-        { RequirementType.SetVelocity, false },
-        { RequirementType.ChangedTimeScale, false },
-        { RequirementType.ApplyThrust, false },
-        { RequirementType.ClickSetupForNode, false },
-        { RequirementType.PlaceManeuverNode, false },
-    };
+        foreach (RequirementType type in Enum.GetValues(typeof(RequirementType)))
+        {
+            if (type != RequirementType.None)
+                _completed[type] = false;
+        }
+    }
 
     /// <summary>
     /// Returns whether a given requirement has been completed.

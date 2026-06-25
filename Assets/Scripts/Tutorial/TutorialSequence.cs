@@ -1,10 +1,6 @@
-using UnityEngine;
-
 /// <summary>
-/// Provides the hardcoded tutorial sequence for the Orbital Control Simulator.
-/// Each step defines instructional text, required actions, optional interstitial transitions,
-/// and auto-advance behavior to guide the player through camera controls, satellite creation,
-/// orbit manipulation, and maneuver planning.
+/// Provides the tutorial sequence for the current main user flow:
+/// camera control, manual placement, velocity staging, launch, thrust, and maneuver nodes.
 /// </summary>
 public static class TutorialSequence
 {
@@ -12,171 +8,185 @@ public static class TutorialSequence
     {
         return new TutorialStep[]
         {
-            // STEP 1 — Welcome
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
                 "<b>Welcome</b>\n\n" +
-                "Welcome to Orbital Control Simulator! In this tutorial, you’ll learn the basics of placing satellites, applying thrust, and getting comfortable with orbital mechanics.\n\n" +
-                "Tip: You can drag this panel around if its in the way.",
+                "This tutorial follows the main flow of the simulator: inspect an orbit, create a satellite, stage its launch velocity, track it, and plan a burn.\n\n" +
+                "- Click Minimize to hide this panel without losing your place.\n" +
+                "- Click Open Tutorial to bring it back.\n" +
+                "- Drag this tutorial panel to move it.",
                 requirements = new RequirementDef[0]
             },
 
-            // STEP 2 — Camera Controls
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Camera Controls</b>\n\n" +
-                "• Right Mouse Drag: rotate view\n" +
-                "• Scroll Wheel: zoom\n" +
-                "• Use them at the same time for more control!",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.RotateViewRMB, label = "Rotate view (hold RMB & move)" },
-                    new RequirementDef { type = RequirementType.ZoomScroll,   label = "Zoom with scroll wheel" },
+                "<b>Track Camera Basics</b>\n\n" +
+                "Start by getting comfortable with the orbit camera.\n\n" +
+                "- Hold right mouse and drag to rotate.\n" +
+                "- Scroll to zoom in or out.\n" +
+                "- The blue trajectory shows the currently tracked satellite.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.RotateViewRMB, label = "Rotate the view with right mouse" },
+                    new RequirementDef { type = RequirementType.ZoomScroll, label = "Zoom with the scroll wheel" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Nice! Next we’ll explore camera options like Earth Cam and Free Cam.",
+                interstitialBody = "Good. Next, try the camera modes so you know where to go when placing or inspecting satellites.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-             // STEP 3 — Camera Options
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Camera Options</b>\n\n" +
-                "• Track Cam: Follows your Satellite\n" +
-                "• Free Cam: Allows free movement around Earth\n" +
-                "• Earth Cam: Centers Earth in camera for better orbit view\n\n" +
-                "• Switch Satellites from the dropdown on the right-hand side.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.SwitchSatelliteTrack, label = "Switched Satellite" },
-                    new RequirementDef { type = RequirementType.SwitchToEarthCam, label = "Earth Cam active" },
-                    new RequirementDef { type = RequirementType.SwitchToFreeCam, label = "Free Cam active" },
+                "<b>Camera Modes</b>\n\n" +
+                "The main camera modes are useful at different moments.\n\n" +
+                "- Track Cam follows the selected satellite.\n" +
+                "- Earth Cam frames the whole orbit.\n" +
+                "- Free Cam lets you move around before placing objects.\n" +
+                "- If more than one satellite exists, the dropdown switches the tracked satellite.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.SwitchToEarthCam, label = "Switch to Earth Cam" },
+                    new RequirementDef { type = RequirementType.SwitchToFreeCam, label = "Switch to Free Cam" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Perfect! Now let’s move around freely using WASD and the mouse.",
+                interstitialBody = "Nice. While in Free Cam, you can move around the scene directly.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-            // STEP 4 — Free Cam Controls
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Free Cam Controls</b>\n\n" +
-                "• WASD: Move forward, left, backward, right\n" +
-                "• Hold RMB to look around\n" +
-                "• Tip: Movement is always relative to camera direction.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.PressW, label = "Press W to move Forward" },
-                    new RequirementDef { type = RequirementType.PressA, label = "Press A to move Left" },
-                    new RequirementDef { type = RequirementType.PressS, label = "Press S to move Backward" },
-                    new RequirementDef { type = RequirementType.PressD, label = "Press D to move Right" },
-                    new RequirementDef { type = RequirementType.RotateViewRMBFree, label = "Rotate view (hold RMB & move)" },
+                "<b>Free Cam Movement</b>\n\n" +
+                "Use Free Cam to position your view before placing a satellite.\n\n" +
+                "- W/A/S/D moves relative to the camera.\n" +
+                "- Hold right mouse to look around.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.PressW, label = "Press W" },
+                    new RequirementDef { type = RequirementType.PressA, label = "Press A" },
+                    new RequirementDef { type = RequirementType.PressS, label = "Press S" },
+                    new RequirementDef { type = RequirementType.PressD, label = "Press D" },
+                    new RequirementDef { type = RequirementType.RotateViewRMBFree, label = "Look around with right mouse" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Awesome movement! Next, let’s add your first satellite.",
+                interstitialBody = "Good movement. Now create a placeholder satellite.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-            // STEP 5 — Adding a Satellite
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Adding a Satellite</b>\n\n" +
-                "• In Free Cam, click <b>Place Satellite</b> to add a new object in orbit.\n" +
-                "• You’ll need to enter mass and radius.\n" +
-                "• Name and position are optional.\n" +
-                "• If position is blank, the satellite is placed in front of the camera.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.EnterMass, label = "Mass Entered" },
-                    new RequirementDef { type = RequirementType.EnterRadius, label = "Radius Entered" },
-                    new RequirementDef { type = RequirementType.PlaceSatellite, label = "Satellite Placed" },
+                "<b>Create A Satellite</b>\n\n" +
+                "In Free Cam, open the placement controls and create a satellite.\n\n" +
+                "- Enter mass and radius.\n" +
+                "- Enter a position such as 700,0,0 so the preview location is intentional.\n" +
+                "- Click Place Satellite to create the ghost satellite.\n\n" +
+                "After placement, the simulator switches to Earth Cam for launch preview.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.EnterPosition, label = "Enter a valid position" },
+                    new RequirementDef { type = RequirementType.EnterMass, label = "Enter a valid mass" },
+                    new RequirementDef { type = RequirementType.EnterRadius, label = "Enter a valid radius" },
+                    new RequirementDef { type = RequirementType.PlaceSatellite, label = "Place the satellite" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Satellite placed! Let's add some velocity to get it moving.",
+                interstitialBody = "The ghost satellite is ready. Next, stage a launch velocity before making it real.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-            // STEP 6 — Reading Orbital Data
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b><u>Adding Velocity</u></b>\n\n" +
-                "• Click your satellite and drag to set a <color=red>direction line</color>.\n" +
-                "• Notice the <color=orange>trajectory</color> — it falls into Earth with no speed!\n" +
-                "• Use the velocity slider (or enter <i>x.x,y.y,z.z</i>) to add speed.\n" +
-                "• Watch the orbit update, adjust until it circles Earth.\n" +
-                "• Click <b>Set Velocity</b> to launch.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.ClickSatelliteAndDrag, label = "Click Satellite and set Direction" },
-                    new RequirementDef { type = RequirementType.AddVelocity, label = "Add Velocity with Slider(or manually)" },
-                    new RequirementDef { type = RequirementType.SetVelocity, label = "Click Set velocity" },
+                "<b>Stage Launch Velocity</b>\n\n" +
+                "Use the launch preview controls to choose the initial orbit.\n\n" +
+                "- Circularize stages a stable starting velocity.\n" +
+                "- Prograde and retrograde choose the base direction.\n" +
+                "- Raise Apogee and Lower Perigee shape the orbit.\n" +
+                "- Radial and tilt buttons bend the preview.\n" +
+                "- The speed slider trims power after a direction is staged.\n\n" +
+                "Watch the launch preview and orbit readout, then click Set Velocity.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.AddVelocity, label = "Stage or adjust launch velocity" },
+                    new RequirementDef { type = RequirementType.SetVelocity, label = "Click Set Velocity" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Great! Now let's increase time scale to speed up the simulation and watch orbits evolve faster. \n\n" +
-                                    "NOTE: You can also place satellites with TLE input if you have the TLE inputs.",
+                interstitialBody = "Satellite launched. It is now tracked like a normal satellite.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-            // STEP 7 — Time Scaling
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b><u>Time Scaling</u></b>\n\n" +
-                "• In the top right, you can use the slider to increase time scale.\n" +
-                "• Speed up or slow down the simulation.\n" +
-                "• 1x to 100x lets you watch long-term orbital effects like drift or decay.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.ChangedTimeScale, label = "Increase Time Scale" },
+                "<b>Watch The Orbit</b>\n\n" +
+                "Use the orbit readout and trajectory lines to inspect the satellite.\n\n" +
+                "- Earth Cam is useful for full-orbit shape.\n" +
+                "- Track Cam is useful for close inspection.\n" +
+                "- The apogee and perigee readout updates as the orbit changes.\n\n" +
+                "Increase the time scale to watch the orbit evolve faster.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.ChangedTimeScale, label = "Change the time scale" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Now lets add some thrust to your satellite and watch its orbit change.",
+                interstitialBody = "Time controls are working. Next, use thrust to change the orbit live.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-
-            // STEP 8 — Applying Thrust
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Applying Thrust</b>\n\n" +
-                "• Apply thrust in any direction by adjusting your attitude.\n" +
-                "• Watch your orbital path shift instantly.\n" +
-                "• Blue line = new orbit, gray line = old orbit.\n" +
-                "• Hint: Higher time scale = stronger visible effect.\n" +
-                "• Hint: Heavier Satellite needs more thrust time.",
-                requirements = new RequirementDef[] {
-                    new RequirementDef { type = RequirementType.ApplyThrust, label = "Use Burn Controls and add thrust" },
+                "<b>Manual Thrust</b>\n\n" +
+                "Burn controls apply thrust to the tracked satellite.\n\n" +
+                "- Choose an attitude direction.\n" +
+                "- Apply thrust and watch the trajectory update.\n" +
+                "- Heavier satellites need more thrust or more burn time.\n\n" +
+                "Manual thrust is good for experimenting. Maneuver nodes are better for planning.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.ApplyThrust, label = "Apply thrust to the tracked satellite" },
                 },
                 showInterstitialAfterComplete = true,
-                interstitialBody = "Great! You’re almost done, let’s cover maneuver nodes.",
+                interstitialBody = "Good burn. Now plan a future burn with a maneuver node.",
                 autoAdvanceFromInterstitial = true,
-                autoAdvanceDelay = 4f
+                autoAdvanceDelay = 3f
             },
 
-            // // STEP 9 — Maneuver Nodes
-            // new TutorialStep {
-            //     body =
-            //     "<b>Maneuver Nodes</b>\n\n" +
-            //     "NOTE: These are in an early stage and being improved.\n" +
-            //     "• Click Use Maneuver Nodes to plan future burns.\n" +
-            //     "• Choose burn direction in dropdown then click Setup.\n" +
-            //     "• Move the node with the slider.\n" +
-            //     "• When ready click Place and the node will turn red (Ready)\n" +
-            //     "• The satellite will auto burn when it hits the node.",
-            //     requirements = new RequirementDef[] {
-            //         new RequirementDef { type = RequirementType.ClickSetupForNode, label = "Choose burn direction and click Setup" },
-            //         new RequirementDef { type = RequirementType.PlaceManeuverNode, label = "Place Node" },
-            //     },
-            //     showInterstitialAfterComplete = false,
-            //     autoAdvanceFromInterstitial = true,
-            //     autoAdvanceDelay = 4f
-            // },
-
-            // STEP 10 — Wrap-Up
-            new TutorialStep {
+            new TutorialStep
+            {
                 body =
-                "<b>Wrap-Up</b>\n\n" +
-                "You’ve completed the basics! Experiment with maneuvers and multiple orbits.\n" +
-                "Master orbital mechanics and keep your satellites from crashing.",
+                "<b>Maneuver Nodes</b>\n\n" +
+                "Maneuver nodes let you preview a future burn before committing to it.\n\n" +
+                "- Pick a burn direction.\n" +
+                "- Click setup to create a preview node.\n" +
+                "- Adjust timing, burn duration, and thrust scale.\n" +
+                "- Place the node to finalize the planned burn.",
+                requirements = new RequirementDef[]
+                {
+                    new RequirementDef { type = RequirementType.ClickSetupForNode, label = "Create a maneuver preview" },
+                    new RequirementDef { type = RequirementType.PlaceManeuverNode, label = "Place/finalize the maneuver node" },
+                },
+                showInterstitialAfterComplete = true,
+                interstitialBody = "The node is finalized. When simulation time reaches it, the burn will execute automatically.",
+                autoAdvanceFromInterstitial = true,
+                autoAdvanceDelay = 3f
+            },
+
+            new TutorialStep
+            {
+                body =
+                "<b>Done</b>\n\n" +
+                "You have completed the main loop: create satellite, set velocity, track it, modify the orbit, and plan a burn.\n\n" +
+                "From here, experiment with different launch shapes, inclinations, and maneuver directions.",
                 requirements = new RequirementDef[0],
                 showInterstitialAfterComplete = false
             }

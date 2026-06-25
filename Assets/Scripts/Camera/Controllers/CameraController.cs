@@ -52,6 +52,21 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>The currently tracked placeholder Transform (null if tracking a body or in Free mode).</summary>
     public Transform CurrentPlaceholder => _state.CurrentPlaceholder;
 
+    /// <summary>Target transform suitable for distance markers.</summary>
+    public Transform IndicatorTarget
+    {
+        get
+        {
+            if (_state.CurrentPlaceholder != null)
+                return _state.CurrentPlaceholder;
+
+            if (_state.CurrentBody != null)
+                return _state.CurrentBody.transform;
+
+            return null;
+        }
+    }
+
     /// <summary>Raised when the overall camera mode changes.</summary>
     public event Action<CameraMode> OnModeChanged;
 
@@ -177,11 +192,17 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>Toggles Earth view on/off.</summary>
     public void SwitchToEarthCam()
     {
-        if (TryTogglePlaceholderEarthView())
+        SwitchToEarthCam(null);
+    }
+
+    /// <summary>Toggles Earth view on/off, optionally overriding the starting Earth-view distance.</summary>
+    public void SwitchToEarthCam(float? defaultDistanceOverride)
+    {
+        if (TryTogglePlaceholderEarthView(defaultDistanceOverride))
             return;
 
         if (_state.Mode != CameraMode.Earth)
-            TrackEarth(_bodyService?.CentralBody);
+            TrackEarth(_bodyService?.CentralBody, defaultDistanceOverride);
         else
             ExitEarthView();
     }
@@ -213,13 +234,19 @@ public class CameraController : MonoBehaviour, ICameraTracker
     /// <summary>Enters Earth view by tracking the central body.</summary>
     public void TrackEarth(NBody earth)
     {
+        TrackEarth(earth, null);
+    }
+
+    /// <summary>Enters Earth view by tracking the central body with an optional starting distance.</summary>
+    public void TrackEarth(NBody earth, float? defaultDistanceOverride)
+    {
         if (earth == null || _cameraMovement == null)
         {
             BreakToFreeCam();
             return;
         }
 
-        TrackTarget(CameraTarget.EarthTarget(earth));
+        TrackTarget(CameraTarget.EarthTarget(earth), defaultDistanceOverride);
     }
 
     /// <summary>Leaves Earth view and returns to the last valid tracked target.</summary>
@@ -368,6 +395,11 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
     private void TrackTarget(CameraTarget target)
     {
+        TrackTarget(target, null);
+    }
+
+    private void TrackTarget(CameraTarget target, float? earthDefaultDistanceOverride)
+    {
         StopPlaceholderEarthView(restorePlaceholderPreview: false);
 
         _state.Track(target);
@@ -375,7 +407,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         bool shouldRepoint = !_state.PreserveAngleNextTrack;
         _state.PreserveAngleNextTrack = false;
 
-        if (!ApplyTargetRig(target, shouldRepoint))
+        if (!ApplyTargetRig(target, shouldRepoint, earthDefaultDistanceOverride))
         {
             BreakToFreeCam();
             return;
@@ -385,7 +417,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         EmitTargetChanged(target);
     }
 
-    private bool ApplyTargetRig(CameraTarget target, bool shouldRepoint)
+    private bool ApplyTargetRig(CameraTarget target, bool shouldRepoint, float? earthDefaultDistanceOverride)
     {
         if (target.IsBody)
         {
@@ -401,7 +433,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
 
         if (target.IsEarth)
         {
-            ApplyEarthCameraRig(target.Body);
+            ApplyEarthCameraRig(target.Body, earthDefaultDistanceOverride);
             return true;
         }
 
@@ -432,7 +464,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
         OnTrackedPlaceholderChanged?.Invoke(placeholder);
     }
 
-    private bool TryTogglePlaceholderEarthView()
+    private bool TryTogglePlaceholderEarthView(float? defaultDistanceOverride)
     {
         if (_state.Mode != CameraMode.Free || _state.CurrentPlaceholder == null || _cameraMovement == null)
             return false;
@@ -448,7 +480,7 @@ public class CameraController : MonoBehaviour, ICameraTracker
             return false;
 
         _state.BeginPlaceholderEarthView();
-        ApplyEarthCameraRig(earth);
+        ApplyEarthCameraRig(earth, defaultDistanceOverride);
         return true;
     }
 
@@ -484,10 +516,10 @@ public class CameraController : MonoBehaviour, ICameraTracker
         _freeCamera?.TogglePlacementMode(true);
     }
 
-    private void ApplyEarthCameraRig(NBody earth)
+    private void ApplyEarthCameraRig(NBody earth, float? defaultDistanceOverride = null)
     {
         _freeCamera?.TogglePlacementMode(false);
-        _cameraMovement.ApplyEarthFocus(earth);
+        _cameraMovement.ApplyEarthFocus(earth, defaultDistanceOverride);
 
         if (_tutorialController != null && _tutorialController.inTutorialMode)
             _tutorialController.hasSwitchedToEarthCam = true;

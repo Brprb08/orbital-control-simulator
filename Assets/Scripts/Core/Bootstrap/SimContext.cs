@@ -18,7 +18,8 @@ public class SimContext
     public TrajectoryComputeController TrajectoryComputeController { get; set; }
     public TrajectoryRenderer TrajectoryRenderer { get; set; }
     public ObjectPlacementManager ObjectPlacementManager { get; set; }
-    public VelocityDragManager VelocityDragManager { get; set; }
+    public ManualVelocityPlacementUIController ManualVelocityPlacementUIController { get; set; }
+    public PendingVelocityPlacementController PendingVelocityPlacementController { get; set; }
     public RocketThrustAudio RocketThrustAudio { get; set; }
     public TutorialController TutorialController { get; set; }
     public ICameraTracker CameraTracker => CameraController;

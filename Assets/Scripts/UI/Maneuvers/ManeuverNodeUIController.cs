@@ -53,6 +53,9 @@ public class ManeuverNodeUIController : MonoBehaviour
     [SerializeField] private string setupNodePreviewMessage = "Set maneuver timing and thrust, then place node.";
     [SerializeField] private string setupNodeFinalizedMessage = "Remove node to place another, or wait for node to fire.";
     [SerializeField] private string previewHorizonLimitMessage = "Preview is approximate beyond 48 hours.";
+    [SerializeField] private string noTrackedBodyMessage = "Track a satellite before setting up a maneuver.";
+    [SerializeField] private string burnInProgressMessage = "Burn in progress. Maneuver controls are locked.";
+    [SerializeField] private string nodeSnapshotUnavailableMessage = "Orbit preview is still loading. Try setup again in a moment.";
 
     private bool allowNodeSlider = true;
     private float nextNodeSliderAllowed;
@@ -467,6 +470,26 @@ public class ManeuverNodeUIController : MonoBehaviour
     public void ShowPreviewHorizonLimitFeedback()
     {
         SetManeuverFeedback(previewHorizonLimitMessage);
+    }
+
+    public void ShowNoTrackedBodyFeedback()
+    {
+        SetManeuverFeedback(noTrackedBodyMessage);
+    }
+
+    public void ShowBurnInProgressFeedback()
+    {
+        SetManeuverFeedback(burnInProgressMessage);
+    }
+
+    public void ShowNodeSnapshotUnavailableFeedback()
+    {
+        SetManeuverFeedback(nodeSnapshotUnavailableMessage);
+    }
+
+    public void ShowThrustTimeScaleLimitFeedback(string message)
+    {
+        SetManeuverFeedback(message);
     }
 
     public void ClearManeuverFeedback()

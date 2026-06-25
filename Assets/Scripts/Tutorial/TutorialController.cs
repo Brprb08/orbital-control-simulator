@@ -40,7 +40,6 @@ public class TutorialController : MonoBehaviour
     public bool hasMassBeenEnteredForSatellite = false;
     public bool hasRadiusBeenEnteredForSatellite = false;
     public bool hasSatelliteBeenPlaced = false;
-    public bool hasClickAndDrag = false;
     public bool hasAddVelocity = false;
     public bool hasSetVelocity = false;
     public bool hasChangedTimeScale = false;
@@ -73,10 +72,13 @@ public class TutorialController : MonoBehaviour
     private float zoomAccumAbs = 0f;
 
     private TutorialStep[] steps;
+    private bool sequenceInitialized;
 
     // Step/UI state
     private int stepIndex = 0;
     private readonly List<Toggle> activeReqToggles = new();
+
+    public bool IsOpen => tutorialPanel != null ? tutorialPanel.activeSelf : gameObject.activeSelf;
 
     /// <summary>
     /// Injects the simulation context and caches camera movement.
@@ -97,19 +99,13 @@ public class TutorialController : MonoBehaviour
     }
 
     /// <summary>
-    /// Starts or restarts the tutorial sequence and builds the initial UI.
+    /// Opens the tutorial without resetting the current page.
     /// </summary>
     private void OnEnable()
     {
-        stepIndex = 0;
-        phase = StepPhase.Main;
-
-        steps = TutorialSequence.Default();
-
-        interstitialShown = new bool[steps.Length];
-        preInterstitialConsumed = new bool[steps.Length];
-
-        ResetTransients();
+        EnsureSequenceInitialized();
+        inTutorialMode = true;
+        BringToFront();
         RebuildUIForStep();
         UpdateButtons();
     }
@@ -119,6 +115,9 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     private void Update()
     {
+        if (steps == null || steps.Length == 0)
+            return;
+
         var step = steps[stepIndex];
 
         if (phase == StepPhase.Main)
@@ -171,6 +170,11 @@ public class TutorialController : MonoBehaviour
                         TrackRotateRMB();
                         break;
 
+                    case RequirementType.EnterPosition:
+                        if (!progress.IsComplete(RequirementType.EnterPosition) && hasPositionBeenEnteredForSatellite)
+                            progress.SetComplete(RequirementType.EnterPosition);
+                        break;
+
                     case RequirementType.EnterMass:
                         if (!progress.IsComplete(RequirementType.EnterMass) && hasMassBeenEnteredForSatellite)
                             progress.SetComplete(RequirementType.EnterMass);
@@ -184,11 +188,6 @@ public class TutorialController : MonoBehaviour
                     case RequirementType.PlaceSatellite:
                         if (!progress.IsComplete(RequirementType.PlaceSatellite) && hasSatelliteBeenPlaced)
                             progress.SetComplete(RequirementType.PlaceSatellite);
-                        break;
-
-                    case RequirementType.ClickSatelliteAndDrag:
-                        if (!progress.IsComplete(RequirementType.ClickSatelliteAndDrag) && hasClickAndDrag)
-                            progress.SetComplete(RequirementType.ClickSatelliteAndDrag);
                         break;
 
                     case RequirementType.AddVelocity:
@@ -306,7 +305,7 @@ public class TutorialController : MonoBehaviour
         phase = StepPhase.Interstitial;
 
         if (bodyText) bodyText.text = string.IsNullOrEmpty(step.interstitialBody)
-            ? "Nice! Next we will go into blah blah blah…"
+            ? "Nice. Continue to the next step."
             : step.interstitialBody;
 
         foreach (var t in activeReqToggles) if (t) Destroy(t.gameObject);
@@ -331,31 +330,56 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void ResetAllProgress()
     {
-        System.Array.Clear(interstitialShown, 0, interstitialShown.Length);
-        System.Array.Clear(preInterstitialConsumed, 0, preInterstitialConsumed.Length);
+        EnsureSequenceInitialized();
+        inTutorialMode = true;
+        ResetExternalFlags();
+        progress.ResetAll();
 
-        progress.SetComplete(RequirementType.RotateViewRMB, false);
-        progress.SetComplete(RequirementType.ZoomScroll, false);
-        progress.SetComplete(RequirementType.SwitchSatelliteTrack, false);
-        progress.SetComplete(RequirementType.SwitchToEarthCam, false);
-        progress.SetComplete(RequirementType.SwitchToFreeCam, false);
-        progress.SetComplete(RequirementType.PressW, false);
-        progress.SetComplete(RequirementType.PressA, false);
-        progress.SetComplete(RequirementType.PressS, false);
-        progress.SetComplete(RequirementType.PressD, false);
-        progress.SetComplete(RequirementType.RotateViewRMBFree, false);
-        progress.SetComplete(RequirementType.EnterMass, false);
-        progress.SetComplete(RequirementType.EnterRadius, false);
-        progress.SetComplete(RequirementType.PlaceSatellite, false);
-        progress.SetComplete(RequirementType.ClickSatelliteAndDrag, false);
-        progress.SetComplete(RequirementType.AddVelocity, false);
-        progress.SetComplete(RequirementType.SetVelocity, false);
+        if (interstitialShown != null)
+            System.Array.Clear(interstitialShown, 0, interstitialShown.Length);
+        if (preInterstitialConsumed != null)
+            System.Array.Clear(preInterstitialConsumed, 0, preInterstitialConsumed.Length);
 
         ResetTransients();
         stepIndex = 0;
         phase = StepPhase.Main;
         RebuildUIForStep();
         UpdateButtons();
+    }
+
+    public void OpenTutorial()
+    {
+        EnsureSequenceInitialized();
+        inTutorialMode = true;
+
+        if (tutorialPanel != null && !tutorialPanel.activeSelf)
+        {
+            tutorialPanel.SetActive(true);
+            return;
+        }
+
+        BringToFront();
+        RebuildUIForStep();
+        UpdateButtons();
+    }
+
+    public void MinimizeTutorial()
+    {
+        if (tutorialPanel != null)
+        {
+            tutorialPanel.SetActive(false);
+            return;
+        }
+
+        gameObject.SetActive(false);
+    }
+
+    public void ToggleTutorial()
+    {
+        if (IsOpen)
+            MinimizeTutorial();
+        else
+            OpenTutorial();
     }
 
     /// <summary>
@@ -369,6 +393,9 @@ public class TutorialController : MonoBehaviour
             AdvanceStep();
             return;
         }
+
+        if (!AreAllRequirementsMet(steps[stepIndex].requirements))
+            return;
 
         if (stepIndex < steps.Length - 1)
         {
@@ -452,6 +479,10 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     private void RebuildUIForStep()
     {
+        if (steps == null || steps.Length == 0)
+            return;
+
+        BringToFront();
         var step = steps[stepIndex];
         if (bodyText) bodyText.text = step.body;
 
@@ -470,6 +501,8 @@ public class TutorialController : MonoBehaviour
                     item.interactable = false;
                     var label = item.GetComponentInChildren<Text>(true);
                     if (label) label.text = reqs[i].label;
+                    var tmpLabel = item.GetComponentInChildren<TMP_Text>(true);
+                    if (tmpLabel) tmpLabel.text = reqs[i].label;
                     activeReqToggles.Add(item);
                 }
             }
@@ -493,6 +526,9 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     private void UpdateButtons()
     {
+        if (steps == null || steps.Length == 0)
+            return;
+
         if (backButton) backButton.interactable = (stepIndex > 0);
         if (nextButton)
         {
@@ -531,7 +567,7 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void PressedW()
     {
-        if (progress.IsComplete(RequirementType.PressW) && cameraMovement.IsFreeCamMode) return;
+        if (progress.IsComplete(RequirementType.PressW) && cameraMovement != null && cameraMovement.IsFreeCamMode) return;
         if (Input.GetKeyDown(KeyCode.W))
             progress.SetComplete(RequirementType.PressW);
     }
@@ -541,7 +577,7 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void PressedA()
     {
-        if (progress.IsComplete(RequirementType.PressA) && cameraMovement.IsFreeCamMode) return;
+        if (progress.IsComplete(RequirementType.PressA) && cameraMovement != null && cameraMovement.IsFreeCamMode) return;
         if (Input.GetKeyDown(KeyCode.A))
             progress.SetComplete(RequirementType.PressA);
     }
@@ -551,7 +587,7 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void PressedS()
     {
-        if (progress.IsComplete(RequirementType.PressS) && cameraMovement.IsFreeCamMode) return;
+        if (progress.IsComplete(RequirementType.PressS) && cameraMovement != null && cameraMovement.IsFreeCamMode) return;
         if (Input.GetKeyDown(KeyCode.S))
             progress.SetComplete(RequirementType.PressS);
     }
@@ -561,7 +597,7 @@ public class TutorialController : MonoBehaviour
     /// </summary>
     public void PressedD()
     {
-        if (progress.IsComplete(RequirementType.PressD) && cameraMovement.IsFreeCamMode) return;
+        if (progress.IsComplete(RequirementType.PressD) && cameraMovement != null && cameraMovement.IsFreeCamMode) return;
         if (Input.GetKeyDown(KeyCode.D))
             progress.SetComplete(RequirementType.PressD);
     }
@@ -632,5 +668,52 @@ public class TutorialController : MonoBehaviour
 
         if (contentRect != null)
             LayoutRebuilder.ForceRebuildLayoutImmediate(contentRect);
+    }
+
+    public void SkipTutorial()
+    {
+        inTutorialMode = false;
+        if (tutorialPanel)
+            tutorialPanel.SetActive(false);
+    }
+
+    private void EnsureSequenceInitialized()
+    {
+        if (sequenceInitialized && steps != null && steps.Length > 0)
+            return;
+
+        steps = TutorialSequence.Default();
+        interstitialShown = new bool[steps.Length];
+        preInterstitialConsumed = new bool[steps.Length];
+        sequenceInitialized = true;
+
+        stepIndex = 0;
+        phase = StepPhase.Main;
+        ResetExternalFlags();
+        progress.ResetAll();
+        ResetTransients();
+    }
+
+    private void BringToFront()
+    {
+        if (tutorialPanel != null)
+            tutorialPanel.transform.SetAsLastSibling();
+    }
+
+    private void ResetExternalFlags()
+    {
+        hasSwitchedSatellites = false;
+        hasSwitchedToEarthCam = false;
+        hasNameBeenEnteredForSatellite = false;
+        hasPositionBeenEnteredForSatellite = false;
+        hasMassBeenEnteredForSatellite = false;
+        hasRadiusBeenEnteredForSatellite = false;
+        hasSatelliteBeenPlaced = false;
+        hasAddVelocity = false;
+        hasSetVelocity = false;
+        hasChangedTimeScale = false;
+        hasAppliedThrust = false;
+        hasSetupNode = false;
+        hasPlacedNode = false;
     }
 }

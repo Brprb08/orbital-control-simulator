@@ -22,22 +22,21 @@ public class InstructionsUIController
 
     public void Toggle()
     {
-        showInstructionText = !showInstructionText;
+        showInstructionText = false;
         ApplyVisibility();
         RefreshButtonLabel();
     }
 
     public void SetVisible(bool visible)
     {
-        showInstructionText = visible;
+        showInstructionText = false;
         ApplyVisibility();
         RefreshButtonLabel();
     }
 
     public void Apply(CameraMode mode)
     {
-        // For now, instructions content text is still owned elsewhere.
-        // This controller only owns the panel visibility + button label.
+        showInstructionText = false;
         ApplyVisibility();
         RefreshButtonLabel();
     }
@@ -49,7 +48,7 @@ public class InstructionsUIController
             : null;
 
         if (buttonText != null)
-            buttonText.text = showInstructionText ? "Hide Instructions" : "Show Instructions";
+            buttonText.text = "Open Tutorial";
     }
 
     private void ApplyVisibility()

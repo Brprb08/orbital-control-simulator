@@ -12,6 +12,9 @@ public class ThrustController : MonoBehaviour
     public float maxForwardThrustMagnitude = 10f;
     [Range(0f, 5f)]
     public float thrustPowerScale = 1f;
+    [SerializeField, Min(0.01f)] private float maxThrustTimeScale = 30f;
+    [SerializeField] private string thrustTimeScaleLimitMessage =
+        "Thrust can only be performed at {0}x timescale and below.";
 
     /// <summary>
     /// Effective thrust magnitude after scaling; use this instead of maxForwardThrustMagnitude.
@@ -32,6 +35,7 @@ public class ThrustController : MonoBehaviour
     public TrajectoryRenderer trajectoryRenderer;
     public BodyRuntimeCoordinator bodyRuntimeCoordinator;
     private TutorialController tutorialController;
+    private TimeController timeController;
 
     private AttitudeController attitude;
 
@@ -46,6 +50,7 @@ public class ThrustController : MonoBehaviour
     private bool thrustStopped = false;
     private NBody thrustParticlesParentBody;
     private Vector3 thrustParticlesBaseScale = Vector3.one;
+    private bool thrustTimeScaleLimitHeld;
 
     private SimContext ctx;
 
@@ -65,6 +70,7 @@ public class ThrustController : MonoBehaviour
         this.cameraMovement = ctx.CameraMovement;
         this.trajectoryRenderer = ctx.TrajectoryRenderer;
         this.tutorialController = ctx.TutorialController;
+        this.timeController = ctx.TimeController;
 
         if (thrustParticles == null)
         {
@@ -278,6 +284,7 @@ public class ThrustController : MonoBehaviour
     {
         if (node == null || node.targetBody == null) return;
 
+        EnsureThrustTimeScaleLimit(showNodeFeedback: true);
         activeBurnBody = node.targetBody;
         activeBurnType = node.burnType;
         nodeBurnActive = true;
@@ -290,6 +297,7 @@ public class ThrustController : MonoBehaviour
         nodeBurnActive = false;
         activeBurnBody = null;
         isForwardThrustActive = false;
+        ReleaseThrustTimeScaleLimit();
         StopThrustVisuals();
         ctx?.UIRoot?.RefreshAllUi();
     }
@@ -300,6 +308,7 @@ public class ThrustController : MonoBehaviour
         isForwardThrustActive = false;
         nodeBurnActive = false;
         activeBurnBody = null;
+        ReleaseThrustTimeScaleLimit();
         StopThrustVisuals();
         ctx?.UIRoot?.RefreshAllUi();
     }
@@ -315,6 +324,7 @@ public class ThrustController : MonoBehaviour
             return;
         }
 
+        EnsureThrustTimeScaleLimit(showNodeFeedback: false);
         isForwardThrustActive = true;
     }
     public void StopForwardThrust()
@@ -326,7 +336,53 @@ public class ThrustController : MonoBehaviour
         }
 
         isForwardThrustActive = false;
-        EventSystem.current.SetSelectedGameObject(null);
+        ReleaseThrustTimeScaleLimit();
+        EventSystem.current?.SetSelectedGameObject(null);
+    }
+
+    public void EnsureThrustTimeScaleLimit(bool showNodeFeedback)
+    {
+        if (thrustTimeScaleLimitHeld)
+            return;
+
+        bool reduced = timeController != null &&
+                       timeController.BeginTemporaryMaxTimeScale(maxThrustTimeScale);
+
+        thrustTimeScaleLimitHeld = true;
+
+        if (reduced)
+            ShowThrustTimeScaleLimitFeedback(showNodeFeedback);
+    }
+
+    private void ReleaseThrustTimeScaleLimit()
+    {
+        if (!thrustTimeScaleLimitHeld)
+            return;
+
+        thrustTimeScaleLimitHeld = false;
+        timeController?.EndTemporaryMaxTimeScale();
+    }
+
+    private void ShowThrustTimeScaleLimitFeedback(bool showNodeFeedback)
+    {
+        string message = string.Format(thrustTimeScaleLimitMessage, FormatTimeScale(maxThrustTimeScale));
+
+        if (showNodeFeedback)
+            ctx?.ManeuverNodeManager?.uiController?.ShowThrustTimeScaleLimitFeedback(message);
+
+        var feedbackText = ctx?.UIRoot?.References?.feedbackText;
+        if (feedbackText != null)
+        {
+            feedbackText.text = message;
+            feedbackText.gameObject.SetActive(true);
+        }
+    }
+
+    private static string FormatTimeScale(float value)
+    {
+        return Mathf.Approximately(value, Mathf.Round(value))
+            ? Mathf.RoundToInt(value).ToString()
+            : value.ToString("0.##");
     }
 
     private bool CanStartManualThrust()

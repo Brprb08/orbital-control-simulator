@@ -24,7 +24,24 @@ public class CameraButtonProxy : MonoBehaviour
     /// </summary>
     public void EarthCam()
     {
-        cameraTracker.SwitchToEarthCam();
+        if (ctx?.CameraController != null)
+            ctx.CameraController.SwitchToEarthCam();
+        else
+            cameraTracker?.SwitchToEarthCam();
+
+        ctx?.UIRoot?.RefreshAllUi();
+    }
+
+    /// <summary>
+    /// Switches to Earth-centered mode with a custom starting distance.
+    /// </summary>
+    public void EarthCam(float defaultDistanceOverride)
+    {
+        if (ctx?.CameraController != null)
+            ctx.CameraController.SwitchToEarthCam(defaultDistanceOverride);
+        else
+            cameraTracker?.SwitchToEarthCam();
+
         ctx?.UIRoot?.RefreshAllUi();
     }
 

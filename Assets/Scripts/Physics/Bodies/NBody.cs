@@ -26,7 +26,6 @@ public class NBody : MonoBehaviour
     [Header("References - Scripts")]
     private TrajectoryComputeController _tcc;
     private BodyRuntimeCoordinator _bodyRuntimeCoordinator;
-    private ManeuverNodeManager _maneuverNodeManager;
     public ThrustController thrustController;
     private LineVisibilityController _lineVisibilityController;
     private RocketThrustAudio _rocketThrustAudio;
@@ -50,9 +49,7 @@ public class NBody : MonoBehaviour
     public bool isThrusting = false;
 
     [Header("Constants")]
-    private const float EarthRotationRate = 360f / 86164f; // deg/sec, sidereal
     private const double EarthRadiusUnits = 637.8137;
-    private const float MaxDistanceFromEarth = 40000f;
 
     [Header("Flags")]
     public bool isReferenceOrbit = false;
@@ -63,8 +60,6 @@ public class NBody : MonoBehaviour
 
     [Header("Telemetry")]
     public float cumulativeDeltaVUsed = 0f;
-
-    private const float AttitudeLeadTime = 20f;
 
     // Caches & components
     private double[] _otherMassCache;
@@ -83,7 +78,6 @@ public class NBody : MonoBehaviour
         _ctx = ctx;
 
         _bodyRuntimeCoordinator = ctx.BodyRuntimeCoordinator;
-        _maneuverNodeManager = ctx.ManeuverNodeManager;
         _lineVisibilityController = ctx.LineVisibilityController;
         _tcc = ctx.TrajectoryComputeController;
         thrustController = ctx.ThrustController;
@@ -152,50 +146,8 @@ public class NBody : MonoBehaviour
     }
 
     /// <summary>
-    /// One physics tick for this body.
-    /// If <see cref="BodyService.DrivePhysics"/> is <c>true</c>, this method only
-    /// updates burns/audio and leaves integration to the central batch step.
-    /// If <c>false</c>, it performs the legacy per-body integration path (currently disabled).
-    /// </summary>
-    /// <remarks>
-    /// - In service-driven mode, we do <b>not</b> zero <see cref="state.force"/> here;
-    ///   the batch step consumes it and clears it afterward.
-    /// - Central body still rotates here in both modes (visual spin only).
-    /// </remarks>
-    private void FixedUpdate()
-    {
-        if (_ctx == null || _ctx.BodyService == null)
-            return;
-
-        if (!_ctx.BodyService.DrivePhysics)
-        {
-            // Legacy per-body integration path could go here
-            return;
-        }
-
-        if (HasNaNPosition())
-        {
-            Debug.LogError(
-                $"[NBODY]: {name} has NaN transform.position! " +
-                $"velocity={velocity}, force={state.force}"
-            );
-        }
-
-        if (isCentralBody)
-        {
-            RotateCentralBody();
-            return;
-        }
-
-        if (!isReferenceOrbit)
-        {
-            CheckForNodeBurns();
-        }
-    }
-
-    /// <summary>
     /// Applies state produced by the batch integrator to the Unity <see cref="Transform"/>,
-    /// runs post-integration safety checks, and clears consumed force.
+    /// updates render interpolation state, and clears consumed force.
     /// Call this once per body after the manager’s native batch step completes.
     /// </summary>
     public void SyncAfterBatch()
@@ -211,9 +163,6 @@ public class NBody : MonoBehaviour
 
         transform.position = state.position.ToVector3();
         velocity = state.velocity.ToVector3();
-
-        CheckCollisionWithEarth();
-        CheckEscapeFromEarth();
 
         state.force = Vector3.zero;
     }
@@ -261,126 +210,6 @@ public class NBody : MonoBehaviour
         return position.ToVector3();
     }
 
-    /// <summary>
-    /// NaN guard for transform position (useful for detecting numerical blow-ups).
-    /// </summary>
-    private bool HasNaNPosition()
-    {
-        Vector3 pos = transform.position;
-        return float.IsNaN(pos.x) || float.IsNaN(pos.y) || float.IsNaN(pos.z);
-    }
-
-    /// <summary>
-    /// Simple Earth-like rotation for the central body (visual-only).
-    /// </summary>
-    private void RotateCentralBody()
-    {
-        float deltaAngle = -EarthRotationRate * Time.deltaTime;
-        transform.Rotate(Vector3.up, deltaAngle);
-    }
-
-    /// <summary>
-    /// Executes finalized maneuver nodes whose burn windows overlap the current sim time.
-    /// Manages thrust audio/UI and prunes completed nodes.
-    /// </summary>
-    private void CheckForNodeBurns()
-    {
-        if (isCentralBody || _maneuverNodeManager == null || _bodyRuntimeCoordinator == null)
-            return;
-
-        float simTime = _bodyRuntimeCoordinator.simulationTime;
-        int currentStep = _bodyRuntimeCoordinator.simulationStep;
-
-        bool burnInProgress = false;
-        bool shouldRemoveNode = false;
-
-        var node = _maneuverNodeManager.CurrentNode;
-
-        if (node != null && node.targetBody == this && node.isFinalized)
-        {
-            // Start slewing attitude before burnTime
-            if (_attitudeController != null)
-            {
-                bool inBurnPhase =
-                    simTime >= node.burnTime - AttitudeLeadTime &&
-                    currentStep < node.burnStartStep + node.burnStepCount;
-
-                if (inBurnPhase)
-                {
-                    var desiredMode = MapBurnTypeToAttitude(node.burnType);
-                    if (_attitudeController.mode != desiredMode)
-                        _attitudeController.SetMode(desiredMode);
-
-                    _attitudeController.lockNormalParity = true;
-                }
-                else
-                {
-                    _attitudeController.lockNormalParity = false;
-                }
-            }
-
-            // Only check actual burn execution once the burn start step is reached
-            if (currentStep >= node.burnStartStep)
-            {
-                if (IsBurnOngoing(node, currentStep))
-                {
-                    ExecuteNodeBurn(node, this);
-                    burnInProgress = true;
-                }
-                else
-                {
-                    thrustController?.StopAllThrust();
-                    shouldRemoveNode = true; // burn complete
-                }
-            }
-        }
-        else
-        {
-            if (_attitudeController != null)
-                _attitudeController.lockNormalParity = false;
-        }
-
-        if (burnInProgress)
-        {
-            if (!isThrusting)
-            {
-                _rocketThrustAudio?.StartThrust();
-                isThrusting = true;
-            }
-        }
-        else
-        {
-            if (isThrusting)
-            {
-                _rocketThrustAudio?.StopThrust();
-                thrustController?.StopAllThrust();
-                isThrusting = false;
-            }
-        }
-
-        if (shouldRemoveNode)
-            _maneuverNodeManager.RemoveNode(node);
-    }
-
-    /// <summary>
-    /// Runtime burn execution is step-based, not float-time-based.
-    /// </summary>
-    private bool IsBurnOngoing(ManeuverNode node, int currentStep)
-    {
-        return ManeuverBurnMath.IsBurnActiveForStep(node, this, currentStep);
-    }
-
-    /// <summary>
-    /// Activates node-burn visuals/state; physics is applied by the batch step.
-    /// </summary>
-    private void ExecuteNodeBurn(ManeuverNode node, NBody body)
-    {
-        if (thrustController == null || _maneuverNodeManager == null)
-            return;
-
-        thrustController.StartNodeBurn(node);
-    }
-
     public void ForceStopBurnEffects()
     {
         _rocketThrustAudio?.StopThrust();
@@ -390,51 +219,6 @@ public class NBody : MonoBehaviour
             _attitudeController.lockNormalParity = false;
 
         isThrusting = false;
-    }
-
-    /// <summary>
-     /// Collision with central body → delegate removal to the coordinator.
-     /// </summary>
-    private void CheckCollisionWithEarth()
-    {
-        if (_bodyService == null)
-            return;
-
-        NBody earth = _bodyService.CentralBody;
-        if (earth == null || earth == this)
-            return;
-
-        float distance = Vector3.Distance(transform.position, earth.transform.position);
-        float collisionThreshold = cameraDistanceRadius + earth.radius;
-
-        if (distance < collisionThreshold)
-        {
-            Debug.Log($"[NBODY]: [COLLISION] {name} collided with Earth");
-            _bodyRuntimeCoordinator?.HandleCollision(this, earth);
-        }
-    }
-
-    /// <summary>
-    /// Exceeded sim boundary → treat as escape and delegate removal.
-    /// </summary>
-    private void CheckEscapeFromEarth()
-    {
-        if (_bodyService == null)
-            return;
-
-        NBody earth = _bodyService.CentralBody;
-        if (earth == null || earth == this)
-            return;
-
-        float distance = Vector3.Distance(transform.position, earth.transform.position);
-        if (distance > MaxDistanceFromEarth)
-        {
-            Debug.Log(
-                $"[NBODY]: [ESCAPE] {name} exceeded {MaxDistanceFromEarth * 10f:N0} km and is removed."
-            );
-
-            _bodyRuntimeCoordinator?.HandleCollision(this, earth);
-        }
     }
 
     /// <summary>
@@ -503,33 +287,6 @@ public class NBody : MonoBehaviour
                     onComplete?.Invoke(positionsArray);
             }
         );
-    }
-
-    private AttitudeController.PointingMode MapBurnTypeToAttitude(BurnType burnType)
-    {
-        switch (burnType)
-        {
-            case BurnType.Prograde:
-                return AttitudeController.PointingMode.Velocity;
-
-            case BurnType.Retrograde:
-                return AttitudeController.PointingMode.Retrograde;
-
-            case BurnType.RadialIn:
-                return AttitudeController.PointingMode.Nadir;
-
-            case BurnType.RadialOut:
-                return AttitudeController.PointingMode.Zenith;
-
-            case BurnType.Normal:
-                return AttitudeController.PointingMode.Normal;
-
-            case BurnType.AntiNormal:
-                return AttitudeController.PointingMode.AntiNormal;
-
-            default:
-                return AttitudeController.PointingMode.Velocity;
-        }
     }
 
     /// <summary>

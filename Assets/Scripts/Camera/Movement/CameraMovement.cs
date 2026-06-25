@@ -137,7 +137,7 @@ public class CameraMovement : MonoBehaviour
     /// <summary>
     /// Applies an Earth focus chosen by CameraController.
     /// </summary>
-    public void ApplyEarthFocus(NBody earth)
+    public void ApplyEarthFocus(NBody earth, float? defaultDistanceOverride = null)
     {
         inEarthFocus = true;
         earthFocusBody = earth;
@@ -146,7 +146,7 @@ public class CameraMovement : MonoBehaviour
         if (earth == null)
             return;
 
-        ApplyZoomSettings(CameraZoomSettingsFactory.ForEarth(earth));
+        ApplyZoomSettings(CameraZoomSettingsFactory.ForEarth(earth, defaultDistanceOverride));
         ApplyFocusPosition(earth);
     }
 

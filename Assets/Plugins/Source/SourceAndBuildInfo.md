@@ -4,14 +4,14 @@ This folder contains the C++ source file (`Dopri54Physics.cpp`) used to build th
 
 ### Purpose
 
-This code handles all N-body gravity and RK4 integration calculations. Included here for transparency and to allow modification or rebuilding if needed.
+This code handles the native gravity, force accumulation, and Dormand-Prince integration used by the runtime physics plugin. Included here for transparency and to allow modification or rebuilding if needed.
 
 ### How to Build the DLL
 
 1. Use any C++ compiler that supports dynamic linking.
 2. Compile the source into a Windows DLL using a command like:
 
-```
+```text
 g++ -shared -fPIC -o PhysicsPlugin.dll Dopri54Physics.cpp
 ```
 
@@ -23,5 +23,4 @@ g++ -shared -fPIC -o PhysicsPlugin.dll Dopri54Physics.cpp
 
 ### Notes
 
-Unity doesn’t directly use the `.cpp` file — only the compiled DLL. This file is included for review, debugging, or extending the physics logic.
-
+Unity does not directly use the `.cpp` file, only the compiled DLL. This file is included for review, debugging, or extending the physics logic.

@@ -112,9 +112,9 @@ public class ObjectPlacementManager_EditModeTests
         spawner.transform.SetParent(rig.Root.transform, false);
         SetPrivateField(mgr, "_satelliteSpawner", spawner);
 
-        var vdm = new GameObject("VelocityDragManager").AddComponent<VelocityDragManager>();
-        vdm.transform.SetParent(rig.Root.transform, false);
-        SetPrivateField(mgr, "_velocityDragManager", vdm);
+        var placementController = new GameObject("PendingVelocityPlacementController").AddComponent<PendingVelocityPlacementController>();
+        placementController.transform.SetParent(rig.Root.transform, false);
+        SetPrivateField(mgr, "_pendingVelocityPlacementController", placementController);
 
         rig.Ctx.ObjectPlacementManager = mgr;
 

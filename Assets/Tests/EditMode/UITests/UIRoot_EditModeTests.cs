@@ -160,13 +160,13 @@ public class UIRoot_EditModeTests
         rig.Controller.BreakToFreeCam();
         yield return null;
 
-        var dragManager = new GameObject("VelocityDragManager").AddComponent<VelocityDragManager>();
-        dragManager.transform.SetParent(rig.Root.transform, false);
-        rig.Ctx.VelocityDragManager = dragManager;
+        var placementController = new GameObject("PendingVelocityPlacementController").AddComponent<PendingVelocityPlacementController>();
+        placementController.transform.SetParent(rig.Root.transform, false);
+        rig.Ctx.PendingVelocityPlacementController = placementController;
 
         var pendingPlaceholder = new GameObject("PendingPlaceholder");
         pendingPlaceholder.transform.SetParent(rig.Root.transform, false);
-        dragManager.ConfigurePendingPlacement(pendingPlaceholder, 1000f, Vector3.one * 20f);
+        placementController.ConfigurePendingPlacement(pendingPlaceholder, 1000f, Vector3.one * 20f);
 
         rig.UI.RefreshAllUi();
 
@@ -205,8 +205,8 @@ public class UIRoot_EditModeTests
         Assert.IsFalse(removeSatelliteButton.gameObject.activeSelf);
         Assert.IsFalse(confirmRemoveSatPanel.activeSelf);
 
-        dragManager.ResetDragManager();
-        dragManager.planet = null;
+        placementController.ResetVelocityManager();
+        placementController.planet = null;
         rig.UI.RefreshAllUi();
 
         Assert.IsFalse(earthButton.gameObject.activeSelf);

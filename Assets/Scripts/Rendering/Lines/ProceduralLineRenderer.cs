@@ -147,7 +147,11 @@ public class ProceduralLineRenderer : MonoBehaviour
         {
             Shader shader = Shader.Find("Custom/ProceduralScreenSpaceLine");
             if (shader == null)
+            {
                 shader = Shader.Find("Sprites/Default");
+                if (facingMode == LineFacingMode.GpuBillboard)
+                    facingMode = LineFacingMode.StaticTube;
+            }
 
             var mat = new Material(shader);
             if (!mat.shader)

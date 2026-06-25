@@ -5,6 +5,7 @@ using UnityEngine.UI;
 /// Shows a UI icon for the currently tracked target when the camera is far away,
 /// using CameraController's tracking events.
 /// </summary>
+[DefaultExecutionOrder(10000)]
 public class TrackedTargetIndicator : MonoBehaviour
 {
     [Header("References")]
@@ -16,7 +17,7 @@ public class TrackedTargetIndicator : MonoBehaviour
 
     [Header("Behavior")]
     [Tooltip("Distance from target (world units) beyond which the icon is shown.")]
-    [SerializeField] private float _showAtDistance = 1000f;
+    [SerializeField] private float _showAtDistance = 450f;
 
     [Tooltip("Optional extra offset above the target in world space.")]
     [SerializeField] private Vector3 _worldOffset = Vector3.zero;
@@ -29,6 +30,7 @@ public class TrackedTargetIndicator : MonoBehaviour
     [SerializeField] private bool _hideWhenOccludedByCentralBody = true;
 
     private Transform _currentTarget;
+    private Transform _lastRenderedTarget;
     private Vector2 _smoothedPos;
     private float _showAtDistanceSqr;
 
@@ -44,13 +46,18 @@ public class TrackedTargetIndicator : MonoBehaviour
         if (_canvas == null && _iconRect != null)
             _canvas = _iconRect.GetComponentInParent<Canvas>();
 
-        _showAtDistanceSqr = _showAtDistance * _showAtDistance;
+        RefreshShowDistanceCache();
 
         if (_iconRect != null)
         {
             _iconRect.gameObject.SetActive(false);
             _smoothedPos = _iconRect.anchoredPosition;
         }
+    }
+
+    private void OnValidate()
+    {
+        RefreshShowDistanceCache();
     }
 
     private void OnEnable()
@@ -62,7 +69,13 @@ public class TrackedTargetIndicator : MonoBehaviour
         _cameraController.OnTrackedPlaceholderChanged += HandleTrackedPlaceholderChanged;
         _cameraController.OnModeChanged += HandleModeChanged;
 
+        RefreshShowDistanceCache();
         UpdateCurrentTargetFromController();
+    }
+
+    private void RefreshShowDistanceCache()
+    {
+        _showAtDistanceSqr = _showAtDistance * _showAtDistance;
     }
 
     private void OnDisable()
@@ -77,19 +90,17 @@ public class TrackedTargetIndicator : MonoBehaviour
 
     private void HandleTrackedBodyChanged(NBody body)
     {
-        _currentTarget = body ? body.transform : null;
+        UpdateCurrentTargetFromController();
     }
 
     private void HandleTrackedPlaceholderChanged(Transform placeholder)
     {
-        if (_cameraController.CurrentBody == null)
-            _currentTarget = placeholder;
+        UpdateCurrentTargetFromController();
     }
 
     private void HandleModeChanged(CameraMode mode)
     {
-        if (mode == CameraMode.Free)
-            SetIconVisible(false);
+        UpdateCurrentTargetFromController();
     }
 
     private void UpdateCurrentTargetFromController()
@@ -97,10 +108,7 @@ public class TrackedTargetIndicator : MonoBehaviour
         if (_cameraController == null)
             return;
 
-        if (_cameraController.CurrentBody != null)
-            _currentTarget = _cameraController.CurrentBody.transform;
-        else
-            _currentTarget = _cameraController.CurrentPlaceholder;
+        _currentTarget = _cameraController.IndicatorTarget;
     }
 
     private void LateUpdate()
@@ -114,9 +122,11 @@ public class TrackedTargetIndicator : MonoBehaviour
             return;
         }
 
-        bool isEarthCam = _cameraController.Mode == CameraMode.Earth;
+        UpdateCurrentTargetFromController();
 
-        if (_currentTarget == null || _cameraController.Mode == CameraMode.Free)
+        bool isEarthCam = _cameraController.IsEarthView;
+
+        if (_currentTarget == null)
         {
             SetIconVisible(false);
             return;
@@ -189,12 +199,20 @@ public class TrackedTargetIndicator : MonoBehaviour
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(
                 canvasRect, screenPos, uiCam, out var localPoint))
         {
-            if (_followSmoothing > 0f)
-                _smoothedPos = Vector2.Lerp(_smoothedPos, localPoint, Time.unscaledDeltaTime * _followSmoothing);
-            else
+            bool wasHidden = !_iconRect.gameObject.activeSelf;
+            bool targetChanged = _lastRenderedTarget != _currentTarget;
+
+            if (wasHidden || targetChanged || _followSmoothing <= 0f)
                 _smoothedPos = localPoint;
+            else
+                _smoothedPos = Vector2.Lerp(
+                    _smoothedPos,
+                    localPoint,
+                    Mathf.Clamp01(Time.unscaledDeltaTime * _followSmoothing)
+                );
 
             _iconRect.anchoredPosition = _smoothedPos;
+            _lastRenderedTarget = _currentTarget;
             SetIconVisible(true);
         }
         else
@@ -238,5 +256,8 @@ public class TrackedTargetIndicator : MonoBehaviour
     {
         if (_iconRect.gameObject.activeSelf != visible)
             _iconRect.gameObject.SetActive(visible);
+
+        if (!visible)
+            _lastRenderedTarget = null;
     }
 }
