@@ -11,6 +11,7 @@ public class FlightUIController
     private readonly UIReferences refs;
     private readonly ManeuverNodeManager maneuverNodeManager;
     private readonly ThrustController thrustController;
+    private readonly EnginePanelUIController enginePanel;
 
     private ThrustUiMode thrustUiMode = ThrustUiMode.FreeThrust;
 
@@ -22,12 +23,18 @@ public class FlightUIController
         this.refs = refs;
         maneuverNodeManager = ctx != null ? ctx.ManeuverNodeManager : null;
         thrustController = ctx != null ? ctx.ThrustController : null;
+        enginePanel = new EnginePanelUIController(refs, ctx?.CameraTracker, maneuverNodeManager);
     }
 
     public void Initialize()
     {
         RefreshButtonLabel();
+        enginePanel.Initialize();
     }
+
+    public void Dispose() => enginePanel.Dispose();
+    public void Tick() => enginePanel.Tick();
+    public void SetGameplayVisible(bool visible) => enginePanel.SetGameplayVisible(visible);
 
     public void ToggleBurnMode()
     {
@@ -42,11 +49,17 @@ public class FlightUIController
             ? ThrustUiMode.ManeuverNodes
             : ThrustUiMode.FreeThrust;
 
+        // Leaving node editing cancels its draft and both prediction visuals.
+        // Use the manager's lifecycle so pending preview callbacks are invalidated too.
+        if (thrustUiMode == ThrustUiMode.FreeThrust)
+            maneuverNodeManager?.ClearNode();
+
         RefreshButtonLabel();
     }
 
     public void Apply(CameraMode cameraMode)
     {
+        enginePanel.RefreshSelection();
         bool isFreeCam = cameraMode == CameraMode.Free;
         ShowThrustPanels(!isFreeCam);
     }

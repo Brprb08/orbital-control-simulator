@@ -242,7 +242,7 @@ public class BodyService_EditModeTests
     }
 
     [Test]
-    public void Register_adds_AttitudeController_to_non_central_body()
+    public void Register_adds_AttitudeController_and_enables_it_only_while_tracked()
     {
         rig = SimTestBootstrap.CreateBasic(0);
 
@@ -253,7 +253,14 @@ public class BodyService_EditModeTests
 
         Assert.IsTrue(sat.TryGetComponent<AttitudeController>(out var att));
         Assert.NotNull(att);
-        Assert.IsTrue(att.enabled);
+        Assert.AreNotEqual(sat, rig.Controller.CurrentBody);
+        Assert.IsFalse(att.enabled, "Untracked bodies should not receive attitude ticks.");
+
+        rig.Controller.TrackBody(sat);
+        Assert.IsTrue(att.enabled, "Tracking must re-enable the registered controller.");
+
+        rig.Controller.BreakToFreeCam();
+        Assert.IsFalse(att.enabled, "Leaving tracking must disable attitude ticks again.");
     }
 
     [Test]

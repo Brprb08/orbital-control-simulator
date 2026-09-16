@@ -6,6 +6,18 @@ using Unity.Mathematics;
 
 public static class NativePhysics
 {
+    /// <summary>Shared live/preview finite-burn integration. Previews supply copied fuel buffers.
+    /// Only finite entries consume fuel; returned delta-v is in world units/s.</summary>
+    [DllImport("PhysicsPlugin", EntryPoint = "BatchTwoBodyIntegrateMuExWithFuel", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void BatchTwoBodyIntegrateMuExWithFuel(
+        [In, Out] double3[] positions, [In, Out] double3[] velocities,
+        [In] double[] masses, [In] Vector3[] thrusts,
+        [In] float[] dragCoeffs, [In] float[] areasUU,
+        [In] sbyte[] normalSign, [In] byte[] isThrusting, [In, Out] sbyte[] latchedParityIO,
+        int count, double muUnity, float totalDt, int substeps, [Out] double[] deltaVOut,
+        [In] double[] dryMasses, [In, Out] double[] fuelMasses,
+        [In] double[] ispSeconds, [In] byte[] finiteFuel);
+
     [DllImport("kernel32.dll", SetLastError = true)]
     private static extern IntPtr LoadLibrary(string dllToLoad);
 
@@ -40,6 +52,24 @@ public static class NativePhysics
     float totalDt,
     int substeps
 );
+
+    /// <summary>Returns applied thrust delta-v in world units/s, excluding gravity and drag.</summary>
+    [DllImport("PhysicsPlugin", EntryPoint = "BatchTwoBodyIntegrateMuExWithDeltaV", CallingConvention = CallingConvention.Cdecl)]
+    public static extern void BatchTwoBodyIntegrateMuExWithDeltaV(
+        [In, Out] double3[] positions,
+        [In, Out] double3[] velocities,
+        [In] double[] masses,
+        [In] Vector3[] thrusts,
+        [In] float[] dragCoeffs,
+        [In] float[] areasUU,
+        [In] sbyte[] normalSign,
+        [In] byte[] isThrusting,
+        [In, Out] sbyte[] latchedParityIO,
+        int count,
+        double muUnity,
+        float totalDt,
+        int substeps,
+        [Out] double[] deltaVOut);
 
 }
 

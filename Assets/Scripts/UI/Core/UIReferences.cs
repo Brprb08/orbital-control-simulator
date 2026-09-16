@@ -15,6 +15,7 @@ public class UIReferences : MonoBehaviour
     public Button placeObjectButton;
     public Button placeKeplerObjectButton;
     public Button placeTleObjectButton;
+    public Button placeConstellationObjectButton;
     public Button placementModeButton;
     public Button randomSatelliteButton;
     public Button burnControlButton;
@@ -40,7 +41,10 @@ public class UIReferences : MonoBehaviour
     public GameObject placementSelectPanel;
     public GameObject randomPlacementPanel;
     public GameObject cameraControls;
+    [Tooltip("Parent object containing the constellation plane next/previous buttons.")]
+    public GameObject constellationNavigationPanel;
     public GameObject placeKeplerPanel;
+    public GameObject placeConstellationPanel;
     public GameObject confirmRemoveSatPanel;
     public GameObject attitudeControlPanel;
     public GameObject tutorialPanel;
@@ -49,10 +53,12 @@ public class UIReferences : MonoBehaviour
     public TMP_InputField nameInputField;
     public TMP_InputField positionInputField;
     public TMP_InputField massInputField;
+    public TMP_InputField fuelMassInputField;
     public TMP_InputField radiusInputField;
     public TMP_InputField velocityInputField;
     public TMP_InputField kepNameInputField;
     public TMP_InputField kepMassInputField;
+    public TMP_InputField kepFuelMassInputField;
     public TMP_InputField kepADegOrMetersInputField;
     public TMP_InputField kepEccInputField;
     public TMP_InputField kepIncDegInputField;
@@ -61,8 +67,22 @@ public class UIReferences : MonoBehaviour
     public TMP_InputField kepTrueAnomDegInputField;
     public TMP_InputField tleNameInputField;
     public TMP_InputField tleMassInputField;
+    public TMP_InputField tleFuelMassInputField;
     public TMP_InputField tleLine1InputField;
     public TMP_InputField tleLine2InputField;
+    public TMP_InputField constellationNamePrefixInputField;
+    public TMP_InputField constellationMassInputField;
+    public TMP_InputField constellationFuelMassInputField;
+    public TMP_InputField constellationSemiMajorAxisInputField;
+    public TMP_InputField constellationEccInputField;
+    public TMP_InputField constellationIncDegInputField;
+    public TMP_InputField constellationArgPDegInputField;
+    public TMP_InputField constellationRAANStartDegInputField;
+    public TMP_InputField constellationRAANSpreadDegInputField;
+    public TMP_InputField constellationPlanesInputField;
+    public TMP_InputField constellationSatellitesPerPlaneInputField;
+    public TMP_InputField constellationWalkerPhaseInputField;
+    public TMP_InputField constellationTrueAnomalyOffsetDegInputField;
 
     [Header("Dropdowns")]
     public TMP_Dropdown trackedSatellites;
@@ -88,4 +108,18 @@ public class UIReferences : MonoBehaviour
 
     [Header("Sliders")]
     public Slider timeSlider;
+
+    [Header("Engine Panel")]
+    public Button enginePanelButton;
+    public GameObject enginePanel;
+    public TMP_Dropdown enginePresetDropdown;
+    public TMP_InputField engineThrustInputField;
+    public TMP_InputField engineIspInputField;
+    public TMP_InputField engineMassInputField;
+    public TMP_InputField engineFuelMassInputField;
+    [Tooltip("Checked = Unlimited (default); unchecked = Finite. Code binds the event.")]
+    public Toggle engineUnlimitedFuelToggle;
+    public TMP_Text engineTargetText;
+    public TMP_Text engineReadoutText;
+    public TMP_Text engineStatusText;
 }

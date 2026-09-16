@@ -1,104 +1,124 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using UnityEngine.UI;
 
 /// <summary>
-/// Draggable UI panel that follows the pointer while keeping itself fully within the parent canvas.
-/// Optionally confines the cursor to the game window during the drag.
+/// Shared panel dragging for tutorial and flight panels. Only background gestures
+/// move the panel; child controls retain their normal pointer behavior.
 /// </summary>
+[RequireComponent(typeof(RectTransform))]
 public class TutorialDragPanel : MonoBehaviour, IBeginDragHandler, IDragHandler, IEndDragHandler, IPointerDownHandler
 {
-    [SerializeField] private Canvas canvas; // Assign in Inspector
+    [SerializeField] private Canvas canvas;
     [SerializeField] private bool confineCursorWhileDragging = true;
 
     private RectTransform rt;
     private RectTransform canvasRect;
-
+    private bool dragging;
+    private bool cursorChanged;
+    private int dragPointerId;
     private CursorLockMode prevLock;
     private bool prevVisible;
+    private readonly Vector3[] panelCorners = new Vector3[4];
 
-    /// <summary>
-    /// Caches RectTransform references for the panel and its canvas.
-    /// </summary>
-    void Awake()
+    private void Awake()
     {
         rt = GetComponent<RectTransform>();
-        canvasRect = canvas.GetComponent<RectTransform>();
+        if (canvas == null) canvas = GetComponentInParent<Canvas>();
+        if (canvas != null) canvasRect = canvas.rootCanvas.transform as RectTransform;
     }
 
-    /// <summary>
-    /// Brings the panel to the front when clicked.
-    /// </summary>
+    private bool CanStartDrag(PointerEventData eventData)
+    {
+        if (eventData.button != PointerEventData.InputButton.Left || canvasRect == null)
+            return false;
+
+        // Inspect the original press, not whichever graphic the pointer crosses later.
+        GameObject hit = eventData.pointerPressRaycast.gameObject;
+        if (hit == null || !hit.transform.IsChildOf(transform)) return false;
+        for (Transform child = hit.transform; child != transform; child = child.parent)
+        {
+            if (child.GetComponent<Selectable>() != null || child.GetComponent<ScrollRect>() != null)
+                return false;
+        }
+        return true;
+    }
+
     public void OnPointerDown(PointerEventData eventData)
     {
-        transform.SetAsLastSibling();
+        if (CanStartDrag(eventData)) transform.SetAsLastSibling();
     }
 
-    /// <summary>
-    /// Starts a drag operation and (optionally) confines the cursor to the window.
-    /// </summary>
     public void OnBeginDrag(PointerEventData eventData)
     {
+        if (dragging || !CanStartDrag(eventData)) return;
+        dragging = true;
+        dragPointerId = eventData.pointerId;
         if (confineCursorWhileDragging)
         {
             prevLock = Cursor.lockState;
             prevVisible = Cursor.visible;
-
+            cursorChanged = true;
             Cursor.lockState = CursorLockMode.Confined;
             Cursor.visible = true;
         }
     }
 
-    /// <summary>
-    /// Moves the panel with the pointer and clamps it to the canvas bounds.
-    /// </summary>
     public void OnDrag(PointerEventData eventData)
     {
-        rt.anchoredPosition += eventData.delta / canvas.scaleFactor;
-        ClampToCanvas();
+        if (!dragging || eventData.pointerId != dragPointerId) return;
+        RectTransform parent = rt.parent as RectTransform;
+        if (parent == null) return;
+        if (RectTransformUtility.ScreenPointToLocalPointInRectangle(parent,
+                eventData.position - eventData.delta, eventData.pressEventCamera, out Vector2 previous) &&
+            RectTransformUtility.ScreenPointToLocalPointInRectangle(parent,
+                eventData.position, eventData.pressEventCamera, out Vector2 current))
+        {
+            rt.anchoredPosition += current - previous;
+            ClampToCanvas();
+        }
     }
 
-    /// <summary>
-    /// Ends the drag operation and restores the previous cursor state.
-    /// </summary>
     public void OnEndDrag(PointerEventData eventData)
     {
-        if (confineCursorWhileDragging)
-        {
-            Cursor.lockState = prevLock;
-            Cursor.visible = prevVisible;
-        }
+        if (dragging && eventData.pointerId == dragPointerId) EndDrag();
     }
 
-    /// <summary>
-    /// Keeps the panel fully on-screen by clamping its world-space corners to the canvas.
-    /// </summary>
     private void ClampToCanvas()
     {
-        Vector3[] canvasCorners = new Vector3[4];
-        Vector3[] panelCorners = new Vector3[4];
-
-        canvasRect.GetWorldCorners(canvasCorners);
         rt.GetWorldCorners(panelCorners);
-
-        Vector3 pos = rt.position;
-
-        if (panelCorners[0].x < canvasCorners[0].x) pos.x += canvasCorners[0].x - panelCorners[0].x; // left
-        if (panelCorners[2].x > canvasCorners[2].x) pos.x -= panelCorners[2].x - canvasCorners[2].x; // right
-        if (panelCorners[0].y < canvasCorners[0].y) pos.y += canvasCorners[0].y - panelCorners[0].y; // bottom
-        if (panelCorners[1].y > canvasCorners[1].y) pos.y -= panelCorners[1].y - canvasCorners[1].y; // top
-
-        rt.position = pos;
-    }
-
-    /// <summary>
-    /// Restores a safe cursor state if the panel is disabled mid-drag.
-    /// </summary>
-    void OnDisable()
-    {
-        if (confineCursorWhileDragging)
+        Vector2 min = new Vector2(float.PositiveInfinity, float.PositiveInfinity);
+        Vector2 max = new Vector2(float.NegativeInfinity, float.NegativeInfinity);
+        foreach (Vector3 corner in panelCorners)
         {
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
+            Vector2 local = canvasRect.InverseTransformPoint(corner);
+            min = Vector2.Min(min, local);
+            max = Vector2.Max(max, local);
         }
+        Rect bounds = canvasRect.rect;
+        float x = ClampOffset(min.x, max.x, bounds.xMin, bounds.xMax);
+        float y = ClampOffset(min.y, max.y, bounds.yMin, bounds.yMax);
+        rt.position += canvasRect.TransformVector(new Vector3(x, y, 0f));
     }
+
+    private static float ClampOffset(float min, float max, float boundMin, float boundMax)
+    {
+        // Oversized panels cannot fit: center that axis instead of oscillating between edges.
+        if (max - min > boundMax - boundMin)
+            return (boundMin + boundMax - min - max) * 0.5f;
+        if (min < boundMin) return boundMin - min;
+        if (max > boundMax) return boundMax - max;
+        return 0f;
+    }
+
+    private void EndDrag()
+    {
+        dragging = false;
+        if (!cursorChanged) return;
+        Cursor.lockState = prevLock;
+        Cursor.visible = prevVisible;
+        cursorChanged = false;
+    }
+
+    private void OnDisable() => EndDrag();
 }

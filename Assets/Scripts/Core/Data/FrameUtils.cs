@@ -33,14 +33,5 @@ static class FrameUtils
     /// <param name="metersPerUnit">Conversion factor between meters and Unity units.</param>
     /// <returns>Converted velocity vector in Unity space.</returns>
     public static Vector3 VelEciToUnity(Vector3d vEci_mps, double metersPerUnit)
-    {
-        double uPerM = 1.0 / Math.Max(1e-9, metersPerUnit);
-
-        // Axis remapping: Unity.Y = ECI.Z, Unity.Z = ECI.Y
-        return new Vector3(
-            (float)(vEci_mps.x * uPerM),
-            (float)(vEci_mps.z * uPerM),
-            (float)(vEci_mps.y * uPerM)
-        );
-    }
+        => EciToUnity(vEci_mps, metersPerUnit);
 }

@@ -74,6 +74,8 @@ public class UIRoot : MonoBehaviour
         RefreshAll();
     }
 
+    private void LateUpdate() => flightUI?.Tick();
+
     private void OnDestroy()
     {
         UnbindCameraEvents();
@@ -81,6 +83,7 @@ public class UIRoot : MonoBehaviour
 
         timeUI?.Dispose();
         trajectoryUI?.Dispose();
+        flightUI?.Dispose();
     }
 
     private void BindButtons()
@@ -96,6 +99,9 @@ public class UIRoot : MonoBehaviour
 
         if (refs.placementModeButton != null)
             refs.placementModeButton.onClick.AddListener(OnPlacementModePressed);
+
+        if (refs.placeConstellationObjectButton != null)
+            refs.placeConstellationObjectButton.onClick.AddListener(OnPlaceConstellationPressed);
 
         if (refs.burnControlButton != null)
             refs.burnControlButton.onClick.AddListener(OnBurnModePressed);
@@ -120,6 +126,9 @@ public class UIRoot : MonoBehaviour
 
         if (refs.placementModeButton != null)
             refs.placementModeButton.onClick.RemoveListener(OnPlacementModePressed);
+
+        if (refs.placeConstellationObjectButton != null)
+            refs.placeConstellationObjectButton.onClick.RemoveListener(OnPlaceConstellationPressed);
 
         if (refs.burnControlButton != null)
             refs.burnControlButton.onClick.RemoveListener(OnBurnModePressed);
@@ -151,6 +160,13 @@ public class UIRoot : MonoBehaviour
 
     private void HandleModeChanged(CameraMode mode)
     {
+        // A return to Free Cam starts a fresh placement session. Clear stale
+        // results once on the transition, not on ordinary UI refreshes/errors.
+        bool manualPlacementActive = ctx?.PendingVelocityPlacementController != null &&
+                                     ctx.PendingVelocityPlacementController.IsManualVelocityPlacementActive;
+        if (mode == CameraMode.Free && !manualPlacementActive && refs.feedbackText != null)
+            refs.feedbackText.text = string.Empty;
+
         RefreshAll();
     }
 
@@ -177,7 +193,7 @@ public class UIRoot : MonoBehaviour
                               ctx.ThrustController != null &&
                               ctx.ThrustController.IsNodeBurnActive;
 
-        cameraModeUI?.Apply(cameraTracker, showManualVelocityUi);
+        cameraModeUI?.Apply(cameraTracker, showManualVelocityUi, ctx?.ConstellationRegistry);
         placementUI?.Apply(mode, showManualVelocityUi);
         flightUI?.Apply(mode);
         tutorialUI?.Apply();
@@ -233,6 +249,13 @@ public class UIRoot : MonoBehaviour
         EventSystem.current?.SetSelectedGameObject(null);
     }
 
+    private void OnPlaceConstellationPressed()
+    {
+        objectPlacementManager?.PlaceConstellation();
+        RefreshAll();
+        EventSystem.current?.SetSelectedGameObject(null);
+    }
+
     private void OnBurnModePressed()
     {
         flightUI?.ToggleBurnMode();
@@ -277,6 +300,7 @@ public class UIRoot : MonoBehaviour
     // TIME CONTROLS
     public void SetGameplayUiVisibleForPause(bool show)
     {
+        flightUI?.SetGameplayVisible(show);
         if (!show)
         {
             SetActive(refs.thrustButtons, false);
@@ -289,10 +313,12 @@ public class UIRoot : MonoBehaviour
             SetActive(refs.objectPlacementPanel, false);
             SetActive(refs.placeTLEPanel, false);
             SetActive(refs.placeKeplerPanel, false);
+            SetActive(refs.placeConstellationPanel, false);
             SetActive(refs.placementSelectPanel, false);
             SetActive(refs.randomPlacementPanel, false);
 
             SetActive(refs.cameraControls, false);
+            SetActive(refs.constellationNavigationPanel, false);
             SetActive(refs.confirmRemoveSatPanel, false);
 
             return;

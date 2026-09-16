@@ -1,10 +1,12 @@
+using System;
 using UnityEngine;
 
 /// <summary>
-/// Builds and spawns satellites from three placement paths:
+/// Builds and spawns satellites from four placement paths:
 /// 1) Manual position/mass/radius
 /// 2) Keplerian elements
 /// 3) TLE
+/// 4) Constellation layouts
 /// UI field plumbing lives in PlacementFieldsUI, while placement mode/panel
 /// visibility lives in PlacementUIController. PendingSatellitePlacement names
 /// the manual-placement state where a placeholder exists but needs velocity.
@@ -24,14 +26,17 @@ public class ObjectPlacementManager : MonoBehaviour
     private PlacementSpawnBuilder _spawnBuilder;
 
     [Header("Units & Central Body")]
-    [Tooltip("Meters per 1 sim unit. If world units are kilometers, set this to 1000.")]
-    [SerializeField] private double _metersPerUnit = 10000.0;
+    [Tooltip("Placement input scale. The simulation and native physics use 10,000 meters per unit; this field does not rescale physics.")]
+    [SerializeField] private double _metersPerUnit = SimulationUnits.MetersPerUnit;
 
     [Tooltip("Standard gravitational parameter μ = GM of the central body, in m^3/s^2 (Earth by default).")]
-    [SerializeField] private double _mu = 3.986004418e14;
+    [SerializeField] private double _mu = PhysicsConstants.EarthMuMeters;
 
     [Tooltip("Earth radius in meters (used for simple safety checks).")]
-    [SerializeField] private double _earthRadiusMeters = 6378137.0;
+    [SerializeField] private double _earthRadiusMeters = PhysicsConstants.EarthRadiusMeters;
+
+    [Header("Constellations")]
+    [SerializeField, Min(1)] private int _maxConstellationSatellites = ConstellationGenerator.DefaultMaxSatellites;
 
     [Header("Ghost Preview")]
     [SerializeField] private GameObject _ghostPreviewPrefab;
@@ -123,7 +128,8 @@ public class ObjectPlacementManager : MonoBehaviour
             placement.Position,
             placement.RadiusMeters,
             placement.Mass,
-            _pendingVelocityPlacementController
+            _pendingVelocityPlacementController,
+            placement.FuelMassKg
         );
 
         PendingPlacement.Set(placeholder);
@@ -169,7 +175,8 @@ public class ObjectPlacementManager : MonoBehaviour
             spawn.Position,
             (float)spawn.Mass,
             spawn.Velocity,
-            trackAfterSpawn: true
+            trackAfterSpawn: true,
+            fuelMassKg: spawn.FuelMassKg
         );
 
         ClearAllFields();
@@ -205,7 +212,8 @@ public class ObjectPlacementManager : MonoBehaviour
             tle.Spawn.Position,
             (float)tle.Spawn.Mass,
             tle.Spawn.Velocity,
-            trackAfterSpawn: true
+            trackAfterSpawn: true,
+            fuelMassKg: tle.Spawn.FuelMassKg
         );
 
         ClearAllFields();
@@ -219,7 +227,90 @@ public class ObjectPlacementManager : MonoBehaviour
     }
 
     /// <summary>
-    /// Clears all input fields for manual, Kepler, and TLE placement.
+    /// Constellation placement flow: validates Walker-style layout inputs,
+    /// generates individual Keplerian states, and spawns each member as a
+    /// normal satellite with constellation metadata attached.
+    /// </summary>
+    public void PlaceConstellation()
+    {
+        if (!CanStartPlacement(out var gateErr))
+        {
+            SetFeedback(gateErr);
+            return;
+        }
+
+        if (!_spawnBuilder.TryBuildConstellationSpawn(
+                _maxConstellationSatellites,
+                out var constellation,
+                out string error))
+        {
+            SetFeedback(error);
+            return;
+        }
+
+        string constellationId = Guid.NewGuid().ToString("N");
+        NBody firstBody = null;
+        var spawnedMembers = new System.Collections.Generic.List<NBody>(constellation.Members.Count);
+
+        _satelliteSpawner.BeginBulkSpawn();
+        try
+        {
+            foreach (var member in constellation.Members)
+            {
+                NBody body = _satelliteSpawner.SpawnSatellite(
+                    member.Spawn.Name,
+                    member.Spawn.Position,
+                    (float)member.Spawn.Mass,
+                    member.Spawn.Velocity,
+                    trackAfterSpawn: false,
+                    fuelMassKg: member.Spawn.FuelMassKg
+                );
+
+                var metadata = body.GetComponent<ConstellationMember>();
+                if (metadata == null)
+                    metadata = body.gameObject.AddComponent<ConstellationMember>();
+
+                metadata.Configure(
+                    constellationId,
+                    constellation.Definition.NamePrefix,
+                    member.PlaneIndex,
+                    member.SlotIndex,
+                    member.MemberIndex
+                );
+
+                if (firstBody == null)
+                    firstBody = body;
+
+                spawnedMembers.Add(body);
+            }
+        }
+        finally
+        {
+            _satelliteSpawner.EndBulkSpawn();
+        }
+
+        _ctx?.ConstellationRegistry?.RegisterConstellation(
+            constellationId,
+            constellation.Definition,
+            spawnedMembers
+        );
+
+        if (firstBody != null)
+            _satelliteSpawner.TrackBody(firstBody);
+
+        ClearAllFields();
+        SetFeedback(
+            $"Created constellation '{constellation.Definition.NamePrefix}' with " +
+            $"{constellation.Definition.TotalSatellites} satellites across " +
+            $"{constellation.Definition.Planes} planes."
+        );
+
+        PendingPlacement.Clear();
+        UpdateTrackCamButtonState(false);
+    }
+
+    /// <summary>
+    /// Clears all input fields for manual, Kepler, TLE, and constellation placement.
     /// </summary>
     public void ClearAllFields()
     {

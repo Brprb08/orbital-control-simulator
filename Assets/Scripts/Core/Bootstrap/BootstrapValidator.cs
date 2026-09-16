@@ -31,9 +31,12 @@ public static class BootstrapValidator
         Require(references.timeController, nameof(references.timeController), missing);
         Require(references.trajectoryComputeController, nameof(references.trajectoryComputeController), missing);
         Require(references.objectPlacementManager, nameof(references.objectPlacementManager), missing);
+        Require(references.constellationRegistry, nameof(references.constellationRegistry), missing);
         Require(references.pendingVelocityPlacementController, nameof(references.pendingVelocityPlacementController), missing);
         Require(references.randomSatelliteSpawner, nameof(references.randomSatelliteSpawner), missing);
         Require(references.satelliteSpawner, nameof(references.satelliteSpawner), missing);
+        Require(references.constellationTrajectoryOverlay, nameof(references.constellationTrajectoryOverlay), missing);
+        Require(references.constellationIndicatorController, nameof(references.constellationIndicatorController), missing);
         Require(references.rocketThrustAudio, nameof(references.rocketThrustAudio), missing);
         Require(references.tutorialController, nameof(references.tutorialController), missing);
         Require(references.attitudeUIController, nameof(references.attitudeUIController), missing);

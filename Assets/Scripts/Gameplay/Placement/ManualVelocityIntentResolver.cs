@@ -48,7 +48,7 @@ public static class ManualVelocityIntentResolver
             return false;
         }
 
-        if (!(centralBody.trueMass > 0.0))
+        if (!(centralBody.TotalMassKilograms > 0.0))
         {
             error = "Central body mass is invalid; cannot compute circular speed.";
             return false;
@@ -67,7 +67,7 @@ public static class ManualVelocityIntentResolver
             return false;
         }
 
-        double mu = PhysicsConstants.G * centralBody.trueMass;
+        double mu = PhysicsConstants.G * centralBody.TotalMassKilograms;
         float circularSpeed = Mathf.Sqrt((float)(mu / radius));
         if (!float.IsFinite(circularSpeed) || circularSpeed <= 0f)
         {

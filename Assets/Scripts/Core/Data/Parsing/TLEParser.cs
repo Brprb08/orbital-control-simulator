@@ -9,7 +9,7 @@ using System.Globalization;
 public static class TLEParser
 {
     // Gravitational parameter μ for Earth (m^3/s^2). Match your scene value to avoid drift.
-    private const double MU = 3.986004418e14;
+    private const double MU = PhysicsConstants.EarthMuMeters;
 
     /// <summary>
     /// Parses a TLE (line 1 and line 2), propagates to whenUtc using a two-body model,
@@ -26,7 +26,15 @@ public static class TLEParser
     public static bool TryPropagate(
         string line1, string line2, DateTime whenUtc,
         out Vector3d rEci_m, out Vector3d vEci_mps, out DateTime tleEpochUtc)
+        => TryPropagate(line1, line2, whenUtc, out rEci_m, out vEci_mps, out tleEpochUtc, out _, out _);
+
+    public static bool TryPropagate(
+        string line1, string line2, DateTime whenUtc,
+        out Vector3d rEci_m, out Vector3d vEci_mps, out DateTime tleEpochUtc,
+        out double semiMajorAxisMeters, out double eccentricity)
     {
+        semiMajorAxisMeters = 0;
+        eccentricity = 0;
         rEci_m = default;
         vEci_mps = default;
         tleEpochUtc = default;
@@ -36,11 +44,14 @@ public static class TLEParser
             // Line 1 fields
             // Col 19-20: epoch year (YY)
             // Col 21-32: epoch day of year (with fraction)
-            string l1 = line1;
-            string l2 = line2;
+            string l1 = line1?.TrimEnd();
+            string l2 = line2?.TrimEnd();
+            if (!ValidLine(l1, '1') || !ValidLine(l2, '2') || l1.Substring(2, 5) != l2.Substring(2, 5))
+                return false;
 
+            if (!char.IsDigit(l1[18]) || !char.IsDigit(l1[19])) return false;
             int epochYY = int.Parse(l1.Substring(18, 2), CultureInfo.InvariantCulture);
-            double epochDay = double.Parse(l1.Substring(20, 12), CultureInfo.InvariantCulture);
+            double epochDay = double.Parse(l1.Substring(20, 12), NumberStyles.Float, CultureInfo.InvariantCulture);
             tleEpochUtc = TleEpochToUtc(epochYY, epochDay);
 
             // Line 2 fields
@@ -50,12 +61,17 @@ public static class TLEParser
             // Col 35-42: argument of perigee (deg)
             // Col 44-51: mean anomaly (deg)
             // Col 53-63: mean motion (rev/day)
-            double incDeg = double.Parse(l2.Substring(8, 8), CultureInfo.InvariantCulture);
-            double raanDeg = double.Parse(l2.Substring(17, 8), CultureInfo.InvariantCulture);
+            double incDeg = double.Parse(l2.Substring(8, 8), NumberStyles.Float, CultureInfo.InvariantCulture);
+            double raanDeg = double.Parse(l2.Substring(17, 8), NumberStyles.Float, CultureInfo.InvariantCulture);
             double ecc = ParseEcc(l2.Substring(26, 7));
-            double argpDeg = double.Parse(l2.Substring(34, 8), CultureInfo.InvariantCulture);
-            double mDeg = double.Parse(l2.Substring(43, 8), CultureInfo.InvariantCulture);
-            double nRevPerDay = double.Parse(l2.Substring(52, 11), CultureInfo.InvariantCulture);
+            double argpDeg = double.Parse(l2.Substring(34, 8), NumberStyles.Float, CultureInfo.InvariantCulture);
+            double mDeg = double.Parse(l2.Substring(43, 8), NumberStyles.Float, CultureInfo.InvariantCulture);
+            double nRevPerDay = double.Parse(l2.Substring(52, 11), NumberStyles.Float, CultureInfo.InvariantCulture);
+
+            if (!double.IsFinite(incDeg) || incDeg < 0 || incDeg > 180 ||
+                !ValidAngle(raanDeg) || !ValidAngle(argpDeg) || !ValidAngle(mDeg) ||
+                !double.IsFinite(nRevPerDay) || nRevPerDay <= 0)
+                return false;
 
             // Mean motion (rad/s) and semi-major axis (m)
             double n_rad_s = nRevPerDay * 2.0 * Math.PI / 86400.0;
@@ -75,6 +91,8 @@ public static class TLEParser
             (rEci_m, vEci_mps) = KeplerUtils.FromElements(
                 a_m, ecc, incDeg, raanDeg, argpDeg, nuD, MU);
 
+            semiMajorAxisMeters = a_m;
+            eccentricity = ecc;
             return true;
         }
         catch
@@ -90,6 +108,8 @@ public static class TLEParser
     {
         int year = (yy >= 57) ? (1900 + yy) : (2000 + yy);
         DateTime jan1 = new DateTime(year, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+        if (!double.IsFinite(dayOfYear) || dayOfYear < 1 || dayOfYear >= (DateTime.IsLeapYear(year) ? 367 : 366))
+            throw new FormatException("Invalid TLE epoch day.");
         int whole = (int)Math.Floor(dayOfYear) - 1; // day 1 → Jan 1
         double frac = dayOfYear - Math.Floor(dayOfYear);
         return jan1.AddDays(whole).AddSeconds(frac * 86400.0);
@@ -100,9 +120,34 @@ public static class TLEParser
     /// </summary>
     private static double ParseEcc(string s)
     {
-        s = s.Trim();
-        if (string.IsNullOrEmpty(s)) return 0.0;
-        return long.TryParse(s, out long v) ? v * 1e-7 : 0.0;
+        if (s.Length != 7) throw new FormatException("Invalid TLE eccentricity.");
+        for (int i = 0; i < s.Length; i++)
+            if (s[i] < '0' || s[i] > '9') throw new FormatException("Invalid TLE eccentricity.");
+        return int.Parse(s, CultureInfo.InvariantCulture) * 1e-7;
+    }
+
+    private static bool ValidAngle(double value) => double.IsFinite(value) && value >= 0 && value < 360;
+
+    private static bool ValidLine(string line, char number)
+    {
+        if (line == null || line.Length != 69 || line[0] != number || line[1] != ' ' ||
+            line[68] < '0' || line[68] > '9') return false;
+        string catalog = line.Substring(2, 5).TrimStart();
+        if (catalog.Length == 0) return false;
+        for (int i = 0; i < catalog.Length; i++)
+        {
+            char c = catalog[i];
+            bool alpha5 = i == 0 && catalog.Length == 5 && c >= 'A' && c <= 'Z' && c != 'I' && c != 'O';
+            if (!alpha5 && (c < '0' || c > '9')) return false;
+        }
+        int checksum = 0;
+        for (int i = 0; i < 68; i++)
+        {
+            char c = line[i];
+            if (c >= '0' && c <= '9') checksum += c - '0';
+            else if (c == '-') checksum++;
+        }
+        return checksum % 10 == line[68] - '0';
     }
 
     private static double Deg2Rad(double d) => d * Math.PI / 180.0;
@@ -129,6 +174,8 @@ public static class TLEParser
             E += dE;
             if (Math.Abs(dE) < 1e-12) break;
         }
+        if (!double.IsFinite(E) || Math.Abs(E - e * Math.Sin(E) - M) > 1e-10)
+            throw new ArithmeticException("TLE propagation did not converge.");
         return E;
     }
 

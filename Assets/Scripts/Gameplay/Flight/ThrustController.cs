@@ -1,25 +1,29 @@
 using UnityEngine;
 using UnityEngine.EventSystems;
+using System.Collections.Generic;
+using UnityEngine.Serialization;
 
 /// <summary>
-/// Applies directional thrust to the tracked craft and keeps visual thrust effects in sync.
-/// Integrates with UI inputs, tutorial flags, and trajectory updates.
+/// Owns manual/node burn state, scheduling, and the temporary time-scale limit.
+/// Physics consumes burn commands; audio and particles follow the active burn.
 /// </summary>
 [DefaultExecutionOrder(-100)]
 public class ThrustController : MonoBehaviour
 {
     [Header("Thrust Settings")]
-    public float maxForwardThrustMagnitude = 10f;
-    [Range(0f, 5f)]
-    public float thrustPowerScale = 1f;
+    [FormerlySerializedAs("maxForwardThrustMagnitude"), SerializeField, HideInInspector]
+    private float legacyThrustKilonewtons = 10f;
+    [FormerlySerializedAs("thrustPowerScale"), SerializeField, HideInInspector]
+    private float legacyThrustScale = 1f;
     [SerializeField, Min(0.01f)] private float maxThrustTimeScale = 30f;
     [SerializeField] private string thrustTimeScaleLimitMessage =
         "Thrust can only be performed at {0}x timescale and below.";
 
     /// <summary>
-    /// Effective thrust magnitude after scaling; use this instead of maxForwardThrustMagnitude.
+    /// Migration defaults only. Runtime burns read the target body's propulsion settings.
     /// </summary>
-    public float EffectiveForwardThrustMagnitude => maxForwardThrustMagnitude * thrustPowerScale;
+    public float LegacyDefaultThrustNewtons => legacyThrustKilonewtons * SimulationUnits.MetersPerKilometer;
+    public float LegacyDefaultThrustScale => legacyThrustScale;
 
     [Header("Visual Feedback")]
     public ParticleSystem thrustParticles;
@@ -37,8 +41,7 @@ public class ThrustController : MonoBehaviour
     private TutorialController tutorialController;
     private TimeController timeController;
 
-    private AttitudeController attitude;
-
+    private const float AttitudeLeadTime = 20f;
     private bool nodeBurnActive;
     private BurnType activeBurnType;
     private NBody activeBurnBody;
@@ -97,12 +100,26 @@ public class ThrustController : MonoBehaviour
         thrustParticles.Clear(true);
     }
 
+    private void OnDisable() => StopAllThrust();
+
     void FixedUpdate()
     {
         NBody ship = ResolveActiveShip();
-        if (ship == null) return;
+        if (ship == null)
+        {
+            if (isForwardThrustActive || activeBurnBody != null)
+                StopAllThrust();
+            return;
+        }
 
-        if (!attitude) attitude = ship.GetComponent<AttitudeController>();
+        if (!ship.HasUsableThrust)
+        {
+            StopThrustForBody(ship);
+            return;
+        }
+
+        if (!nodeBurnActive && isForwardThrustActive)
+            SetActiveBurnBody(ship);
 
         bool isThrustingNow = false;
 
@@ -115,15 +132,10 @@ public class ThrustController : MonoBehaviour
             }
             else
             {
-                ApplyThrust(ship, EffectiveForwardThrustMagnitude, burnDir);
+                ApplyThrust(ship, burnDir);
             }
             isThrustingNow = true;
         }
-
-        bool holdCurrent = attitude != null &&
-                           attitude.mode == AttitudeController.PointingMode.HoldCurrent;
-
-        ship.projectLateralPerSubstep = IsLateralBurnActive() && !holdCurrent;
 
         if (!isThrustingNow)
         {
@@ -163,16 +175,6 @@ public class ThrustController : MonoBehaviour
         );
     }
 
-    private bool IsLateralBurnActive()
-    {
-        if (nodeBurnActive)
-            return activeBurnType == BurnType.Normal || activeBurnType == BurnType.AntiNormal;
-
-        return attitude != null &&
-               (attitude.mode == AttitudeController.PointingMode.Normal ||
-                attitude.mode == AttitudeController.PointingMode.AntiNormal);
-    }
-
     private void StopThrustVisuals()
     {
         if (!thrustParticles) return;
@@ -187,26 +189,28 @@ public class ThrustController : MonoBehaviour
 
     public void ApplyThrust(
         NBody targetBody,
-        float magnitude,
         Vector3 thrustDirection,
         float rampedThrustFactor = 1f
     )
     {
-        if (targetBody == null) return;
+        if (targetBody == null || targetBody.isCentralBody || !targetBody.HasUsableThrust ||
+            !float.IsFinite(rampedThrustFactor) || rampedThrustFactor <= 0f) return;
 
         Vector3 adjustedThrustDirection = thrustDirection.normalized;
-        if (float.IsNaN(adjustedThrustDirection.x) || adjustedThrustDirection == Vector3.zero)
+        if (!float.IsFinite(thrustDirection.x) || !float.IsFinite(thrustDirection.y) ||
+            !float.IsFinite(thrustDirection.z) || adjustedThrustDirection == Vector3.zero)
         {
             Debug.LogWarning($"[ThrustController] Invalid thrust direction: {thrustDirection}");
             return;
         }
 
-        // Scale (world is 1 unit = 10 km)
-        float scaledMagnitude = (magnitude * rampedThrustFactor) / 10f;
+        float scaledMagnitude = SimulationUnits.ForceNewtonsToWorld(targetBody.EffectiveThrustNewtons * rampedThrustFactor);
+        if (!float.IsFinite(scaledMagnitude) || scaledMagnitude <= 0f) return;
 
         Vector3 F = adjustedThrustDirection * scaledMagnitude;
 
         targetBody.AddForce(F);
+        ctx?.ConstellationRegistry?.MarkDepartedIdeal(targetBody);
 
         UpdateThrustParticleSystem(targetBody, adjustedThrustDirection);
         trajectoryRenderer?.RequestPredictionRefresh();
@@ -255,62 +259,59 @@ public class ThrustController : MonoBehaviour
         }
     }
 
-    /// <summary>
-    /// Sets a multiplier on top of maxForwardThrustMagnitude (1 = default behavior).
-    /// </summary>
-    public void SetThrustPowerScale(float scale)
-    {
-        thrustPowerScale = Mathf.Max(0f, scale);
-    }
-
-    /// <summary>
-    /// Directly sets the base forward thrust magnitude in "game units".
-    /// </summary>
-    public void SetForwardThrustMagnitude(float magnitude)
-    {
-        maxForwardThrustMagnitude = Mathf.Max(0f, magnitude);
-    }
-
-
-    /// <summary>
-    /// Activates a single thrust mode by name; used by node-driven burns.
-    /// </summary>
-    // public void SetDirectionalThrust()
-    // {
-    //     isForwardThrustActive = true;
-    // }
-
     public void StartNodeBurn(ManeuverNode node)
     {
-        if (node == null || node.targetBody == null) return;
+        if (node == null || node.targetBody == null || !node.targetBody.HasUsableThrust) return;
 
+        bool changed = !nodeBurnActive || activeBurnBody != node.targetBody || activeBurnType != node.burnType;
         EnsureThrustTimeScaleLimit(showNodeFeedback: true);
-        activeBurnBody = node.targetBody;
+        SetActiveBurnBody(node.targetBody);
         activeBurnType = node.burnType;
         nodeBurnActive = true;
         isForwardThrustActive = true;
-        ctx?.UIRoot?.RefreshAllUi();
+        ctx?.RocketThrustAudio?.SetThrustActive(true);
+        if (changed)
+            ctx?.UIRoot?.RefreshAllUi();
     }
 
-    public void StopNodeBurn()
-    {
-        nodeBurnActive = false;
-        activeBurnBody = null;
-        isForwardThrustActive = false;
-        ReleaseThrustTimeScaleLimit();
-        StopThrustVisuals();
-        ctx?.UIRoot?.RefreshAllUi();
-    }
+    public void StopNodeBurn() => StopAllThrust();
 
     /// <summary>Clears all thrust flags.</summary>
     public void StopAllThrust()
     {
+        bool changed = isForwardThrustActive || nodeBurnActive || activeBurnBody != null;
         isForwardThrustActive = false;
         nodeBurnActive = false;
-        activeBurnBody = null;
+        SetActiveBurnBody(null);
         ReleaseThrustTimeScaleLimit();
         StopThrustVisuals();
-        ctx?.UIRoot?.RefreshAllUi();
+        ctx?.RocketThrustAudio?.SetThrustActive(false);
+        if (changed)
+            ctx?.UIRoot?.RefreshAllUi();
+    }
+
+    private void SetActiveBurnBody(NBody body)
+    {
+        if (activeBurnBody != body && activeBurnBody != null)
+        {
+            activeBurnBody.isThrusting = false;
+            if (activeBurnBody.TryGetComponent(out AttitudeController attitude))
+                attitude.lockNormalParity = false;
+        }
+
+        activeBurnBody = body;
+        if (body != null)
+            body.isThrusting = true;
+    }
+
+    /// <summary>Stops shared thrust resources only when they belong to this body.</summary>
+    public void StopThrustForBody(NBody body)
+    {
+        if (body == null) return;
+        if (activeBurnBody == body || (isForwardThrustActive && ResolveActiveShip() == body))
+            StopAllThrust();
+        else
+            body.isThrusting = false;
     }
 
     /// <summary>
@@ -324,8 +325,12 @@ public class ThrustController : MonoBehaviour
             return;
         }
 
+        NBody ship = ResolveActiveShip();
+        if (ship == null || !ship.HasUsableThrust) return;
         EnsureThrustTimeScaleLimit(showNodeFeedback: false);
+        SetActiveBurnBody(ship);
         isForwardThrustActive = true;
+        ctx?.RocketThrustAudio?.SetThrustActive(true);
     }
     public void StopForwardThrust()
     {
@@ -335,8 +340,7 @@ public class ThrustController : MonoBehaviour
             return;
         }
 
-        isForwardThrustActive = false;
-        ReleaseThrustTimeScaleLimit();
+        StopAllThrust();
         EventSystem.current?.SetSelectedGameObject(null);
     }
 
@@ -383,6 +387,125 @@ public class ThrustController : MonoBehaviour
         return Mathf.Approximately(value, Mathf.Round(value))
             ? Mathf.RoundToInt(value).ToString()
             : value.ToString("0.##");
+    }
+
+    // Called once immediately before integration, after manual force has been queued.
+    internal ScheduledBurn PrepareSimulationStep(
+        IReadOnlyList<NBody> bodies, IReadOnlyList<AttitudeController> attitudes, float stepDt)
+    {
+        ManeuverNode node = ctx?.ManeuverNodeManager != null ? ctx.ManeuverNodeManager.CurrentNode : null;
+        NBody target = node != null && node.isFinalized ? node.targetBody : null;
+        AttitudeController targetAttitude = null;
+        bool targetRegistered = false;
+
+        for (int i = 0; i < bodies.Count; i++)
+        {
+            NBody body = bodies[i];
+            AttitudeController attitude = i < attitudes.Count ? attitudes[i] : null;
+            if (body != null && body == target)
+            {
+                targetRegistered = true;
+                targetAttitude = attitude;
+                continue;
+            }
+
+            if (attitude != null)
+                attitude.lockNormalParity = false;
+            if (body != null && body != activeBurnBody)
+                body.isThrusting = false;
+        }
+
+        if (nodeBurnActive && (target == null || !targetRegistered || activeBurnBody != target))
+            StopAllThrust();
+
+        if (target == null || !targetRegistered)
+            return default;
+
+        if (!target.isReferenceOrbit)
+            UpdateNodeBurnLifecycle(target, targetAttitude, node, stepDt);
+
+        // Completion may remove the node. Never hand the integrator a stale command.
+        if (ctx?.ManeuverNodeManager == null || ctx.ManeuverNodeManager.CurrentNode != node)
+            return default;
+
+        return new ScheduledBurn(node, target.EffectiveThrustNewtons);
+    }
+
+    private void UpdateNodeBurnLifecycle(NBody body, AttitudeController attitude, ManeuverNode node, float stepDt)
+    {
+        BodyRuntimeCoordinator runtime = ctx?.BodyRuntimeCoordinator;
+        if (body == null || node == null || runtime == null)
+            return;
+
+        float simTime = runtime.simulationTime;
+        float stepEndTime = simTime + Mathf.Max(0f, stepDt);
+        UpdateNodeBurnAttitude(attitude, node, simTime);
+
+        if (simTime >= ManeuverBurnMath.GetBurnEndTime(node))
+        {
+            StopThrustForBody(body);
+            ctx?.ManeuverNodeManager?.RemoveNode(node);
+        }
+        else if (ManeuverBurnMath.DoesBurnOverlap(node, body, simTime, stepEndTime))
+        {
+            StartNodeBurn(node);
+        }
+        else if (body.isThrusting)
+        {
+            StopThrustForBody(body);
+        }
+    }
+
+    private static void UpdateNodeBurnAttitude(
+        AttitudeController attitude,
+        ManeuverNode node,
+        float simTime)
+    {
+        if (attitude == null || node == null)
+            return;
+
+        bool inBurnPhase =
+            simTime >= node.burnTime - AttitudeLeadTime &&
+            simTime < ManeuverBurnMath.GetBurnEndTime(node);
+
+        if (inBurnPhase)
+        {
+            AttitudeController.PointingMode desiredMode = MapBurnTypeToAttitude(node.burnType);
+            if (attitude.mode != desiredMode)
+                attitude.SetMode(desiredMode);
+
+            attitude.lockNormalParity = true;
+            return;
+        }
+
+        attitude.lockNormalParity = false;
+    }
+
+    private static AttitudeController.PointingMode MapBurnTypeToAttitude(BurnType burnType)
+    {
+        switch (burnType)
+        {
+            case BurnType.Prograde:
+                return AttitudeController.PointingMode.Velocity;
+
+            case BurnType.Retrograde:
+                return AttitudeController.PointingMode.Retrograde;
+
+            case BurnType.RadialIn:
+                return AttitudeController.PointingMode.Nadir;
+
+            case BurnType.RadialOut:
+                return AttitudeController.PointingMode.Zenith;
+
+            case BurnType.Normal:
+                return AttitudeController.PointingMode.Normal;
+
+            case BurnType.AntiNormal:
+                return AttitudeController.PointingMode.AntiNormal;
+
+            default:
+                return AttitudeController.PointingMode.Velocity;
+        }
     }
 
     private bool CanStartManualThrust()

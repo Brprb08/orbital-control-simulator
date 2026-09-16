@@ -1,4 +1,3 @@
-using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.EventSystems;
 using UnityEngine.Serialization;
@@ -24,6 +23,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
 
     [Header("Mass Handling")]
     [SerializeField] public float placeholderMass;
+    private double placeholderFuelMassKg;
     private Vector3 placeholderRadiusMeters;
 
     [Header("Orbit Intent Presets")]
@@ -74,7 +74,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
     private ManualVelocityLaunchService _launchService;
 
     private const float DefaultPlaceholderMass = 400000f;
-    private const float MinVelocityToApplySqr = 1e-6f;
+    private const float MinVelocityToApplySqr = SimulationLimits.MinPlacementSpeedSquared;
     private const float DefaultVelocityScale = 1f;
 
     private bool HasPendingPlacement() => _manualVelocityPlacementUiActive && planet != null;
@@ -123,11 +123,13 @@ public class PendingVelocityPlacementController : MonoBehaviour
         UnsubscribeManualVelocityUi();
     }
 
-    public void ConfigurePendingPlacement(GameObject pendingPlanet, float mass, Vector3 radiusMeters)
+    public void ConfigurePendingPlacement(GameObject pendingPlanet, float mass, Vector3 radiusMeters,
+        double fuelMassKg = SimulationLimits.DefaultSatelliteFuelMassKg)
     {
         ResetVelocityManager();
         planet = pendingPlanet;
         placeholderMass = mass;
+        placeholderFuelMassKg = fuelMassKg;
         placeholderRadiusMeters = radiusMeters;
         _manualVelocityPlacementUiActive = pendingPlanet != null;
         ResetOrbitIntentState();
@@ -296,7 +298,8 @@ public class PendingVelocityPlacementController : MonoBehaviour
                 out ManualVelocityIntentResult resolved,
                 out string error))
         {
-            SetVelocityFeedback(error);
+            OnVelocityInputChanged(string.Empty);
+            SetVelocityFeedback(error, appendLaunchPreview: false);
             return;
         }
 
@@ -306,7 +309,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
             orbitIntent: true,
             syncSpeedSlider: syncSpeedSlider
         );
-        SetIntentFeedback(feedback);
+        if (CanApplyCurrentVelocity()) SetIntentFeedback(feedback);
     }
 
     private void RefreshSpeedIntentButtonStates()
@@ -332,6 +335,12 @@ public class PendingVelocityPlacementController : MonoBehaviour
 
         _previewController?.CancelLongPreview();
         _usingOrbitIntentControls = orbitIntent;
+        if (!PlacementSafety.TryValidateVelocity(velocity, out string velocityError))
+        {
+            OnVelocityInputChanged(string.Empty);
+            SetVelocityFeedback(velocityError, appendLaunchPreview: false);
+            return;
+        }
         _currentVelocity = velocity;
         _sliderSpeed = velocity.magnitude;
 
@@ -413,6 +422,11 @@ public class PendingVelocityPlacementController : MonoBehaviour
         {
             _sliderSpeed = value;
             _currentVelocity = _stagedDirection * _sliderSpeed;
+            if (!PlacementSafety.TryValidateVelocity(_currentVelocity, out _))
+            {
+                OnVelocityInputChanged(string.Empty);
+                return;
+            }
 
             if (_tutorialController != null && _tutorialController.inTutorialMode)
                 _tutorialController.hasAddVelocity = true;
@@ -434,7 +448,6 @@ public class PendingVelocityPlacementController : MonoBehaviour
         if (!HasPendingPlacement())
             return;
 
-        if (string.IsNullOrWhiteSpace(inputText)) return;
 
         if (ManualVelocityPlacementUIController.TryParseVelocityFromUI(inputText, out var newVelocity))
         {
@@ -442,7 +455,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
             _orbitIntent.SelectSpeedIntent(ManualOrbitSpeedIntentSelection.None);
             RefreshSpeedIntentButtonStates();
             _currentVelocity = newVelocity;
-            if (_currentVelocity.sqrMagnitude > 1e-6f)
+            if (_currentVelocity.sqrMagnitude > MinVelocityToApplySqr)
                 _stagedDirection = _currentVelocity.normalized;
             if (_tutorialController != null && _tutorialController.inTutorialMode)
                 _tutorialController.hasAddVelocity = true;
@@ -460,8 +473,14 @@ public class PendingVelocityPlacementController : MonoBehaviour
         }
         else
         {
+            _currentVelocity = Vector3.zero;
+            _previewController?.CancelLongPreview();
+            _previewController?.ResetChangeTracking();
+            trajectoryRenderer?.ClearPreview();
+            RefreshManualOrbitReadout();
+            UpdateArrowFromCurrent();
             RefreshSetVelocityButtonState();
-            SetVelocityFeedback("Invalid velocity. Use x,y,z, for example 0,7.6,0.", appendLaunchPreview: false);
+            SetVelocityFeedback($"Enter a finite, non-zero velocity up to {SimulationLimits.MaxPlacementSpeedKmPerSecond:0.###} km/s, using x,y,z (for example 0,7.6,0).", appendLaunchPreview: false);
         }
     }
 
@@ -501,7 +520,8 @@ public class PendingVelocityPlacementController : MonoBehaviour
             planet,
             velocityToApply,
             placeholderMass,
-            placeholderRadiusMeters
+            placeholderRadiusMeters,
+            placeholderFuelMassKg
         );
 
         if (!result.Success)
@@ -546,7 +566,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
         if (planet == null || _directionArrow == null) return;
 
         Vector3 startPos = planet.transform.position;
-        Vector3 dir = (_stagedDirection.sqrMagnitude > 1e-6f) ? _stagedDirection : Vector3.forward;
+        Vector3 dir = (_stagedDirection.sqrMagnitude > MinVelocityToApplySqr) ? _stagedDirection : Vector3.forward;
         Vector3 end = startPos + dir * GetArrowLength();
         ShowArrowCached(startPos, end);
     }
@@ -583,7 +603,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
 
     private bool CanApplyCurrentVelocity()
     {
-        return HasPendingPlacement() && _currentVelocity.sqrMagnitude > MinVelocityToApplySqr;
+        return HasPendingPlacement() && PlacementSafety.TryValidateVelocity(_currentVelocity, out _);
     }
 
     private void RefreshSetVelocityButtonState()
@@ -598,50 +618,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
 
     private string BuildLaunchPreviewText()
     {
-        if (!HasPendingPlacement() || _currentVelocity.sqrMagnitude <= MinVelocityToApplySqr)
-            return null;
-
-        NBody central = _bodyService != null ? _bodyService.CentralBody : null;
-        if (central == null)
-            central = _ctx?.BodyService != null ? _ctx.BodyService.CentralBody : null;
-
-        if (central == null || !(central.trueMass > 0.0))
-            return null;
-
-        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            central.trueMass,
-            ToDouble3(central.transform.position),
-            ToDouble3(planet.transform.position),
-            ToDouble3(_currentVelocity)
-        );
-
-        if (!orbit.isValid)
-            return null;
-
-        float kilometersPerUnit = GetKilometersPerUnit();
-        float perigeeKm = (orbit.perigeeRadius - (float)central.radius) * kilometersPerUnit;
-
-        if (orbit.apogeeRadius < 0f)
-        {
-            return perigeeKm <= 0f
-                ? "Launch preview: escape path intersects the planet."
-                : $"Launch preview: escape trajectory, perigee {perigeeKm:F1} km.";
-        }
-
-        float apogeeKm = (orbit.apogeeRadius - (float)central.radius) * kilometersPerUnit;
-
-        if (perigeeKm <= 0f)
-            return $"Launch preview: impact likely, perigee {perigeeKm:F1} km.";
-
-        if (orbit.eccentricity < 0.05f)
-            return $"Launch preview: stable near-circular orbit, perigee {perigeeKm:F1} km.";
-
-        return $"Launch preview: stable elliptical orbit, perigee {perigeeKm:F1} km, apogee {apogeeKm:F1} km.";
-    }
-
-    private static double3 ToDouble3(Vector3 value)
-    {
-        return new double3(value.x, value.y, value.z);
+        return HasPendingPlacement() ? RefreshManualOrbitReadout() : null;
     }
 
     /// <summary>
@@ -659,7 +636,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
 
     private void RefreshVelocityPreview()
     {
-        float massForPreview = (placeholderMass > 0f) ? placeholderMass : DefaultPlaceholderMass;
+        float massForPreview = (float)(((placeholderMass > 0f) ? placeholderMass : DefaultPlaceholderMass) + placeholderFuelMassKg);
         _previewController?.RequestPreview(
             HasPendingPlacement(),
             planet,
@@ -706,6 +683,7 @@ public class PendingVelocityPlacementController : MonoBehaviour
         _sliderSpeed = 0f;
         ResetOrbitIntentState();
         placeholderMass = 0f;
+        placeholderFuelMassKg = 0.0;
         placeholderRadiusMeters = default;
         planet = null;
 
@@ -728,17 +706,17 @@ public class PendingVelocityPlacementController : MonoBehaviour
     private float GetKilometersPerUnit()
     {
         if (_objectPlacementManager != null)
-            return (float)(_objectPlacementManager.MetersPerUnit / 1000.0);
+            return (float)(_objectPlacementManager.MetersPerUnit / (double)SimulationUnits.MetersPerKilometer);
 
-        return 10f;
+        return SimulationUnits.KilometersPerUnit;
     }
 
-    private void RefreshManualOrbitReadout()
+    private string RefreshManualOrbitReadout()
     {
-        _manualVelocityUi?.RefreshManualOrbitReadout(
+        return _manualVelocityUi?.RefreshManualOrbitReadout(
             planet,
             _currentVelocity,
-            _bodyService != null ? _bodyService.CentralBody : null,
+            GetCentralBody(),
             GetKilometersPerUnit()
         );
     }

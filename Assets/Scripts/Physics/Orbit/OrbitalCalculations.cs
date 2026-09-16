@@ -370,7 +370,7 @@ public static class OrbitalCalculations
 
         var central = svc.CentralBody;
 
-        double centralMass = central.trueMass;
+        double centralMass = central.TotalMassKilograms;
         double3 centerPos = central.state.position;
 
         double3 pos = body.state.position;
@@ -420,7 +420,7 @@ public static class OrbitalCalculations
         if (body == null || svc?.CentralBody == null)
             return dbg;
 
-        double mu = PhysicsConstants.G * (double)svc.CentralBody.mass;
+        double mu = PhysicsConstants.G * svc.CentralBody.TotalMassKilograms;
         if (!(mu > 0.0))
             return dbg;
 

@@ -18,6 +18,9 @@ public class SimContext
     public TrajectoryComputeController TrajectoryComputeController { get; set; }
     public TrajectoryRenderer TrajectoryRenderer { get; set; }
     public ObjectPlacementManager ObjectPlacementManager { get; set; }
+    public ConstellationRegistry ConstellationRegistry { get; set; }
+    public ConstellationTrajectoryOverlay ConstellationTrajectoryOverlay { get; set; }
+    public ConstellationIndicatorController ConstellationIndicatorController { get; set; }
     public ManualVelocityPlacementUIController ManualVelocityPlacementUIController { get; set; }
     public PendingVelocityPlacementController PendingVelocityPlacementController { get; set; }
     public RocketThrustAudio RocketThrustAudio { get; set; }

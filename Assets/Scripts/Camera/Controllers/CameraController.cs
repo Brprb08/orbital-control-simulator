@@ -219,6 +219,26 @@ public class CameraController : MonoBehaviour, ICameraTracker
         TrackTarget(CameraTarget.BodyTarget(body));
     }
 
+    /// <summary>Changes the selected satellite without moving the Earth-view camera rig.</summary>
+    public void TrackBodyPreservingCameraMode(NBody body)
+    {
+        if (body == null || body == _state.CurrentBody)
+            return;
+
+        if (_state.Mode != CameraMode.Earth)
+        {
+            TrackBody(body);
+            return;
+        }
+
+        _state.TrackBody(body);
+        _state.EnterEarth(); // Returning from Earth view must follow the new selection.
+        int index = _bodies.IndexOf(body);
+        if (index >= 0)
+            _currentIndex = index;
+        EmitTrackedBody(body);
+    }
+
     /// <summary>Tracks a placeholder Transform (e.g., temporary orbit); falls back to FreeCam if null.</summary>
     public void TrackPlaceholder(Transform placeholder)
     {

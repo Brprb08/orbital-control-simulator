@@ -3,6 +3,40 @@ using NUnit.Framework;
 public class ManeuverNodeTiming_EditModeTests
 {
     [Test]
+    public void DoesBurnOverlap_detects_burn_start_inside_large_step()
+    {
+        var target = new UnityEngine.GameObject("Target").AddComponent<NBody>();
+        var node = new ManeuverNode
+        {
+            isFinalized = true,
+            targetBody = target,
+            burnTime = 10f,
+            duration = 2f
+        };
+
+        Assert.IsTrue(ManeuverBurnMath.DoesBurnOverlap(node, target, 9f, 11f));
+
+        UnityEngine.Object.DestroyImmediate(target.gameObject);
+    }
+
+    [Test]
+    public void DoesBurnOverlap_ignores_step_touching_burn_end()
+    {
+        var target = new UnityEngine.GameObject("Target").AddComponent<NBody>();
+        var node = new ManeuverNode
+        {
+            isFinalized = true,
+            targetBody = target,
+            burnTime = 10f,
+            duration = 2f
+        };
+
+        Assert.IsFalse(ManeuverBurnMath.DoesBurnOverlap(node, target, 12f, 14f));
+
+        UnityEngine.Object.DestroyImmediate(target.gameObject);
+    }
+
+    [Test]
     public void ResolveFutureBurnTime_wraps_past_node_to_next_orbit()
     {
         float resolved = ManeuverNodeTiming.ResolveFutureBurnTime(

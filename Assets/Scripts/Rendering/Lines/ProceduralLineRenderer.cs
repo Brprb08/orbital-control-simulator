@@ -52,7 +52,7 @@ public class ProceduralLineRenderer : MonoBehaviour
     public float staticTubeMaxWidth = 20f;
 
     [Tooltip("Safety limit for how many input points we will accept.")]
-    public int maxPoints = 300000;
+    public int maxPoints = 12000;
 
     [Header("Material")]
     [Tooltip("Optional material override. If left empty, a Sprites/Default material is created.")]
@@ -78,18 +78,21 @@ public class ProceduralLineRenderer : MonoBehaviour
     public float maxCurveDeviation = 2f;
 
     [Tooltip("Hard cap on total smoothed points (for safety).")]
-    public int maxSmoothedPoints = 200_000;
+    public int maxSmoothedPoints = 8000;
 
     [Tooltip("Preferred cap for display points after smoothing. Keeps very large trajectories from becoming huge meshes.")]
     [Min(256)]
-    public int targetRenderedPointBudget = 24_000;
+    public int targetRenderedPointBudget = 4000;
+
+    [Tooltip("Skip rebuilding when incoming points only move by this many world units.")]
+    [SerializeField, Min(0f)] private float noOpPointDistance = 0.001f;
 
     [Tooltip("Max number of subdivisions per segment.")]
     [Range(1, 16)]
     public int maxSubdivisionsPerSegment = 8;
 
     [Tooltip("If input point count exceeds this, smoothing is skipped to keep it fast.")]
-    public int smoothingInputSoftLimit = 30_000;
+    public int smoothingInputSoftLimit = 5000;
 
     private Mesh lineMesh;
     private MeshFilter meshFilter;
@@ -116,6 +119,7 @@ public class ProceduralLineRenderer : MonoBehaviour
     private Quaternion lastTransformRotation;
     private Vector3 lastTransformScale;
     private bool hasBuiltMesh;
+    private string lastColorHex;
 
     // Reusable list for smoothing to avoid per-UpdateLine allocs
     private readonly List<Vector3> smoothingBuffer = new List<Vector3>(1024);
@@ -188,11 +192,15 @@ public class ProceduralLineRenderer : MonoBehaviour
     {
         if (!meshRenderer) return;
 
+        if (lastColorHex == hexColor && meshRenderer.sharedMaterial != null)
+            return;
+
         if (ColorUtility.TryParseHtmlString(hexColor, out var color))
         {
             color.a = defaultAlpha;
-            meshRenderer.material.color = color;
+            meshRenderer.sharedMaterial.color = color;
             ApplyMaterialWidth();
+            lastColorHex = hexColor;
         }
         else
         {
@@ -202,7 +210,11 @@ public class ProceduralLineRenderer : MonoBehaviour
 
     public void SetLineWidth(float width)
     {
-        lineWidth = Mathf.Max(0.0001f, width);
+        float nextWidth = Mathf.Max(0.0001f, width);
+        if (Mathf.Abs(lineWidth - nextWidth) <= 1e-6f)
+            return;
+
+        lineWidth = nextWidth;
 
         ApplyMaterialWidth();
         meshDirty = true;
@@ -250,25 +262,43 @@ public class ProceduralLineRenderer : MonoBehaviour
     /// </summary>
     public void UpdateLine(Vector3[] points)
     {
-        UpdateLine(points, smoothClosedLoop: false);
+        UpdateLine(points, points != null ? points.Length : 0, smoothClosedLoop: false);
     }
 
     public void UpdateLine(Vector3[] points, bool smoothClosedLoop)
     {
-        if (points == null || points.Length < 2)
+        UpdateLine(points, points != null ? points.Length : 0, smoothClosedLoop);
+    }
+
+    /// <summary>
+    /// Updates a line from the prefix of a reusable array. This avoids allocating a
+    /// new array every time a growing trace is rendered.
+    /// </summary>
+    public void UpdateLine(Vector3[] points, int pointCount)
+    {
+        UpdateLine(points, pointCount, smoothClosedLoop: false);
+    }
+
+    private void UpdateLine(Vector3[] points, int pointCount, bool smoothClosedLoop)
+    {
+        if (points == null || pointCount < 2)
         {
             Clear();
             return;
         }
 
-        this.smoothClosedLoop = smoothClosedLoop && IsClosedLoop(points, Mathf.Min(points.Length, maxPoints));
-
-        int baseCount = Mathf.Min(points.Length, maxPoints);
+        int baseCount = Mathf.Min(Mathf.Min(pointCount, points.Length), maxPoints);
         if (baseCount < 2)
         {
             Clear();
             return;
         }
+
+        bool nextClosedLoop = smoothClosedLoop && IsClosedLoop(points, baseCount);
+        if (IsSameInputLine(points, baseCount, nextClosedLoop))
+            return;
+
+        this.smoothClosedLoop = nextClosedLoop;
 
         if (worldPoints == null || worldPoints.Length != baseCount)
             worldPoints = new Vector3[baseCount];
@@ -296,6 +326,21 @@ public class ProceduralLineRenderer : MonoBehaviour
         }
 
         meshDirty = true;
+    }
+
+    private bool IsSameInputLine(Vector3[] points, int count, bool nextClosedLoop)
+    {
+        if (worldPoints == null || worldPoints.Length != count || smoothClosedLoop != nextClosedLoop)
+            return false;
+
+        float thresholdSq = noOpPointDistance * noOpPointDistance;
+        for (int i = 0; i < count; i++)
+        {
+            if ((worldPoints[i] - points[i]).sqrMagnitude > thresholdSq)
+                return false;
+        }
+
+        return true;
     }
 
     /// <summary>
@@ -331,13 +376,13 @@ public class ProceduralLineRenderer : MonoBehaviour
             int steps = Mathf.Max(1, Mathf.FloorToInt(segLen / targetSegmentLength));
             steps = Mathf.Clamp(steps, 1, segmentMaxSubdivisions);
 
-            int extra = steps;
-            if (totalCount + extra > pointBudget)
-            {
-                if (totalCount < pointBudget)
-                    smoothingBuffer.Add(p2);
-                break;
-            }
+            // Reserve one output point for every remaining source segment.
+            // The point budget may reduce visual subdivisions, but it must
+            // never truncate the input path itself (especially a closed orbit
+            // whose final point closes the loop back to its start).
+            int remainingSegments = count - i;
+            int remainingSubdivisionSlots = Mathf.Max(0, pointBudget - totalCount - remainingSegments);
+            steps = Mathf.Min(steps, 1 + remainingSubdivisionSlots);
 
             for (int s = 1; s <= steps; s++)
             {

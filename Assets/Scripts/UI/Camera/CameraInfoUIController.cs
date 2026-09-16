@@ -42,14 +42,14 @@ public class CameraInfoUIController : MonoBehaviour
         if (velocityText != null)
         {
             float velocityMagnitude = body.velocity.magnitude;
-            float velocityInMetersPerSecond = velocityMagnitude * 10000f;
+            float velocityInMetersPerSecond = velocityMagnitude * SimulationUnits.MetersPerUnit;
             velocityText.text = $"Velocity: {velocityInMetersPerSecond:F2} m/s";
         }
 
         if (altitudeText != null)
         {
             float altitude = (float)body.altitude;
-            altitudeText.text = $"Altitude: {altitude * 10:F3} km";
+            altitudeText.text = $"Altitude: {altitude * SimulationUnits.KilometersPerUnit:F3} km";
         }
 
         if (trackingObjectNameText != null)

@@ -4,6 +4,8 @@ using UnityEngine.EventSystems;
 
 public class TimeController : MonoBehaviour
 {
+    private const float BaseFixedDeltaTime = BodyRuntimeCoordinator.BaseSimulationStep;
+
     [SerializeField] private UIRoot uiRoot;
     [SerializeField] private CameraController cameraController;
 
@@ -34,7 +36,7 @@ public class TimeController : MonoBehaviour
         timeUI.Initialize(OnTimeScaleChanged, TogglePause);
 
         Time.timeScale = 1.0f;
-        Time.fixedDeltaTime = 0.02f;
+        ApplyFixedDeltaTimeForScale(Time.timeScale);
         Application.targetFrameRate = 60;
     }
 
@@ -67,7 +69,7 @@ public class TimeController : MonoBehaviour
         if (!isPaused)
         {
             Time.timeScale = scale;
-            Time.fixedDeltaTime = 0.02f;
+            ApplyFixedDeltaTimeForScale(scale);
             timeUI?.SetTimeScaleText(scale);
         }
 
@@ -147,7 +149,7 @@ public class TimeController : MonoBehaviour
             previousTimeScale = Time.timeScale;
 
         Time.timeScale = 0f;
-        Time.fixedDeltaTime = 0.02f;
+        ApplyFixedDeltaTimeForScale(previousTimeScale);
 
         uiRoot?.SetGameplayUiVisibleForPause(false);
 
@@ -162,7 +164,7 @@ public class TimeController : MonoBehaviour
         timeUI?.SetSliderInteractable(true);
 
         Time.timeScale = previousTimeScale;
-        Time.fixedDeltaTime = 0.02f;
+        ApplyFixedDeltaTimeForScale(previousTimeScale);
 
         uiRoot?.SetGameplayUiVisibleForPause(true);
 
@@ -171,5 +173,10 @@ public class TimeController : MonoBehaviour
         timeUI?.SetTimeScaleText(previousTimeScale);
 
         isPaused = false;
+    }
+
+    private static void ApplyFixedDeltaTimeForScale(float scale)
+    {
+        Time.fixedDeltaTime = BaseFixedDeltaTime * Mathf.Max(0.0001f, scale);
     }
 }

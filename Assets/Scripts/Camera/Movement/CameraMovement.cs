@@ -196,6 +196,11 @@ public class CameraMovement : MonoBehaviour
     /// <param name="targetPosition">World position of the tracked target.</param>
     public void PointCameraTowardCentralBody(Vector3 centralBodyPos, Vector3 targetPosition)
     {
+        // Tracking the central body itself has no inward viewing direction.
+        // Keep the current camera orientation until normal focus positioning runs.
+        if ((targetPosition - centralBodyPos).sqrMagnitude < 1e-8f)
+            return;
+
         Vector3 directionToTarget = (targetPosition - cameraPivotTransform.position).normalized;
         cameraTransform.position = targetPosition - directionToTarget;
 

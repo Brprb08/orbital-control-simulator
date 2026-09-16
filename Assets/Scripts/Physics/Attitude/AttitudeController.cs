@@ -45,6 +45,7 @@ public class AttitudeController : MonoBehaviour
     private SimContext ctx;
 
     private bool loggedMissingBodyService = false;
+    private bool trackingEventsBound;
 
     private bool wasTracked = false;
 
@@ -60,6 +61,55 @@ public class AttitudeController : MonoBehaviour
         this.ctx = ctx;
         this.cameraTracker = ctx.CameraTracker;
         this.bodyService = ctx.BodyService;
+
+        BindTrackingEvents();
+        UpdateEnabledForTracking();
+    }
+
+    private void OnDestroy()
+    {
+        if (cameraTracker == null || !trackingEventsBound)
+            return;
+
+        cameraTracker.OnTrackedBodyChanged -= HandleTrackedBodyChanged;
+        cameraTracker.OnModeChanged -= HandleCameraModeChanged;
+    }
+
+    private void BindTrackingEvents()
+    {
+        if (cameraTracker == null || trackingEventsBound)
+            return;
+
+        trackingEventsBound = true;
+        cameraTracker.OnTrackedBodyChanged += HandleTrackedBodyChanged;
+        cameraTracker.OnModeChanged += HandleCameraModeChanged;
+    }
+
+    private void HandleTrackedBodyChanged(NBody _)
+    {
+        UpdateEnabledForTracking();
+    }
+
+    private void HandleCameraModeChanged(CameraMode _)
+    {
+        UpdateEnabledForTracking();
+    }
+
+    private void UpdateEnabledForTracking()
+    {
+        if (!nbody)
+            nbody = GetComponent<NBody>();
+
+        if (!nbody || nbody.isCentralBody)
+            return;
+
+        // Event delegates still run on disabled MonoBehaviours, allowing the newly
+        // selected body to re-enable itself without every satellite receiving ticks.
+        bool isTracked = cameraTracker == null || cameraTracker.CurrentBody == nbody;
+        if (!isTracked)
+            wasTracked = false;
+
+        enabled = isTracked;
     }
 
     void FixedUpdate()
@@ -67,12 +117,6 @@ public class AttitudeController : MonoBehaviour
         if (!nbody) nbody = GetComponent<NBody>();
         if (!nbody) return;
 
-        bool isTracked = (cameraTracker == null) || (cameraTracker.CurrentBody == nbody);
-        if (!isTracked)
-        {
-            wasTracked = false;
-            return;
-        }
         bool snapNow = !wasTracked;
         wasTracked = true;
 

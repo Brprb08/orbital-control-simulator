@@ -138,15 +138,14 @@ public class TrackedTargetIndicator : MonoBehaviour
         if (_hideWhenOccludedByCentralBody && _bodyService != null)
         {
             var earth = _bodyService.CentralBody;
-            if (earth != null && IsOccludedByCentralBody(camPos, targetPos, earth))
+            if (earth != null && CameraVisibilityPolicy.IsOccludedByCentralBody(camPos, targetPos, earth))
             {
                 SetIconVisible(false);
                 return;
             }
         }
 
-        float distSqr = (camPos - targetPos).sqrMagnitude;
-        if (!isEarthCam && distSqr < _showAtDistanceSqr)
+        if (!CameraVisibilityPolicy.IsTargetIndicatorFarEnough(_cameraController, camPos, targetPos, _showAtDistanceSqr))
         {
             SetIconVisible(false);
             return;
@@ -154,37 +153,11 @@ public class TrackedTargetIndicator : MonoBehaviour
 
         Vector3 viewportPos = _mainCamera.WorldToViewportPoint(targetPos);
 
-        if (viewportPos.z <= 0f)
+        float viewportInset = isEarthCam ? -_earthViewViewportMargin : _innerViewportMargin;
+        if (!CameraVisibilityPolicy.IsInsideViewport(viewportPos, viewportInset))
         {
             SetIconVisible(false);
             return;
-        }
-
-        if (isEarthCam)
-        {
-            float outer = _earthViewViewportMargin;
-            bool nearView =
-                viewportPos.x > -outer && viewportPos.x < 1f + outer &&
-                viewportPos.y > -outer && viewportPos.y < 1f + outer;
-
-            if (!nearView)
-            {
-                SetIconVisible(false);
-                return;
-            }
-        }
-        else
-        {
-            float inner = _innerViewportMargin;
-            bool inView =
-                viewportPos.x > inner && viewportPos.x < 1f - inner &&
-                viewportPos.y > inner && viewportPos.y < 1f - inner;
-
-            if (!inView)
-            {
-                SetIconVisible(false);
-                return;
-            }
         }
 
         Vector3 screenPos = _mainCamera.WorldToScreenPoint(targetPos);
@@ -221,36 +194,7 @@ public class TrackedTargetIndicator : MonoBehaviour
         }
     }
 
-    private bool IsOccludedByCentralBody(Vector3 camPos, Vector3 targetPos, NBody central)
-    {
-        if (central == null)
-            return false;
 
-        Vector3 center = central.transform.position;
-
-        float radius = (float)central.radius;
-        if (radius <= 0f)
-            return false;
-
-        Vector3 camToTarget = targetPos - camPos;
-        float segLength = camToTarget.magnitude;
-        if (segLength <= Mathf.Epsilon)
-            return false;
-
-        Vector3 dir = camToTarget / segLength;
-
-        Vector3 camToCenter = center - camPos;
-
-        float t = Vector3.Dot(camToCenter, dir);
-
-        if (t <= 0f || t >= segLength)
-            return false;
-
-        Vector3 closestPoint = camPos + dir * t;
-        float distanceToCenter = (closestPoint - center).magnitude;
-
-        return distanceToCenter < radius;
-    }
 
     private void SetIconVisible(bool visible)
     {

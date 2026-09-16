@@ -12,14 +12,15 @@ This code handles the native gravity, force accumulation, and Dormand-Prince int
 2. Compile the source into a Windows DLL using a command like:
 
 ```text
-g++ -shared -fPIC -o PhysicsPlugin.dll Dopri54Physics.cpp
+g++ -std=c++17 -O2 -shared -static-libgcc -static-libstdc++ -o PhysicsPlugin.dll Dopri54Physics.cpp
 ```
 
 ### Replacing the DLL in Unity
 
+- Save your scene and close Unity Editor first; Windows locks loaded native plugins.
 - Go to `Assets/Plugins/x86_64/`
 - Replace the existing `PhysicsPlugin.dll` with your newly compiled version
-- In Unity, refresh the project to reload the plugin
+- Reopen Unity to load the replacement plugin. A project refresh does not unload the old DLL.
 
 ### Notes
 

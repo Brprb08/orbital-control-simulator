@@ -10,13 +10,18 @@ public class CameraModeUIController
         this.refs = refs;
     }
 
-    public void Apply(ICameraTracker cameraTracker, bool showManualVelocityUi)
+    public void Apply(ICameraTracker cameraTracker, bool showManualVelocityUi,
+        ConstellationRegistry constellationRegistry = null)
     {
         CameraMode mode = cameraTracker != null ? cameraTracker.Mode : CameraMode.Free;
         bool isFreeCam = mode == CameraMode.Free;
         bool isEarthView = cameraTracker != null && cameraTracker.IsEarthView;
         bool isPendingManualVelocity = isFreeCam && showManualVelocityUi;
         bool showEarthButton = !isFreeCam || isPendingManualVelocity;
+
+        // Use the same selected constellation as plane navigation, including Earth view.
+        SetActive(refs.constellationNavigationPanel,
+            CameraVisibilityPolicy.TryGetSelectedConstellation(cameraTracker, constellationRegistry, out _, out _));
 
         if (refs.earthCamButtonText != null)
             refs.earthCamButtonText.text = isEarthView ? "Satellite Cam" : "Earth Cam";
@@ -48,7 +53,6 @@ public class CameraModeUIController
 
             if (refs.feedbackText != null)
             {
-                refs.feedbackText.text = "";
                 refs.feedbackText.gameObject.SetActive(true);
             }
             if (refs.trackedSatellites != null)

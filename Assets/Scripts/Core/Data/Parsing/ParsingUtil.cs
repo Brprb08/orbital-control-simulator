@@ -1,4 +1,5 @@
 using UnityEngine;
+using System.Globalization;
 
 /// <summary>
 /// A helper for parsing string inputs into Unity types.
@@ -17,15 +18,16 @@ public static class ParsingUtils
     public static bool TryParseVector3(string input, out Vector3 result)
     {
         result = Vector3.zero;
+        if (string.IsNullOrWhiteSpace(input)) return false;
         string[] parts = input.Split(',');
 
         if (parts.Length != 3)
             return false;
 
         float x, y, z;
-        if (float.TryParse(parts[0].Trim(), out x) &&
-            float.TryParse(parts[1].Trim(), out y) &&
-            float.TryParse(parts[2].Trim(), out z))
+        if (float.TryParse(parts[0].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out x) && float.IsFinite(x) &&
+            float.TryParse(parts[1].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out y) && float.IsFinite(y) &&
+            float.TryParse(parts[2].Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out z) && float.IsFinite(z))
         {
             result = new Vector3(x, y, z);
             return true;
@@ -37,7 +39,7 @@ public static class ParsingUtils
 
     /// <summary>
     /// Validates and parses a mass value from a string.
-    /// Only allows numeric values between 500 and 5.972 × 10¹¹ kg.
+    /// Only allows numeric values between 500 and 1,000,000 kg.
     /// </summary>
     /// <param name="input">The string representing mass.</param>
     /// <param name="mass">Output parameter receiving the parsed mass if valid.</param>
@@ -51,10 +53,10 @@ public static class ParsingUtils
         if (string.IsNullOrWhiteSpace(input))
             return false;
 
-        if (!float.TryParse(input, out float parsedMass))
+        if (!float.TryParse(input, NumberStyles.Float, CultureInfo.InvariantCulture, out float parsedMass) || !float.IsFinite(parsedMass))
             return false;
 
-        if (parsedMass < 500 || parsedMass > 1000000)
+        if (parsedMass < SimulationLimits.MinSatelliteMassKg || parsedMass > SimulationLimits.MaxSatelliteMassKg)
             return false;
 
         mass = parsedMass;

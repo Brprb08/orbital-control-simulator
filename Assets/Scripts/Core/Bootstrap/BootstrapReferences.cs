@@ -34,10 +34,15 @@ public sealed class BootstrapReferences
 
     [Header("Placement")]
     public ObjectPlacementManager objectPlacementManager;
+    public ConstellationRegistry constellationRegistry;
     public ManualVelocityPlacementUIController manualVelocityPlacementUIController;
     public PendingVelocityPlacementController pendingVelocityPlacementController;
     public RandomSatelliteSpawner randomSatelliteSpawner;
     public SatelliteSpawner satelliteSpawner;
+
+    [Header("Constellation Visuals")]
+    public ConstellationTrajectoryOverlay constellationTrajectoryOverlay;
+    public ConstellationIndicatorController constellationIndicatorController;
 
     [Header("Other")]
     public RocketThrustAudio rocketThrustAudio;

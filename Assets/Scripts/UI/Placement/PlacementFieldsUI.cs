@@ -15,11 +15,13 @@ public class PlacementFieldsUI
 
     public TMP_InputField ObjectNameInputField => refs.nameInputField;
     public TMP_InputField MassInput => refs.massInputField;
+    public TMP_InputField FuelMassInput => refs.fuelMassInputField;
     public TMP_InputField RadiusInput => refs.radiusInputField;
     public TMP_InputField PositionInput => refs.positionInputField;
 
     public TMP_InputField KepNameInputField => refs.kepNameInputField;
     public TMP_InputField KepMassInputField => refs.kepMassInputField;
+    public TMP_InputField KepFuelMassInputField => refs.kepFuelMassInputField;
     public TMP_InputField KepADegOrMetersInputField => refs.kepADegOrMetersInputField;
     public TMP_InputField KepEccInputField => refs.kepEccInputField;
     public TMP_InputField KepIncDegInputField => refs.kepIncDegInputField;
@@ -29,8 +31,23 @@ public class PlacementFieldsUI
 
     public TMP_InputField TleNameInputField => refs.tleNameInputField;
     public TMP_InputField TleMassInputField => refs.tleMassInputField;
+    public TMP_InputField TleFuelMassInputField => refs.tleFuelMassInputField;
     public TMP_InputField TleLine1InputField => refs.tleLine1InputField;
     public TMP_InputField TleLine2InputField => refs.tleLine2InputField;
+
+    public TMP_InputField ConstellationNamePrefixInputField => refs.constellationNamePrefixInputField;
+    public TMP_InputField ConstellationMassInputField => refs.constellationMassInputField;
+    public TMP_InputField ConstellationFuelMassInputField => refs.constellationFuelMassInputField;
+    public TMP_InputField ConstellationSemiMajorAxisInputField => refs.constellationSemiMajorAxisInputField;
+    public TMP_InputField ConstellationEccInputField => refs.constellationEccInputField;
+    public TMP_InputField ConstellationIncDegInputField => refs.constellationIncDegInputField;
+    public TMP_InputField ConstellationArgPDegInputField => refs.constellationArgPDegInputField;
+    public TMP_InputField ConstellationRAANStartDegInputField => refs.constellationRAANStartDegInputField;
+    public TMP_InputField ConstellationRAANSpreadDegInputField => refs.constellationRAANSpreadDegInputField;
+    public TMP_InputField ConstellationPlanesInputField => refs.constellationPlanesInputField;
+    public TMP_InputField ConstellationSatellitesPerPlaneInputField => refs.constellationSatellitesPerPlaneInputField;
+    public TMP_InputField ConstellationWalkerPhaseInputField => refs.constellationWalkerPhaseInputField;
+    public TMP_InputField ConstellationTrueAnomalyOffsetDegInputField => refs.constellationTrueAnomalyOffsetDegInputField;
 
     public PlacementFieldsUI(UIReferences refs, UIRoot uiRoot, TutorialController tutorialController, Camera mainCamera)
     {
@@ -68,6 +85,7 @@ public class PlacementFieldsUI
             ObjectNameInputField,
             PositionInput,
             MassInput,
+            FuelMassInput,
             RadiusInput,
             refs.placeObjectButton
         );
@@ -94,18 +112,34 @@ public class PlacementFieldsUI
             PositionInput,
             ObjectNameInputField,
             MassInput,
+            FuelMassInput,
             TleNameInputField,
             TleMassInputField,
+            TleFuelMassInputField,
             TleLine1InputField,
             TleLine2InputField,
             KepNameInputField,
             KepMassInputField,
+            KepFuelMassInputField,
             KepADegOrMetersInputField,
             KepEccInputField,
             KepIncDegInputField,
             KepRAANDegInputField,
             KepArgPDegInputField,
-            KepTrueAnomDegInputField
+            KepTrueAnomDegInputField,
+            ConstellationNamePrefixInputField,
+            ConstellationMassInputField,
+            ConstellationFuelMassInputField,
+            ConstellationSemiMajorAxisInputField,
+            ConstellationEccInputField,
+            ConstellationIncDegInputField,
+            ConstellationArgPDegInputField,
+            ConstellationRAANStartDegInputField,
+            ConstellationRAANSpreadDegInputField,
+            ConstellationPlanesInputField,
+            ConstellationSatellitesPerPlaneInputField,
+            ConstellationWalkerPhaseInputField,
+            ConstellationTrueAnomalyOffsetDegInputField
         );
     }
 
@@ -128,7 +162,7 @@ public class PlacementFieldsUI
         }
         else
         {
-            SetFeedback("Invalid Mass: Should be between 500-1,000,000. Units are in kg by default.");
+            SetFeedback($"Invalid Mass: Should be between {SimulationLimits.MinSatelliteMassKg:N0}-{SimulationLimits.MaxSatelliteMassKg:N0}. Units are in kg by default.");
         }
     }
 
@@ -142,7 +176,7 @@ public class PlacementFieldsUI
             return;
         }
 
-        if (ParsingUtils.TryParseVector3(input, out _))
+        if (PlacementValidators.TryGetRadius(input, PlacementSpawnBuilder.RadiusClamp, out _, out string error))
         {
             if (tutorialController != null)
                 tutorialController.hasRadiusBeenEnteredForSatellite = true;
@@ -151,7 +185,7 @@ public class PlacementFieldsUI
         }
         else
         {
-            SetFeedback("Invalid Radius: Format is meters x,y,z. Example 2,20,2");
+            SetFeedback(error);
         }
     }
 }

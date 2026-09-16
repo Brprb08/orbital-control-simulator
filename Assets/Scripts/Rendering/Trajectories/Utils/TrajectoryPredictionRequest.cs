@@ -74,7 +74,7 @@ public static class TrajectoryPredictionPlanner
     private const float DragRefreshMidSeconds = 1.2f;
     private const float DragRefreshFarSeconds = 2.5f;
     private const float BallisticRefreshSeconds = 4f;
-    public const float DragPeriapsisThresholdKm = 500f;
+    public const float DragPeriapsisThresholdKm = PhysicsConstants.AtmosphericDragCutoffAltitudeKm;
     private const int FastMinSteps = 2000;
     private const int FastMaxSteps = 12000;
     private const int DefaultGpuMaxOutputPoints = 2500;
@@ -118,7 +118,15 @@ public static class TrajectoryPredictionPlanner
         }
         else
         {
-            steps = Mathf.Clamp(steps, 500, MaxSteps);
+            if (steps > MaxSteps)
+            {
+                steps = MaxSteps;
+                effectiveDeltaTime = Mathf.Max(0.0001f, horizonSeconds / steps);
+            }
+            else
+            {
+                steps = Mathf.Max(500, steps);
+            }
         }
 
         float epoch = runtimeCoordinator ? runtimeCoordinator.simulationTime : 0f;
@@ -235,7 +243,15 @@ public static class TrajectoryPredictionPlanner
             return Mathf.Min(fastHorizon, MaxHorizonSeconds);
         }
 
-        return Mathf.Clamp(orbitalPeriodSeconds * 1.25f, MinHorizonSeconds, MaxHorizonSeconds);
+        // The predictor caps work by MaxSteps and increases its integration
+        // interval when necessary. Do not independently cap a *bound* orbit by
+        // time here: a high-apogee ellipse can legitimately take longer than
+        // ten days, and that cap left the rendered path short of one revolution.
+        float fullOrbitHorizon = orbitalPeriodSeconds * 1.25f;
+        if (float.IsNaN(fullOrbitHorizon) || float.IsInfinity(fullOrbitHorizon))
+            return MaxHorizonSeconds;
+
+        return Mathf.Max(MinHorizonSeconds, fullOrbitHorizon);
     }
 
     private static bool ShouldUseMatchedBackend(
@@ -265,8 +281,8 @@ public static class TrajectoryPredictionPlanner
         if (!useMatchedBackend || body == null || bodyService == null || bodyService.CentralBody == null)
             return BallisticRefreshSeconds;
 
-        float currentAltitudeKm = (float)body.altitude * 10f;
-        float periapsisAltitudeKm = (orbitalParameters.perigeeRadius - bodyService.CentralBody.radius) * 10f;
+        float currentAltitudeKm = (float)body.altitude * SimulationUnits.KilometersPerUnit;
+        float periapsisAltitudeKm = (orbitalParameters.perigeeRadius - bodyService.CentralBody.radius) * SimulationUnits.KilometersPerUnit;
         float representativeAltitudeKm = Mathf.Min(currentAltitudeKm, periapsisAltitudeKm);
 
         if (representativeAltitudeKm <= 300f)
@@ -283,10 +299,10 @@ public static class TrajectoryPredictionPlanner
         if (body == null || centralBody == null || !orbitalParameters.isValid)
             return false;
 
-        if (!(body.dragCoefficient > 0f) || !(body.atmosphericDensity0 > 0f))
+        if (!(body.dragCoefficient > 0f))
             return false;
 
-        float periapsisAltitudeKm = (orbitalParameters.perigeeRadius - centralBody.radius) * 10f;
+        float periapsisAltitudeKm = (orbitalParameters.perigeeRadius - centralBody.radius) * SimulationUnits.KilometersPerUnit;
         return periapsisAltitudeKm <= DragPeriapsisThresholdKm;
     }
 

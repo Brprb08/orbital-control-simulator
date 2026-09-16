@@ -42,6 +42,7 @@ public sealed class TrajectoryPreviewModule
 
     private const float BASE_DT = 7f;
     private const float NEAR_CIRCULAR_UNITS_THRESHOLD = 0.5f;
+    private const int ANALYTIC_ORBIT_SAMPLES = 768;
 
     private readonly Vector3[] apogeeLinePoints = new Vector3[2];
     private readonly Vector3[] perigeeLinePoints = new Vector3[2];
@@ -125,6 +126,27 @@ public sealed class TrajectoryPreviewModule
 
         UpdateApsides(startPos, startVel, svc);
 
+        // A maneuver preview is deliberately a central-body, post-burn path.
+        // Draw a closed ellipse directly when it is bound so very large orbits
+        // do not disappear at the GPU predictor's finite time horizon.
+        if (singleOrbit && TrajectoryConicSampler.TrySampleBoundOrbit(
+                startPos,
+                startVel,
+                svc.CentralBody.transform.position,
+                svc.CentralBody.TotalMassKilograms,
+                ANALYTIC_ORBIT_SAMPLES,
+                out Vector3[] analyticOrbit))
+        {
+            unchecked
+            {
+                previewRequestGeneration++;
+            }
+
+            line.UpdateLine(analyticOrbit, smoothClosedLoop);
+            previewDirty = false;
+            return;
+        }
+
         float usedDt = dt;
         int usedSteps = steps;
         if (usedDt <= 0f || usedSteps <= 0)
@@ -137,7 +159,7 @@ public sealed class TrajectoryPreviewModule
 
         var cb = svc.CentralBody;
         Vector3[] attractorPos = { cb.transform.position };
-        float[] attractorMass = { (float)cb.trueMass };
+        float[] attractorMass = { (float)cb.TotalMassKilograms };
         uint requestGeneration = unchecked(++previewRequestGeneration);
 
         ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
@@ -162,7 +184,8 @@ public sealed class TrajectoryPreviewModule
 
                 line.UpdateLine(clipped, smoothClosedLoop && singleOrbit);
                 previewDirty = false;
-            });
+            },
+            coalesceKey: "ManeuverPreview");
     }
 
     /// <summary>
@@ -202,7 +225,7 @@ public sealed class TrajectoryPreviewModule
         }
 
         // μ = G * M
-        float mu = (float)(PhysicsConstants.G * cb.trueMass);
+        float mu = (float)(PhysicsConstants.G * cb.TotalMassKilograms);
 
         // Specific orbital energy ε = v^2/2 - μ / r
         float energy = 0.5f * v * v - mu / r;
@@ -278,7 +301,7 @@ public sealed class TrajectoryPreviewModule
 
             var cb = svc.CentralBody;
             Vector3[] attractorPos = { cb.transform.position };
-            float[] attractorMass = { (float)cb.trueMass };
+            float[] attractorMass = { (float)cb.TotalMassKilograms };
             uint requestGeneration = unchecked(++previewRequestGeneration);
 
             ctx.TrajectoryComputeController.CalculateTrajectoryGPU_Async(
@@ -299,7 +322,8 @@ public sealed class TrajectoryPreviewModule
 
                     var clipped = clipper(points);
                     line.UpdateLine(clipped);
-                });
+                },
+                coalesceKey: "ManeuverPreview");
 
             yield return new WaitForSecondsRealtime(tick);
         }
@@ -316,7 +340,7 @@ public sealed class TrajectoryPreviewModule
         NBody central = bodyService.CentralBody;
         Vector3 center = central.transform.position;
         OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            central.trueMass,
+            central.TotalMassKilograms,
             ToDouble3(center),
             ToDouble3(startPos),
             ToDouble3(startVel)

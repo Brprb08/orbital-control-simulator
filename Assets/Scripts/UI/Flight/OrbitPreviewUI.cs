@@ -29,8 +29,8 @@ public class OrbitPreviewUI : MonoBehaviour
         float rp = (p.perigeePosition - center).magnitude;
         float ra = (p.apogeePosition - center).magnitude;
 
-        float periAlt = (rp - central.radius) * 10f;
-        float apoAlt = (ra - central.radius) * 10f;
+        float periAlt = (rp - central.radius) * SimulationUnits.KilometersPerUnit;
+        float apoAlt = (ra - central.radius) * SimulationUnits.KilometersPerUnit;
 
         if (!float.IsFinite(periAlt)) periAlt = 0f;
         if (!float.IsFinite(apoAlt)) apoAlt = 0f;

@@ -43,12 +43,12 @@ public class TrajectoryUI
             refs.removePreManeuverLineButton.gameObject.SetActive(visible);
     }
 
-    public void UpdateDeltaV(float deltaV)
+    public void UpdateDeltaV(double deltaVMetersPerSecond)
     {
         if (refs.deltaVText == null) return;
 
-        if (deltaV != 0f)
-            SetText(refs.deltaVText, "DeltaV", deltaV * 1000f, "m/s", "F3");
+        if (deltaVMetersPerSecond != 0f)
+            refs.deltaVText.text = $"DeltaV: {deltaVMetersPerSecond:F3} m/s";
         else
             refs.deltaVText.text = "";
     }
@@ -67,7 +67,7 @@ public class TrajectoryUI
     {
         SetText(refs.apogeeText, "Apogee", apogee);
         SetText(refs.perigeeText, "Perigee", perigee);
-        SetText(refs.semiMajorAxisText, "Semi-Major Axis", semiMajorAxis * 10f);
+        SetText(refs.semiMajorAxisText, "Semi-Major Axis", semiMajorAxis * SimulationUnits.KilometersPerUnit);
         SetText(refs.eccentricityText, "Eccentricity", eccentricity, "", "F3");
         SetText(refs.orbitalPeriodText, "Orbital Period", orbitalPeriod, "s");
         SetText(refs.inclinationText, "Inclination", inclination, "°", "F1");

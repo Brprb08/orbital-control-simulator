@@ -20,10 +20,51 @@ public class BodyDropdownManager : MonoBehaviour
     // Services/interfaces
     private ICameraTracker cameraTracker;
     private BodyService bodyService;
+    private ConstellationRegistry constellationRegistry;
     private SimContext ctx;
 
-    // index -> NBody map (avoids name lookups)
-    private readonly List<NBody> _optionsMap = new List<NBody>();
+    private enum DropdownEntryKind
+    {
+        Body,
+        ConstellationPlane
+    }
+
+    private readonly struct DropdownEntry
+    {
+        public readonly DropdownEntryKind Kind;
+        public readonly NBody Body;
+        public readonly ConstellationRecord Constellation;
+        public readonly ConstellationPlaneRecord Plane;
+        public readonly string Label;
+
+        public DropdownEntry(NBody body)
+        {
+            Kind = DropdownEntryKind.Body;
+            Body = body;
+            Constellation = null;
+            Plane = null;
+            Label = body != null ? body.name : "--";
+        }
+
+        public DropdownEntry(ConstellationRecord constellation, ConstellationPlaneRecord plane)
+        {
+            Kind = DropdownEntryKind.ConstellationPlane;
+            Body = null;
+            Constellation = constellation;
+            Plane = plane;
+            Label = plane != null ? plane.DisplayName : "--";
+        }
+
+        public NBody ResolveTrackingBody()
+        {
+            return Kind == DropdownEntryKind.ConstellationPlane
+                ? Plane?.RepresentativeBody
+                : Body;
+        }
+    }
+
+    // index -> typed selection map (avoids name lookups)
+    private readonly List<DropdownEntry> _optionsMap = new List<DropdownEntry>();
 
     // Event handler refs 
     private System.Action<NBody> _onBodyAddedHandler;
@@ -35,6 +76,8 @@ public class BodyDropdownManager : MonoBehaviour
 
     // Guard to avoid duplicate listener registration
     private bool _valueListenerAdded;
+    private bool _registryListenerAdded;
+    private bool _rebuildQueued;
 
     /// <summary>
     /// Injects context references and builds initial options.
@@ -44,6 +87,7 @@ public class BodyDropdownManager : MonoBehaviour
         this.ctx = ctx;
         cameraTracker = ctx.CameraTracker;
         bodyService = ctx.BodyService;
+        constellationRegistry = ctx.ConstellationRegistry;
         tutorialController = ctx.TutorialController;
 
         if (bodyDropdown == null)
@@ -51,6 +95,7 @@ public class BodyDropdownManager : MonoBehaviour
         if (bodyService == null)
             Debug.LogError("[BodyDropdown] BodyService missing from context.");
 
+        BindRegistryListener();
         RebuildOptionsAndSelection();
     }
 
@@ -88,6 +133,7 @@ public class BodyDropdownManager : MonoBehaviour
             _valueListenerAdded = true;
         }
 
+        BindRegistryListener();
         RebuildOptionsAndSelection();
     }
 
@@ -118,6 +164,7 @@ public class BodyDropdownManager : MonoBehaviour
             _valueListenerAdded = false;
         }
 
+        UnbindRegistryListener();
         _openListRt = null;
     }
 
@@ -125,6 +172,17 @@ public class BodyDropdownManager : MonoBehaviour
     {
         if (bodyDropdown != null && _valueListenerAdded)
             bodyDropdown.onValueChanged.RemoveListener(HandleDropdownValueChanged);
+
+        UnbindRegistryListener();
+    }
+
+    private void LateUpdate()
+    {
+        if (!_rebuildQueued)
+            return;
+
+        _rebuildQueued = false;
+        RebuildOptionsAndSelection();
     }
 
     /// <summary>
@@ -140,7 +198,8 @@ public class BodyDropdownManager : MonoBehaviour
         }
         if (index < 0 || index >= _optionsMap.Count) return;
 
-        var target = _optionsMap[index];
+        var entry = _optionsMap[index];
+        var target = entry.ResolveTrackingBody();
         if (target == null) return;
 
         cameraTracker?.TrackBody(target);
@@ -148,7 +207,7 @@ public class BodyDropdownManager : MonoBehaviour
         if (tutorialController != null && tutorialController.inTutorialMode)
             tutorialController.hasSwitchedSatellites = true;
 
-        Debug.Log($"[BodyDropdown] Tracking switched to: {target.name}");
+        Debug.Log($"[BodyDropdown] Tracking switched to: {entry.Label}");
     }
 
     public void SetInteractable(bool interactable)
@@ -166,9 +225,10 @@ public class BodyDropdownManager : MonoBehaviour
         else if (mode == CameraMode.Track) UpdateDropdownSelection();
     }
 
-    private void OnBodyAdded(NBody _) => RebuildOptionsAndSelection();
-    private void OnBodyRemoved(NBody _) => RebuildOptionsAndSelection();
-    private void OnCentralBodyChanged(NBody _) => RebuildOptionsAndSelection();
+    private void OnBodyAdded(NBody _) => QueueRebuildOptionsAndSelection();
+    private void OnBodyRemoved(NBody _) => QueueRebuildOptionsAndSelection();
+    private void OnCentralBodyChanged(NBody _) => QueueRebuildOptionsAndSelection();
+    private void OnConstellationRegistryChanged() => QueueRebuildOptionsAndSelection();
 
     private void HandleDropdownShown(RectTransform listRt) => _openListRt = listRt;
     private void HandleDropdownHidden() => _openListRt = null;
@@ -178,8 +238,14 @@ public class BodyDropdownManager : MonoBehaviour
     /// </summary>
     public void RebuildOptionsAndSelection()
     {
+        _rebuildQueued = false;
         RebuildOptions();
         UpdateDropdownSelection();
+    }
+
+    private void QueueRebuildOptionsAndSelection()
+    {
+        _rebuildQueued = true;
     }
 
     /// <summary>
@@ -203,8 +269,33 @@ public class BodyDropdownManager : MonoBehaviour
 
                 if (!b.CompareTag("Planet") && !b.CompareTag("Satellite")) continue;
 
-                _optionsMap.Add(b);
+                if (constellationRegistry != null && constellationRegistry.IsConstellationMember(b))
+                    continue;
+
+                _optionsMap.Add(new DropdownEntry(b));
                 opts.Add(new TMP_Dropdown.OptionData(b.name));
+            }
+        }
+
+        if (constellationRegistry != null)
+        {
+            var constellations = constellationRegistry.Constellations;
+            for (int c = 0; c < constellations.Count; c++)
+            {
+                ConstellationRecord constellation = constellations[c];
+                if (constellation == null)
+                    continue;
+
+                var planes = constellation.Planes;
+                for (int p = 0; p < planes.Count; p++)
+                {
+                    ConstellationPlaneRecord plane = planes[p];
+                    if (plane == null || plane.RepresentativeBody == null)
+                        continue;
+
+                    _optionsMap.Add(new DropdownEntry(constellation, plane));
+                    opts.Add(new TMP_Dropdown.OptionData(plane.DisplayName));
+                }
             }
         }
 
@@ -232,7 +323,23 @@ public class BodyDropdownManager : MonoBehaviour
         {
             for (int i = 0; i < _optionsMap.Count; i++)
             {
-                if (_optionsMap[i] == tracked) { idx = i; break; }
+                DropdownEntry entry = _optionsMap[i];
+
+                if (entry.Kind == DropdownEntryKind.Body && entry.Body == tracked)
+                {
+                    idx = i;
+                    break;
+                }
+
+                if (entry.Kind == DropdownEntryKind.ConstellationPlane &&
+                    constellationRegistry != null &&
+                    constellationRegistry.TryGetPlaneForBody(tracked, out var constellation, out var plane) &&
+                    entry.Constellation == constellation &&
+                    entry.Plane == plane)
+                {
+                    idx = i;
+                    break;
+                }
             }
         }
 
@@ -250,5 +357,23 @@ public class BodyDropdownManager : MonoBehaviour
     private void SetDropdownNoSelection()
     {
         bodyDropdown.RefreshShownValue();
+    }
+
+    private void BindRegistryListener()
+    {
+        if (constellationRegistry == null || _registryListenerAdded)
+            return;
+
+        constellationRegistry.Changed += OnConstellationRegistryChanged;
+        _registryListenerAdded = true;
+    }
+
+    private void UnbindRegistryListener()
+    {
+        if (constellationRegistry == null || !_registryListenerAdded)
+            return;
+
+        constellationRegistry.Changed -= OnConstellationRegistryChanged;
+        _registryListenerAdded = false;
     }
 }

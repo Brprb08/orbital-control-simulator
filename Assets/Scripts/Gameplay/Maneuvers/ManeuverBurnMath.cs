@@ -2,8 +2,6 @@ using UnityEngine;
 
 public static class ManeuverBurnMath
 {
-    private const float WorldForceScale = 10f;
-
     public static bool IsBurnActiveForStep(ManeuverNode node, NBody targetBody, int simulationStep)
     {
         return node != null &&
@@ -13,12 +11,37 @@ public static class ManeuverBurnMath
                simulationStep < node.burnStartStep + node.burnStepCount;
     }
 
+    public static bool IsBurnActiveAtTime(ManeuverNode node, NBody targetBody, float simulationTime)
+    {
+        return node != null &&
+               node.isFinalized &&
+               node.targetBody == targetBody &&
+               simulationTime >= node.burnTime &&
+               simulationTime < GetBurnEndTime(node);
+    }
+
+    public static bool DoesBurnOverlap(ManeuverNode node, NBody targetBody, float startTime, float endTime)
+    {
+        return node != null &&
+               node.isFinalized &&
+               node.targetBody == targetBody &&
+               endTime > node.burnTime &&
+               startTime < GetBurnEndTime(node);
+    }
+
+    public static float GetBurnEndTime(ManeuverNode node)
+    {
+        return node != null
+            ? node.burnTime + Mathf.Max(0f, node.duration)
+            : 0f;
+    }
+
     public static bool TryBuildBurnCommand(
         BurnType burnType,
         Vector3 worldPos,
         Vector3 worldVel,
         Vector3 center,
-        float effectiveForwardThrustMagnitude,
+        float thrustNewtons,
         ref Vector3 vCache,
         ref Vector3 hCache,
         out Vector3 thrustForce,
@@ -27,8 +50,8 @@ public static class ManeuverBurnMath
         thrustForce = Vector3.zero;
         normalSign = GetNormalSign(burnType);
 
-        float scaledMagnitude = effectiveForwardThrustMagnitude / WorldForceScale;
-        if (!(scaledMagnitude > 0f))
+        float scaledMagnitude = SimulationUnits.ForceNewtonsToWorld(thrustNewtons);
+        if (!float.IsFinite(scaledMagnitude) || !(scaledMagnitude > 0f))
             return false;
 
         Vector3 burnDir = AttitudeMath.ComputeBurnDirection(

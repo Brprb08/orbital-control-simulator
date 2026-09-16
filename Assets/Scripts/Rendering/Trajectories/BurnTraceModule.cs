@@ -1,4 +1,3 @@
-using System.Collections.Generic;
 using UnityEngine;
 
 /// <summary>
@@ -12,7 +11,10 @@ public sealed class BurnTraceModule
     private readonly float minDistanceSqr;
     private readonly int maxPoints;
 
-    private readonly List<Vector3> points = new();
+    private readonly Vector3[] points;
+    private readonly Vector3[] lineBuffer;
+    private int firstPoint;
+    private int pointCount;
     private float nextSampleTime;
     private bool tracingActive;
 
@@ -26,11 +28,14 @@ public sealed class BurnTraceModule
         this.sampleInterval = Mathf.Max(0.0001f, sampleInterval);
         this.minDistanceSqr = Mathf.Max(0f, minDistance * minDistance);
         this.maxPoints = Mathf.Max(8, maxPoints);
+        points = new Vector3[this.maxPoints];
+        lineBuffer = new Vector3[this.maxPoints];
     }
 
     public void Reset()
     {
-        points.Clear();
+        firstPoint = 0;
+        pointCount = 0;
         tracingActive = false;
         line?.Clear();
     }
@@ -46,10 +51,11 @@ public sealed class BurnTraceModule
         if (!tracingActive && thrusting)
         {
             tracingActive = true;
-            points.Clear();
+            firstPoint = 0;
+            pointCount = 0;
             nextSampleTime = unscaledTime;
-            points.Add(bodyTransform.position);
-            line.UpdateLine(points.ToArray());
+            AddPoint(bodyTransform.position);
+            RefreshLine();
         }
 
         // sample while thrusting
@@ -60,16 +66,13 @@ public sealed class BurnTraceModule
                 Vector3 pos = bodyTransform.position;
 
                 bool farEnough =
-                    points.Count == 0 ||
-                    (pos - points[points.Count - 1]).sqrMagnitude >= minDistanceSqr;
+                    pointCount == 0 ||
+                    (pos - GetLastPoint()).sqrMagnitude >= minDistanceSqr;
 
                 if (farEnough)
                 {
-                    points.Add(pos);
-                    if (points.Count > maxPoints)
-                        points.RemoveRange(0, points.Count - maxPoints);
-
-                    line.UpdateLine(points.ToArray());
+                    AddPoint(pos);
+                    RefreshLine();
                 }
 
                 nextSampleTime = unscaledTime + sampleInterval;
@@ -80,16 +83,43 @@ public sealed class BurnTraceModule
         if (tracingActive && !thrusting)
         {
             Vector3 pos = bodyTransform.position;
-            if (points.Count == 0 ||
-                (pos - points[points.Count - 1]).sqrMagnitude >= minDistanceSqr)
+            if (pointCount == 0 ||
+                (pos - GetLastPoint()).sqrMagnitude >= minDistanceSqr)
             {
-                points.Add(pos);
-                if (points.Count > maxPoints)
-                    points.RemoveRange(0, points.Count - maxPoints);
-                line.UpdateLine(points.ToArray());
+                AddPoint(pos);
+                RefreshLine();
             }
 
             tracingActive = false;
         }
+    }
+
+    private void AddPoint(Vector3 point)
+    {
+        if (pointCount < maxPoints)
+        {
+            points[(firstPoint + pointCount) % maxPoints] = point;
+            pointCount++;
+            return;
+        }
+
+        points[firstPoint] = point;
+        firstPoint = (firstPoint + 1) % maxPoints;
+    }
+
+    private Vector3 GetLastPoint()
+    {
+        return points[(firstPoint + pointCount - 1) % maxPoints];
+    }
+
+    private void RefreshLine()
+    {
+        if (pointCount < 2)
+            return;
+
+        for (int i = 0; i < pointCount; i++)
+            lineBuffer[i] = points[(firstPoint + i) % maxPoints];
+
+        line.UpdateLine(lineBuffer, pointCount);
     }
 }

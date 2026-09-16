@@ -26,6 +26,7 @@ public static class BootstrapSequence
         references.thrustController.Initialize(ctx);
         references.timeController.Initialize(ctx);
         references.trajectoryComputeController.Initialize(ctx);
+        references.constellationRegistry.Initialize(ctx);
         references.objectPlacementManager.Initialize(ctx);
         references.manualVelocityPlacementUIController?.Initialize(ctx);
         references.pendingVelocityPlacementController.Initialize(ctx);
@@ -34,6 +35,8 @@ public static class BootstrapSequence
         references.rocketThrustAudio.Initialize(ctx);
         references.tutorialController.Initialize(ctx);
         references.attitudeUIController.Initialize(ctx);
+        references.constellationTrajectoryOverlay.Initialize(ctx);
+        references.constellationIndicatorController.Initialize(ctx);
         references.nBodyVectorOverlayController.Initialize(ctx);
     }
 

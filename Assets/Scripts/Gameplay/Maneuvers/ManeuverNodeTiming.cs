@@ -11,7 +11,7 @@ public static class ManeuverNodeTiming
 
         var central = bodyService.CentralBody;
         var orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            central.trueMass,
+            central.TotalMassKilograms,
             central.state.position,
             body.state.position,
             body.state.velocity

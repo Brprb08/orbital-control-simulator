@@ -87,7 +87,7 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (_hideWhenOccludedByCentralBody && _bodyService != null)
         {
             var earth = _bodyService.CentralBody;
-            if (earth != null && IsOccludedByCentralBody(camPos, targetPos, earth))
+            if (earth != null && CameraVisibilityPolicy.IsOccludedByCentralBody(camPos, targetPos, earth))
             {
                 SetIndicatorVisible(false);
                 return;
@@ -96,19 +96,7 @@ public class ManeuverNodeIndicator : MonoBehaviour
 
         Vector3 viewportPos = _mainCamera.WorldToViewportPoint(targetPos);
 
-        if (viewportPos.z <= 0f)
-        {
-            SetIndicatorVisible(false);
-            return;
-        }
-
-        bool inView =
-            viewportPos.x > _innerViewportMargin &&
-            viewportPos.x < 1f - _innerViewportMargin &&
-            viewportPos.y > _innerViewportMargin &&
-            viewportPos.y < 1f - _innerViewportMargin;
-
-        if (!inView)
+        if (!CameraVisibilityPolicy.IsInsideViewport(viewportPos, _innerViewportMargin))
         {
             SetIndicatorVisible(false);
             return;
@@ -170,34 +158,7 @@ public class ManeuverNodeIndicator : MonoBehaviour
         _iconGraphic.color = node.isFinalized ? _finalizedColor : _previewColor;
     }
 
-    private bool IsOccludedByCentralBody(Vector3 camPos, Vector3 targetPos, NBody central)
-    {
-        if (central == null)
-            return false;
 
-        Vector3 center = central.transform.position;
-        float radius = (float)central.radius;
-        if (radius <= 0f)
-            return false;
-
-        Vector3 camToTarget = targetPos - camPos;
-        float segLength = camToTarget.magnitude;
-        if (segLength <= Mathf.Epsilon)
-            return false;
-
-        Vector3 dir = camToTarget / segLength;
-        Vector3 camToCenter = center - camPos;
-
-        float t = Vector3.Dot(camToCenter, dir);
-
-        if (t <= 0f || t >= segLength)
-            return false;
-
-        Vector3 closestPoint = camPos + dir * t;
-        float distanceToCenter = (closestPoint - center).magnitude;
-
-        return distanceToCenter < radius;
-    }
 
     private void SetIndicatorVisible(bool visible)
     {

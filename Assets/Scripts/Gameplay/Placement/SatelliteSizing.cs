@@ -3,10 +3,10 @@ using UnityEngine;
 public static class SatelliteSizing
 {
     // Simulation uses 1 world unit = 10 km = 10,000 meters.
-    public const float SimMetersPerUnit = 10000f;
+    public const float SimMetersPerUnit = SimulationUnits.MetersPerUnit;
     public const float DefaultPhysicalRadiusMeters = 20f;
-    public const float MinPhysicalRadiusMeters = 2f;
-    public const float MaxPhysicalRadiusMeters = 300f;
+    public const float MinPhysicalRadiusMeters = SimulationLimits.MinSatelliteRadiusMeters;
+    public const float MaxPhysicalRadiusMeters = SimulationLimits.MaxSatelliteRadiusMeters;
     public const float MinVisualScale = 0.04f;
     public const float MaxVisualScale = 0.1f;
     public const float CameraDistanceRadius = 0.5f;
@@ -59,7 +59,7 @@ public static class SatelliteSizing
 
     public static void ApplyVisualScale(NBody body)
     {
-        if (body == null || body.isCentralBody)
+        if (body == null || body.isCentralBody || !body.CompareTag("Satellite"))
             return;
 
         body.transform.localScale = ResolveVisualScaleFromSimRadius(body.radius);

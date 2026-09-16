@@ -22,6 +22,7 @@ public class ManeuverNodeManager : MonoBehaviour
     [Header("Burn Tuning")]
     [SerializeField] private float burnDuration = 20f;
     [SerializeField] private float thrustPowerScale = 1f;
+    public float LegacyDefaultThrustScale => thrustPowerScale;
 
     [Header("Preview Snapshot Refresh")]
     [SerializeField, Min(0.1f)] private float previewNodeSnapshotRefreshInterval = 0.5f;
@@ -33,6 +34,7 @@ public class ManeuverNodeManager : MonoBehaviour
     private BodyService bodyService;
     private TutorialController tutorialController;
     private UIRoot uiRoot;
+    private NBody configurationBody;
 
     public ManeuverNode CurrentNode { get; private set; }
     public bool HasNode => CurrentNode != null;
@@ -57,8 +59,6 @@ public class ManeuverNodeManager : MonoBehaviour
         tutorialController = ctx.TutorialController;
         thrustController = ctx.ThrustController;
         uiRoot = ctx.UIRoot;
-        if (thrustController != null)
-            thrustController.SetThrustPowerScale(thrustPowerScale);
         bodyService = ctx.BodyService;
 
         if (uiController != null)
@@ -80,7 +80,6 @@ public class ManeuverNodeManager : MonoBehaviour
             previewController.Initialize(
                 bodyService: bodyService,
                 bodyRuntimeCoordinator: bodyRuntimeCoordinator,
-                thrustController: thrustController,
                 trajectoryRenderer: trajectoryRenderer
             );
             previewController.AccuratePreviewLimitExceededChanged += OnAccuratePreviewLimitExceededChanged;
@@ -88,15 +87,18 @@ public class ManeuverNodeManager : MonoBehaviour
 
         if (trajectoryRenderer != null)
             trajectoryRenderer.TrackedBodyChanged += OnTrackedBodyChanged;
+        ObserveFlightConfiguration(ctx.CameraTracker?.CurrentBody);
     }
 
     private void LateUpdate()
     {
+        uiController?.SetInsufficientFuelWarning(CurrentNode != null && CurrentNode.insufficientPropellant);
         UpdatePinnedNodeVisuals();
     }
 
     private void OnDestroy()
     {
+        ObserveFlightConfiguration(null);
         if (trajectoryRenderer != null)
             trajectoryRenderer.TrackedBodyChanged -= OnTrackedBodyChanged;
 
@@ -134,6 +136,7 @@ public class ManeuverNodeManager : MonoBehaviour
 
     private void OnTrackedBodyChanged(NBody oldBody, NBody newBody)
     {
+        ObserveFlightConfiguration(newBody);
         if (HasNode && oldBody != newBody)
         {
             ClearNode();
@@ -260,24 +263,24 @@ public class ManeuverNodeManager : MonoBehaviour
         if (node == null || bodyRuntimeCoordinator == null)
             return;
 
-        float fixedDt = Time.fixedDeltaTime;
-        if (fixedDt <= 0f)
+        float scheduleDt = BodyRuntimeCoordinator.BaseSimulationStep;
+        if (scheduleDt <= 0f)
             return;
 
-        int currentStep = bodyRuntimeCoordinator.simulationStep;
+        float currentTime = bodyRuntimeCoordinator.simulationTime;
 
         int startStep = Mathf.Max(
-            currentStep,
-            Mathf.CeilToInt(node.burnTime / fixedDt)
+            Mathf.CeilToInt(currentTime / scheduleDt),
+            Mathf.CeilToInt(node.burnTime / scheduleDt)
         );
 
-        int burnSteps = Mathf.Max(1, Mathf.CeilToInt(node.duration / fixedDt));
+        int burnSteps = Mathf.Max(1, Mathf.CeilToInt(node.duration / scheduleDt));
 
         node.burnStartStep = startStep;
         node.burnStepCount = burnSteps;
 
-        node.burnTime = node.burnStartStep * fixedDt;
-        node.duration = node.burnStepCount * fixedDt;
+        node.burnTime = node.burnStartStep * scheduleDt;
+        node.duration = node.burnStepCount * scheduleDt;
     }
 
     public void CreatePreviewNode(Vector3 position, float burnTime, Vector3 deltaV, float duration)
@@ -345,6 +348,9 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void ClearNode()
     {
+        if (thrustController != null && thrustController.IsNodeBurnActive)
+            thrustController.StopNodeBurn();
+
         if (CurrentNode != null)
             visualController?.DestroyVisual(CurrentNode);
 
@@ -356,6 +362,7 @@ public class ManeuverNodeManager : MonoBehaviour
         trajectoryRenderer?.ClearPlannedManeuver();
         previewController?.Clear();
         uiController?.ResetEditingUI();
+        uiController?.SetInsufficientFuelWarning(false);
         uiController?.ClearManeuverFeedback();
         RefreshSetupNodeButtonState();
         uiRoot?.RefreshAllUi();
@@ -430,7 +437,7 @@ public class ManeuverNodeManager : MonoBehaviour
 
         NBody central = bodyService.CentralBody;
         OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            central.trueMass,
+            central.TotalMassKilograms,
             central.state.position,
             body.state.position,
             body.state.velocity
@@ -582,14 +589,31 @@ public class ManeuverNodeManager : MonoBehaviour
 
     private void OnThrustScaleChangedFromUI(float newScale)
     {
-        thrustPowerScale = newScale;
-
-        if (thrustController != null)
-            thrustController.SetThrustPowerScale(thrustPowerScale);
-
-        if (HasNode && !CurrentNode.isFinalized)
+        if (configurationBody != null)
         {
-            previewController?.RequestPreview(CurrentNode, interactionActive: true);
+            configurationBody.TryConfigurePropulsion(configurationBody.EngineThrustNewtons,
+                configurationBody.SpecificImpulseSeconds, newScale);
+            uiController?.SetThrustScaleWithoutNotify(configurationBody.ThrustScale);
+        }
+    }
+
+    private void ObserveFlightConfiguration(NBody body)
+    {
+        if (configurationBody != null)
+            configurationBody.FlightConfigurationChanged -= OnFlightConfigurationChanged;
+        configurationBody = body;
+        if (configurationBody == null) return;
+        configurationBody.FlightConfigurationChanged += OnFlightConfigurationChanged;
+        uiController?.SetThrustScaleWithoutNotify(configurationBody.ThrustScale);
+    }
+
+    private void OnFlightConfigurationChanged(NBody body)
+    {
+        uiController?.SetThrustScaleWithoutNotify(body.ThrustScale);
+        trajectoryRenderer?.RequestPredictionRefresh();
+        if (HasNode && CurrentNode.targetBody == body && !CurrentNode.isFinalized)
+        {
+            previewController?.RequestPreview(CurrentNode, interactionActive: false);
             MarkAdjusted();
         }
     }

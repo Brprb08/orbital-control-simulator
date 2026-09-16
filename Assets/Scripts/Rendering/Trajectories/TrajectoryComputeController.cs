@@ -1,6 +1,7 @@
 using UnityEngine;
 using UnityEngine.Rendering;
 using System;
+using System.Collections.Generic;
 
 /// <summary>
 /// Handles the computation of orbital trajectories using a compute shader. 
@@ -20,6 +21,23 @@ public class TrajectoryComputeController : MonoBehaviour
     private SimContext ctx;
     private int rungeKuttaKernelIndex = -1;
 
+    // The GPU driver will happily queue every drag/slider update. Keeping only the
+    // newest request for each consumer prevents stale previews from accumulating
+    // VRAM allocations and readbacks behind the useful result.
+    private readonly Dictionary<string, QueuedTrajectoryRequest> pendingRequests = new();
+    private readonly Queue<string> pendingRequestOrder = new();
+    private bool requestInFlight;
+    private bool shuttingDown;
+
+    // Requests are serialized, so these buffers can be retained and grown instead
+    // of allocating/releasing six GPU resources for every preview refresh.
+    private ComputeBuffer initialPositionBuffer;
+    private ComputeBuffer initialVelocityBuffer;
+    private ComputeBuffer massBuffer;
+    private ComputeBuffer bodyPositionsBuffer;
+    private ComputeBuffer bodyMassesBuffer;
+    private ComputeBuffer outputTrajectoryBuffer;
+
     private static readonly Vector3[] EmptyBodyPositionData = { Vector3.zero };
     private static readonly float[] EmptyBodyMassData = { 0f };
 
@@ -32,6 +50,7 @@ public class TrajectoryComputeController : MonoBehaviour
         public ComputeBuffer bodyMassesBuffer;
         public ComputeBuffer outputTrajectoryBuffer;
         public Action<Vector3[]> onComplete;
+        public int outputCount;
         private bool cleanedUp;
 
         public void Cleanup()
@@ -41,13 +60,6 @@ public class TrajectoryComputeController : MonoBehaviour
 
             cleanedUp = true;
 
-            initialPositionBuffer?.Release();
-            initialVelocityBuffer?.Release();
-            massBuffer?.Release();
-            bodyPositionsBuffer?.Release();
-            bodyMassesBuffer?.Release();
-            outputTrajectoryBuffer?.Release();
-
             initialPositionBuffer = null;
             initialVelocityBuffer = null;
             massBuffer = null;
@@ -56,6 +68,19 @@ public class TrajectoryComputeController : MonoBehaviour
             outputTrajectoryBuffer = null;
             onComplete = null;
         }
+    }
+
+    private sealed class QueuedTrajectoryRequest
+    {
+        public string Key;
+        public Vector3 StartPos;
+        public Vector3 StartVel;
+        public float BodyMass;
+        public Vector3[] OtherBodyPositions;
+        public float[] OtherBodyMasses;
+        public float DeltaTime;
+        public int Steps;
+        public Action<Vector3[]> OnComplete;
     }
 
     public void Initialize(SimContext ctx)
@@ -85,9 +110,22 @@ public class TrajectoryComputeController : MonoBehaviour
         float[] otherBodyMasses,
         float dt,
         int steps,
-        Action<Vector3[]> onComplete   // callback once data is ready
+        Action<Vector3[]> onComplete,  // callback once data is ready
+        string coalesceKey = null
     )
     {
+        if (shuttingDown)
+        {
+            onComplete?.Invoke(null);
+            return;
+        }
+
+        if (steps <= 0 || !float.IsFinite(dt) || dt <= 0f)
+        {
+            onComplete?.Invoke(null);
+            return;
+        }
+
         if (trajectoryComputeShader == null)
         {
             Debug.LogError("[TrajectoryComputeController] Missing compute shader.");
@@ -102,6 +140,87 @@ public class TrajectoryComputeController : MonoBehaviour
             return;
         }
 
+        var queuedRequest = new QueuedTrajectoryRequest
+        {
+            Key = string.IsNullOrEmpty(coalesceKey) ? Guid.NewGuid().ToString("N") : coalesceKey,
+            StartPos = startPos,
+            StartVel = startVel,
+            BodyMass = bodyMass,
+            OtherBodyPositions = otherBodyPositions,
+            OtherBodyMasses = otherBodyMasses,
+            DeltaTime = dt,
+            Steps = steps,
+            OnComplete = onComplete
+        };
+
+        if (requestInFlight)
+        {
+            bool alreadyQueued = pendingRequests.ContainsKey(queuedRequest.Key);
+            pendingRequests[queuedRequest.Key] = queuedRequest;
+            if (!alreadyQueued)
+                pendingRequestOrder.Enqueue(queuedRequest.Key);
+            return;
+        }
+
+        StartRequest(queuedRequest);
+    }
+
+    private void OnDestroy()
+    {
+        shuttingDown = true;
+        pendingRequests.Clear();
+        pendingRequestOrder.Clear();
+        // The readback owns the buffers until its callback finishes.
+        if (!requestInFlight)
+            ReleaseBuffers();
+    }
+
+    private void ReleaseBuffers()
+    {
+        ReleaseBuffer(ref initialPositionBuffer);
+        ReleaseBuffer(ref initialVelocityBuffer);
+        ReleaseBuffer(ref massBuffer);
+        ReleaseBuffer(ref bodyPositionsBuffer);
+        ReleaseBuffer(ref bodyMassesBuffer);
+        ReleaseBuffer(ref outputTrajectoryBuffer);
+    }
+
+    private void StartRequest(QueuedTrajectoryRequest queuedRequest)
+    {
+        if (shuttingDown)
+            return;
+
+        requestInFlight = true;
+        try
+        {
+            DispatchRequest(queuedRequest);
+        }
+        catch (Exception exception)
+        {
+            Debug.LogException(exception);
+            try
+            {
+                if (!shuttingDown)
+                    queuedRequest.OnComplete?.Invoke(null);
+            }
+            finally
+            {
+                FinishRequest();
+            }
+        }
+    }
+
+    private void DispatchRequest(QueuedTrajectoryRequest queuedRequest)
+    {
+        Vector3 startPos = queuedRequest.StartPos;
+        Vector3 startVel = queuedRequest.StartVel;
+        float bodyMass = queuedRequest.BodyMass;
+        Vector3[] otherBodyPositions = queuedRequest.OtherBodyPositions;
+        float[] otherBodyMasses = queuedRequest.OtherBodyMasses;
+        float dt = queuedRequest.DeltaTime;
+        int steps = queuedRequest.Steps;
+        Action<Vector3[]> onComplete = queuedRequest.OnComplete;
+
         float bodyMassFloat = bodyMass;
         const int maxPoints = 2500;
         lodFactor = Mathf.Max(1, steps / maxPoints);
@@ -109,13 +228,14 @@ public class TrajectoryComputeController : MonoBehaviour
 
         var requestContext = new TrajectoryRequestContext
         {
-            initialPositionBuffer = new ComputeBuffer(1, sizeof(float) * 3),
-            initialVelocityBuffer = new ComputeBuffer(1, sizeof(float) * 3),
-            massBuffer = new ComputeBuffer(1, sizeof(float)),
-            bodyPositionsBuffer = new ComputeBuffer(Mathf.Max(1, otherBodyPositions.Length), sizeof(float) * 3),
-            bodyMassesBuffer = new ComputeBuffer(Mathf.Max(1, otherBodyMasses.Length), sizeof(float)),
-            outputTrajectoryBuffer = new ComputeBuffer(outputCount, sizeof(float) * 3),
-            onComplete = onComplete
+            initialPositionBuffer = AcquireBuffer(ref initialPositionBuffer, 1, sizeof(float) * 3),
+            initialVelocityBuffer = AcquireBuffer(ref initialVelocityBuffer, 1, sizeof(float) * 3),
+            massBuffer = AcquireBuffer(ref massBuffer, 1, sizeof(float)),
+            bodyPositionsBuffer = AcquireBuffer(ref bodyPositionsBuffer, Mathf.Max(1, otherBodyPositions.Length), sizeof(float) * 3),
+            bodyMassesBuffer = AcquireBuffer(ref bodyMassesBuffer, Mathf.Max(1, otherBodyMasses.Length), sizeof(float)),
+            outputTrajectoryBuffer = AcquireBuffer(ref outputTrajectoryBuffer, outputCount, sizeof(float) * 3),
+            onComplete = onComplete,
+            outputCount = outputCount
         };
 
         requestContext.initialPositionBuffer.SetData(new[] { startPos });
@@ -173,6 +293,9 @@ public class TrajectoryComputeController : MonoBehaviour
     {
         try
         {
+            if (shuttingDown)
+                return;
+
             if (request.hasError)
             {
                 Debug.LogError("AsyncGPUReadbackRequest error when reading trajectory buffer!");
@@ -180,12 +303,62 @@ public class TrajectoryComputeController : MonoBehaviour
                 return;
             }
 
-            Vector3[] result = request.GetData<Vector3>().ToArray();
+            var data = request.GetData<Vector3>();
+            Vector3[] result = new Vector3[requestContext.outputCount];
+            for (int i = 0; i < result.Length; i++)
+                result[i] = data[i];
             requestContext.onComplete?.Invoke(result);
         }
         finally
         {
             requestContext?.Cleanup();
+            FinishRequest();
         }
+    }
+
+    private void FinishRequest()
+    {
+        requestInFlight = false;
+        if (shuttingDown)
+            ReleaseBuffers();
+        else
+            StartNextQueuedRequest();
+    }
+
+    private void StartNextQueuedRequest()
+    {
+        if (shuttingDown)
+            return;
+
+        while (pendingRequestOrder.Count > 0)
+        {
+            string key = pendingRequestOrder.Dequeue();
+            if (!pendingRequests.TryGetValue(key, out QueuedTrajectoryRequest queuedRequest))
+                continue;
+
+            pendingRequests.Remove(key);
+            StartRequest(queuedRequest);
+            return;
+        }
+    }
+
+    private static ComputeBuffer AcquireBuffer(ref ComputeBuffer buffer, int count, int stride)
+    {
+        if (buffer == null || buffer.count < count || buffer.stride != stride)
+        {
+            ReleaseBuffer(ref buffer);
+            buffer = new ComputeBuffer(count, stride);
+        }
+
+        return buffer;
+    }
+
+    private static void ReleaseBuffer(ref ComputeBuffer buffer)
+    {
+        if (buffer == null)
+            return;
+
+        buffer.Release();
+        buffer = null;
     }
 }

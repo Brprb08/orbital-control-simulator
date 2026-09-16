@@ -9,6 +9,21 @@ public class ManeuverNodeUIController_EditModeTests
     private GameObject root;
     private ManeuverNodeUIController controller;
 
+    [TestCase(0f)]
+    [TestCase(2.25f)]
+    [TestCase(4f)]
+    public void Restoring_satellite_thrust_scale_preserves_value_without_emitting_an_edit(float scale)
+    {
+        BuildController();
+        controller.Initialize(defaultBurnDuration: 20f, defaultThrustScale: 1f, allowNodeSlider: true);
+        int edits = 0;
+        controller.ThrustScaleChanged += _ => edits++;
+        controller.SetThrustScaleWithoutNotify(scale);
+        Assert.AreEqual(scale, controller.ThrustScale);
+        Assert.AreEqual(scale, controller.thrustScaleSlider.value);
+        Assert.AreEqual(0, edits);
+    }
+
     [TearDown]
     public void TearDown()
     {
@@ -28,7 +43,8 @@ public class ManeuverNodeUIController_EditModeTests
         TMP_InputField input = GetPrivateField<TMP_InputField>(controller, "burnDurationInputField");
         input.onValueChanged.Invoke("42.5");
 
-        float expected = Mathf.Ceil(42.5f / Time.fixedDeltaTime) * Time.fixedDeltaTime;
+        float expected = Mathf.Ceil(42.5f / BodyRuntimeCoordinator.BaseSimulationStep) *
+                         BodyRuntimeCoordinator.BaseSimulationStep;
         Assert.AreEqual(expected, controller.burnDurationSlider.value, 0.001f);
         Assert.AreEqual(expected, controller.BurnDuration, 0.001f);
         Assert.AreEqual(expected, observed, 0.001f);

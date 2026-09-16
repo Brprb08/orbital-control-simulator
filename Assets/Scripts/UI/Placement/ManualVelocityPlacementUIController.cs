@@ -170,13 +170,13 @@ public sealed class ManualVelocityPlacementUIController : MonoBehaviour
         _buttonBinder?.RefreshBaseDirection(hasPendingPlacement, direction);
     }
 
-    public void RefreshManualOrbitReadout(
+    public string RefreshManualOrbitReadout(
         GameObject pendingBody,
         Vector3 velocity,
         NBody centralBody,
         float kilometersPerUnit)
     {
-        _manualOrbitReadout?.Refresh(pendingBody, velocity, centralBody, kilometersPerUnit);
+        return _manualOrbitReadout?.Refresh(pendingBody, velocity, centralBody, kilometersPerUnit);
     }
 
     public void ClearManualOrbitReadout()

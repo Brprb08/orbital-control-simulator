@@ -44,7 +44,7 @@ public static class KeplerUtils
         return new M33 { m00 = 1, m01 = 0, m02 = 0, m10 = 0, m11 = c, m12 = -s, m20 = 0, m21 = s, m22 = c };
     }
 
-    private static double Deg2Rad(double d) => d * Math.PI / 180.0;
+    private static double Deg2Rad(double d) => (d % 360.0) * Math.PI / 180.0;
     private static double Wrap2Pi(double x) { var t = 2 * Math.PI; x %= t; if (x < 0) x += t; return x; }
 
     /// <summary>
@@ -62,6 +62,10 @@ public static class KeplerUtils
     public static (Vector3d r, Vector3d v) FromElements(
         double a, double e, double iDeg, double raanDeg, double argpDeg, double trueAnomDeg, double mu)
     {
+        if (!double.IsFinite(a) || !double.IsFinite(e) || !double.IsFinite(mu) ||
+            !double.IsFinite(iDeg) || !double.IsFinite(raanDeg) || !double.IsFinite(argpDeg) ||
+            !double.IsFinite(trueAnomDeg) || mu <= 0 || e < 0 || iDeg < 0 || iDeg > 180)
+            throw new ArgumentException("Orbital elements must be finite; inclination must be 0–180 degrees.");
         if (e >= 1.0) throw new ArgumentException("Only elliptical orbits supported (e < 1).");
         if (a <= 0) throw new ArgumentException("Semi-major axis must be > 0.");
 
@@ -86,6 +90,9 @@ public static class KeplerUtils
         var rEci = Mul(Q, r_pf);
         var vEci = Mul(Q, v_pf);
 
+        if (!double.IsFinite(rEci.x) || !double.IsFinite(rEci.y) || !double.IsFinite(rEci.z) ||
+            !double.IsFinite(vEci.x) || !double.IsFinite(vEci.y) || !double.IsFinite(vEci.z))
+            throw new ArgumentException("Orbital elements produced a non-finite state.");
         return (rEci, vEci);
     }
 

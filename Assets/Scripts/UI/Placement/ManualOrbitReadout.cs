@@ -1,6 +1,5 @@
 using System;
 using TMPro;
-using Unity.Mathematics;
 using UnityEngine;
 
 public sealed class ManualOrbitReadout
@@ -8,6 +7,8 @@ public sealed class ManualOrbitReadout
     private const string UnavailableText = "--";
 
     private readonly References refs;
+    private (double mass, Vector3 center, Vector3 position, Vector3 velocity)? lastInputs;
+    private OrbitalParameters orbit;
 
     public ManualOrbitReadout(References refs)
     {
@@ -20,28 +21,28 @@ public sealed class ManualOrbitReadout
             refs.Panel.SetActive(visible);
     }
 
-    public void Refresh(GameObject pendingBody, Vector3 currentVelocity, NBody centralBody, float kilometersPerUnit)
+    public string Refresh(GameObject pendingBody, Vector3 currentVelocity, NBody centralBody, float kilometersPerUnit)
     {
-        if (!HasAnyText())
-            return;
-
-        if (pendingBody == null || centralBody == null || currentVelocity.sqrMagnitude <= 1e-12f)
+        if (pendingBody == null || centralBody == null || !(centralBody.TotalMassKilograms > 0.0) ||
+            currentVelocity.sqrMagnitude <= 1e-12f)
         {
             Clear();
-            return;
+            return null;
         }
 
-        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
-            centralBody.trueMass,
-            ToDouble3(centralBody.transform.position),
-            ToDouble3(pendingBody.transform.position),
-            ToDouble3(currentVelocity)
-        );
+        var inputs = (mass: centralBody.TotalMassKilograms, center: centralBody.transform.position,
+            position: pendingBody.transform.position, velocity: currentVelocity);
+        if (!lastInputs.HasValue || !lastInputs.Value.Equals(inputs))
+        {
+            orbit = OrbitalCalculations.CalculateOrbitalParameters(
+                inputs.mass, inputs.center.ToDouble3(), inputs.position.ToDouble3(), inputs.velocity.ToDouble3());
+            lastInputs = inputs;
+        }
 
         if (!orbit.isValid)
         {
             Clear();
-            return;
+            return null;
         }
 
         float centralRadius = (float)centralBody.radius;
@@ -63,10 +64,33 @@ public sealed class ManualOrbitReadout
         SetOrbitText(refs.TrueAnomalyText, "True anomaly", orbit.trueAnomaly, "deg", "F1");
         SetOrbitText(refs.TimeToPerigeeText, "T to perigee", orbit.timeToPerigee, "s", "F1");
         SetOrbitText(refs.TimeToApogeeText, "T to apogee", timeToApogeeSeconds, "s", "F1", nullText: "T to apogee: Escape");
+        return currentVelocity.sqrMagnitude > SimulationLimits.MinPlacementSpeedSquared
+            ? BuildLaunchPreviewText(orbit, perigeeKm, apogeeKm)
+            : null;
+    }
+
+    private static string BuildLaunchPreviewText(OrbitalParameters orbit, float perigeeKm, float? apogeeKm)
+    {
+        if (orbit.apogeeRadius < 0f)
+        {
+            return perigeeKm <= 0f
+                ? "Launch preview: escape path intersects the planet."
+                : $"Launch preview: escape trajectory, perigee {perigeeKm:F1} km.";
+        }
+
+        if (perigeeKm <= 0f)
+            return $"Launch preview: impact likely, perigee {perigeeKm:F1} km.";
+
+        if (orbit.eccentricity < 0.05f)
+            return $"Launch preview: stable near-circular orbit, perigee {perigeeKm:F1} km.";
+
+        return $"Launch preview: stable elliptical orbit, perigee {perigeeKm:F1} km, apogee {apogeeKm:F1} km.";
     }
 
     public void Clear()
     {
+        lastInputs = null;
+        orbit = default;
         SetTextDirect(refs.ApogeeText, $"Apogee: {UnavailableText}");
         SetTextDirect(refs.PerigeeText, $"Perigee: {UnavailableText}");
         SetTextDirect(refs.InclinationText, $"Inclination: {UnavailableText}");
@@ -77,20 +101,6 @@ public sealed class ManualOrbitReadout
         SetTextDirect(refs.TrueAnomalyText, $"True anomaly: {UnavailableText}");
         SetTextDirect(refs.TimeToPerigeeText, $"T to perigee: {UnavailableText}");
         SetTextDirect(refs.TimeToApogeeText, $"T to apogee: {UnavailableText}");
-    }
-
-    private bool HasAnyText()
-    {
-        return refs.ApogeeText != null ||
-               refs.PerigeeText != null ||
-               refs.InclinationText != null ||
-               refs.EccentricityText != null ||
-               refs.SemiMajorAxisText != null ||
-               refs.OrbitalPeriodText != null ||
-               refs.RaanText != null ||
-               refs.TrueAnomalyText != null ||
-               refs.TimeToPerigeeText != null ||
-               refs.TimeToApogeeText != null;
     }
 
     private static void SetOrbitText(
@@ -118,11 +128,6 @@ public sealed class ManualOrbitReadout
     {
         if (text != null)
             text.text = value;
-    }
-
-    private static double3 ToDouble3(Vector3 value)
-    {
-        return new double3(value.x, value.y, value.z);
     }
 
     [Serializable]

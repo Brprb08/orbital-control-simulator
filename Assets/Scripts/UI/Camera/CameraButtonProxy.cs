@@ -9,6 +9,7 @@ public class CameraButtonProxy : MonoBehaviour
 {
     private ICameraTracker cameraTracker;
     private SimContext ctx;
+    private ConstellationNavigationController constellationNavigation;
 
     /// <summary>
     /// Initializes the proxy with the active simulation context and retrieves camera tracker reference.
@@ -17,6 +18,7 @@ public class CameraButtonProxy : MonoBehaviour
     {
         this.ctx = ctx;
         this.cameraTracker = ctx.CameraTracker;
+        constellationNavigation = new ConstellationNavigationController(ctx);
     }
 
     /// <summary>
@@ -53,9 +55,13 @@ public class CameraButtonProxy : MonoBehaviour
         cameraTracker.BreakToFreeCam();
     }
 
-    /// <summary>
-    /// Returns the camera to tracking its current target body.
-    /// </summary>
+    /// <summary>Tracks the next surviving member of the current constellation plane.</summary>
+    public void TrackNextSatellite() => constellationNavigation?.TrackNextSatellite();
+
+    /// <summary>Tracks the previous surviving member of the current constellation plane.</summary>
+    public void TrackPreviousSatellite() => constellationNavigation?.TrackPreviousSatellite();
+
+    /// <summary>Returns the camera to tracking its current target body.</summary>
     public void ReturnToTracking()
     {
         cameraTracker.ReturnToTracking();

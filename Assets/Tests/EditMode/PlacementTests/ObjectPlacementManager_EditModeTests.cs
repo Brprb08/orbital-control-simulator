@@ -153,6 +153,19 @@ public class ObjectPlacementManager_EditModeTests
         rig.UIRefs.tleLine1InputField.text = "L1";
         rig.UIRefs.tleLine2InputField.text = "L2";
 
+        rig.UIRefs.constellationNamePrefixInputField.text = "Const";
+        rig.UIRefs.constellationMassInputField.text = "5000";
+        rig.UIRefs.constellationSemiMajorAxisInputField.text = "7000000";
+        rig.UIRefs.constellationEccInputField.text = "0";
+        rig.UIRefs.constellationIncDegInputField.text = "53";
+        rig.UIRefs.constellationArgPDegInputField.text = "0";
+        rig.UIRefs.constellationRAANStartDegInputField.text = "0";
+        rig.UIRefs.constellationRAANSpreadDegInputField.text = "360";
+        rig.UIRefs.constellationPlanesInputField.text = "3";
+        rig.UIRefs.constellationSatellitesPerPlaneInputField.text = "4";
+        rig.UIRefs.constellationWalkerPhaseInputField.text = "1";
+        rig.UIRefs.constellationTrueAnomalyOffsetDegInputField.text = "0";
+
         mgr.ClearAllFields();
 
         Assert.AreEqual("", rig.UIRefs.nameInputField.text);
@@ -167,6 +180,19 @@ public class ObjectPlacementManager_EditModeTests
         Assert.AreEqual("", rig.UIRefs.tleMassInputField.text);
         Assert.AreEqual("", rig.UIRefs.tleLine1InputField.text);
         Assert.AreEqual("", rig.UIRefs.tleLine2InputField.text);
+
+        Assert.AreEqual("", rig.UIRefs.constellationNamePrefixInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationMassInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationSemiMajorAxisInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationEccInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationIncDegInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationArgPDegInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationRAANStartDegInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationRAANSpreadDegInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationPlanesInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationSatellitesPerPlaneInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationWalkerPhaseInputField.text);
+        Assert.AreEqual("", rig.UIRefs.constellationTrueAnomalyOffsetDegInputField.text);
     }
 
     [Test]

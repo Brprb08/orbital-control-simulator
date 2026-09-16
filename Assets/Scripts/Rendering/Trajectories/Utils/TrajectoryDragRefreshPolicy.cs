@@ -11,6 +11,8 @@ public enum TrajectoryDragRefreshTransition
 [Serializable]
 public sealed class TrajectoryDragRefreshPolicy
 {
+    // Expensive continuous drag previews stay near the dense-atmosphere passage.
+    // These are rendering-work thresholds, not the physical atmosphere ceiling.
     [SerializeField, Min(0f)] private float enterAltitudeKm = 480f;
     [SerializeField, Min(0f)] private float exitAltitudeKm = 520f;
 
@@ -38,8 +40,7 @@ public sealed class TrajectoryDragRefreshPolicy
             if (orbitalParameters.isValid)
                 DragRefreshOrbitActive =
                     trackedBody.dragCoefficient > 0f &&
-                    trackedBody.atmosphericDensity0 > 0f &&
-                    (orbitalParameters.perigeeRadius - bodyService.CentralBody.radius) * 10f <=
+                    (orbitalParameters.perigeeRadius - bodyService.CentralBody.radius) * SimulationUnits.KilometersPerUnit <=
                     TrajectoryPredictionPlanner.DragPeriapsisThresholdKm;
 
             if (!DragRefreshOrbitActive)
@@ -48,7 +49,7 @@ public sealed class TrajectoryDragRefreshPolicy
             }
             else
             {
-                float currentAltitudeKm = (float)trackedBody.altitude * 10f;
+                float currentAltitudeKm = (float)trackedBody.altitude * SimulationUnits.KilometersPerUnit;
                 float thresholdKm = wasPassageActive ? exitAltitudeKm : enterAltitudeKm;
                 LongDragPassageRefreshActive = currentAltitudeKm <= thresholdKm;
             }

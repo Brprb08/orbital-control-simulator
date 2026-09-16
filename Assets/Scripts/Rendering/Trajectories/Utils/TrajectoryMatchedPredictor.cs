@@ -52,7 +52,7 @@ public readonly struct TrajectoryMatchedPredictionResult
 public static class TrajectoryMatchedPredictor
 {
     private const float MaxNativeStepDt = 0.02f;
-    private const double GUnity = 6.67430e-23;
+    private const double GUnity = PhysicsConstants.GDouble;
 
     public static bool TryBuildWorkItem(
         NBody body,
@@ -65,13 +65,13 @@ public static class TrajectoryMatchedPredictor
         if (body == null || bodyService == null || bodyService.CentralBody == null)
             return false;
 
-        double muUnity = GUnity * bodyService.CentralBody.trueMass;
+        double muUnity = GUnity * bodyService.CentralBody.TotalMassKilograms;
         workItem = new TrajectoryMatchedPredictionWorkItem(
             body.state.position,
             body.state.velocity,
             body.state.mass,
             body.dragCoefficient,
-            ResolveArea(body),
+            (float)body.DragAreaSquareUnits,
             muUnity,
             request.Steps,
             request.DeltaTime,
@@ -137,16 +137,4 @@ public static class TrajectoryMatchedPredictor
         return new TrajectoryMatchedPredictionResult(result, workItem.DeltaTime * lodFactor);
     }
 
-    private static float ResolveArea(NBody body)
-    {
-        if (body == null)
-            return 0f;
-
-        float area = (float)body.state.crossSectionArea;
-        if (area > 0f)
-            return area;
-
-        double radius = body.radius;
-        return (float)(math.PI * radius * radius);
-    }
 }

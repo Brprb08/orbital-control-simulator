@@ -9,6 +9,7 @@ public class RocketThrustAudio : MonoBehaviour
 
     private AudioSource thrustSource;
     private Coroutine fadeCoroutine;
+    private bool thrustActive;
 
     private SimContext ctx;
 
@@ -30,27 +31,34 @@ public class RocketThrustAudio : MonoBehaviour
         }
     }
 
-    public void StartThrust()
+    // Retained for scene button callbacks. The burn owner decides whether the input was accepted.
+    public void StartThrust() => SyncBurnState();
+
+    public void StopThrust() => SyncBurnState();
+
+    private void SyncBurnState()
     {
-        if (thrustSound == null) return;
-
-        if (!thrustSource.isPlaying)
-        {
-            thrustSource.Play();
-        }
-
-        if (fadeCoroutine != null)
-            StopCoroutine(fadeCoroutine);
-
-        fadeCoroutine = StartCoroutine(FadeIn());
+        SetThrustActive(ctx?.ThrustController != null && ctx.ThrustController.IsThrusting);
     }
 
-    public void StopThrust()
+    public void SetThrustActive(bool active)
     {
+        if (thrustActive == active || thrustSource == null) return;
+        thrustActive = active;
         if (fadeCoroutine != null)
             StopCoroutine(fadeCoroutine);
 
-        fadeCoroutine = StartCoroutine(FadeOut());
+        if (active)
+        {
+            if (thrustSound == null) return;
+            if (!thrustSource.isPlaying)
+                thrustSource.Play();
+            fadeCoroutine = StartCoroutine(FadeIn());
+        }
+        else
+        {
+            fadeCoroutine = StartCoroutine(FadeOut());
+        }
     }
 
     private IEnumerator FadeIn()

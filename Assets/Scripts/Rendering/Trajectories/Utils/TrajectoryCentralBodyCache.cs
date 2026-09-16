@@ -3,7 +3,7 @@ using UnityEngine;
 
 public sealed class TrajectoryCentralBodyCache
 {
-    public const float DefaultEarthRadiusUnity = 637.8f;
+    public const float DefaultEarthRadiusUnity = PhysicsConstants.LegacyTrajectoryEarthRadiusUnits;
 
     private NBody centralBody;
     private Transform centralBodyTransform;
@@ -104,7 +104,7 @@ public sealed class TrajectoryCentralBodyCache
         return clipped.ToArray();
     }
 
-    public Vector3[] ClipToSingleOrbit(Vector3[] points, float fullTurnEpsilon, float minStepAngleRad)
+    public Vector3[] ClipToSingleOrbit(Vector3[] points, float fullTurnEpsilon)
     {
         if (points == null || points.Length < 3 || !IsReady)
             return points;
@@ -211,23 +211,6 @@ public sealed class TrajectoryCentralBodyCache
             return sphereCollider.radius * maxScale;
         }
 
-        try
-        {
-            System.Type type = central.GetType();
-
-            var radiusField = type.GetField("radius");
-            if (radiusField != null && radiusField.FieldType == typeof(float))
-                return (float)radiusField.GetValue(central);
-
-            var radiusProperty = type.GetProperty("radius");
-            if (radiusProperty != null && radiusProperty.PropertyType == typeof(float))
-                return (float)radiusProperty.GetValue(central, null);
-        }
-        catch
-        {
-            // Fall back below.
-        }
-
-        return DefaultEarthRadiusUnity;
+        return central.radius;
     }
 }

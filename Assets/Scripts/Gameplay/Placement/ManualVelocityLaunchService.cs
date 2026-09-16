@@ -1,4 +1,3 @@
-using Unity.Mathematics;
 using UnityEngine;
 
 public readonly struct ManualVelocityLaunchResult
@@ -30,9 +29,6 @@ public readonly struct ManualVelocityLaunchResult
 /// </summary>
 public sealed class ManualVelocityLaunchService
 {
-    private const float DefaultPlaceholderMass = 400000f;
-    private const float MinVelocityToApplySqr = 1e-6f;
-
     private readonly SimContext ctx;
     private readonly BodyService bodyService;
     private readonly ICameraTracker cameraTracker;
@@ -48,22 +44,38 @@ public sealed class ManualVelocityLaunchService
         GameObject pendingBody,
         Vector3 velocityToApply,
         float placeholderMass,
-        Vector3 placeholderRadiusMeters)
+        Vector3 placeholderRadiusMeters,
+        double fuelMassKg = SimulationLimits.DefaultSatelliteFuelMassKg)
     {
         if (pendingBody == null)
             return ManualVelocityLaunchResult.Failed(null);
 
-        if (velocityToApply.sqrMagnitude <= MinVelocityToApplySqr)
-            return ManualVelocityLaunchResult.Failed("Set a non-zero velocity before launching this satellite.");
+        if (!PlacementSafety.TryValidateVelocity(velocityToApply, out string error))
+            return ManualVelocityLaunchResult.Failed(error);
 
         if (bodyService == null)
             return ManualVelocityLaunchResult.Failed("Body service is missing; cannot launch satellite.");
+        if (!NBody.IsValidMassComposition(placeholderMass, fuelMassKg))
+            return ManualVelocityLaunchResult.Failed("Invalid dry mass or fuel mass.");
 
-        NBody nbody = EnsureNBody(pendingBody, placeholderMass);
-        ApplySizeAndState(pendingBody, nbody, velocityToApply, placeholderRadiusMeters);
-        EnsureAttitude(pendingBody);
+        if (!PlacementSpawnBuilder.MassRange.Contains(placeholderMass))
+            return ManualVelocityLaunchResult.Failed($"Mass must be between {SimulationLimits.MinSatelliteMassKg:N0} and {SimulationLimits.MaxSatelliteMassKg:N0} kg.");
+        var radiusRange = PlacementSpawnBuilder.RadiusClamp;
+        if (!radiusRange.Contains(placeholderRadiusMeters.x) || !radiusRange.Contains(placeholderRadiusMeters.y) ||
+            !radiusRange.Contains(placeholderRadiusMeters.z))
+            return ManualVelocityLaunchResult.Failed($"Each radius must be between {radiusRange.Min} and {radiusRange.Max} meters.");
 
-        nbody.velocity = velocityToApply;
+        NBody central = bodyService.CentralBody;
+        Vector3 center = central != null ? central.transform.position : Vector3.zero;
+        double minimum = System.Math.Max(PlacementSpawnBuilder.PositionBounds.Min,
+            (central != null ? central.radius : (float)PhysicsConstants.EarthRadiusUnits) + SatelliteSizing.ResolvePhysicalRadiusSimUnits(placeholderRadiusMeters));
+        if (!PlacementSafety.TryValidatePosition(pendingBody.transform.position - center, minimum,
+                PlacementSpawnBuilder.PositionBounds.Max, out error))
+            return ManualVelocityLaunchResult.Failed(error);
+
+        NBody nbody = SatelliteSpawner.InitializeSatellite(
+            pendingBody, placeholderMass, placeholderRadiusMeters, velocityToApply,
+            preserveExistingBodyProperties: true, fuelMassKg: fuelMassKg);
         bodyService.Register(nbody);
 
         ICameraTracker tracker = cameraTracker ?? ctx?.CameraTracker;
@@ -73,55 +85,4 @@ public sealed class ManualVelocityLaunchService
         return ManualVelocityLaunchResult.Launched(nbody);
     }
 
-    private NBody EnsureNBody(GameObject pendingBody, float placeholderMass)
-    {
-        NBody nbody = pendingBody.GetComponent<NBody>();
-        if (nbody != null)
-            return nbody;
-
-        nbody = pendingBody.AddComponent<NBody>();
-
-        float mass = placeholderMass > 0f ? placeholderMass : DefaultPlaceholderMass;
-        nbody.mass = mass;
-        nbody.trueMass = mass;
-        nbody.cameraDistanceRadius = SatelliteSizing.CameraDistanceRadius;
-        nbody.isCentralBody = false;
-        nbody.Initialize(ctx);
-        return nbody;
-    }
-
-    private static void ApplySizeAndState(
-        GameObject pendingBody,
-        NBody nbody,
-        Vector3 velocityToApply,
-        Vector3 placeholderRadiusMeters)
-    {
-        pendingBody.transform.localScale = SatelliteSizing.ResolveVisualScale(placeholderRadiusMeters);
-        nbody.radius = SatelliteSizing.ResolvePhysicalRadiusSimUnits(placeholderRadiusMeters);
-        nbody.state = new NBody.OrbitalState(
-            new double3(
-                pendingBody.transform.position.x,
-                pendingBody.transform.position.y,
-                pendingBody.transform.position.z
-            ),
-            new double3(velocityToApply.x, velocityToApply.y, velocityToApply.z),
-            0f,
-            nbody.trueMass,
-            nbody.radius,
-            nbody.dragCoefficient,
-            Vector3.zero
-        );
-    }
-
-    private static void EnsureAttitude(GameObject pendingBody)
-    {
-        AttitudeController attitude = pendingBody.GetComponent<AttitudeController>();
-        if (attitude != null)
-            return;
-
-        attitude = pendingBody.AddComponent<AttitudeController>();
-        attitude.mode = AttitudeController.PointingMode.Velocity;
-        attitude.snapAttitude = false;
-        attitude.maxSlewRateDegPerSec = 60f;
-    }
 }

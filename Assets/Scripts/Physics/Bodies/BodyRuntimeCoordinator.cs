@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections.Generic;
 using TMPro;
 using System.Linq;
+using System;
+using Unity.Mathematics;
 
 /// <summary>
 /// Coordinates runtime state and management of NBody objects.
@@ -10,22 +12,23 @@ using System.Linq;
 /// </summary>
 public class BodyRuntimeCoordinator : MonoBehaviour
 {
-    [Header("References - Scripts")]
-    public NBody CentralBody { get; private set; }
+    public const float BaseSimulationStep = 0.02f;
+    private const float MaxDistanceFromEarth = SimulationLimits.MaxBodyDistanceUnits;
 
-    private readonly BodyDropdownManager bodyDropdownManager;
-    private LineVisibilityController lineVisibilityController;
+    [Header("References - Scripts")]
+    public NBody CentralBody => bodyService != null ? bodyService.CentralBody : null;
+
     private BodyService bodyService;
     private SimContext ctx;
+    private ConstellationNavigationController constellationNavigation;
 
     [Header("Body Tracking")]
-    private readonly List<NBody> bodies = new();
-    public List<NBody> Bodies => bodies;
+    public IReadOnlyList<NBody> Bodies => bodyService != null ? bodyService.Bodies : Array.Empty<NBody>();
 
     [Header("Simulation Settings")]
-    public float minCollisionDistance = 0.5f;
     public int simulationStep = 0;
-    public float simulationTime => simulationStep * Time.fixedDeltaTime;
+    [SerializeField] private float accumulatedSimulationTime;
+    public float simulationTime => accumulatedSimulationTime;
     public bool IsNodeBurnInProgress =>
         ctx != null &&
         ctx.ThrustController != null &&
@@ -44,21 +47,36 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// </summary>
     public void Initialize(SimContext ctx)
     {
+        UnsubscribeBodyEvents();
         this.ctx = ctx;
         bodyService = ctx.BodyService;
-        lineVisibilityController = ctx.LineVisibilityController;
-
-        // Subscribe to body lifecycle events to maintain UI and visual consistency.
-        bodyService.BodyAdded += b => lineVisibilityController.RegisterNBody(b);
-        bodyService.BodyRemoved += _ => ctx.BodyDropdownManager.UpdateDropdownSelection();
+        constellationNavigation = new ConstellationNavigationController(ctx);
+        if (bodyService != null)
+            bodyService.BodyRemoved += HandleBodyRemoved;
     }
+
+    private void HandleBodyRemoved(NBody body) => ctx?.BodyDropdownManager?.UpdateDropdownSelection();
+
+    private void UnsubscribeBodyEvents()
+    {
+        if (bodyService != null)
+            bodyService.BodyRemoved -= HandleBodyRemoved;
+    }
+
+    private void OnDestroy() => UnsubscribeBodyEvents();
 
     /// <summary>
     /// Advances internal simulation time based on Unity’s fixed update step.
     /// </summary>
     public void AdvanceSimulationStep()
     {
+        AdvanceSimulation(Time.fixedDeltaTime);
+    }
+
+    public void AdvanceSimulation(float deltaTime)
+    {
         simulationStep++;
+        accumulatedSimulationTime += Mathf.Max(0f, deltaTime);
     }
 
     /// <summary>
@@ -72,8 +90,39 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// </summary>
     public void HandleCollision(NBody a, NBody b)
     {
-        var remove = (a.mass < b.mass) ? a : b;
+        var remove = (a.TotalMassKilograms < b.TotalMassKilograms) ? a : b;
         QueueRemoval(remove);
+    }
+
+    internal void CheckPostStepRemoval(NBody body)
+    {
+        if (body == null || body.isCentralBody)
+            return;
+
+        NBody earth = bodyService != null ? bodyService.CentralBody : null;
+        if (earth == null || earth == body)
+            return;
+
+        double3 offset = body.state.position - earth.state.position;
+        double distanceSq = math.lengthsq(offset);
+        double collisionThreshold = Math.Max(0.0, body.radius) + Math.Max(0.0, earth.radius);
+        double collisionThresholdSq = collisionThreshold * collisionThreshold;
+
+        if (distanceSq < collisionThresholdSq)
+        {
+            Debug.Log($"[NBODY]: [COLLISION] {body.name} collided with Earth");
+            HandleCollision(body, earth);
+            return;
+        }
+
+        if (distanceSq > MaxDistanceFromEarth * MaxDistanceFromEarth)
+        {
+            Debug.Log(
+                $"[NBODY]: [ESCAPE] {body.name} exceeded {MaxDistanceFromEarth * SimulationUnits.KilometersPerUnit:N0} km and is removed."
+            );
+
+            HandleCollision(body, earth);
+        }
     }
 
     public void QueueRemoval(NBody body)
@@ -91,8 +140,6 @@ public class BodyRuntimeCoordinator : MonoBehaviour
         if (_pendingRemovals.Count == 0)
             return;
 
-        var tracker = ctx.CameraTracker;
-
         for (int i = 0; i < _pendingRemovals.Count; i++)
         {
             var remove = _pendingRemovals[i];
@@ -100,21 +147,9 @@ public class BodyRuntimeCoordinator : MonoBehaviour
             if (!bodyService.Bodies.Contains(remove)) continue;
 
             remove.ForceStopBurnEffects();
+            ClearNodeStateForBody(remove);
 
-            if (tracker != null && tracker.CurrentBody == remove)
-            {
-                ClearNodeStateForBody(remove);
-
-                var remaining = bodyService
-                    .GetSatellites()
-                    .Where(x => x != remove && !_pendingRemovalSet.Contains(x))
-                    .ToList();
-
-                if (remaining.Count > 0)
-                    tracker.TrackBody(remaining[0]);
-                else
-                    tracker.BreakToFreeCam();
-            }
+            RetargetBeforeRemoval(remove);
 
             bodyService.Deregister(remove);
             Destroy(remove.gameObject);
@@ -139,22 +174,40 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     private void ActuallyRemoveSatellite()
     {
         var tracker = ctx.CameraTracker;
-        NBody currentBody = tracker.CurrentBody;
+        NBody currentBody = tracker != null ? tracker.CurrentBody : null;
+        if (currentBody == null)
+            return;
+
+        currentBody.ForceStopBurnEffects();
         ClearNodeStateForBody(currentBody);
 
-        if (tracker != null)
-        {
-            var remaining = bodyService.GetSatellites().Where(x => x != currentBody).ToList();
-            if (remaining.Count > 0)
-                tracker.TrackBody(remaining[0]);
-            else
-                tracker.BreakToFreeCam();
-        }
+        RetargetBeforeRemoval(currentBody);
 
         bodyService.Deregister(currentBody);
         Destroy(currentBody.gameObject);
 
         ctx.BodyDropdownManager.UpdateDropdownSelection();
+    }
+
+    private void RetargetBeforeRemoval(NBody removed)
+    {
+        var tracker = ctx.CameraTracker;
+        if (tracker == null || tracker.CurrentBody != removed)
+            return;
+
+        NBody replacement = constellationNavigation.FindRemovalReplacement(removed, _pendingRemovalSet);
+        if (replacement == null)
+        {
+            tracker.BreakToFreeCam();
+            return;
+        }
+
+        bool removingConstellationMember = ctx.ConstellationRegistry != null &&
+            ctx.ConstellationRegistry.IsConstellationMember(removed);
+        if (removingConstellationMember && ctx.CameraController != null)
+            ctx.CameraController.TrackBodyPreservingCameraMode(replacement);
+        else
+            tracker.TrackBody(replacement);
     }
 
     private void ClearNodeStateForBody(NBody body)
@@ -167,7 +220,6 @@ public class BodyRuntimeCoordinator : MonoBehaviour
         if (node == null || node.targetBody != body)
             return;
 
-        body.ForceStopBurnEffects();
         nodeManager.ClearNode();
         ctx.UIRoot?.RefreshAllUi();
     }

@@ -7,12 +7,15 @@ using UnityEngine;
 /// rendering, burn traces, and prediction worker state live in helper classes;
 /// this class decides when those helpers should refresh.
 /// </summary>
+// Camera/body rendering runs first; procedural line meshes rebuild at order 200.
+[DefaultExecutionOrder(100)]
 public class TrajectoryRenderer : MonoBehaviour
 {
     private const float UiIntervalSeconds = 0.5f;
     private const float NearCircularUnitsThreshold = 0.5f;
 
     [Header("Prediction")]
+    [Tooltip("Runtime diagnostic only. The prediction planner chooses the actual step count per request.")]
     [Min(1)] public int predictionSteps = 5000;
     [Min(0.0001f)] public float predictionDeltaTime = 7f;
     public bool orbitIsDirty = true;
@@ -32,6 +35,7 @@ public class TrajectoryRenderer : MonoBehaviour
     [SerializeField, Min(32)] private int continuousCoarseMaxOutputPoints = 384;
     [SerializeField, Min(64)] private int continuousHighQualityMaxOutputPoints = 1600;
     [SerializeField, Min(0.1f)] private float continuousHighQualityInterval = 3f;
+    [SerializeField, Min(0f)] private float finalPassSettleDelay = 0.25f;
 
     [Header("Long Drag Transfer Refresh")]
     [SerializeField] private TrajectoryDragRefreshPolicy dragRefreshPolicy = new();
@@ -74,15 +78,17 @@ public class TrajectoryRenderer : MonoBehaviour
     private bool savedOriginalOrbit;
     private bool fullPassRequested;
     private bool wasThrusting;
+    private bool wasNodeBurn;
+    private bool manualBallisticOrbitDisplayPreferred;
 
     private bool showPredictionUser = true;
     private bool showOriginUser = true;
     private bool showApogeePerigeeUser = true;
 
     [Header("Burn Trace State")]
-    [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.1f;
+    [SerializeField, Min(0.01f)] private float burnSampleInterval = 0.25f;
     [SerializeField, Min(0f)] private float burnMinDistance = 0.05f;
-    [SerializeField, Min(128)] private int burnMaxPoints = 8192;
+    [SerializeField, Min(128)] private int burnMaxPoints = 1024;
 
     [Header("Outputs")]
     public List<Vector3> latestPrediction = new();
@@ -96,7 +102,6 @@ public class TrajectoryRenderer : MonoBehaviour
     [Header("Single Orbit Clipping")]
     [SerializeField] private bool clipToSingleOrbit = true;
     [SerializeField, Range(0.001f, 0.5f)] private float fullTurnEpsilon = 0.001f;
-    [SerializeField, Range(0f, 0.05f)] private float minStepAngleRad = 0.0015f;
 
     public event Action<NBody, NBody> TrackedBodyChanged;
 
@@ -110,6 +115,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private List<Vector3> preManeuverSnapshot;
     private float uiNextTick;
+    private float earliestFinalPassTime;
     private bool forceFastSwitchPreview;
     private bool trackedPredictionOwnershipActive;
 
@@ -284,6 +290,7 @@ public class TrajectoryRenderer : MonoBehaviour
     public void RequestFullOrbitPass()
     {
         fullPassRequested = true;
+        earliestFinalPassTime = Time.unscaledTime + finalPassSettleDelay;
     }
 
     public void RequestPredictionRefresh()
@@ -415,7 +422,16 @@ public class TrajectoryRenderer : MonoBehaviour
         UpdateTrackedPredictionOwnership(cameraOnTrackedBody);
         TryScheduleTrackedPrediction(cameraOnTrackedBody);
 
-        RefreshTrackedVisuals();
+        RefreshOrbitUIIfNeeded();
+    }
+
+    private void LateUpdate()
+    {
+        if (trackedBody == null)
+            return;
+
+        ApplyEffectiveLineVisibility();
+        DrawOriginLine();
     }
 
     private void UpdateDirtyDebounce()
@@ -436,6 +452,8 @@ public class TrajectoryRenderer : MonoBehaviour
     {
         isThrusting = false;
         wasThrusting = false;
+        wasNodeBurn = false;
+        manualBallisticOrbitDisplayPreferred = false;
         savedOriginalOrbit = false;
         fullPassRequested = false;
         trackedPredictionOwnershipActive = false;
@@ -481,34 +499,50 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private void TryScheduleTrackedPrediction(bool cameraOnTrackedBody)
     {
+        if (IsIdealConstellationOverlayOwningTrackedOrbit())
+        {
+            orbitIsDirty = false;
+            fullPassRequested = false;
+            dirtyDebounceCounter = 0;
+            return;
+        }
+
+        if (fullPassRequested &&
+            !isThrusting &&
+            cameraOnTrackedBody &&
+            !dragRefreshPolicy.LongDragPassageRefreshActive)
+        {
+            if (!predictionRunner.IsComputing && Time.unscaledTime >= earliestFinalPassTime)
+                TryStartFinalLongPass(trackedBody);
+
+            // Do not let the dirty realtime path launch a shorter trajectory
+            // during the brief settle delay before this authoritative pass.
+            return;
+        }
+
         bool dirtyReady = IsDirtyPredictionReady();
         if (cameraOnTrackedBody && (isThrusting || dirtyReady) && !predictionRunner.IsComputing)
             TryStartRealtimePrediction(trackedBody);
         else if (cameraOnTrackedBody && ShouldContinuouslyRefreshPrediction(trackedBody))
             TryStartContinuousPrediction(trackedBody);
-
-        if (fullPassRequested &&
-            !orbitIsDirty &&
-            !isThrusting &&
-            !predictionRunner.IsComputing &&
-            cameraOnTrackedBody &&
-            !dragRefreshPolicy.LongDragPassageRefreshActive)
-        {
-            TryStartFinalLongPass(trackedBody);
-        }
-    }
-
-    private void RefreshTrackedVisuals()
-    {
-        RefreshOrbitUIIfNeeded();
-        ApplyEffectiveLineVisibility();
-        DrawOriginLine();
     }
 
     private void ApplyEffectiveLineVisibility()
     {
         if (lines == null || trackedBody == null)
             return;
+
+        if (IsIdealConstellationOverlayOwningTrackedOrbit())
+        {
+            lines.ApplyEffectiveVisibility(
+                false,
+                IsManeuverOrbitRuntimeVisible(),
+                showPredictionUser,
+                false,
+                false
+            );
+            return;
+        }
 
         lines.ApplyEffectiveVisibility(
             IsTrackedOrbitRuntimeVisible(),
@@ -521,12 +555,13 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private bool IsTrackedOrbitRuntimeVisible()
     {
-        if (!IsCameraOnTrackedBody() || mainCamera == null || trackedBody == null)
-            return false;
-
-        float distance = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-        return distance > lineDisableDistance;
+        return !IsIdealConstellationOverlayOwningTrackedOrbit() &&
+               CameraVisibilityPolicy.IsTrackedOrbitVisible(cameraController, mainCamera, trackedBody, lineDisableDistance);
     }
+
+    /// <summary>Shared close-up cutoff for tracked trajectories and constellation paths.</summary>
+    public bool IsOutsideCloseUpView(NBody body)
+        => CameraVisibilityPolicy.IsOutsideCloseUp(mainCamera, body, lineDisableDistance);
 
     private bool IsManeuverOrbitRuntimeVisible()
     {
@@ -536,15 +571,21 @@ public class TrajectoryRenderer : MonoBehaviour
             if (mainCamera == null || pendingBody == null)
                 return true;
 
-            float pendingDistance = Vector3.Distance(mainCamera.transform.position, pendingBody.transform.position);
-            return pendingDistance > lineDisableDistance;
+            return CameraVisibilityPolicy.IsOutsideCloseUp(mainCamera, pendingBody.transform.position, lineDisableDistance);
         }
 
         if (!IsCameraOnTrackedBody() || mainCamera == null || trackedBody == null)
             return true;
 
-        float distance = Vector3.Distance(mainCamera.transform.position, trackedBody.transform.position);
-        return distance > lineDisableDistance;
+        return IsOutsideCloseUpView(trackedBody);
+    }
+
+    private bool IsIdealConstellationOverlayOwningTrackedOrbit()
+    {
+        return trackedBody != null &&
+               ctx?.ConstellationRegistry != null &&
+               ctx.ConstellationRegistry.IsConstellationMember(trackedBody) &&
+               !ctx.ConstellationRegistry.HasDepartedIdeal(trackedBody);
     }
 
     private void UpdateTrackedBodyFrameState()
@@ -565,7 +606,7 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private void UpdateDeltaVUi()
     {
-        float deltaV = trackedBody != null ? trackedBody.cumulativeDeltaVUsed : 0f;
+        double deltaV = trackedBody != null ? trackedBody.DeliveredDeltaVMetersPerSecond : 0.0;
         ui?.UpdateDeltaV(deltaV);
     }
 
@@ -591,6 +632,8 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (nowThrusting && !savedOriginalOrbit)
         {
+            wasNodeBurn = thrustController.IsNodeBurnActive;
+            manualBallisticOrbitDisplayPreferred = false;
             CapturePreManeuverFromLatest();
             savedOriginalOrbit = true;
         }
@@ -602,17 +645,45 @@ public class TrajectoryRenderer : MonoBehaviour
         isThrusting = nowThrusting;
 
         if (wasThrusting && !isThrusting)
-            HandleThrustStopped();
+            HandleThrustStopped(wasNodeBurn);
 
         wasThrusting = isThrusting;
     }
 
-    private void HandleThrustStopped()
+    private void HandleThrustStopped(bool nodeBurn)
     {
         InvalidatePredictionWork();
         ResetContinuousRefreshState();
+
+        // Direct thrust has no maneuver-preview renderer. Draw its bound,
+        // ballistic orbit immediately so a short pulse at high time scale does
+        // not leave the player staring at a stale fast-preview arc while the
+        // GPU works through the long numerical pass.
+        manualBallisticOrbitDisplayPreferred = !nodeBurn && RenderManualBallisticOrbit();
+
         RequestFullOrbitPass();
         MarkOrbitDirty();
+        wasNodeBurn = false;
+    }
+
+    private bool RenderManualBallisticOrbit()
+    {
+        if (trackedBody == null || bodyService == null || bodyService.CentralBody == null)
+            return false;
+
+        if (!TrajectoryConicSampler.TrySampleBoundOrbit(
+                trackedBody.state.position.ToVector3(),
+                trackedBody.state.velocity.ToVector3(),
+                bodyService.CentralBody.transform.position,
+                bodyService.CentralBody.TotalMassKilograms,
+                1024,
+                out Vector3[] orbit))
+        {
+            return false;
+        }
+
+        predictionLine?.UpdateLine(orbit);
+        return true;
     }
 
     private void UpdateDragRefreshPolicy()
@@ -640,11 +711,7 @@ public class TrajectoryRenderer : MonoBehaviour
     }
 
     private bool IsCameraOnTrackedBody()
-    {
-        return trackedBody != null &&
-               cameraController != null &&
-               cameraController.CurrentBody == trackedBody;
-    }
+        => CameraVisibilityPolicy.IsSelectedBody(cameraController, trackedBody);
 
     private bool IsManualVelocityPlacementActive()
     {
@@ -770,7 +837,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 request = request.WithBackend(TrajectoryPredictionBackend.GpuGravity);
         }
 
-        return ApplyHighQualitySettings(request);
+        return ApplyRealtimeQualitySettings(request);
     }
 
     private TrajectoryPredictionRequest PrepareHighQualityRequest(NBody body, TrajectoryPredictionRequest request)
@@ -786,6 +853,20 @@ public class TrajectoryRenderer : MonoBehaviour
 
         int maxPoints = Mathf.Max(request.MaxOutputPoints, continuousHighQualityMaxOutputPoints);
         predictionState.ScheduleNextHighQualityPass(Time.unscaledTime, continuousHighQualityInterval);
+        return request.WithMaxOutputPoints(maxPoints);
+    }
+
+    private TrajectoryPredictionRequest ApplyRealtimeQualitySettings(TrajectoryPredictionRequest request)
+    {
+        if (request.Backend != TrajectoryPredictionBackend.NativeMatched)
+            return request;
+
+        int maxPoints = Mathf.Clamp(
+            continuousCoarseMaxOutputPoints,
+            32,
+            Mathf.Max(32, continuousHighQualityMaxOutputPoints)
+        );
+
         return request.WithMaxOutputPoints(maxPoints);
     }
 
@@ -839,7 +920,21 @@ public class TrajectoryRenderer : MonoBehaviour
         latestPredictionStartTime = request.Epoch;
         latestPredictionDeltaTime = sampleDeltaTime;
 
-        predictionLine?.UpdateLine(ClipTrackedPrediction(resultArray ?? Array.Empty<Vector3>()));
+        Vector3[] rawPoints = resultArray ?? Array.Empty<Vector3>();
+        Vector3[] clippedPoints = ClipTrackedPrediction(rawPoints);
+
+        // Keep the immediate manual-thrust ellipse if the capped numerical
+        // result has not made a complete revolution yet. A completed numerical
+        // path still wins, preserving the predictor's drag/third-body model.
+        bool numericalPathClosed = clippedPoints.Length < rawPoints.Length;
+        if (manualBallisticOrbitDisplayPreferred && !numericalPathClosed)
+            RenderManualBallisticOrbit();
+        else
+        {
+            predictionLine?.UpdateLine(clippedPoints);
+            if (numericalPathClosed)
+                manualBallisticOrbitDisplayPreferred = false;
+        }
 
         CachePredictionSourceState(body, request);
         orbitIsDirty = false;
@@ -865,7 +960,7 @@ public class TrajectoryRenderer : MonoBehaviour
         if (trackedBody == null || lines == null || centralBodyCache == null || !centralBodyCache.IsReady)
             return;
 
-        lines.DrawOrigin(trackedBody.transform.position, centralBodyCache.CenterPosition);
+        lines.DrawOrigin(trackedBody.RenderPosition, centralBodyCache.CenterPosition);
     }
 
     private void CapturePreManeuverFromLatest()
@@ -916,7 +1011,7 @@ public class TrajectoryRenderer : MonoBehaviour
         points = ClipTrajectorySphere(points);
 
         if (clipToSingleOrbit && centralBodyCache != null)
-            points = centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon, minStepAngleRad);
+            points = centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon);
 
         return points;
     }
@@ -926,7 +1021,7 @@ public class TrajectoryRenderer : MonoBehaviour
         if (centralBodyCache == null || !clipToSingleOrbit)
             return points;
 
-        return centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon, minStepAngleRad);
+        return centralBodyCache.ClipToSingleOrbit(points, fullTurnEpsilon);
     }
 
     private void ShowApogeePerigeeLines(OrbitalParameters orbitalParameters)
@@ -950,8 +1045,8 @@ public class TrajectoryRenderer : MonoBehaviour
 
         if (ui != null)
         {
-            float apogeeKm = (orbitalParameters.apogeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * 10f;
-            float perigeeKm = (orbitalParameters.perigeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * 10f;
+            float apogeeKm = (orbitalParameters.apogeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * SimulationUnits.KilometersPerUnit;
+            float perigeeKm = (orbitalParameters.perigeeRadius - TrajectoryCentralBodyCache.DefaultEarthRadiusUnity) * SimulationUnits.KilometersPerUnit;
 
             ui?.UpdateOrbitUI(
                 apogeeKm,

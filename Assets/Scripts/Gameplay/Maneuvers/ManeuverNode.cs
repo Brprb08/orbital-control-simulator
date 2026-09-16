@@ -5,30 +5,32 @@ using System.Collections.Generic;
 /// Represents a planned orbital maneuver for an NBody object.
 /// 
 /// Authoritative execution schedule:
-/// - burnStartStep
-/// - burnStepCount
-///
-/// UI/debug mirrors:
 /// - burnTime
 /// - duration
+///
+/// Legacy/debug mirrors:
+/// - burnStartStep
+/// - burnStepCount
 /// 
-/// burnTime and duration are kept in sync with the step schedule for display,
-/// but runtime burn execution should use the step fields.
+/// Runtime burn execution uses seconds so larger Unity fixed ticks can be split
+/// safely around maneuver boundaries.
 /// </summary>
 public class ManeuverNode
 {
     public Vector3 position;
 
-    // UI/debug mirror of burnStartStep * fixedDt
     public float burnTime;
 
-    // Preview/display result
+    // Net velocity change over the finite burn, including gravity (world units/s).
+    // This legacy vector is not propulsive delta-v expenditure.
     public Vector3 deltaV;
+    public double predictedPropulsiveDeltaVMetersPerSecond;
+    public double predictedFuelUsedKg;
+    public bool insufficientPropellant;
 
     public GameObject marker;
     public NBody targetBody;
 
-    // UI/debug mirror of burnStepCount * fixedDt
     public float duration;
 
     public bool isFinalized;
@@ -41,6 +43,7 @@ public class ManeuverNode
     public bool isPinned;
     public Vector3 pinnedWorldPosition;
 
+    // Mirrors using BodyRuntimeCoordinator.BaseSimulationStep for old UI/tests/debug.
     public int burnStartStep;
     public int burnStepCount;
 }

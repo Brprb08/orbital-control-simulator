@@ -139,13 +139,21 @@ public class RandomSatelliteSpawner : MonoBehaviour
         int placed = 0;
         NBody last = null;
 
-        for (int i = 0; i < count; i++)
+        satelliteSpawner.BeginBulkSpawn();
+        try
         {
-            if (TryPlaceOneRandomSatellite(out var created))
+            for (int i = 0; i < count; i++)
             {
-                placed++;
-                last = created;
+                if (TryPlaceOneRandomSatellite(out var created))
+                {
+                    placed++;
+                    last = created;
+                }
             }
+        }
+        finally
+        {
+            satelliteSpawner.EndBulkSpawn();
         }
 
         if (last != null)
@@ -181,8 +189,8 @@ public class RandomSatelliteSpawner : MonoBehaviour
 
             float apogeeAltKm = UnityEngine.Random.Range(minApogeeAllowedKm, maxApogeeAllowedKm);
 
-            double rp = earthRadiusMeters + perigeeAltKm * 1000.0;
-            double ra = earthRadiusMeters + apogeeAltKm * 1000.0;
+            double rp = earthRadiusMeters + perigeeAltKm * (double)SimulationUnits.MetersPerKilometer;
+            double ra = earthRadiusMeters + apogeeAltKm * (double)SimulationUnits.MetersPerKilometer;
 
             double a = 0.5 * (rp + ra);
             double e = (ra - rp) / (ra + rp);
@@ -198,7 +206,7 @@ public class RandomSatelliteSpawner : MonoBehaviour
             {
                 var (rEci, vEci) = KeplerUtils.FromElements(a, e, incDeg, raanDeg, argpDeg, truDeg, mu);
 
-                if (rEci.magnitude <= earthRadiusMeters * 1.001)
+                if (rEci.magnitude <= earthRadiusMeters * SimulationLimits.OrbitClearanceRadiusMultiplier)
                     continue;
 
                 var pos = FrameUtils.EciToUnity(rEci, metersPerUnit);

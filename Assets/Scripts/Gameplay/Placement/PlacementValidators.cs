@@ -55,6 +55,20 @@ public static class PlacementValidators
     /// </summary>
     public static string GetText(TMP_InputField field) => field ? field.text : null;
 
+    public static bool TryGetFuelMass(TMP_InputField field, double dryMassKg, out double fuelKg, out string error)
+    {
+        string text = GetText(field);
+        fuelKg = SimulationLimits.DefaultSatelliteFuelMassKg;
+        if ((!string.IsNullOrWhiteSpace(text) && !TryGetDouble(text, out fuelKg)) ||
+            !NBody.IsValidMassComposition(dryMassKg, fuelKg))
+        {
+            error = "Invalid fuel mass. Enter a finite, nonnegative number of kilograms (blank defaults to 100 kg).";
+            return false;
+        }
+        error = null;
+        return true;
+    }
+
     /// <summary>
     /// Validates and normalizes an object name. Falls back to fallbackPrefix when input is blank.
     /// </summary>
@@ -143,22 +157,22 @@ public static class PlacementValidators
         => TryGetVector3(GetText(field), out v, out error);
 
     /// <summary>
-    /// Parses a radius vector and clamps each axis to the provided range.
+    /// Parses a radius vector and requires each axis to lie in the provided range.
     /// </summary>
     /// <param name="text">User-entered radius in "x,y,z" format.</param>
-    /// <param name="perAxisClamp">Inclusive clamp applied independently per component.</param>
-    /// <param name="radius">Parsed and clamped radius vector.</param>
+    /// <param name="perAxisClamp">Inclusive allowed range applied independently per component.</param>
+    /// <param name="radius">Parsed and validated radius vector.</param>
     /// <param name="error">Error message when parsing fails; otherwise <c>null</c>.</param>
     /// <returns><c>true</c> if parsing succeeds; otherwise <c>false</c>.</returns>
     public static bool TryGetRadius(string text, RangeF perAxisClamp, out Vector3 radius, out string error)
     {
         if (!TryGetVector3(text, out radius, out error)) return false;
 
-        radius = new Vector3(
-            Mathf.Clamp(radius.x, perAxisClamp.Min, perAxisClamp.Max),
-            Mathf.Clamp(radius.y, perAxisClamp.Min, perAxisClamp.Max),
-            Mathf.Clamp(radius.z, perAxisClamp.Min, perAxisClamp.Max)
-        );
+        if (!perAxisClamp.Contains(radius.x) || !perAxisClamp.Contains(radius.y) || !perAxisClamp.Contains(radius.z))
+        {
+            error = $"Each radius must be between {perAxisClamp.Min} and {perAxisClamp.Max} meters.";
+            return false;
+        }
         return true;
     }
 
@@ -196,25 +210,14 @@ public static class PlacementValidators
                 return false;
             }
             pos = camera.position + camera.forward * defaultForwardDistance;
-            error = null;
-            return true;
         }
-
-        if (!ParsingUtils.TryParseVector3(text, out pos))
+        else if (!ParsingUtils.TryParseVector3(text, out pos))
         {
             error = "Invalid position input. Please use numeric x,y,z format.";
             return false;
         }
 
-        float d = Vector3.Distance(Vector3.zero, pos);
-        if (!bounds.Contains(d))
-        {
-            error = $"Invalid position: must be between {bounds.Min:N0} and {bounds.Max:N0} units from the center.";
-            return false;
-        }
-
-        error = null;
-        return true;
+        return PlacementSafety.TryValidatePosition(pos, bounds.Min, bounds.Max, out error);
     }
 
     /// <summary>
@@ -236,7 +239,7 @@ public static class PlacementValidators
     /// <param name="value">Parsed value when successful; otherwise <c>0</c>.</param>
     /// <returns><c>true</c> if parsing succeeds; otherwise <c>false</c>.</returns>
     public static bool TryGetDouble(string text, out double value)
-        => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value);
+        => double.TryParse(text, NumberStyles.Float, CultureInfo.InvariantCulture, out value) && double.IsFinite(value);
 
     /// <summary>
     /// Field-based overload of <see TryGetDouble(string,out double).

@@ -178,7 +178,7 @@ public sealed class ManualVelocityControlsView
 
     public static string FormatVelocityForUI(Vector3 velocity)
     {
-        return $"{(velocity.x * 10f):F2}, {(velocity.z * 10f):F2}, {(velocity.y * 10f):F2}";
+        return System.FormattableString.Invariant($"{(velocity.x * SimulationUnits.KilometersPerUnit):F2}, {(velocity.z * SimulationUnits.KilometersPerUnit):F2}, {(velocity.y * SimulationUnits.KilometersPerUnit):F2}");
     }
 
     public static bool TryParseVelocityFromUI(string inputText, out Vector3 velocity)
@@ -189,11 +189,11 @@ public sealed class ManualVelocityControlsView
             return false;
 
         velocity = new Vector3(
-            uiVelocity.x / 10f,
-            uiVelocity.z / 10f,
-            uiVelocity.y / 10f
+            uiVelocity.x / SimulationUnits.KilometersPerUnit,
+            uiVelocity.z / SimulationUnits.KilometersPerUnit,
+            uiVelocity.y / SimulationUnits.KilometersPerUnit
         );
-        return true;
+        return PlacementSafety.TryValidateVelocity(velocity, out _);
     }
 
     private void OnSpeedSliderChanged(float value)

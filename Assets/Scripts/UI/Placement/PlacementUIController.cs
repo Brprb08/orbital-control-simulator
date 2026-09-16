@@ -15,7 +15,8 @@ public class PlacementUIController
     {
         Manual,
         TLE,
-        Kepler
+        Kepler,
+        Constellation
     }
 
     private PlacementMode placementMode = PlacementMode.Manual;
@@ -33,7 +34,7 @@ public class PlacementUIController
 
     public void CyclePlacementMode()
     {
-        placementMode = (PlacementMode)(((int)placementMode + 1) % 3);
+        placementMode = (PlacementMode)(((int)placementMode + 1) % 4);
         RefreshButtonLabel();
     }
 
@@ -69,7 +70,8 @@ public class PlacementUIController
         {
             PlacementMode.Manual => "Mode: Cartesian  (next: TLE)",
             PlacementMode.TLE => "Mode: TLE       (next: Kepler)",
-            PlacementMode.Kepler => "Mode: Kepler      (next: Cartesian)",
+            PlacementMode.Kepler => "Mode: Kepler      (next: Constellation)",
+            PlacementMode.Constellation => "Mode: Constellation (next: Cartesian)",
             _ => txt.text
         };
     }
@@ -105,12 +107,14 @@ public class PlacementUIController
             refs.placeTLEPanel.SetActive(false);
             refs.objectPlacementPanel.SetActive(false);
             refs.placeKeplerPanel.SetActive(false);
+            UIHelpers.SetActive(refs.placeConstellationPanel, false);
             return;
         }
 
         refs.placeTLEPanel.SetActive(placementMode == PlacementMode.TLE);
         refs.objectPlacementPanel.SetActive(showManualVelocityUi || placementMode == PlacementMode.Manual);
         refs.placeKeplerPanel.SetActive(placementMode == PlacementMode.Kepler);
+        UIHelpers.SetActive(refs.placeConstellationPanel, placementMode == PlacementMode.Constellation);
     }
 
     private void SetManualObjectControlsVisible(bool visible)

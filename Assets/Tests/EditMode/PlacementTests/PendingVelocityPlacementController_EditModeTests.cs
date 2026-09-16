@@ -145,6 +145,7 @@ public class PendingVelocityPlacementController_EditModeTests
         var input = GetPrivateField<TMP_InputField>(ui, "_velocityInputField");
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         SetPrivateField(mgr, "_usingOrbitIntentControls", false);
@@ -167,6 +168,7 @@ public class PendingVelocityPlacementController_EditModeTests
         Assert.NotNull(currentVelocityField);
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         var mi = typeof(PendingVelocityPlacementController).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -189,6 +191,7 @@ public class PendingVelocityPlacementController_EditModeTests
         var button = GetPrivateField<Button>(ui, "_setVelocityButton");
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         var mi = typeof(PendingVelocityPlacementController).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
@@ -209,6 +212,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         SetPrivateField(mgr, "_usingOrbitIntentControls", false);
@@ -244,7 +248,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var mi = typeof(PendingVelocityPlacementController).GetMethod("OnVelocityInputChanged", BindingFlags.NonPublic | BindingFlags.Instance);
         Assert.NotNull(mi);
-        mi.Invoke(mgr, new object[] { "0,0,754618" });
+        mi.Invoke(mgr, new object[] { "0,7.54618,0" });
 
         Assert.That(apogee.text, Does.StartWith("Apogee:"));
         Assert.That(perigee.text, Does.StartWith("Perigee:"));
@@ -263,6 +267,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
 
         mgr.ConfigurePendingPlacement(planet, 12345f, TestRadiusMeters);
 
@@ -494,6 +499,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
 
         mgr.ConfigurePendingPlacement(planet, 12345f, TestRadiusMeters);
 
@@ -509,7 +515,7 @@ public class PendingVelocityPlacementController_EditModeTests
         Assert.AreEqual(new Vector3(1f, 2f, 3f), nbody.velocity);
         Assert.AreEqual(12345f, nbody.mass);
         Assert.AreEqual(0.002f, nbody.radius, 0.000001f);
-        Assert.AreEqual(System.Math.PI * 0.002 * 0.002, nbody.state.crossSectionArea, 1e-10);
+        Assert.AreEqual(NBody.DefaultDragAreaSquareMeters(12345), nbody.DragAreaSquareMeters, 1e-10);
         Assert.AreEqual(beforeCount + 1, rig.BodyService.Bodies.Count);
         Assert.IsTrue(mgr.HasAppliedVelocity);
     }
@@ -521,6 +527,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
 
         mgr.ConfigurePendingPlacement(planet, 12345f, TestRadiusMeters);
 
@@ -535,21 +542,23 @@ public class PendingVelocityPlacementController_EditModeTests
     }
 
     [Test]
-    public void ApplyVelocityToPlanet_uses_default_mass_when_placeholder_mass_not_set()
+    public void ApplyVelocityToPlanet_rejects_missing_placeholder_mass()
     {
         BuildManager();
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
 
         mgr.ConfigurePendingPlacement(planet, 0f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
         var nbody = planet.GetComponent<NBody>();
-        Assert.NotNull(nbody);
-        Assert.AreEqual(400000f, nbody.mass);
-        Assert.AreEqual(400000f, (float)nbody.trueMass);
+        Assert.IsNull(nbody);
+        Assert.That(mgr.planet, Is.EqualTo(planet));
+        Assert.IsFalse(mgr.HasAppliedVelocity);
+        Assert.AreEqual(2, rig.BodyService.Bodies.Count);
     }
 
     [Test]
@@ -569,6 +578,7 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
@@ -588,11 +598,13 @@ public class PendingVelocityPlacementController_EditModeTests
 
         var planet = new GameObject("PlaceholderPlanet");
         planet.transform.SetParent(rig.Root.transform, false);
+        planet.transform.position = new Vector3(700f, 0f, 0f);
         mgr.ConfigurePendingPlacement(planet, 1000f, TestRadiusMeters);
 
         mgr.ApplyVelocityToPlanet(Vector3.forward);
 
         var nbody = planet.GetComponent<NBody>();
+        Assert.NotNull(nbody);
         Assert.That(rig.Controller.CurrentBody, Is.EqualTo(nbody));
     }
 

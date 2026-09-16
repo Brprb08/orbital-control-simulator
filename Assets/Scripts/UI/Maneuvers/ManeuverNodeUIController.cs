@@ -7,6 +7,15 @@ using System.Text;
 
 public class ManeuverNodeUIController : MonoBehaviour
 {
+    private bool insufficientFuel;
+    private string baseFeedback = "";
+
+    public void SetInsufficientFuelWarning(bool insufficient)
+    {
+        if (insufficientFuel == insufficient) return;
+        insufficientFuel = insufficient;
+        SetManeuverFeedback(baseFeedback);
+    }
     [Header("Node UI")]
     public Slider nodeTimeSlider;
     public TMP_Dropdown burnDropdown;
@@ -206,6 +215,12 @@ public class ManeuverNodeUIController : MonoBehaviour
         nodeTimeControl?.SetValueWithoutNotify(value);
     }
 
+    public void SetThrustScaleWithoutNotify(float value)
+    {
+        ThrustScale = value;
+        thrustScaleControl?.SetValueWithoutNotify(value, expandSliderRange: true);
+    }
+
     public void SetEditingEnabled(bool enabled)
     {
         SetNodeTimeSliderInteractable(enabled);
@@ -314,7 +329,7 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     private float GetBurnDurationStep()
     {
-        return Mathf.Max(Time.fixedDeltaTime, burnDurationStep);
+        return Mathf.Max(BodyRuntimeCoordinator.BaseSimulationStep, burnDurationStep);
     }
 
     private float GetThrustScaleStep()
@@ -366,7 +381,7 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     private static float QuantizeBurnDuration(float seconds)
     {
-        float step = Mathf.Max(1e-5f, Time.fixedDeltaTime);
+        float step = Mathf.Max(1e-5f, BodyRuntimeCoordinator.BaseSimulationStep);
         return Mathf.Ceil(seconds / step) * step;
     }
 
@@ -499,8 +514,10 @@ public class ManeuverNodeUIController : MonoBehaviour
 
     private void SetManeuverFeedback(string message)
     {
+        baseFeedback = message ?? string.Empty;
         if (maneuverFeedbackText != null)
-            maneuverFeedbackText.text = message ?? string.Empty;
+            maneuverFeedbackText.text = baseFeedback + (insufficientFuel
+                ? "\nInsufficient fuel for the full burn. Preview includes early thrust cutoff." : "");
     }
 
     private sealed class NumericControlBinding
@@ -635,10 +652,19 @@ public class ManeuverNodeUIController : MonoBehaviour
             SetButtonInteractable(increaseButton, interactable);
         }
 
-        public void SetValueWithoutNotify(float nextValue)
+        public void SetValueWithoutNotify(float nextValue, bool expandSliderRange = false)
         {
             if (slider != null)
             {
+                // A spacecraft can have a valid setting outside the default UI range.
+                // Restoring it must not clamp the displayed value or trigger an edit.
+                if (expandSliderRange)
+                {
+                    suppressSync = true;
+                    slider.minValue = Mathf.Min(slider.minValue, nextValue);
+                    slider.maxValue = Mathf.Max(slider.maxValue, nextValue);
+                    suppressSync = false;
+                }
                 slider.SetValueWithoutNotify(nextValue);
                 value = slider.value;
             }
@@ -661,7 +687,7 @@ public class ManeuverNodeUIController : MonoBehaviour
 
         private void OnInputChanged(string text)
         {
-            if (!CanRespondToInput(text, out float parsed))
+            if (suppressSync || !CanRespondToInput(text, out float parsed))
                 return;
 
             SetValueFromParsedInput(parsed, preserveTypedText: true);
@@ -754,7 +780,17 @@ public class ManeuverNodeUIController : MonoBehaviour
             if (!force && input.isFocused)
                 return;
 
-            input.SetTextWithoutNotify(FormatInputFromSliderValue(value));
+            // TMP can emit onValueChanged from SetTextWithoutNotify in Edit Mode.
+            bool wasSuppressing = suppressSync;
+            suppressSync = true;
+            try
+            {
+                input.SetTextWithoutNotify(FormatInputFromSliderValue(value));
+            }
+            finally
+            {
+                suppressSync = wasSuppressing;
+            }
         }
 
         private void RefreshLabel()
