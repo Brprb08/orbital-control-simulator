@@ -127,7 +127,7 @@ Unity is responsible for visualization, input handling, UI state, and camera beh
 
 The two layers communicate through a minimal interop boundary using `DllImport`.
 
-For a deeper breakdown of the physics, interop, validation notes, and limitations, see [TECHNICAL_README.md](./TECHNICAL_README.md).
+<!-- For a deeper breakdown of the physics, interop, validation notes, and limitations, see [TECHNICAL_README.md](./TECHNICAL_README.md). -->
 
 ---
 
