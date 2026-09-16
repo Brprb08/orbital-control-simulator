@@ -59,6 +59,10 @@ There is also an in-game tutorial for this flow, because otherwise I have heard 
     (prograde, retrograde, radial in/out, normal, anti-normal)
   - Supports both smooth attitude slews and instant reorientation
 
+- **Per-satellite engine and fuel configuration**
+  - Configure thrust, specific impulse, dry mass, and fuel mass, with remaining delta-v readouts
+  - Unlimited fuel is the default; optional finite fuel is consumed during burns, with thrust cutting off when empty
+
 - **Interactive maneuver node planning**
   - Optional planning built on top of free thrust
   - A node can be placed along the current predicted orbit
@@ -86,8 +90,9 @@ There is also an in-game tutorial for this flow, because otherwise I have heard 
   - One-click launch shaping controls for circularizing, raising apogee, lowering perigee, and changing tilt/radial shape before launch
   - Earth-relative camera support during manual placement to inspect the full orbit path before launch
   - Immediate placement readouts for apogee, perigee, inclination, and eccentricity
-  - Real-world TLE loading (Two-Line Element sets)
+  - Real-world TLE loading (Two-Line Element sets) using approximate two-body propagation, not SGP4
   - Keplerian placement from classical orbital elements
+  - Configurable multi-plane constellations with satellite selection, member indicators, and orbital-plane visualization
   - Randomized orbits for rapid testing and experimentation
 
 ### Orbital Analysis & Visualization
