@@ -427,11 +427,95 @@ public class TrajectoryRenderer : MonoBehaviour
 
     private void LateUpdate()
     {
+        UpdateRendezvousOrbit();
         if (trackedBody == null)
             return;
 
         ApplyEffectiveLineVisibility();
         DrawOriginLine();
+    }
+
+    public void ShowRendezvousPlan(TrajectoryMatchedPredictor.EncounterTimeline timeline, double start, double end)
+    {
+        if (timeline == null || end <= start) { ClearPlannedManeuver(); return; }
+        var points = new Vector3[513];
+        for (int i = 0; i < points.Length; i++)
+        {
+            if (!timeline.TrySample(start + (end - start) * i / (points.Length - 1), out var sample))
+            { ClearPlannedManeuver(); return; }
+            points[i] = sample.A.ToVector3();
+        }
+        plannedManeuverLine?.UpdateLine(points);
+        plannedManeuverLine?.SetVisibility(true);
+    }
+
+    private NBody rendezvousOrbitBody;
+    private ProceduralLineRenderer rendezvousOrbitLine;
+    private bool showRendezvousOrbit;
+    private Color rendezvousOrbitColor;
+    private float nextRendezvousOrbitUpdate;
+    public string RendezvousOrbitStatus { get; private set; } = "";
+
+    public void SetRendezvousOrbit(NBody target, bool visible, Color color)
+    {
+        bool changed = rendezvousOrbitBody != target || showRendezvousOrbit != visible;
+        if (rendezvousOrbitBody != target)
+        {
+            rendezvousOrbitLine?.Clear();
+            RendezvousOrbitStatus = "";
+        }
+        rendezvousOrbitBody = target;
+        showRendezvousOrbit = visible;
+        if (changed) nextRendezvousOrbitUpdate = 0f;
+        if (rendezvousOrbitColor != color)
+        {
+            rendezvousOrbitColor = color;
+            rendezvousOrbitLine?.SetLineColor("#" + ColorUtility.ToHtmlStringRGB(color));
+        }
+        if (target == null || !visible) rendezvousOrbitLine?.SetVisibility(false);
+    }
+
+    private void UpdateRendezvousOrbit()
+    {
+        NBody central = bodyService != null ? bodyService.CentralBody : null;
+        bool visible = showRendezvousOrbit && rendezvousOrbitBody != null &&
+            rendezvousOrbitBody.isActiveAndEnabled && central != null &&
+            cameraController != null && cameraController.Mode != CameraMode.Free;
+        if (!visible)
+        {
+            rendezvousOrbitLine?.SetVisibility(false);
+            return;
+        }
+        if (Time.unscaledTime >= nextRendezvousOrbitUpdate)
+        {
+            nextRendezvousOrbitUpdate = Time.unscaledTime + (rendezvousOrbitBody.isThrusting ? 0.5f : 2f);
+            // Geometric context only: no extra native integrations, jobs, or timed predictions.
+            bool sampled = TrajectoryConicSampler.TrySampleBoundOrbit(
+                rendezvousOrbitBody.state.position, rendezvousOrbitBody.state.velocity - central.state.velocity,
+                central.state.position, central.TotalMassKilograms, 384, out Vector3[] points);
+            if (!sampled)
+            {
+                rendezvousOrbitLine?.Clear();
+                RendezvousOrbitStatus = "Target orbit unavailable: a valid bound orbit is required.";
+            }
+            else
+            {
+                if (rendezvousOrbitLine == null)
+                {
+                    var go = new GameObject("RendezvousTargetOrbit");
+                    go.layer = gameObject.layer;
+                    go.transform.SetParent(transform, false);
+                    rendezvousOrbitLine = go.AddComponent<ProceduralLineRenderer>();
+                    rendezvousOrbitLine.enableCurveInterpolation = false;
+                    rendezvousOrbitLine.SetLineColor("#" + ColorUtility.ToHtmlStringRGB(rendezvousOrbitColor));
+                }
+                var clipper = new TrajectoryCentralBodyCache(central);
+                Vector3[] clipped = clipper.ClipTrajectorySphere(points);
+                rendezvousOrbitLine.UpdateLine(clipped, smoothClosedLoop: clipped.Length == points.Length);
+                RendezvousOrbitStatus = "Target orbit: current two-body geometry, not a timed rendezvous prediction.";
+            }
+        }
+        rendezvousOrbitLine?.SetVisibility(rendezvousOrbitLine.HasPoints);
     }
 
     private void UpdateDirtyDebounce()
@@ -777,7 +861,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 bodyRuntimeCoordinator,
                 predictionDeltaTime,
                 isThrusting,
-                Time.timeScale,
+                ctx?.TimeController != null ? ctx.TimeController.ActiveTimeScale : Time.timeScale,
                 out TrajectoryPredictionRequest request))
         {
             return;
@@ -816,7 +900,7 @@ public class TrajectoryRenderer : MonoBehaviour
                 bodyRuntimeCoordinator,
                 predictionDeltaTime,
                 isThrusting,
-                Time.timeScale,
+                ctx?.TimeController != null ? ctx.TimeController.ActiveTimeScale : Time.timeScale,
                 out TrajectoryPredictionRequest request))
         {
             return;

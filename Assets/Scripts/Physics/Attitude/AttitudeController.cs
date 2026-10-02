@@ -161,7 +161,10 @@ public class AttitudeController : MonoBehaviour
         Vector3 y = Vector3.Cross(z, x);
 
         var target = Quaternion.LookRotation(x, y);
-        float maxStep = maxSlewRateDegPerSec * Time.fixedDeltaTime;
+        float stepDt = ctx?.TimeController != null
+            ? ctx.TimeController.SimulationStepSeconds
+            : Time.fixedDeltaTime;
+        float maxStep = maxSlewRateDegPerSec * stepDt;
         bool doSnap = snapAttitude || snapNow;
 
         transform.rotation = doSnap

@@ -60,7 +60,7 @@ public class ManeuverNodeUIController : MonoBehaviour
     [SerializeField] private float stepButtonFastRepeatInterval = 0.04f;
     [SerializeField] private float stepButtonAccelerationDelay = 0.8f;
     [SerializeField] private string setupNodePreviewMessage = "Set maneuver timing and thrust, then place node.";
-    [SerializeField] private string setupNodeFinalizedMessage = "Remove node to place another, or wait for node to fire.";
+    [SerializeField] private string setupNodeFinalizedMessage = "Node queued. Use Add Next Node to plan another burn, or Remove Node to clear it.";
     [SerializeField] private string previewHorizonLimitMessage = "Preview is approximate beyond 48 hours.";
     [SerializeField] private string noTrackedBodyMessage = "Track a satellite before setting up a maneuver.";
     [SerializeField] private string burnInProgressMessage = "Burn in progress. Maneuver controls are locked.";
@@ -70,6 +70,8 @@ public class ManeuverNodeUIController : MonoBehaviour
     private float nextNodeSliderAllowed;
     private bool setupButtonResolved;
     private float nodeTimeSampleDelta;
+    private string originalSetupLabel;
+    private string originalRemoveLabel;
 
     private NumericControlBinding nodeTimeControl;
     private NumericControlBinding burnDurationControl;
@@ -267,6 +269,25 @@ public class ManeuverNodeUIController : MonoBehaviour
             {
                 UnityEngine.EventSystems.EventSystem.current.SetSelectedGameObject(null);
             }
+        }
+    }
+
+    public void SetManualSequenceState(int count, bool editingDraft)
+    {
+        Button setup = ResolveSetupNodeButton();
+        TMP_Text setupLabel = setup != null ? setup.GetComponentInChildren<TMP_Text>() : null;
+        TMP_Text removeLabel = removeNodeButton != null ? removeNodeButton.GetComponentInChildren<TMP_Text>() : null;
+        if (setupLabel != null)
+        {
+            originalSetupLabel ??= setupLabel.text;
+            setupLabel.text = count >= ManeuverNodeManager.MaxManualNodes
+                ? editingDraft ? "4th Node Draft" : "4 Nodes Queued"
+                : count > 0 && !editingDraft ? "Add Next Node" : originalSetupLabel;
+        }
+        if (removeLabel != null)
+        {
+            originalRemoveLabel ??= removeLabel.text;
+            removeLabel.text = count > 1 ? "Clear Plan" : originalRemoveLabel;
         }
     }
 
@@ -472,14 +493,25 @@ public class ManeuverNodeUIController : MonoBehaviour
         return setupNodeButton;
     }
 
-    public void ShowPreviewManeuverFeedback()
+    public void ShowPreviewManeuverFeedback(bool laterNode = false)
     {
-        SetManeuverFeedback(setupNodePreviewMessage);
+        SetManeuverFeedback(laterNode
+            ? "Set the next burn on the projected path after queued burns. The path may change during flight."
+            : setupNodePreviewMessage);
     }
 
-    public void ShowFinalizedManeuverFeedback()
+    public void ShowFinalizedManeuverFeedback(int count = 1)
     {
-        SetManeuverFeedback(setupNodeFinalizedMessage);
+        SetManeuverFeedback(count >= ManeuverNodeManager.MaxManualNodes
+            ? "Four nodes queued. The plan is full; Clear Plan removes the sequence."
+            : count > 1
+            ? $"{count} nodes queued. Use Add Next Node for another burn, or Clear Plan to remove the sequence."
+            : setupNodeFinalizedMessage);
+    }
+
+    public void ShowManualNodeLimitFeedback(int maxNodes)
+    {
+        SetManeuverFeedback($"Up to {maxNodes} maneuver nodes can be queued at once.");
     }
 
     public void ShowPreviewHorizonLimitFeedback()

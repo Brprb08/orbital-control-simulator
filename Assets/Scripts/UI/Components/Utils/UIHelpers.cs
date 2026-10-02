@@ -1,3 +1,4 @@
+using System;
 using TMPro;
 using UnityEngine;
 using UnityEngine.EventSystems;
@@ -8,6 +9,14 @@ using UnityEngine.UI;
 /// </summary>
 public static class UIHelpers
 {
+    public static string FormatCountdown(double seconds)
+    {
+        var duration = TimeSpan.FromSeconds(Math.Max(0, seconds));
+        return duration.Days > 0
+            ? $"{duration.Days}d {duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}"
+            : $"{duration.Hours:D2}:{duration.Minutes:D2}:{duration.Seconds:D2}";
+    }
+
     /// <summary>
     /// Returns true if the pointer is inside the active TMP dropdown popup (named "Dropdown List").
     /// </summary>

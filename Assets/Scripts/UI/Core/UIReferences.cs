@@ -122,4 +122,39 @@ public class UIReferences : MonoBehaviour
     public TMP_Text engineTargetText;
     public TMP_Text engineReadoutText;
     public TMP_Text engineStatusText;
+
+    [Header("Rendezvous Mode")]
+    [Tooltip("Mode button outside the swappable rendezvous content root.")]
+    public Button rendezvousPanelButton;
+    [Tooltip("Parent containing rendezvous controls only. Assign the new empty UI root after moving them out of the old panel.")]
+    public GameObject rendezvousPanel;
+    public TMP_Dropdown rendezvousTargetDropdown;
+    public Button rendezvousCancelTargetButton;
+    public TMP_Text rendezvousSelectionText;
+    public TMP_Text rendezvousReadoutText;
+    public Button rendezvousViewTargetButton;
+    [Tooltip("Screen-space marker root, outside the rendezvous content root, under a Canvas.")]
+    public RectTransform rendezvousTargetMarker;
+    public TMP_Text rendezvousTargetMarkerText;
+    [Tooltip("Canvas dropdown for Safe rendezvous, Waypoint, and Intercept. Options and events are configured by code.")]
+    public TMP_Dropdown rendezvousArrivalModeDropdown;
+    [Tooltip("Canvas dropdown for waypoint direction. Visible only in Waypoint mode; options and events are configured by code.")]
+    public TMP_Dropdown rendezvousWaypointDirectionDropdown;
+    [Tooltip("Canvas input for waypoint distance from target center in meters. Visible only in Waypoint mode.")]
+    public TMP_InputField rendezvousWaypointDistanceInput;
+    public TMP_Text rendezvousEncounterText;
+    public RectTransform rendezvousControlledEncounterMarker;
+    public RectTransform rendezvousTargetEncounterMarker;
+    [Tooltip("Optional. Options are populated automatically: Auto, 2, 3, 4 burns.")]
+    public TMP_Dropdown rendezvousBurnCountDropdown;
+    [Tooltip("Optional. Planner preference: Save fuel (default), Balanced, Start sooner. Options are populated automatically.")]
+    public TMP_Dropdown rendezvousTimingPreferenceDropdown;
+    [Tooltip("Optional. Choose among independently validated plans. Options are populated after Build Plan.")]
+    public TMP_Dropdown rendezvousPlanChoiceDropdown;
+    public Button rendezvousBuildPlanButton;
+    public Button rendezvousSchedulePlanButton;
+    public Button rendezvousCancelPlanButton;
+    public TMP_Text rendezvousPlanText;
+    [Tooltip("Optional planner policy asset. Built-in defaults are used when unassigned.")]
+    public RendezvousPlannerSettings rendezvousPlannerSettings;
 }

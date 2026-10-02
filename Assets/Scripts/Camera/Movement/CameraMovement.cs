@@ -24,9 +24,51 @@ public class CameraMovement : MonoBehaviour
     [SerializeField] private bool inEarthFocus = false;
     [SerializeField] private bool isFreeCamMode = false;
     private Camera mainCamera;
+    private NBody rendezvousTarget;
+    private float distanceBeforeRendezvous;
+    public bool IsRendezvousView => rendezvousTarget != null;
+
+    // A visual focus only: focusBody and CameraController.CurrentBody stay controlled.
+    public bool FrameRendezvousTarget(NBody controlled, NBody target)
+    {
+        if (mainCamera == null || isFreeCamMode || inEarthFocus || focusBody != controlled ||
+            controlled == null || target == null || target == controlled) return false;
+        if (!IsRendezvousView) distanceBeforeRendezvous = distance;
+        rendezvousTarget = target;
+        return true;
+    }
+
+    public void ClearRendezvousFocus()
+    {
+        if (!ReferenceEquals(rendezvousTarget, null)) distance = distanceBeforeRendezvous;
+        rendezvousTarget = null;
+    }
 
     public Camera MainCamera => mainCamera;
     public bool IsFreeCamMode => isFreeCamMode;
+
+    [Header("Nearby Satellite Smoothing")]
+    [Tooltip("Untracked satellites within this distance of the actual camera are visually interpolated. Kilometers; 0 disables proximity smoothing.")]
+    [SerializeField, Min(0f)] private float satelliteSmoothingDistanceKm = 500f;
+    [Tooltip("Extra distance before a nearby satellite stops smoothing, preventing boundary flicker.")]
+    [SerializeField, Range(0f, 1f)] private float satelliteSmoothingExitBuffer = 0.25f;
+    private int smoothingCameraFrame = -1;
+    private Vector3 smoothingCameraPosition;
+
+    internal bool ShouldSmoothNearbySatellite(Vector3 position, bool wasNearby)
+    {
+        if (mainCamera == null || !(satelliteSmoothingDistanceKm > 0f)) return false;
+        // One camera-position snapshot per frame keeps all consumers consistent regardless
+        // of whether they query before or after camera LateUpdate.
+        if (smoothingCameraFrame != Time.frameCount)
+        {
+            smoothingCameraFrame = Time.frameCount;
+            smoothingCameraPosition = mainCamera.transform.position;
+        }
+        float radius = satelliteSmoothingDistanceKm / SimulationUnits.KilometersPerUnit;
+        if (wasNearby) radius *= 1f + Mathf.Clamp01(satelliteSmoothingExitBuffer);
+        return (position - smoothingCameraPosition).sqrMagnitude <= radius * radius;
+    }
 
     [Header("UI Input Guards")]
     private GameObject dropdownList;
@@ -94,6 +136,24 @@ public class CameraMovement : MonoBehaviour
             ? earthFocusBody.RenderPosition
             : (usingPlaceholder ? focusPlaceholder.position : focusBody.RenderPosition);
 
+        if (!ReferenceEquals(rendezvousTarget, null))
+        {
+            if (rendezvousTarget == null || !rendezvousTarget.isActiveAndEnabled || usingEarthTarget || usingPlaceholder)
+                ClearRendezvousFocus();
+            else
+            {
+                Vector3 targetPosition = rendezvousTarget.RenderPosition;
+                float radius = Vector3.Distance(focusPosition, targetPosition) * 0.5f +
+                    Mathf.Max(focusBody.cameraDistanceRadius, rendezvousTarget.cameraDistanceRadius);
+                focusPosition = (focusPosition + targetPosition) * 0.5f;
+                float verticalHalfFov = mainCamera.fieldOfView * Mathf.Deg2Rad * 0.5f;
+                float horizontalHalfFov = Mathf.Atan(Mathf.Tan(verticalHalfFov) * mainCamera.aspect);
+                float limitingHalfFov = Mathf.Max(0.01f, Mathf.Min(verticalHalfFov, horizontalHalfFov));
+                float fitDistance = radius / Mathf.Sin(limitingHalfFov) * 1.15f;
+                distance = Mathf.Max(distance, fitDistance, radius + mainCamera.nearClipPlane);
+            }
+        }
+
         transform.position = focusPosition;
 
         if (usingPlaceholder)
@@ -122,6 +182,7 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     public void ApplyBodyFocus(NBody body, float? defaultDistanceOverride = null)
     {
+        ClearRendezvousFocus();
         focusBody = body;
         focusPlaceholder = null;
         inEarthFocus = false;
@@ -139,6 +200,7 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     public void ApplyEarthFocus(NBody earth, float? defaultDistanceOverride = null)
     {
+        ClearRendezvousFocus();
         inEarthFocus = true;
         earthFocusBody = earth;
         focusPlaceholder = null;
@@ -161,6 +223,7 @@ public class CameraMovement : MonoBehaviour
     /// </summary>
     public void ApplyPlaceholderFocus(Transform placeholder)
     {
+        ClearRendezvousFocus();
         focusBody = null;
         focusPlaceholder = placeholder;
         inEarthFocus = false;
@@ -178,6 +241,7 @@ public class CameraMovement : MonoBehaviour
 
     public void ClearFocus()
     {
+        ClearRendezvousFocus();
         focusBody = null;
         focusPlaceholder = null;
         earthFocusBody = null;
@@ -186,6 +250,7 @@ public class CameraMovement : MonoBehaviour
 
     public void SetFreeCamMode(bool enabled)
     {
+        if (enabled) ClearRendezvousFocus();
         isFreeCamMode = enabled;
     }
 

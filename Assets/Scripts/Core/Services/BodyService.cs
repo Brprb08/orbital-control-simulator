@@ -40,7 +40,12 @@ public class BodyService : MonoBehaviour, IBodyService
     private void FixedUpdate()
     {
         if (DrivePhysics)
-            physicsStepper?.Step(Mathf.Max(0f, Time.fixedDeltaTime));
+        {
+            float stepDt = ctx?.TimeController != null
+                ? ctx.TimeController.SimulationStepSeconds
+                : Time.fixedDeltaTime;
+            physicsStepper?.Step(Mathf.Max(0f, stepDt));
+        }
     }
 
     private void OnDestroy() => physicsStepper?.Dispose();

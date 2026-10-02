@@ -1,8 +1,10 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 public class ManeuverNodeManager : MonoBehaviour
 {
+    public const int MaxManualNodes = 4;
     [Header("Trajectory Rendering")]
     public TrajectoryRenderer trajectoryRenderer;
     public TimeController timeController;
@@ -37,7 +39,158 @@ public class ManeuverNodeManager : MonoBehaviour
     private NBody configurationBody;
 
     public ManeuverNode CurrentNode { get; private set; }
-    public bool HasNode => CurrentNode != null;
+    public bool HasNode => CurrentNode != null || draftNode != null;
+    private readonly Queue<ManeuverNode> manualQueue = new();
+    private ManeuverNode draftNode;
+    public ManeuverNode EditingNode => draftNode ?? CurrentNode;
+    public int ManualNodeCount => HasRendezvousPlan ? 0 : manualQueue.Count +
+        (CurrentNode != null && CurrentNode.isFinalized ? 1 : 0) + (draftNode != null ? 1 : 0);
+    private readonly Queue<ManeuverNode> rendezvousQueue = new();
+    public bool HasRendezvousPlan { get; private set; }
+    private RendezvousPlanner.Result rendezvousPlan;
+    private double rendezvousEpoch;
+    private NBody rendezvousBody, rendezvousTarget;
+    public enum RendezvousOutcome { Succeeded, Failed, Canceled }
+    public event System.Action<RendezvousOutcome, string> RendezvousEnded;
+
+    private void FinishRendezvous(RendezvousOutcome outcome, string message)
+    {
+        if (!HasRendezvousPlan) return;
+        HasRendezvousPlan = false;
+        ClearNode();
+        RendezvousEnded?.Invoke(outcome, message);
+    }
+
+    private void OnSatelliteCollision(NBody a, NBody b, Unity.Mathematics.double3 position)
+    {
+        if (!HasRendezvousPlan) return;
+        bool pair = a == rendezvousBody && b == rendezvousTarget || b == rendezvousBody && a == rendezvousTarget;
+        if (pair && rendezvousPlan.Goal.Mode == RendezvousPlanner.ArrivalMode.Intercept)
+            FinishRendezvous(RendezvousOutcome.Succeeded, "Intercept impact confirmed. Target cleared.");
+        else if (a == rendezvousBody || b == rendezvousBody || a == rendezvousTarget || b == rendezvousTarget)
+            FinishRendezvous(RendezvousOutcome.Failed, "Rendezvous failed: a satellite was lost in a collision.");
+    }
+
+    // Called on the physics clock, including powered flight and the final coast.
+    internal void ValidateRendezvousFlight(double time, List<NBody> bodies,
+        Unity.Mathematics.double3[] positions, Unity.Mathematics.double3[] velocities)
+    {
+        if (!HasRendezvousPlan) return;
+        int a = bodies.IndexOf(rendezvousBody), b = bodies.IndexOf(rendezvousTarget);
+        if (rendezvousBody == null || rendezvousTarget == null || a < 0 || b < 0 ||
+            bodyRuntimeCoordinator.IsPendingRemoval(rendezvousBody) || bodyRuntimeCoordinator.IsPendingRemoval(rendezvousTarget))
+        { FinishRendezvous(RendezvousOutcome.Failed, "Rendezvous failed: a satellite is no longer available."); return; }
+        double age = time - rendezvousEpoch;
+        var plan = rendezvousPlan;
+        double contact = (System.Math.Max(0, rendezvousBody.radius) + System.Math.Max(0, rendezvousTarget.radius)) * 10000;
+        if (System.Math.Abs(contact - plan.Goal.ContactDistanceMeters) > 1e-5 ||
+            bodyService?.CentralBody == null ||
+            PhysicsConstants.GDouble * bodyService.CentralBody.TotalMassKilograms != plan.Mu)
+        { FinishRendezvous(RendezvousOutcome.Failed, "Flight configuration changed; rebuild the rendezvous plan."); return; }
+        if (age >= plan.ArrivalSeconds)
+        {
+            bool arrived = plan.Goal.IsSatisfied(positions[a], velocities[a], positions[b], velocities[b],
+                plan.Mu, plan.ArrivalDistanceTolerance, plan.ArrivalSpeedTolerance);
+            FinishRendezvous(arrived ? RendezvousOutcome.Succeeded : RendezvousOutcome.Failed,
+                arrived ? "Rendezvous arrival verified. Target cleared." : "Rendezvous failed: arrival requirements were not met.");
+            return;
+        }
+        if (!plan.Prediction.TrySample(age, out var expected) ||
+            !plan.MatchesFlight(expected, positions[a], velocities[a], positions[b], velocities[b]))
+            FinishRendezvous(RendezvousOutcome.Failed,
+                "Flight diverged from the validated approach; remaining burns canceled. Build a fresh plan.");
+    }
+
+    internal double RendezvousArrivalTime => HasRendezvousPlan ? rendezvousEpoch + rendezvousPlan.ArrivalSeconds : double.PositiveInfinity;
+    public int RendezvousBurnsRemaining => HasRendezvousPlan ? rendezvousQueue.Count + (HasNode ? 1 : 0) : 0;
+
+    public ManeuverNode[] GetRendezvousSchedule()
+    {
+        if (!HasRendezvousPlan || CurrentNode == null) return System.Array.Empty<ManeuverNode>();
+        var nodes = new List<ManeuverNode> { CurrentNode };
+        nodes.AddRange(rendezvousQueue);
+        return nodes.ToArray();
+    }
+
+    public bool TryScheduleRendezvousPlan(NBody body, NBody target, RendezvousPlanner.Result plan, double epoch)
+    {
+        bool replacingPlan = HasRendezvousPlan && bodyRuntimeCoordinator != null &&
+            !bodyRuntimeCoordinator.IsNodeBurnInProgress;
+        if (HasNode && !replacingPlan || body == null || bodyRuntimeCoordinator == null ||
+            trajectoryRenderer == null || trajectoryRenderer.trackedBody != body ||
+            target == null || target == body || plan == null || !plan.Success ||
+            (plan.Burns.Length < (plan.Goal.Mode == RendezvousPlanner.ArrivalMode.Intercept ? 1 : 2) || plan.Burns.Length > 4) || body.isThrusting ||
+            epoch + plan.Burns[0].Start <= bodyRuntimeCoordinator.simulationTime + 5) return false;
+        if (!plan.CoastReference.TrySample(bodyRuntimeCoordinator.SimulationTimeSeconds - epoch, out var current) ||
+            !plan.MatchesFlight(current, body.state.position, body.state.velocity, target.state.position, target.state.velocity)) return false;
+        var nodes = new List<ManeuverNode>();
+        foreach (var burn in plan.Burns)
+        {
+            if (!plan.Prediction.TrySample(burn.Start, out var sample)) return false;
+            nodes.Add(new ManeuverNode {
+                targetBody=body, burnTime=(float)(epoch+burn.Start), duration=(float)burn.Duration,
+                burnType=burn.Type, isFinalized=true, position=sample.A.ToVector3(),
+                usesVectorDirection=burn.UsesVectorDirection,
+                vectorDirectionWorld=burn.VectorDirectionWorld.ToVector3(),
+                pinnedWorldPosition=sample.A.ToVector3(), isPinned=true,
+                trajectorySnapshot=new List<Vector3>()
+            });
+        }
+        // Keep the old queue intact until the replacement has been completely
+        // validated and converted to executable nodes.
+        if (replacingPlan)
+            ClearNode();
+        thrustController?.StopForwardThrust();
+        HasRendezvousPlan = true;
+        rendezvousPlan = plan; rendezvousEpoch = epoch;
+        rendezvousBody = body; rendezvousTarget = target;
+        rendezvousBody.FlightConfigurationChanged += OnRendezvousConfigurationChanged;
+        rendezvousTarget.FlightConfigurationChanged += OnRendezvousConfigurationChanged;
+        foreach (var node in nodes) rendezvousQueue.Enqueue(node);
+        AdvanceRendezvousPlan();
+        return true;
+    }
+
+    private void AdvanceRendezvousPlan()
+    {
+        if (CurrentNode != null) visualController?.DestroyVisual(CurrentNode);
+        CurrentNode = rendezvousQueue.Count > 0 ? rendezvousQueue.Dequeue() : null;
+        if (CurrentNode == null)
+        {
+            // Finishing thrust is not arrival. Keep the plan alive through the coast.
+            uiController?.ClearManeuverFeedback();
+            RefreshSetupNodeButtonState();
+            return;
+        }
+        // The next burn's preview starts at that burn. The completed transfer coast
+        // is now represented by the actual orbit and must not remain as a duplicate.
+        trajectoryRenderer?.ClearPreview();
+        previewController?.Clear();
+        trajectoryRenderer?.ShowRendezvousPlan(rendezvousPlan.Prediction,
+            (double)CurrentNode.burnTime - rendezvousEpoch, rendezvousPlan.ArrivalSeconds);
+        visualController?.SetupNodeVisuals(CurrentNode, isPreview:false, manager:this);
+        uiController?.SetEditingEnabled(false);
+        RefreshSetupNodeButtonState();
+        // Rendezvous owns the queued burns and reports their state in its plan readout.
+        // The ordinary single-node instruction is misleading for this sequence.
+        uiController?.ClearManeuverFeedback();
+        uiRoot?.RefreshAllUi();
+    }
+
+    // Completion advances the queue; explicit removal/cancellation always clears the whole plan.
+    public void CompleteNode(ManeuverNode node)
+    {
+        if (node != CurrentNode) return;
+        if (HasRendezvousPlan) { AdvanceRendezvousPlan(); return; }
+        visualController?.DestroyVisual(CurrentNode);
+        CurrentNode = manualQueue.Count > 0 ? manualQueue.Dequeue() : null;
+        if (CurrentNode == null && draftNode == null) ClearNode();
+        else
+        {
+            RefreshSetupNodeButtonState();
+            uiRoot?.RefreshAllUi();
+        }
+    }
 
     public OrbitalParameters PreviewOrbitParams =>
         previewController != null ? previewController.PreviewOrbitParams : new OrbitalParameters(false);
@@ -54,6 +207,7 @@ public class ManeuverNodeManager : MonoBehaviour
         _initialized = true;
 
         bodyRuntimeCoordinator = ctx.BodyRuntimeCoordinator;
+        if (bodyRuntimeCoordinator != null) bodyRuntimeCoordinator.SatellitesCollided += OnSatelliteCollision;
         trajectoryRenderer = ctx.TrajectoryRenderer;
         timeController = ctx.TimeController;
         tutorialController = ctx.TutorialController;
@@ -92,12 +246,15 @@ public class ManeuverNodeManager : MonoBehaviour
 
     private void LateUpdate()
     {
-        uiController?.SetInsufficientFuelWarning(CurrentNode != null && CurrentNode.insufficientPropellant);
+        uiController?.SetInsufficientFuelWarning(EditingNode != null && EditingNode.insufficientPropellant);
         UpdatePinnedNodeVisuals();
     }
 
     private void OnDestroy()
     {
+        if (rendezvousBody != null) rendezvousBody.FlightConfigurationChanged -= OnRendezvousConfigurationChanged;
+        if (rendezvousTarget != null) rendezvousTarget.FlightConfigurationChanged -= OnRendezvousConfigurationChanged;
+        if (bodyRuntimeCoordinator != null) bodyRuntimeCoordinator.SatellitesCollided -= OnSatelliteCollision;
         ObserveFlightConfiguration(null);
         if (trajectoryRenderer != null)
             trajectoryRenderer.TrackedBodyChanged -= OnTrackedBodyChanged;
@@ -116,12 +273,8 @@ public class ManeuverNodeManager : MonoBehaviour
 
     private void UpdatePinnedNodeVisuals()
     {
-        if (!HasNode)
-            return;
-
-        var node = CurrentNode;
-        if (node == null)
-            return;
+        if (!HasNode && draftNode == null) return;
+        var node = EditingNode;
 
         if (node.isFinalized && node.isPinned && node.marker != null)
         {
@@ -137,29 +290,29 @@ public class ManeuverNodeManager : MonoBehaviour
     private void OnTrackedBodyChanged(NBody oldBody, NBody newBody)
     {
         ObserveFlightConfiguration(newBody);
-        if (HasNode && oldBody != newBody)
+        if ((HasNode || HasRendezvousPlan) && oldBody != newBody)
         {
             ClearNode();
             return;
         }
 
-        bool active = HasNode &&
-                      CurrentNode.targetBody == newBody &&
-                      !CurrentNode.isFinalized;
+        bool active = EditingNode != null && EditingNode.targetBody == newBody &&
+                      !EditingNode.isFinalized;
 
         uiController?.SetNodeTimeSliderInteractable(active);
     }
 
     public void OnAddManeuverNode()
     {
-        if (HasNode && CurrentNode != null && CurrentNode.isFinalized)
+        if (HasRendezvousPlan) return;
+        if (ManualNodeCount >= MaxManualNodes)
         {
-            uiController?.ShowFinalizedManeuverFeedback();
-            RefreshSetupNodeButtonState();
+            uiController?.ShowManualNodeLimitFeedback(MaxManualNodes);
             return;
         }
-
-        if (HasNode)
+        bool addingToSequence = CurrentNode != null && CurrentNode.isFinalized;
+        if (draftNode != null) RemoveDraftNode();
+        else if (HasNode && !addingToSequence)
             ClearNode();
 
         if (bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress)
@@ -180,8 +333,22 @@ public class ManeuverNodeManager : MonoBehaviour
             return;
         }
 
-        RequestSingleOrbitNodeSnapshot(body, (traj, startTime, usedDt) =>
+        ManeuverNode precedingNode = null;
+        if (addingToSequence)
         {
+            precedingNode = CurrentNode;
+            foreach (var queued in manualQueue) precedingNode = queued;
+            previewController?.RequestReadoutRefresh(precedingNode, immediate: true);
+            if (!precedingNode.hasPredictedPostBurnState)
+            {
+                uiController?.ShowNodeSnapshotUnavailableFeedback();
+                return;
+            }
+        }
+
+        System.Action<List<Vector3>, float, float> onSnapshot = (traj, startTime, usedDt) =>
+        {
+            if (!this || (addingToSequence && (CurrentNode == null || !CurrentNode.isFinalized))) return;
             if (traj == null || traj.Count < 2)
             {
                 uiController?.ShowNodeSnapshotUnavailableFeedback();
@@ -190,7 +357,14 @@ public class ManeuverNodeManager : MonoBehaviour
 
             float simTime = bodyRuntimeCoordinator != null ? bodyRuntimeCoordinator.simulationTime : 0f;
             float initialOffsetTime = 20f;
-            float desiredBurnTime = simTime + initialOffsetTime;
+            float desiredBurnTime = addingToSequence
+                ? Mathf.Max(simTime + initialOffsetTime, GetLastManualBurnEnd() + initialOffsetTime)
+                : simTime + initialOffsetTime;
+            if (desiredBurnTime > startTime + (traj.Count - 1) * usedDt)
+            {
+                uiController?.ShowNodeSnapshotUnavailableFeedback();
+                return;
+            }
 
             float timeFromPredictionStart = desiredBurnTime - startTime;
             if (timeFromPredictionStart < 0f)
@@ -218,29 +392,53 @@ public class ManeuverNodeManager : MonoBehaviour
                 snapshotDeltaTime = usedDt
             };
 
+            if (precedingNode != null)
+            {
+                node.hasPredictionSeed = true;
+                node.predictionSeedTime = precedingNode.predictedBurnEndTime;
+                node.predictionSeedPosition = precedingNode.predictedPostBurnPosition;
+                node.predictionSeedVelocity = precedingNode.predictedPostBurnVelocity;
+                node.predictionSeedMassKg = precedingNode.predictedPostBurnMassKg;
+                node.predictionSeedFuelKg = precedingNode.predictedPostBurnFuelKg;
+            }
+
             ActivatePreviewNode(node, focusCamera: false);
 
             if (tutorialController != null && tutorialController.inTutorialMode)
                 tutorialController.hasSetupNode = true;
-        });
+        };
+        if (precedingNode != null)
+            RequestPostBurnNodeSnapshot(precedingNode, onSnapshot);
+        else
+            RequestSingleOrbitNodeSnapshot(body, onSnapshot);
     }
 
     public void FinalizeManeuver()
     {
-        if (!HasNode)
+        if (HasRendezvousPlan) return;
+        if (EditingNode == null)
             return;
 
-        var node = CurrentNode;
+        var node = EditingNode;
         if (node == null || node.marker == null)
             return;
 
         ResolveNodeBurnTimeIntoFuture(node);
+        if (draftNode == node && node.burnTime < GetLastManualBurnEnd() + 1f)
+            node.burnTime = GetLastManualBurnEnd() + 1f;
         BuildNodeFixedStepSchedule(node);
 
         node.isFinalized = true;
         node.marker.transform.SetParent(null, true);
         node.pinnedWorldPosition = node.marker.transform.position;
         node.isPinned = true;
+
+        if (draftNode == node)
+        {
+            if (CurrentNode == null) CurrentNode = node;
+            else manualQueue.Enqueue(node);
+            draftNode = null;
+        }
 
         thrustController?.StopForwardThrust();
         visualController?.SetupNodeVisuals(node, isPreview: false, manager: this);
@@ -254,7 +452,7 @@ public class ManeuverNodeManager : MonoBehaviour
         previewController?.RequestReadoutRefresh(node, immediate: true);
 
         RefreshSetupNodeButtonState();
-        uiController?.ShowFinalizedManeuverFeedback();
+        uiController?.ShowFinalizedManeuverFeedback(ManualNodeCount);
         uiRoot?.RefreshAllUi();
     }
 
@@ -285,6 +483,12 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void CreatePreviewNode(Vector3 position, float burnTime, Vector3 deltaV, float duration)
     {
+        if (HasRendezvousPlan) return;
+        if (ManualNodeCount >= MaxManualNodes)
+        {
+            uiController?.ShowManualNodeLimitFeedback(MaxManualNodes);
+            return;
+        }
         var trackedBody = trajectoryRenderer != null ? trajectoryRenderer.trackedBody : null;
 
         var node = new ManeuverNode
@@ -309,7 +513,7 @@ public class ManeuverNodeManager : MonoBehaviour
                 trackedBody,
                 (traj, startTime, usedDt) =>
                 {
-                    if (!this || CurrentNode != node || node.isFinalized)
+                    if (!this || EditingNode != node || node.isFinalized)
                         return;
 
                     if (traj == null || traj.Count < 2)
@@ -325,9 +529,16 @@ public class ManeuverNodeManager : MonoBehaviour
         if (node == null)
             return;
 
-        ClearNode();
-
-        CurrentNode = node;
+        if (CurrentNode != null && CurrentNode.isFinalized)
+        {
+            RemoveDraftNode();
+            draftNode = node;
+        }
+        else
+        {
+            ClearNode();
+            CurrentNode = node;
+        }
 
         visualController?.SetupNodeVisuals(node, isPreview: true, manager: this);
 
@@ -343,11 +554,21 @@ public class ManeuverNodeManager : MonoBehaviour
         uiController?.SetEditingEnabled(true);
         uiController?.SetupNodeSlider(node);
         RefreshSetupNodeButtonState();
-        uiController?.ShowPreviewManeuverFeedback();
+        uiController?.ShowPreviewManeuverFeedback(draftNode != null);
     }
 
     public void ClearNode()
     {
+        bool canceledRendezvous = HasRendezvousPlan;
+        if (rendezvousBody != null) rendezvousBody.FlightConfigurationChanged -= OnRendezvousConfigurationChanged;
+        if (rendezvousTarget != null) rendezvousTarget.FlightConfigurationChanged -= OnRendezvousConfigurationChanged;
+        rendezvousQueue.Clear();
+        foreach (var queued in manualQueue) visualController?.DestroyVisual(queued);
+        manualQueue.Clear();
+        RemoveDraftNode();
+        rendezvousPlan = null;
+        rendezvousBody = rendezvousTarget = null;
+        HasRendezvousPlan = false;
         if (thrustController != null && thrustController.IsNodeBurnActive)
             thrustController.StopNodeBurn();
 
@@ -366,14 +587,35 @@ public class ManeuverNodeManager : MonoBehaviour
         uiController?.ClearManeuverFeedback();
         RefreshSetupNodeButtonState();
         uiRoot?.RefreshAllUi();
+        if (canceledRendezvous) RendezvousEnded?.Invoke(RendezvousOutcome.Canceled, "Rendezvous canceled.");
+    }
+
+    private float GetLastManualBurnEnd()
+    {
+        float end = CurrentNode != null && CurrentNode.isFinalized
+            ? ManeuverBurnMath.GetBurnEndTime(CurrentNode) : 0f;
+        foreach (var node in manualQueue)
+            end = Mathf.Max(end, ManeuverBurnMath.GetBurnEndTime(node));
+        return end;
+    }
+
+    private void RemoveDraftNode()
+    {
+        if (draftNode == null) return;
+        visualController?.DestroyVisual(draftNode);
+        draftNode = null;
+        previewController?.Clear();
+        trajectoryRenderer?.ClearPreview();
+        uiController?.ResetEditingUI();
+        RefreshSetupNodeButtonState();
     }
 
     private void RefreshPreviewNodeSnapshotIfNeeded()
     {
-        if (!HasNode || trajectoryRenderer == null)
+        if (EditingNode == null || trajectoryRenderer == null)
             return;
 
-        var node = CurrentNode;
+        var node = EditingNode;
         if (node == null || node.isFinalized || node.targetBody == null)
             return;
 
@@ -401,7 +643,7 @@ public class ManeuverNodeManager : MonoBehaviour
             {
                 _previewNodeSnapshotRefreshInFlight = false;
 
-                if (!this || CurrentNode != node || node.isFinalized)
+                if (!this || EditingNode != node || node.isFinalized)
                     return;
 
                 if (traj == null || traj.Count < 2)
@@ -423,6 +665,43 @@ public class ManeuverNodeManager : MonoBehaviour
 
         ResolveSingleOrbitNodePredictionSettings(body, out int steps, out float dt);
         body.ComputePredictionForNodes(steps, dt, onComplete);
+    }
+
+    private void RequestPostBurnNodeSnapshot(
+        ManeuverNode precedingNode,
+        System.Action<List<Vector3>, float, float> onComplete)
+    {
+        var central = bodyService != null ? bodyService.CentralBody : null;
+        if (precedingNode == null || !precedingNode.hasPredictedPostBurnState || central == null)
+        {
+            onComplete?.Invoke(new List<Vector3>(), 0f, 1f);
+            return;
+        }
+
+        double3 startPos = precedingNode.predictedPostBurnPosition;
+        double3 startVel = precedingNode.predictedPostBurnVelocity;
+        double mu = PhysicsConstants.GDouble * central.TotalMassKilograms;
+        OrbitalParameters orbit = OrbitalCalculations.CalculateOrbitalParameters(
+            central.TotalMassKilograms, central.state.position, startPos, startVel);
+        float baseDt = trajectoryRenderer != null && trajectoryRenderer.predictionDeltaTime > 0f
+            ? trajectoryRenderer.predictionDeltaTime : 2f;
+        float horizon = orbit.isValid && orbit.eccentricity < 1f && orbit.orbitalPeriod > 0f
+            ? Mathf.Min(orbit.orbitalPeriod, 12000f) : 12000f;
+        int steps = Mathf.Clamp(Mathf.CeilToInt(horizon / baseDt),
+            minNodeOrbitSamples, maxNodeOrbitSamples);
+        float dt = horizon / steps;
+        var points = new List<Vector3>(steps + 1);
+        for (int i = 0; i <= steps; i++)
+        {
+            if (!KeplerPropagator.TryPropagateUniversal(startPos, startVel, mu,
+                i * (double)dt, out double3 position, out _))
+            {
+                onComplete?.Invoke(new List<Vector3>(), 0f, 1f);
+                return;
+            }
+            points.Add(position.ToVector3());
+        }
+        onComplete?.Invoke(points, precedingNode.predictedBurnEndTime, dt);
     }
 
     private void ResolveSingleOrbitNodePredictionSettings(NBody body, out int steps, out float dt)
@@ -468,6 +747,8 @@ public class ManeuverNodeManager : MonoBehaviour
         node.snapshotDeltaTime = Mathf.Max(1e-5f, sampleDt);
         ResolveNodeBurnTimeIntoFuture(node);
         node.burnTime = Mathf.Max(node.burnTime, node.snapshotStartTime);
+        if (node == draftNode)
+            node.burnTime = Mathf.Max(node.burnTime, GetLastManualBurnEnd() + 1f);
 
         UpdateManeuverPrediction(node);
 
@@ -482,10 +763,8 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void RemoveNode(ManeuverNode node)
     {
-        if (node == null || node != CurrentNode)
-            return;
-
-        ClearNode();
+        if (node == draftNode) RemoveDraftNode();
+        else if (node == CurrentNode) ClearNode();
     }
 
     public void DragNodeToFloatIndex(float floatIndex)
@@ -497,10 +776,10 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         currentFloatIndex = 0f;
 
-        if (!HasNode)
+        if (EditingNode == null)
             return false;
 
-        var node = CurrentNode;
+        var node = EditingNode;
         if (node == null || node.trajectorySnapshot == null || node.trajectorySnapshot.Count < 2)
             return false;
 
@@ -523,7 +802,7 @@ public class ManeuverNodeManager : MonoBehaviour
         if (trajectoryRenderer == null)
             return;
 
-        node ??= CurrentNode;
+        node ??= EditingNode;
         if (node == null || node.isFinalized)
             return;
 
@@ -535,10 +814,10 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void SetNodeAtFloatIndex(float floatIndex)
     {
-        if (!HasNode)
+        if (EditingNode == null)
             return;
 
-        var node = CurrentNode;
+        var node = EditingNode;
         if (node.isFinalized)
             return;
 
@@ -547,6 +826,12 @@ public class ManeuverNodeManager : MonoBehaviour
             return;
 
         int count = traj.Count;
+        if (node == draftNode)
+        {
+            float earliest = (GetLastManualBurnEnd() + 1f - node.snapshotStartTime) /
+                Mathf.Max(1e-5f, node.snapshotDeltaTime);
+            floatIndex = Mathf.Max(floatIndex, earliest);
+        }
         floatIndex = Mathf.Clamp(floatIndex, 0f, count - 1.0001f);
 
         float sampleDt = Mathf.Max(1e-5f, node.snapshotDeltaTime);
@@ -579,10 +864,10 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         burnDuration = newDuration;
 
-        if (HasNode && !CurrentNode.isFinalized)
+        if (EditingNode != null && !EditingNode.isFinalized)
         {
-            CurrentNode.duration = burnDuration;
-            previewController?.RequestPreview(CurrentNode, interactionActive: true);
+            EditingNode.duration = burnDuration;
+            previewController?.RequestPreview(EditingNode, interactionActive: true);
             MarkAdjusted();
         }
     }
@@ -611,12 +896,15 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         uiController?.SetThrustScaleWithoutNotify(body.ThrustScale);
         trajectoryRenderer?.RequestPredictionRefresh();
-        if (HasNode && CurrentNode.targetBody == body && !CurrentNode.isFinalized)
+        if (EditingNode != null && EditingNode.targetBody == body && !EditingNode.isFinalized)
         {
-            previewController?.RequestPreview(CurrentNode, interactionActive: false);
+            previewController?.RequestPreview(EditingNode, interactionActive: false);
             MarkAdjusted();
         }
     }
+
+    private void OnRendezvousConfigurationChanged(NBody body) =>
+        FinishRendezvous(RendezvousOutcome.Failed, "Flight configuration changed; rebuild the rendezvous plan.");
 
     private void MarkAdjusted()
     {
@@ -663,7 +951,7 @@ public class ManeuverNodeManager : MonoBehaviour
 
     public void SetSetupNodeButtonInteractable(bool interactable)
     {
-        bool blockedByExistingNode = HasNode && CurrentNode != null && CurrentNode.isFinalized;
+        bool blockedByExistingNode = HasRendezvousPlan || ManualNodeCount >= MaxManualNodes;
         uiController?.SetSetupNodeButtonState(
             interactable && !blockedByExistingNode,
             blockedByExistingNode
@@ -674,14 +962,15 @@ public class ManeuverNodeManager : MonoBehaviour
     {
         bool nodeBurnActive = bodyRuntimeCoordinator != null && bodyRuntimeCoordinator.IsNodeBurnInProgress;
         SetSetupNodeButtonInteractable(!nodeBurnActive);
+        uiController?.SetManualSequenceState(ManualNodeCount, draftNode != null);
     }
 
     private void OnAccuratePreviewLimitExceededChanged(bool exceeded)
     {
         if (exceeded)
             uiController?.ShowPreviewHorizonLimitFeedback();
-        else if (HasNode && CurrentNode != null && !CurrentNode.isFinalized)
-            uiController?.ShowPreviewManeuverFeedback();
+        else if (EditingNode != null && !EditingNode.isFinalized)
+            uiController?.ShowPreviewManeuverFeedback(draftNode != null);
     }
 
     private float GetTimeToNode(ManeuverNode node)
@@ -693,6 +982,9 @@ public class ManeuverNodeManager : MonoBehaviour
         if (node.isFinalized)
             return node.burnTime - simTime;
 
+        if (node.hasPredictionSeed)
+            return node.burnTime - simTime;
+
         return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)
             ? ManeuverNodeTiming.GetTimeToNode(node.burnTime, simTime, orbitalPeriod)
             : node.burnTime - simTime;
@@ -701,6 +993,9 @@ public class ManeuverNodeManager : MonoBehaviour
     private void ResolveNodeBurnTimeIntoFuture(ManeuverNode node)
     {
         if (node == null || bodyRuntimeCoordinator == null)
+            return;
+
+        if (node.hasPredictionSeed)
             return;
 
         if (!ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod))

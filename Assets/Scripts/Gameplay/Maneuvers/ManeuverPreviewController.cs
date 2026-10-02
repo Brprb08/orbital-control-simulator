@@ -150,7 +150,8 @@ public class ManeuverPreviewController : MonoBehaviour
         var central = bodyService.CentralBody;
 
         float scheduleDt = BodyRuntimeCoordinator.BaseSimulationStep;
-        float currentTime = bodyRuntimeCoordinator.simulationTime;
+        float currentTime = node.hasPredictionSeed
+            ? node.predictionSeedTime : bodyRuntimeCoordinator.simulationTime;
         float previewBurnTime = ResolvePreviewBurnTime(node);
         PreviewCoastMode coastMode = ResolvePreviewCoastMode(
             node,
@@ -173,12 +174,12 @@ public class ManeuverPreviewController : MonoBehaviour
         double mu = G_unity * central.TotalMassKilograms;
         double3 posNow;
         double3 velNow;
-        bool useExactPreview = !interactionActive && !useSampledBurnStart;
+        bool useExactPreview = node.hasPredictionSeed || !interactionActive && !useSampledBurnStart;
 
         if (useExactPreview)
         {
-            posNow = body.state.position;
-            velNow = body.state.velocity;
+            posNow = node.hasPredictionSeed ? node.predictionSeedPosition : body.state.position;
+            velNow = node.hasPredictionSeed ? node.predictionSeedVelocity : body.state.velocity;
         }
         else
         {
@@ -196,9 +197,9 @@ public class ManeuverPreviewController : MonoBehaviour
             }
         }
 
-        previewMassBuf[0] = body.state.mass;
+        previewMassBuf[0] = node.hasPredictionSeed ? node.predictionSeedMassKg : body.state.mass;
         previewDryMassBuf[0] = body.DryMassKilograms;
-        previewFuelMassBuf[0] = body.FuelMassKilograms;
+        previewFuelMassBuf[0] = node.hasPredictionSeed ? node.predictionSeedFuelKg : body.FuelMassKilograms;
         previewIspBuf[0] = body.SpecificImpulseSeconds;
         previewFiniteFuelBuf[0] = (byte)(body.UnlimitedPropellant ? 0 : 1);
         previewCdBuf[0] = useExactPreview ? body.dragCoefficient : 0f;
@@ -290,6 +291,8 @@ public class ManeuverPreviewController : MonoBehaviour
 
             if (ManeuverBurnMath.TryBuildBurnCommand(
                     node.burnType,
+                    node.usesVectorDirection,
+                    node.vectorDirectionWorld,
                     burnPos,
                     burnVel,
                     center,
@@ -312,11 +315,19 @@ public class ManeuverPreviewController : MonoBehaviour
         Vector3 posAfterBurn = new Vector3((float)posNow.x, (float)posNow.y, (float)posNow.z);
         Vector3 velAfterBurn = new Vector3((float)velNow.x, (float)velNow.y, (float)velNow.z);
 
+        node.hasPredictedPostBurnState = true;
+        node.predictedBurnEndTime = burnStartTime + burnDuration;
+        node.predictedPostBurnPosition = posNow;
+        node.predictedPostBurnVelocity = velNow;
+        node.predictedPostBurnMassKg = previewMassBuf[0];
+        node.predictedPostBurnFuelKg = previewFuelMassBuf[0];
+
         node.deltaV = velAfterBurn - velPre;
         node.predictedPropulsiveDeltaVMetersPerSecond = propulsiveDeltaVWorld * SimulationUnits.MetersPerUnit;
-        node.predictedFuelUsedKg = body.FuelMassKilograms - previewFuelMassBuf[0];
+        node.predictedFuelUsedKg = (node.hasPredictionSeed ? node.predictionSeedFuelKg : body.FuelMassKilograms) - previewFuelMassBuf[0];
         node.insufficientPropellant = !body.UnlimitedPropellant &&
-            body.FuelFlowKilogramsPerSecond * burnDuration > body.FuelMassKilograms + 1e-9;
+            body.FuelFlowKilogramsPerSecond * burnDuration >
+            (node.hasPredictionSeed ? node.predictionSeedFuelKg : body.FuelMassKilograms) + 1e-9;
 
         double3 posD = new double3(posAfterBurn.x, posAfterBurn.y, posAfterBurn.z);
         double3 velD = new double3(velAfterBurn.x, velAfterBurn.y, velAfterBurn.z);
@@ -399,6 +410,7 @@ public class ManeuverPreviewController : MonoBehaviour
         if (node == null || bodyRuntimeCoordinator == null)
             return 0f;
 
+        if (node.hasPredictionSeed) return node.burnTime;
         return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)
             ? ManeuverNodeTiming.ResolveFutureBurnTime(
                 node.burnTime,
@@ -424,6 +436,9 @@ public class ManeuverPreviewController : MonoBehaviour
     {
         if (node == null)
             return PreviewCoastMode.ExactNative;
+
+        if (node.hasPredictionSeed)
+            return PreviewCoastMode.Analytic;
 
         float tolerance = Mathf.Max(0.001f, scheduleDt * 0.5f);
         if (resolvedBurnTime > node.burnTime + tolerance)
@@ -471,6 +486,9 @@ public class ManeuverPreviewController : MonoBehaviour
 
         float simTime = bodyRuntimeCoordinator.simulationTime;
         if (node.isFinalized)
+            return node.burnTime - simTime;
+
+        if (node.hasPredictionSeed)
             return node.burnTime - simTime;
 
         return ManeuverNodeTiming.TryGetBoundOrbitPeriod(bodyService, node.targetBody, out float orbitalPeriod)

@@ -206,6 +206,11 @@ public class NBody : MonoBehaviour
     private double3 _previousPhysicsPosition;
     private double3 _currentPhysicsPosition;
     private bool _hasPhysicsInterpolationState;
+    private bool _nearCameraForSmoothing;
+    private int _smoothingProximityFrame = -1;
+    private bool _renderWasInterpolated;
+    // Selection guarantees smoothing even when the pair view places the target far away.
+    internal bool IsRendezvousRenderTarget { get; set; }
 
     public Vector3 RenderPosition => GetRenderPosition();
 
@@ -301,9 +306,17 @@ public class NBody : MonoBehaviour
     private void LateUpdate()
     {
         if (!ShouldInterpolateRenderedPosition())
+        {
+            // Leaving the smooth region between physics ticks must not leave an old
+            // interpolated transform behind until the next batch sync.
+            if (_renderWasInterpolated && _hasPhysicsInterpolationState)
+                transform.position = _currentPhysicsPosition.ToVector3();
+            _renderWasInterpolated = false;
             return;
+        }
 
         transform.position = GetInterpolatedPhysicsPosition();
+        _renderWasInterpolated = true;
     }
 
     private bool ShouldInterpolateRenderedPosition()
@@ -320,13 +333,15 @@ public class NBody : MonoBehaviour
         if (_ctx == null || _ctx.BodyService == null || !_ctx.BodyService.DrivePhysics)
             return false;
 
-        // Interpolation is visually important for the vehicle under the camera, but
-        // dispatching one LateUpdate and transform write per constellation member is
-        // not. Distant satellites remain on their fixed-step transform instead.
-        if (_ctx.CameraTracker != null && _ctx.CameraTracker.CurrentBody != this)
-            return false;
-
-        return Application.isPlaying;
+        if (!Application.isPlaying) return false;
+        if (_smoothingProximityFrame != Time.frameCount)
+        {
+            _smoothingProximityFrame = Time.frameCount;
+            _nearCameraForSmoothing = _ctx.CameraMovement != null &&
+                _ctx.CameraMovement.ShouldSmoothNearbySatellite(_currentPhysicsPosition.ToVector3(), _nearCameraForSmoothing);
+        }
+        return _nearCameraForSmoothing || IsRendezvousRenderTarget ||
+            (_ctx.CameraTracker != null && _ctx.CameraTracker.CurrentBody == this);
     }
 
     private Vector3 GetRenderPosition()

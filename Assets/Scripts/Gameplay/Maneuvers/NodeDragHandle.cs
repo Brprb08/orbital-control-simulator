@@ -20,7 +20,7 @@ public class NodeDragHandle : MonoBehaviour
     float lastDraggedFloatIndex = -1f;
 
     ManeuverNode CurrentNode =>
-        (mgr != null && mgr.HasNode) ? mgr.CurrentNode : null;
+        (mgr != null && mgr.HasNode) ? mgr.EditingNode : null;
 
     List<Vector3> Traj =>
         CurrentNode != null ? CurrentNode.trajectorySnapshot : null;

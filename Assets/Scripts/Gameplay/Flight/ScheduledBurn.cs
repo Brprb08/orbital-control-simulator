@@ -4,18 +4,24 @@ using UnityEngine;
 internal readonly struct ScheduledBurn
 {
     public NBody TargetBody { get; }
+    public ManeuverNode SourceNode { get; }
     public float StartTime { get; }
     public float EndTime { get; }
     private readonly BurnType burnType;
+    private readonly bool usesVectorDirection;
+    private readonly Vector3 vectorDirectionWorld;
     private readonly float thrustNewtons;
     public bool IsValid => TargetBody != null;
 
     public ScheduledBurn(ManeuverNode node, float thrustNewtons)
     {
+        SourceNode = node;
         TargetBody = node.targetBody;
         StartTime = node.burnTime;
         EndTime = ManeuverBurnMath.GetBurnEndTime(node);
         burnType = node.burnType;
+        usesVectorDirection = node.usesVectorDirection;
+        vectorDirectionWorld = node.vectorDirectionWorld;
         this.thrustNewtons = thrustNewtons;
     }
 
@@ -23,7 +29,8 @@ internal readonly struct ScheduledBurn
         ref Vector3 velocityCache, ref Vector3 normalCache,
         out Vector3 force, out sbyte normalSign)
     {
-        return ManeuverBurnMath.TryBuildBurnCommand(burnType, position, velocity, center,
-            thrustNewtons, ref velocityCache, ref normalCache, out force, out normalSign);
+        return ManeuverBurnMath.TryBuildBurnCommand(burnType, usesVectorDirection, vectorDirectionWorld,
+            position, velocity, center, thrustNewtons, ref velocityCache, ref normalCache,
+            out force, out normalSign);
     }
 }

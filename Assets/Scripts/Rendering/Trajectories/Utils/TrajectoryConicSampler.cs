@@ -19,15 +19,24 @@ public static class TrajectoryConicSampler
         int sampleCount,
         out Vector3[] points)
     {
+        return TrySampleBoundOrbit(ToDouble3(startPosition), ToDouble3(startVelocity),
+            ToDouble3(centralPosition), centralMass, sampleCount, out points);
+    }
+
+    public static bool TrySampleBoundOrbit(double3 startPosition, double3 startVelocity,
+        double3 centralPosition, double centralMass, int sampleCount, out Vector3[] points)
+    {
         points = Array.Empty<Vector3>();
 
         double mu = PhysicsConstants.G * centralMass;
         if (!(mu > 0d))
             return false;
 
-        double3 center = ToDouble3(centralPosition);
-        double3 r = ToDouble3(startPosition) - center;
-        double3 v = ToDouble3(startVelocity);
+        double3 center = centralPosition;
+        double3 r = startPosition - center;
+        double3 v = startVelocity;
+        if (!math.all(math.isfinite(r)) || !math.all(math.isfinite(v)) ||
+            !math.all(math.isfinite(center)) || !double.IsFinite(mu)) return false;
         double rMagnitude = math.length(r);
         double hMagnitude = math.length(math.cross(r, v));
         if (!(rMagnitude > 1e-6d) || !(hMagnitude > 1e-10d))
@@ -88,8 +97,8 @@ public static class TrajectoryConicSampler
         }
 
         // Avoid a tiny numerical seam at the maneuver/current-state point.
-        points[0] = startPosition;
-        points[^1] = startPosition;
+        points[0] = new Vector3((float)startPosition.x, (float)startPosition.y, (float)startPosition.z);
+        points[^1] = points[0];
         return true;
     }
 

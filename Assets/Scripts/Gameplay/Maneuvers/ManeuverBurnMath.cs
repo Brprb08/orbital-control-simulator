@@ -20,7 +20,7 @@ public static class ManeuverBurnMath
                simulationTime < GetBurnEndTime(node);
     }
 
-    public static bool DoesBurnOverlap(ManeuverNode node, NBody targetBody, float startTime, float endTime)
+    public static bool DoesBurnOverlap(ManeuverNode node, NBody targetBody, double startTime, double endTime)
     {
         return node != null &&
                node.isFinalized &&
@@ -47,21 +47,34 @@ public static class ManeuverBurnMath
         out Vector3 thrustForce,
         out sbyte normalSign)
     {
+        return TryBuildBurnCommand(burnType, false, Vector3.zero, worldPos, worldVel, center,
+            thrustNewtons, ref vCache, ref hCache, out thrustForce, out normalSign);
+    }
+
+    public static bool TryBuildBurnCommand(
+        BurnType burnType,
+        bool usesVectorDirection,
+        Vector3 vectorDirectionWorld,
+        Vector3 worldPos,
+        Vector3 worldVel,
+        Vector3 center,
+        float thrustNewtons,
+        ref Vector3 vCache,
+        ref Vector3 hCache,
+        out Vector3 thrustForce,
+        out sbyte normalSign)
+    {
         thrustForce = Vector3.zero;
-        normalSign = GetNormalSign(burnType);
+        normalSign = usesVectorDirection ? (sbyte)0 : GetNormalSign(burnType);
 
         float scaledMagnitude = SimulationUnits.ForceNewtonsToWorld(thrustNewtons);
         if (!float.IsFinite(scaledMagnitude) || !(scaledMagnitude > 0f))
             return false;
 
-        Vector3 burnDir = AttitudeMath.ComputeBurnDirection(
-            burnType,
-            worldPos,
-            worldVel,
-            center,
-            ref vCache,
-            ref hCache
-        );
+        Vector3 burnDir = usesVectorDirection
+            ? vectorDirectionWorld
+            : AttitudeMath.ComputeBurnDirection(burnType, worldPos, worldVel, center,
+                ref vCache, ref hCache);
 
         if (burnDir.sqrMagnitude < 1e-8f)
             burnDir = worldVel.sqrMagnitude > 1e-8f ? worldVel.normalized : Vector3.forward;

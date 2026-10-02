@@ -20,7 +20,7 @@ public class TimeUI
         if (refs.timeSlider != null)
         {
             refs.timeSlider.minValue = 1f;
-            refs.timeSlider.maxValue = 100f;
+            refs.timeSlider.maxValue = TimeController.MaxTimeScaleForSatelliteCount(0);
             refs.timeSlider.SetValueWithoutNotify(1f);
             refs.timeSlider.onValueChanged.AddListener(onSliderChanged);
         }
@@ -60,6 +60,12 @@ public class TimeUI
     {
         if (refs.timeSlider != null)
             refs.timeSlider.SetValueWithoutNotify(value);
+    }
+
+    public void SetMaxTimeScale(float maxScale)
+    {
+        if (refs.timeSlider != null)
+            refs.timeSlider.maxValue = maxScale;
     }
 
     public void SetTimeScaleText(float scale)

@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using UnityEngine;
 
@@ -26,6 +27,7 @@ public sealed class TrajectoryPredictionRunner
 {
     private uint generation;
     private Task<TrajectoryMatchedPredictionResult> matchedTask;
+    private CancellationTokenSource matchedCancellation;
     private uint matchedTaskGeneration;
     private NBody matchedTaskBody;
     private TrajectoryPredictionRequest matchedTaskRequest;
@@ -45,6 +47,7 @@ public sealed class TrajectoryPredictionRunner
         if (body == null)
             return false;
 
+        AbandonMatchedTask();
         IsComputing = true;
         uint requestGeneration = ++generation;
 
@@ -63,7 +66,9 @@ public sealed class TrajectoryPredictionRunner
             matchedTaskGeneration = requestGeneration;
             matchedTaskBody = body;
             matchedTaskRequest = request;
-            matchedTask = Task.Run(() => TrajectoryMatchedPredictor.Predict(workItem));
+            matchedCancellation = new CancellationTokenSource();
+            CancellationToken cancellation = matchedCancellation.Token;
+            matchedTask = Task.Run(() => TrajectoryMatchedPredictor.Predict(workItem, cancellation), cancellation);
             return true;
         }
 
@@ -97,10 +102,7 @@ public sealed class TrajectoryPredictionRunner
             generation++;
         }
 
-        matchedTask = null;
-        matchedTaskBody = null;
-        matchedTaskRequest = default;
-        matchedTaskGeneration = 0;
+        AbandonMatchedTask();
         ClearBufferedResult();
         IsComputing = false;
     }
@@ -111,14 +113,17 @@ public sealed class TrajectoryPredictionRunner
             return;
 
         Task<TrajectoryMatchedPredictionResult> completedTask = matchedTask;
+        CancellationTokenSource completedCancellation = matchedCancellation;
         uint taskGeneration = matchedTaskGeneration;
         NBody taskBody = matchedTaskBody;
         TrajectoryPredictionRequest taskRequest = matchedTaskRequest;
 
         matchedTask = null;
+        matchedCancellation = null;
         matchedTaskBody = null;
         matchedTaskRequest = default;
         matchedTaskGeneration = 0;
+        completedCancellation?.Dispose();
 
         if (taskGeneration != generation)
         {
@@ -176,6 +181,26 @@ public sealed class TrajectoryPredictionRunner
     {
         bufferedResult = default;
         hasBufferedResult = false;
+    }
+
+    private void AbandonMatchedTask()
+    {
+        if (matchedTask != null)
+        {
+            Task<TrajectoryMatchedPredictionResult> abandoned = matchedTask;
+            CancellationTokenSource cancellation = matchedCancellation;
+            cancellation?.Cancel();
+            abandoned.ContinueWith(completed =>
+            {
+                _ = completed.Exception;
+                cancellation?.Dispose();
+            }, TaskScheduler.Default);
+        }
+        matchedTask = null;
+        matchedCancellation = null;
+        matchedTaskBody = null;
+        matchedTaskRequest = default;
+        matchedTaskGeneration = 0;
     }
 
     private static float ResolveSampleDeltaTime(TrajectoryPredictionRequest request, Vector3[] resultArray)

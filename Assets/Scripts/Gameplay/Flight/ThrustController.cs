@@ -44,6 +44,8 @@ public class ThrustController : MonoBehaviour
     private const float AttitudeLeadTime = 20f;
     private bool nodeBurnActive;
     private BurnType activeBurnType;
+    private bool activeBurnUsesVector;
+    private Vector3 activeBurnVectorWorld;
     private NBody activeBurnBody;
 
     private Vector3 burnVCache = Vector3.right;
@@ -165,6 +167,8 @@ public class ThrustController : MonoBehaviour
         Vector3 pos = ship.state.position.ToVector3();
         Vector3 vel = ship.state.velocity.ToVector3();
 
+        if (activeBurnUsesVector && activeBurnVectorWorld.sqrMagnitude > 1e-8f)
+            return activeBurnVectorWorld.normalized;
         return AttitudeMath.ComputeBurnDirection(
             activeBurnType,
             pos,
@@ -263,10 +267,14 @@ public class ThrustController : MonoBehaviour
     {
         if (node == null || node.targetBody == null || !node.targetBody.HasUsableThrust) return;
 
-        bool changed = !nodeBurnActive || activeBurnBody != node.targetBody || activeBurnType != node.burnType;
+        bool changed = !nodeBurnActive || activeBurnBody != node.targetBody ||
+            activeBurnType != node.burnType || activeBurnUsesVector != node.usesVectorDirection ||
+            activeBurnVectorWorld != node.vectorDirectionWorld;
         EnsureThrustTimeScaleLimit(showNodeFeedback: true);
         SetActiveBurnBody(node.targetBody);
         activeBurnType = node.burnType;
+        activeBurnUsesVector = node.usesVectorDirection;
+        activeBurnVectorWorld = node.vectorDirectionWorld;
         nodeBurnActive = true;
         isForwardThrustActive = true;
         ctx?.RocketThrustAudio?.SetThrustActive(true);
@@ -282,6 +290,8 @@ public class ThrustController : MonoBehaviour
         bool changed = isForwardThrustActive || nodeBurnActive || activeBurnBody != null;
         isForwardThrustActive = false;
         nodeBurnActive = false;
+        activeBurnUsesVector = false;
+        activeBurnVectorWorld = Vector3.zero;
         SetActiveBurnBody(null);
         ReleaseThrustTimeScaleLimit();
         StopThrustVisuals();
@@ -425,8 +435,11 @@ public class ThrustController : MonoBehaviour
             UpdateNodeBurnLifecycle(target, targetAttitude, node, stepDt);
 
         // Completion may remove the node. Never hand the integrator a stale command.
-        if (ctx?.ManeuverNodeManager == null || ctx.ManeuverNodeManager.CurrentNode != node)
+        if (ctx?.ManeuverNodeManager == null)
             return default;
+        if (ctx.ManeuverNodeManager.CurrentNode != node)
+            return ctx.ManeuverNodeManager.HasRendezvousPlan
+                ? PrepareSimulationStep(bodies, attitudes, stepDt) : default;
 
         return new ScheduledBurn(node, target.EffectiveThrustNewtons);
     }
@@ -437,14 +450,14 @@ public class ThrustController : MonoBehaviour
         if (body == null || node == null || runtime == null)
             return;
 
-        float simTime = runtime.simulationTime;
-        float stepEndTime = simTime + Mathf.Max(0f, stepDt);
+        double simTime = runtime.SimulationTimeSeconds;
+        double stepEndTime = simTime + Mathf.Max(0f, stepDt);
         UpdateNodeBurnAttitude(attitude, node, simTime);
 
         if (simTime >= ManeuverBurnMath.GetBurnEndTime(node))
         {
             StopThrustForBody(body);
-            ctx?.ManeuverNodeManager?.RemoveNode(node);
+            ctx?.ManeuverNodeManager?.CompleteNode(node);
         }
         else if (ManeuverBurnMath.DoesBurnOverlap(node, body, simTime, stepEndTime))
         {
@@ -459,7 +472,7 @@ public class ThrustController : MonoBehaviour
     private static void UpdateNodeBurnAttitude(
         AttitudeController attitude,
         ManeuverNode node,
-        float simTime)
+        double simTime)
     {
         if (attitude == null || node == null)
             return;
@@ -470,6 +483,19 @@ public class ThrustController : MonoBehaviour
 
         if (inBurnPhase)
         {
+            if (node.usesVectorDirection)
+            {
+                Vector3 direction = node.vectorDirectionWorld;
+                if (float.IsFinite(direction.x) && float.IsFinite(direction.y) &&
+                    float.IsFinite(direction.z) && direction.sqrMagnitude > 1e-8f)
+                {
+                    attitude.SetInertialDirection(direction);
+                    if (attitude.mode != AttitudeController.PointingMode.Inertial)
+                        attitude.SetMode(AttitudeController.PointingMode.Inertial);
+                }
+                attitude.lockNormalParity = false;
+                return;
+            }
             AttitudeController.PointingMode desiredMode = MapBurnTypeToAttitude(node.burnType);
             if (attitude.mode != desiredMode)
                 attitude.SetMode(desiredMode);

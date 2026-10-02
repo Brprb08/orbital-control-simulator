@@ -1,5 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
+using Unity.Mathematics;
 
 /// <summary>
 /// Represents a planned orbital maneuver for an NBody object.
@@ -35,6 +36,23 @@ public class ManeuverNode
 
     public bool isFinalized;
     public BurnType burnType;
+    // Planner-only vector command. Manual nodes continue to use burnType.
+    public bool usesVectorDirection;
+    public Vector3 vectorDirectionWorld;
+
+    // A later manual node starts from the preceding burn's predicted end state.
+    public bool hasPredictionSeed;
+    public float predictionSeedTime;
+    public double3 predictionSeedPosition;
+    public double3 predictionSeedVelocity;
+    public double predictionSeedMassKg;
+    public double predictionSeedFuelKg;
+    public bool hasPredictedPostBurnState;
+    public float predictedBurnEndTime;
+    public double3 predictedPostBurnPosition;
+    public double3 predictedPostBurnVelocity;
+    public double predictedPostBurnMassKg;
+    public double predictedPostBurnFuelKg;
 
     public List<Vector3> trajectorySnapshot;
     public float snapshotStartTime;

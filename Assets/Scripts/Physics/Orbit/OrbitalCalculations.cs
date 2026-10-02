@@ -58,9 +58,6 @@ public static class OrbitalCalculations
 
         double invR = 1.0 / Math.Sqrt(r2);
 
-        // Kept for reference/debug if needed.
-        double energy = 0.5 * v2 - mu * invR;
-
         double3 cxh = new double3(
             v.y * h.z - v.z * h.y,
             v.z * h.x - v.x * h.z,

@@ -136,7 +136,7 @@ public class ManeuverNodeIndicator : MonoBehaviour
         if (_nodeManager == null || !_nodeManager.HasNode)
             return null;
 
-        return _nodeManager.CurrentNode;
+        return _nodeManager.EditingNode;
     }
 
     private string BuildLabel(ManeuverNode node)
@@ -145,9 +145,12 @@ public class ManeuverNodeIndicator : MonoBehaviour
             return "Node";
 
         float tMinus = node.burnTime - _nodeManager.bodyRuntimeCoordinator.simulationTime;
-        string burnName = node.burnType.ToDisplayName();
+        string burnName = node.usesVectorDirection ? "Vector" : node.burnType.ToDisplayName();
         string sign = tMinus >= 0f ? "T+" : "T–";
-        return $"{burnName} ({sign}{Mathf.Abs(tMinus):0}s)";
+        int count = _nodeManager.ManualNodeCount;
+        int selected = !node.isFinalized ? count : 1;
+        string sequence = count > 1 ? $" [{selected}/{count}]" : string.Empty;
+        return $"{burnName}{sequence} ({sign}{Mathf.Abs(tMinus):0}s)";
     }
 
     private void ApplyNodeColor(ManeuverNode node)

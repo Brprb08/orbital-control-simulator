@@ -12,6 +12,21 @@ internal sealed class BodyPhysicsStepper : IDisposable
     private readonly List<AttitudeController> _satAttitudeCache = new();
     private double3[] _posBuf;
     private double3[] _velBuf;
+    private double3[] _startPosBuf;
+    private double3[] _startVelBuf;
+    private readonly List<SweptBounds> _sweeps = new();
+    private readonly List<(int A, int B, double Fraction, double3 Position)> _contacts = new();
+    private double integrationTime;
+    // Geometric tolerance for subdividing one native integration step (0.1 mm).
+    private const double ContactTolerance = 1e-8;
+
+    private readonly struct SweptBounds
+    {
+        public readonly int Index;
+        public readonly double3 Min, Max;
+        public SweptBounds(int index, double3 min, double3 max)
+        { Index = index; Min = min; Max = max; }
+    }
     private double[] _massBuf;
     private double[] _dryMassBuf;
     private double[] _fuelMassBuf;
@@ -55,13 +70,27 @@ internal sealed class BodyPhysicsStepper : IDisposable
             if (body == null) continue;
             ReportNaNPosition(body);
             if (body.isCentralBody)
-                RotateCentralBodyVisual(body);
+                RotateCentralBodyVisual(body, stepDt);
         }
 
-        ScheduledBurn burn = ctx?.ThrustController != null
-            ? ctx.ThrustController.PrepareSimulationStep(_satCache, _satAttitudeCache, stepDt)
-            : default;
-        StepAllBodiesBatch(stepDt, burn);
+        // A large warp tick can cross more than one queued burn. End the current batch at
+        // each burn end so lifecycle completion selects the next command before continuing.
+        double remaining = stepDt;
+        while (remaining > 0f)
+        {
+            ScheduledBurn burn = ctx?.ThrustController != null
+                ? ctx.ThrustController.PrepareSimulationStep(_satCache, _satAttitudeCache, (float)remaining)
+                : default;
+            float chunk = (float)remaining;
+            if (burn.IsValid && ctx?.ManeuverNodeManager != null && ctx.ManeuverNodeManager.HasRendezvousPlan)
+            {
+                double untilEnd = burn.EndTime - ctx.BodyRuntimeCoordinator.SimulationTimeSeconds;
+                if (untilEnd > 0) chunk = (float)Math.Min(chunk, untilEnd);
+            }
+            StepAllBodiesBatch(chunk, burn);
+            remaining -= chunk;
+            if (_satCache.Count == 0) break;
+        }
     }
 
     private void ReportNaNPosition(NBody body)
@@ -76,9 +105,9 @@ internal sealed class BodyPhysicsStepper : IDisposable
         );
     }
 
-    private static void RotateCentralBodyVisual(NBody body)
+    private static void RotateCentralBodyVisual(NBody body, float stepDt)
     {
-        float deltaAngle = -EarthRotationRate * Time.deltaTime;
+        float deltaAngle = -EarthRotationRate * stepDt;
         body.transform.Rotate(Vector3.up, deltaAngle);
     }
 
@@ -88,6 +117,8 @@ internal sealed class BodyPhysicsStepper : IDisposable
 
         Alloc(ref _posBuf, n);
         Alloc(ref _velBuf, n);
+        Alloc(ref _startPosBuf, n);
+        Alloc(ref _startVelBuf, n);
         Alloc(ref _massBuf, n);
         Alloc(ref _dryMassBuf, n);
         Alloc(ref _fuelMassBuf, n);
@@ -123,7 +154,7 @@ internal sealed class BodyPhysicsStepper : IDisposable
         Array.Clear(_normalSignBuf, 0, n);
         Array.Clear(_baseNormalSignBuf, 0, n);
         BodyRuntimeCoordinator runtime = ctx?.BodyRuntimeCoordinator;
-        float simulationTime = runtime != null ? runtime.simulationTime : 0f;
+        double simulationTime = runtime != null ? runtime.SimulationTimeSeconds : 0;
 
         Vector3 center = _central != null
             ? _central.state.position.ToVector3()
@@ -197,6 +228,8 @@ internal sealed class BodyPhysicsStepper : IDisposable
             _areaBuf[i] = (float)b.DragAreaSquareUnits;
         }
 
+        integrationTime = simulationTime;
+
         IntegrateStepChunks(
             n,
             burn,
@@ -219,8 +252,145 @@ internal sealed class BodyPhysicsStepper : IDisposable
             runtime?.CheckPostStepRemoval(b);
         }
 
+
         ctx?.BodyRuntimeCoordinator?.AdvanceSimulation(stepDt);
         ctx?.BodyRuntimeCoordinator?.FlushPendingRemovals();
+    }
+
+    private void CheckSatelliteCollisions(BodyRuntimeCoordinator runtime, double stepDt)
+    {
+        if (runtime == null || _satCache.Count < 2) return;
+        _sweeps.Clear();
+        _contacts.Clear();
+        for (int i = 0; i < _satCache.Count; i++)
+        {
+            NBody body = _satCache[i];
+            if (body == null || !body.isActiveAndEnabled || body.isReferenceOrbit ||
+                runtime.IsPendingRemoval(body) || !(body.radius > 0) ||
+                !math.all(math.isfinite(_startPosBuf[i])) || !math.all(math.isfinite(_posBuf[i])) ||
+                !math.all(math.isfinite(_startVelBuf[i])) || !math.all(math.isfinite(_velBuf[i]))) continue;
+            double3 p0 = _startPosBuf[i], p1 = _posBuf[i];
+            double3 c1 = p0 + _startVelBuf[i] * (stepDt / 3);
+            double3 c2 = p1 - _velBuf[i] * (stepDt / 3);
+            double3 radius = new double3(body.radius);
+            _sweeps.Add(new SweptBounds(i, math.min(math.min(p0, p1), math.min(c1, c2)) - radius,
+                math.max(math.max(p0, p1), math.max(c1, c2)) + radius));
+        }
+        // Cubic Hermite motion lies inside these Bezier control-point bounds.
+        // Sorting one axis avoids checking distant satellite pairs at each physics step.
+        _sweeps.Sort((a, b) => a.Min.x.CompareTo(b.Min.x));
+        for (int i = 0; i < _sweeps.Count; i++)
+        {
+            SweptBounds a = _sweeps[i];
+            NBody bodyA = _satCache[a.Index];
+            for (int j = i + 1; j < _sweeps.Count && _sweeps[j].Min.x <= a.Max.x; j++)
+            {
+                SweptBounds b = _sweeps[j];
+                NBody bodyB = _satCache[b.Index];
+                if (runtime.IsPendingRemoval(bodyB) ||
+                    b.Min.y > a.Max.y || b.Max.y < a.Min.y ||
+                    b.Min.z > a.Max.z || b.Max.z < a.Min.z) continue;
+                double radius = bodyA.radius + bodyB.radius;
+                if (TrySweptContact(a.Index, b.Index, stepDt, radius, out double fraction, out double3 position))
+                    _contacts.Add((a.Index, b.Index, fraction, position));
+            }
+        }
+        // A body can participate in several candidate pairs. Resolve its earliest
+        // contact before deciding which later pairs still exist.
+        _contacts.Sort((x, y) => {
+            int time = x.Fraction.CompareTo(y.Fraction);
+            if (time != 0) return time;
+            int a = x.A.CompareTo(y.A);
+            return a != 0 ? a : x.B.CompareTo(y.B);
+        });
+        foreach (var contact in _contacts)
+            runtime.HandleSatelliteCollision(_satCache[contact.A], _satCache[contact.B], contact.Position);
+    }
+
+    private bool TrySweptContact(int a, int b, double duration, double radius,
+        out double fraction, out double3 position)
+    {
+        double3 r0 = _startPosBuf[a] - _startPosBuf[b], r3 = _posBuf[a] - _posBuf[b];
+        double3 r1 = r0 + (_startVelBuf[a] - _startVelBuf[b]) * (duration / 3);
+        double3 r2 = r3 - (_velBuf[a] - _velBuf[b]) * (duration / 3);
+        bool hit = ContactOnCurve(r0, r1, r2, r3, radius, 0, 1, out fraction);
+        position = hit ? Hermite(_startPosBuf[a], _startVelBuf[a], _posBuf[a], _velBuf[a], duration, fraction) : default;
+        return hit;
+    }
+
+    private static bool ContactOnCurve(double3 p0, double3 p1, double3 p2, double3 p3,
+        double radius, double begin, double end, out double fraction)
+    {
+        fraction = 0;
+        double3 min = math.min(math.min(p0, p1), math.min(p2, p3));
+        double3 max = math.max(math.max(p0, p1), math.max(p2, p3));
+        if (math.any(min > radius) || math.any(max < -radius)) return false;
+        double error = Math.Max(math.distance(p1, math.lerp(p0, p3, 1.0 / 3)),
+            math.distance(p2, math.lerp(p0, p3, 2.0 / 3)));
+        if (error > ContactTolerance && end - begin > 1e-12)
+        {
+            double3 a = (p0 + p1) / 2, b = (p1 + p2) / 2, c = (p2 + p3) / 2;
+            double3 d = (a + b) / 2, e = (b + c) / 2, middle = (d + e) / 2;
+            double time = (begin + end) / 2;
+            return ContactOnCurve(p0, a, d, middle, radius, begin, time, out fraction) ||
+                ContactOnCurve(middle, e, c, p3, radius, time, end, out fraction);
+        }
+        // Entry root, not the time of closest approach. The padding bounds the
+        // curve-to-chord error and is at most 0.1 mm per native step.
+        double3 travel = p3 - p0;
+        double c0 = math.lengthsq(p0) - (radius + error) * (radius + error);
+        if (c0 <= 0) { fraction = begin; return true; }
+        double a0 = math.lengthsq(travel), b0 = math.dot(p0, travel);
+        double discriminant = b0 * b0 - a0 * c0;
+        if (!(a0 > 0) || b0 >= 0 || discriminant < 0) return false;
+        double t = c0 / (-b0 + Math.Sqrt(discriminant));
+        if (t < 0 || t > 1) return false;
+        fraction = begin + (end - begin) * t;
+        return true;
+    }
+
+    // Conservative synchronous broad phase: gravity and thrust bound departure
+    // from the straight relative path. Drag cannot accelerate a craft beyond
+    // the atmospheric wind speed; include that displacement when reachable.
+    private bool MayContact(double duration)
+    {
+        var runtime = ctx?.BodyRuntimeCoordinator;
+        if (runtime == null || _satCache.Count < 2) return false;
+        _sweeps.Clear();
+        double earthRadius = _central != null ? _central.radius : PhysicsConstants.EarthRadiusUnits;
+        double gravity = _muUnity / (earthRadius * earthRadius);
+        for (int i = 0; i < _satCache.Count; i++)
+        {
+            var body = _satCache[i];
+            if (body == null || !body.isActiveAndEnabled || body.isReferenceOrbit || runtime.IsPendingRemoval(body)) continue;
+            double accel = gravity + (body.EffectiveThrustNewtons / 10000.0 + _baseThrustBuf[i].magnitude) /
+                Math.Max(1e-9, body.DryMassKilograms);
+            double padding = .5 * accel * duration * duration;
+            if (math.length(_posBuf[i]) - math.length(_velBuf[i]) * duration - padding <= earthRadius + AtmosphericDragCutoffUnits)
+                padding += (math.length(_velBuf[i]) + .1) * duration;
+            double3 end = _posBuf[i] + _velBuf[i] * duration;
+            double3 extent = new double3(body.radius + padding);
+            _sweeps.Add(new SweptBounds(i, math.min(_posBuf[i], end) - extent, math.max(_posBuf[i], end) + extent));
+        }
+        _sweeps.Sort((a, b) => a.Min.x.CompareTo(b.Min.x));
+        for (int i = 0; i < _sweeps.Count; i++)
+        {
+            var a = _sweeps[i];
+            for (int j = i + 1; j < _sweeps.Count && _sweeps[j].Min.x <= a.Max.x; j++)
+            {
+                var b = _sweeps[j];
+                if (b.Min.y <= a.Max.y && b.Max.y >= a.Min.y && b.Min.z <= a.Max.z && b.Max.z >= a.Min.z) return true;
+            }
+        }
+        return false;
+    }
+
+    private static double3 Hermite(double3 p0, double3 v0, double3 p1, double3 v1,
+        double duration, double t)
+    {
+        double t2 = t * t, t3 = t2 * t;
+        return (2 * t3 - 3 * t2 + 1) * p0 + (t3 - 2 * t2 + t) * duration * v0 +
+            (-2 * t3 + 3 * t2) * p1 + (t3 - t2) * duration * v1;
     }
 
     private void IntegrateStepChunks(
@@ -228,11 +398,11 @@ internal sealed class BodyPhysicsStepper : IDisposable
         ScheduledBurn burn,
         int nodeTargetIndex,
         Vector3 center,
-        float stepStartTime,
+        double stepStartTime,
         float stepDt)
     {
-        float cursor = stepStartTime;
-        float stepEnd = stepStartTime + stepDt;
+        double cursor = stepStartTime;
+        double stepEnd = stepStartTime + stepDt;
 
         if (!burn.IsValid || nodeTargetIndex < 0 || nodeTargetIndex >= n)
         {
@@ -240,23 +410,23 @@ internal sealed class BodyPhysicsStepper : IDisposable
             return;
         }
 
-        float burnStart = Mathf.Clamp(burn.StartTime, stepStartTime, stepEnd);
-        float burnEnd = Mathf.Clamp(burn.EndTime, stepStartTime, stepEnd);
+        double burnStart = Math.Clamp(burn.StartTime, stepStartTime, stepEnd);
+        double burnEnd = Math.Clamp(burn.EndTime, stepStartTime, stepEnd);
 
         if (cursor < burnStart)
         {
-            IntegrateChunk(n, burnStart - cursor, default, -1, center);
+            IntegrateChunk(n, (float)(burnStart - cursor), default, -1, center);
             cursor = burnStart;
         }
 
         if (burnEnd > cursor)
         {
-            IntegrateBurnWindow(n, burnEnd - cursor, burn, nodeTargetIndex, center);
+            IntegrateBurnWindow(n, (float)(burnEnd - cursor), burn, nodeTargetIndex, center);
             cursor = burnEnd;
         }
 
         if (stepEnd > cursor)
-            IntegrateChunk(n, stepEnd - cursor, default, -1, center);
+            IntegrateChunk(n, (float)(stepEnd - cursor), default, -1, center);
     }
 
     private void IntegrateBurnWindow(
@@ -266,18 +436,52 @@ internal sealed class BodyPhysicsStepper : IDisposable
         int nodeTargetIndex,
         Vector3 center)
     {
-        float remaining = burnDt;
+        double remaining = burnDt;
         const float burnDirectionUpdateDt = BodyRuntimeCoordinator.BaseSimulationStep;
 
         while (remaining > 1e-6f)
         {
-            float chunkDt = Mathf.Min(burnDirectionUpdateDt, remaining);
+            float chunkDt = (float)Math.Min(burnDirectionUpdateDt, remaining);
             IntegrateChunk(n, chunkDt, burn, nodeTargetIndex, center);
             remaining -= chunkDt;
         }
     }
 
-    private void IntegrateChunk(
+    private void IntegrateChunk(int n, float chunkDt, ScheduledBurn burn, int nodeTargetIndex, Vector3 center)
+    {
+        double remaining = chunkDt;
+        var manager = ctx?.ManeuverNodeManager;
+        while (remaining > 0)
+        {
+            manager?.ValidateRendezvousFlight(integrationTime, _satCache, _posBuf, _velBuf);
+            double slice = remaining;
+            if (manager != null && manager.HasRendezvousPlan)
+            {
+                slice = Math.Min(slice, 1.0);
+                double toArrival = manager.RendezvousArrivalTime - integrationTime;
+                if (toArrival > 0) slice = Math.Min(slice, toArrival);
+            }
+            bool contact = MayContact(slice);
+            while (contact && slice > BodyRuntimeCoordinator.BaseSimulationStep)
+            {
+                slice = Math.Max(BodyRuntimeCoordinator.BaseSimulationStep, slice * .5);
+                contact = MayContact(slice);
+            }
+            float dt = (float)Math.Min(slice, remaining);
+            if (!(dt > 0)) break;
+            Array.Copy(_posBuf, _startPosBuf, n);
+            Array.Copy(_velBuf, _startVelBuf, n);
+            // Cancellation during this batch must invalidate its cached command.
+            var command = burn.IsValid && manager != null && manager.CurrentNode == burn.SourceNode ? burn : default;
+            IntegrateSlice(n, dt, command, nodeTargetIndex, center);
+            if (contact) CheckSatelliteCollisions(ctx?.BodyRuntimeCoordinator, dt);
+            integrationTime += dt;
+            remaining -= dt;
+            manager?.ValidateRendezvousFlight(integrationTime, _satCache, _posBuf, _velBuf);
+        }
+    }
+
+    private void IntegrateSlice(
         int n,
         float chunkDt,
         ScheduledBurn burn,
@@ -290,7 +494,8 @@ internal sealed class BodyPhysicsStepper : IDisposable
         Array.Copy(_baseThrustBuf, _thrustBuf, n);
         Array.Copy(_baseNormalSignBuf, _normalSignBuf, n);
 
-        if (burn.IsValid && nodeTargetIndex >= 0 && _satCache[nodeTargetIndex].HasUsableThrust)
+        if (burn.IsValid && nodeTargetIndex >= 0 && _satCache[nodeTargetIndex].HasUsableThrust &&
+            !ctx.BodyRuntimeCoordinator.IsPendingRemoval(_satCache[nodeTargetIndex]))
         {
             Vector3 burnPos = _posBuf[nodeTargetIndex].ToVector3();
             Vector3 burnVel = _velBuf[nodeTargetIndex].ToVector3();

@@ -2,41 +2,20 @@
 
 This is a real-time orbital mechanics simulator built in Unity, with the actual physics simulation running in native C++.
 
-The simulation is always running continuously. You can add satellites, change attitude, and apply thrust at any point and the orbit updates right away.
+You can add satellites, change attitude, and apply thrust while the simulation runs, and the orbit updates right away. Real satellite TLEs can be loaded too, or you can place satellites manually or from orbital elements.
 
-Unity handles the visible side of the project: rendering, input, UI, and camera control. Physics integration, force accumulation, and orbital state are handled in native code to keep things stable under time acceleration and sustained thrust. Core orbital motion is integrated using a batched Dormand-Prince 5th-order (DoPri5) solver, while trajectory previews run through separate preview systems so the interactive parts of the sim do not lag or stutter.
-
-Real satellite TLEs can be loaded. Satellites can also be placed manually or from orbital elements, with live orbit previews, maneuver planning, and trajectory updates without stopping the simulation. Maneuver nodes are not instant delta-v teleports either, planned burns are simulated as finite-duration thrust under gravity.
+Maneuver nodes are not instant delta-v teleports either, planned burns are simulated as finite-duration thrust under gravity. There is also a rendezvous system in progress for planning approaches to another satellite.
 
 [Watch the demo video on YouTube](https://youtu.be/w0mEL8PJFN0?si=0LpU4MF2ve1I8Ath)
 
 ![Track Cam](./Assets/Images/4-29Track.png)
 _Track camera with live orbit readouts._
 
-![Track Cam with Nodes](./Assets/Images/4-29Nodes.png)
-_Maneuver node preview and planned-burn visualization._
-
-![Elliptical Orbit](./Assets/Images/4-29SatelliteUpClose.png)
-_Close view of a satellite on an elliptical orbit._
-
-![Free Cam](./Assets/Images/12-5Free.png)
-_Free camera view used for placement and inspection._
-
----
-
-## Why This Exists
-
-This started because I realized I did not actually understand orbits as well as I thought I did. I was watching a lot of SpaceX launches and seeing the boosters come back and land, but it always made me curious what happens to the payload once it is in space.
-
-I knew the high-level ideas: go fast sideways at a high altitude and you are in an orbit. But I had no real understanding of how maneuvers are performed, how missions like getting to the Moon actually work, how drag is managed, or how satellite constellations are maintained.
-
-This project gave me something I could use to answer those questions. It began as a gray sphere moving around another gray sphere, and changed significantly over time as I learned more about both game development and orbital mechanics.
-
 ---
 
 ## What It Can Do
 
-Everything runs live.
+Most of the tools work while the simulation runs. Rendezvous planning temporarily holds simulation time while a proposal is being built and reviewed.
 
 The basic intended flow is roughly:
 
@@ -49,7 +28,7 @@ The basic intended flow is roughly:
 There is also an in-game tutorial for this flow, because otherwise I have heard is pretty easy to forget which panel is supposed to do what.
 
 ### Real-Time Orbital Control & Planning
-- **Continuous, real-time orbital simulation**
+- **Interactive, real-time orbital simulation**
   - Orbits change continuously under gravity, thrust, and drag
   - Thrust can be applied freely at any time without stopping the simulation
   - Trajectories update immediately, even under time acceleration
@@ -71,17 +50,28 @@ There is also an in-game tutorial for this flow, because otherwise I have heard 
   - Burns support prograde, retrograde, radial in/out, and normal/anti-normal directions
   - Burns are simulated as **finite-duration thrust under gravity** (not impulsive delta-v)
   - Post-burn trajectories and orbit readouts are previewed in real time, including T+ timing and predicted orbital parameters
+  - Multiple nodes can be planned in sequence, with later previews starting from the previous burn's predicted end state
   - Finalized nodes are pinned and locked to prevent accidental edits
   - Node burns execute automatically when simulation time reaches the planned burn window
+
+- **Satellite rendezvous (work in progress)**
+  - Select a target satellite and monitor separation, closing speed, and predicted closest approach
+  - Frame both satellites in one camera view and show the target orbit and encounter markers
+  - Preview and schedule multi-burn approaches with finite-duration thrust, including waypoint and intercept options
+  - This is still being worked on, especially the planning and approach behavior
 
 ### Physics & Numerical Architecture
 - **Native C++ orbital integration using a batched Dormand-Prince 5th-order (DoPri5) solver**
   - Designed for numerical stability under long runtimes and high time scales
 
+- **Satellite collision handling**
+  - Checks for contact along the simulated flight path, including between step endpoints
+  - Both satellites are removed after an impact
+
 - **Asynchronous trajectory prediction**
   - GPU-based RK4 integration for baseline orbit previews
   - Extra prediction handling for maneuver previews and cases where drag changes the orbit more noticeably
-  - Prediction runs independently so previews never stall the main simulation
+  - Trajectory prediction runs separately from the main simulation to keep the previews responsive
 
 ### Satellite Creation & Configuration
 - **Runtime creation and reset of satellites**
@@ -106,12 +96,37 @@ There is also an in-game tutorial for this flow, because otherwise I have heard 
 
 ### Time Control & Camera Systems
 - **Adjustable simulation speed**
-  - Real-time up to 100x time acceleration
+  - Real-time up to 250x time acceleration, with the maximum adjusted based on satellite count
 - **Multiple camera modes**
   - Free camera for placement and inspection
   - Target tracking for following a body
   - Earth-relative camera for orbit visualization
+  - A pair view for following the controlled satellite and its rendezvous target
   - Camera and UI state handling for placement, velocity setup, and maneuver workflows
+
+---
+
+## Why This Exists
+
+This started because I realized I did not actually understand orbits as well as I thought I did. I was watching a lot of SpaceX launches and seeing the boosters come back and land, but it always made me curious what happens to the payload once it is in space.
+
+I knew the high-level ideas: go fast sideways at a high altitude and you are in an orbit. But I had no real understanding of how maneuvers are performed, how missions like getting to the Moon actually work, how drag is managed, or how satellite constellations are maintained.
+
+This project gave me something I could use to answer those questions. It began as a gray sphere moving around another gray sphere, and changed significantly over time as I learned more about both game development and orbital mechanics.
+
+<details>
+<summary><strong>More screenshots</strong></summary>
+
+![Track Cam with Nodes](./Assets/Images/4-29Nodes.png)
+_Maneuver node preview and planned-burn visualization._
+
+![Elliptical Orbit](./Assets/Images/4-29SatelliteUpClose.png)
+_Close view of a satellite on an elliptical orbit._
+
+![Free Cam](./Assets/Images/12-5Free.png)
+_Free camera view used for placement and inspection._
+
+</details>
 
 ---
 

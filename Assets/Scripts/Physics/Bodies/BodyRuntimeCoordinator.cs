@@ -27,8 +27,10 @@ public class BodyRuntimeCoordinator : MonoBehaviour
 
     [Header("Simulation Settings")]
     public int simulationStep = 0;
-    [SerializeField] private float accumulatedSimulationTime;
-    public float simulationTime => accumulatedSimulationTime;
+    [SerializeField] private double accumulatedSimulationTime;
+    // Keep the legacy float view for UI/node storage; prediction and integration use the exact clock.
+    public float simulationTime => (float)accumulatedSimulationTime;
+    public double SimulationTimeSeconds => accumulatedSimulationTime;
     public bool IsNodeBurnInProgress =>
         ctx != null &&
         ctx.ThrustController != null &&
@@ -40,6 +42,8 @@ public class BodyRuntimeCoordinator : MonoBehaviour
 
     private readonly List<NBody> _pendingRemovals = new();
     private readonly HashSet<NBody> _pendingRemovalSet = new();
+    /// <summary>Raised before a satellite impact is removed, for future visual effects.</summary>
+    public event Action<NBody, NBody, double3> SatellitesCollided;
 
     /// <summary>
     /// Initializes connections between body services, visibility controllers,
@@ -70,7 +74,9 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// </summary>
     public void AdvanceSimulationStep()
     {
-        AdvanceSimulation(Time.fixedDeltaTime);
+        AdvanceSimulation(ctx?.TimeController != null
+            ? ctx.TimeController.SimulationStepSeconds
+            : Time.fixedDeltaTime);
     }
 
     public void AdvanceSimulation(float deltaTime)
@@ -90,8 +96,25 @@ public class BodyRuntimeCoordinator : MonoBehaviour
     /// </summary>
     public void HandleCollision(NBody a, NBody b)
     {
-        var remove = (a.TotalMassKilograms < b.TotalMassKilograms) ? a : b;
+        if (a == null || b == null || a == b || (a.isCentralBody && b.isCentralBody))
+            return;
+
+        // The central body is fixed and cannot be removed by an impact or escape.
+        // Mass comparison only applies when both participants are satellites.
+        var remove = a.isCentralBody ? b : b.isCentralBody ? a
+            : (a.TotalMassKilograms < b.TotalMassKilograms ? a : b);
         QueueRemoval(remove);
+    }
+
+    internal bool IsPendingRemoval(NBody body) => _pendingRemovalSet.Contains(body);
+
+    internal void HandleSatelliteCollision(NBody a, NBody b, double3 position)
+    {
+        if (a == null || b == null || IsPendingRemoval(a) || IsPendingRemoval(b)) return;
+        QueueRemoval(a);
+        QueueRemoval(b);
+        SatellitesCollided?.Invoke(a, b, position);
+        Debug.Log($"[NBODY]: [SATELLITE COLLISION] {a.name} and {b.name}");
     }
 
     internal void CheckPostStepRemoval(NBody body)

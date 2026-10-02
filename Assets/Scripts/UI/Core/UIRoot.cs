@@ -59,7 +59,7 @@ public class UIRoot : MonoBehaviour
         placementUI = new PlacementUIController(refs, objectPlacementManager);
         placementUI.Initialize();
 
-        flightUI = new FlightUIController(refs, ctx);
+        flightUI = new FlightUIController(refs, ctx, RefreshAll);
         flightUI.Initialize();
 
         cameraModeUI = new CameraModeUIController(refs);
@@ -74,7 +74,11 @@ public class UIRoot : MonoBehaviour
         RefreshAll();
     }
 
-    private void LateUpdate() => flightUI?.Tick();
+    private void LateUpdate()
+    {
+        flightUI?.Tick();
+        ApplyRendezvousModeVisibility();
+    }
 
     private void OnDestroy()
     {
@@ -205,9 +209,30 @@ public class UIRoot : MonoBehaviour
         if (refs.trackCamButton != null)
             refs.trackCamButton.interactable = refs.trackCamButton.interactable && !nodeBurnActive;
 
-        timeUI?.SetPauseButtonInteractable(!nodeBurnActive);
+        timeUI?.SetPauseButtonInteractable(!nodeBurnActive && ctx?.TimeController?.IsPlanningHeld != true);
         ctx?.BodyDropdownManager?.SetInteractable(!nodeBurnActive);
         ctx?.ManeuverNodeManager?.SetSetupNodeButtonInteractable(!nodeBurnActive);
+        ApplyRendezvousModeVisibility();
+    }
+
+    private void ApplyRendezvousModeVisibility()
+    {
+        if (flightUI?.Rendezvous?.IsModeActive != true) return;
+
+        // Apply the view after camera, flight, and engine controllers set their
+        // ordinary visibility. Earth Cam shares the dropdown parent with the
+        // satellite selector, so hide only the selector itself.
+        SetActive(refs.cameraControls, false);
+        SetActive(refs.trackedSatellites != null ? refs.trackedSatellites.gameObject : null, false);
+        SetActive(refs.removeSatellite != null ? refs.removeSatellite.gameObject : null, false);
+        SetActive(refs.confirmRemoveSatPanel, false);
+        SetActive(refs.constellationNavigationPanel, false);
+        SetActive(refs.burnControlsPanel, false);
+        SetActive(refs.thrustButtons, false);
+        SetActive(refs.attitudeControlPanel, false);
+        SetActive(refs.maneuverNodePanel, false);
+        SetActive(refs.enginePanelButton != null ? refs.enginePanelButton.gameObject : null, false);
+        SetActive(refs.enginePanel, false);
     }
 
     private void OnFreeCamPressed()
@@ -329,7 +354,7 @@ public class UIRoot : MonoBehaviour
 
     private void SetActive(GameObject go, bool show)
     {
-        if (go != null)
+        if (go != null && go.activeSelf != show)
             go.SetActive(show);
     }
 }
